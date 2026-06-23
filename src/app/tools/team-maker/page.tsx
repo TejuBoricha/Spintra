@@ -1,0 +1,531 @@
+"use client";
+
+import { useState, useCallback, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+import {
+  Users,
+  Shuffle,
+  Download,
+  Plus,
+  Minus,
+  ArrowRight,
+  ArrowLeftRight,
+  Sparkles,
+  RotateCcw,
+  Copy,
+  Check,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { cn } from "@/lib/utils";
+
+// ── Constants ──────────────────────────────────────────────
+const TEAM_COLORS: { bg: string; text: string; ring: string; label: string }[] = [
+  { bg: "bg-purple-500/20", text: "text-purple-300", ring: "ring-purple-500/30", label: "Purple" },
+  { bg: "bg-cyan-500/20", text: "text-cyan-300", ring: "ring-cyan-500/30", label: "Cyan" },
+  { bg: "bg-emerald-500/20", text: "text-emerald-300", ring: "ring-emerald-500/30", label: "Emerald" },
+  { bg: "bg-amber-500/20", text: "text-amber-300", ring: "ring-amber-500/30", label: "Amber" },
+  { bg: "bg-pink-500/20", text: "text-pink-300", ring: "ring-pink-500/30", label: "Pink" },
+  { bg: "bg-blue-500/20", text: "text-blue-300", ring: "ring-blue-500/30", label: "Blue" },
+  { bg: "bg-orange-500/20", text: "text-orange-300", ring: "ring-orange-500/30", label: "Orange" },
+  { bg: "bg-teal-500/20", text: "text-teal-300", ring: "ring-teal-500/30", label: "Teal" },
+  { bg: "bg-red-500/20", text: "text-red-300", ring: "ring-red-500/30", label: "Red" },
+  { bg: "bg-indigo-500/20", text: "text-indigo-300", ring: "ring-indigo-500/30", label: "Indigo" },
+  { bg: "bg-lime-500/20", text: "text-lime-300", ring: "ring-lime-500/30", label: "Lime" },
+  { bg: "bg-rose-500/20", text: "text-rose-300", ring: "ring-rose-500/30", label: "Rose" },
+];
+
+const TEMPLATES = [
+  { label: "Cricket", teams: 2, perTeam: 11, icon: "🏏" },
+  { label: "Football", teams: 2, perTeam: 11, icon: "⚽" },
+  { label: "Valorant", teams: 2, perTeam: 5, icon: "🎯" },
+  { label: "BGMI", teams: 4, perTeam: 4, icon: "🎮" },
+  { label: "CS2", teams: 2, perTeam: 5, icon: "🔫" },
+  { label: "Office", teams: 0, perTeam: 0, icon: "💼" },
+];
+
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  const shuffled = [...arr];
+  let s = seed;
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    s = (s * 16807 + 0) % 2147483647;
+    const j = s % (i + 1);
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+// ── Component ──────────────────────────────────────────────
+export default function TeamMakerPage() {
+  const [namesInput, setNamesInput] = useState("");
+  const [numTeams, setNumTeams] = useState(2);
+  const [teams, setTeams] = useState<{ name: string; colorIdx: number; members: string[] }[]>([]);
+  const [autoBalance, setAutoBalance] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [expandedTeam, setExpandedTeam] = useState<number | null>(null);
+  const [newMemberInput, setNewMemberInput] = useState<Record<number, string>>({});
+  const [collapsedTeams, setCollapsedTeams] = useState<Set<number>>(new Set());
+
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Parse names from input
+  const parsedNames = namesInput
+    .split(/[\n,]+/)
+    .map((n) => n.trim())
+    .filter(Boolean);
+
+  // ── Actions ──
+  const generateTeams = useCallback(() => {
+    const names = parsedNames;
+    if (names.length === 0) return;
+
+    const count = Math.min(numTeams, names.length);
+    const shuffled = seededShuffle(names, Date.now());
+    const result: { name: string; colorIdx: number; members: string[] }[] = [];
+
+    const minPerTeam = Math.floor(names.length / count);
+    const extra = names.length % count;
+    let idx = 0;
+
+    for (let t = 0; t < count; t++) {
+      const size = minPerTeam + (t < extra ? 1 : 0);
+      result.push({
+        name: `Team ${t + 1}`,
+        colorIdx: t % TEAM_COLORS.length,
+        members: shuffled.slice(idx, idx + size),
+      });
+      idx += size;
+    }
+
+    setTeams(result);
+    setCollapsedTeams(new Set());
+  }, [parsedNames, numTeams]);
+
+  const moveMember = useCallback((fromTeam: number, toTeam: number, memberIndex: number) => {
+    setTeams((prev) => {
+      const next = prev.map((t) => ({ ...t, members: [...t.members] }));
+      const member = next[fromTeam].members[memberIndex];
+      next[fromTeam].members.splice(memberIndex, 1);
+      next[toTeam].members.push(member);
+      return next;
+    });
+  }, []);
+
+  const removeMember = useCallback((teamIdx: number, memberIdx: number) => {
+    setTeams((prev) => {
+      const next = prev.map((t) => ({ ...t, members: [...t.members] }));
+      next[teamIdx].members.splice(memberIdx, 1);
+      return next;
+    });
+  }, []);
+
+  const addMember = useCallback((teamIdx: number) => {
+    const name = (newMemberInput[teamIdx] || "").trim();
+    if (!name) return;
+    setTeams((prev) => {
+      const next = prev.map((t) => ({ ...t, members: [...t.members] }));
+      next[teamIdx].members.push(name);
+      return next;
+    });
+    setNewMemberInput((prev) => {
+      const next = { ...prev };
+      delete next[teamIdx];
+      return next;
+    });
+  }, [newMemberInput]);
+
+  const toggleCollapse = useCallback((teamIdx: number) => {
+    setCollapsedTeams((prev) => {
+      const next = new Set(prev);
+      if (next.has(teamIdx)) next.delete(teamIdx);
+      else next.add(teamIdx);
+      return next;
+    });
+  }, []);
+
+  const applyTemplate = useCallback((template: (typeof TEMPLATES)[0]) => {
+    if (template.label === "Office") {
+      setNumTeams(2);
+    } else {
+      setNumTeams(template.teams);
+    }
+  }, []);
+
+  const exportTeams = useCallback(() => {
+    const text = teams
+      .map((t) => {
+        const color = TEAM_COLORS[t.colorIdx].label;
+        return `[${t.name}] (${color})\n${t.members.map((m) => `  - ${m}`).join("\n")}`;
+      })
+      .join("\n\n");
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [teams]);
+
+  // ── Render ──
+  return (
+    <div className="relative min-h-screen" ref={containerRef}>
+      {/* Background */}
+      <div className="fixed inset-0 -z-10">
+        <div className="absolute inset-0 bg-background" />
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-500/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-cyan-500/5 rounded-full blur-[120px]" />
+      </div>
+
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+        {/* ── Header ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-12"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass text-sm text-muted-foreground mb-6">
+            <Users className="w-4 h-4" />
+            Team Tool
+          </div>
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4">
+            <span className="gradient-text">Team Maker</span>
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Build balanced teams in seconds — shuffle, customize, and export with ease.
+          </p>
+        </motion.div>
+
+        {/* ── Main grid: Input + Controls | Templates ── */}
+        <div className="grid lg:grid-cols-3 gap-6 mb-8">
+          {/* Input column */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1, duration: 0.4 }}
+            className="lg:col-span-2 glass-card p-6 space-y-5"
+          >
+            <div>
+              <Label className="text-sm font-medium mb-2 block">
+                Player Names
+              </Label>
+              <Textarea
+                placeholder={"Enter names, one per line or comma-separated...\n\nAlex\nJordan\nTaylor\nMorgan\nCasey\nRiley\nQuinn\nSkyler"}
+                value={namesInput}
+                onChange={(e) => setNamesInput(e.target.value)}
+                className="min-h-[160px] resize-y"
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                {parsedNames.length > 0
+                  ? `${parsedNames.length} name${parsedNames.length !== 1 ? "s" : ""} entered`
+                  : "Enter player names above"}
+              </p>
+            </div>
+
+            {/* Number of teams */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Number of Teams</Label>
+                <span className="text-sm font-mono text-primary">{numTeams}</span>
+              </div>
+              <Slider
+                value={[numTeams]}
+                onValueChange={(v) => {
+                  const val = Array.isArray(v) ? v[0] : v;
+                  if (val !== undefined) setNumTeams(val);
+                }}
+                min={2}
+                max={12}
+                step={1}
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>2</span>
+                <span>12</span>
+              </div>
+            </div>
+
+            {/* Auto-balance toggle */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium cursor-pointer">Auto-Balance</Label>
+                <p className="text-xs text-muted-foreground">Distribute names evenly across teams</p>
+              </div>
+              <Switch checked={autoBalance} onCheckedChange={setAutoBalance} />
+            </div>
+
+            {/* Generate button */}
+            <Button
+              onClick={generateTeams}
+              disabled={parsedNames.length === 0}
+              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 text-white border-0"
+            >
+              <Shuffle className="w-5 h-5 mr-2" />
+              Generate Teams
+              <Sparkles className="w-4 h-4 ml-2 opacity-60" />
+            </Button>
+          </motion.div>
+
+          {/* Templates column */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2, duration: 0.4 }}
+            className="glass-card p-6 space-y-4"
+          >
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Quick Templates
+            </h3>
+            <div className="grid gap-2">
+              {TEMPLATES.map((tpl) => (
+                <button
+                  key={tpl.label}
+                  onClick={() => applyTemplate(tpl)}
+                  className="flex items-center gap-3 p-3 rounded-lg border border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.04] hover:border-purple-500/20 transition-all text-left group"
+                >
+                  <span className="text-xl">{tpl.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium group-hover:text-purple-300 transition-colors">
+                      {tpl.label}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {tpl.label === "Office"
+                        ? "Custom count"
+                        : `${tpl.teams} teams × ${tpl.perTeam} players`}
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-purple-300 group-hover:translate-x-0.5 transition-all" />
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+
+        {/* ── Teams output ── */}
+        <AnimatePresence mode="wait">
+          {teams.length > 0 && (
+            <motion.div
+              key="teams-container"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4 }}
+              className="space-y-6"
+            >
+              {/* Toolbar */}
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="text-lg font-semibold mr-auto">
+                  {teams.length} Team{teams.length !== 1 ? "s" : ""} ·{" "}
+                  {teams.reduce((sum, t) => sum + t.members.length, 0)} Players
+                </h2>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportTeams}
+                  className="gap-2"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      Export
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={generateTeams}
+                  className="gap-2"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Reshuffle
+                </Button>
+              </div>
+
+              {/* Team cards grid */}
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {teams.map((team, teamIdx) => {
+                  const color = TEAM_COLORS[team.colorIdx % TEAM_COLORS.length];
+                  const isCollapsed = collapsedTeams.has(teamIdx);
+
+                  return (
+                    <motion.div
+                      key={`${teamIdx}-${team.members.length}`}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: teamIdx * 0.08, duration: 0.3 }}
+                      className={cn(
+                        "glass-card p-4 space-y-3 ring-1",
+                        color.ring
+                      )}
+                    >
+                      {/* Team header */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={cn(
+                              "w-3 h-3 rounded-full",
+                              color.bg.replace("/20", "").replace("bg-", "bg-")
+                            )}
+                          />
+                          <h3 className={cn("font-semibold text-sm", color.text)}>
+                            {team.name}
+                          </h3>
+                          <span className="text-xs text-muted-foreground">
+                            ({team.members.length})
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => toggleCollapse(teamIdx)}
+                          className="p-1 rounded hover:bg-white/[0.04] transition-colors"
+                        >
+                          {isCollapsed ? (
+                            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Member list */}
+                      {!isCollapsed && (
+                        <motion.ul
+                          initial={{ height: 0 }}
+                          animate={{ height: "auto" }}
+                          exit={{ height: 0 }}
+                          className="space-y-1.5"
+                        >
+                          <AnimatePresence mode="popLayout">
+                            {team.members.map((member, memberIdx) => (
+                              <motion.li
+                                key={`${member}-${memberIdx}`}
+                                layout
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: 10, height: 0 }}
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.03] group/member hover:bg-white/[0.04] transition-colors"
+                              >
+                                <span className="flex-1 text-sm truncate">
+                                  {member}
+                                </span>
+                                {/* Move to other teams */}
+                                <div className="flex items-center gap-0.5 opacity-0 group-hover/member:opacity-100 transition-opacity">
+                                  {teams
+                                    .filter((_, i) => i !== teamIdx)
+                                    .slice(0, 3)
+                                    .map((targetTeam) => (
+                                      <button
+                                        key={targetTeam.colorIdx}
+                                        onClick={() => moveMember(teamIdx, teams.indexOf(targetTeam), memberIdx)}
+                                        className={cn(
+                                          "p-1 rounded text-xs transition-colors hover:bg-white/[0.08]",
+                                          TEAM_COLORS[targetTeam.colorIdx % TEAM_COLORS.length].text
+                                        )}
+                                        title={`Move to ${targetTeam.name}`}
+                                      >
+                                        <ArrowLeftRight className="w-3.5 h-3.5" />
+                                      </button>
+                                    ))}
+                                  <button
+                                    onClick={() => removeMember(teamIdx, memberIdx)}
+                                    className="p-1 rounded text-xs text-red-400 hover:bg-red-500/10 transition-colors"
+                                    title="Remove"
+                                  >
+                                    <Minus className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </motion.li>
+                            ))}
+                          </AnimatePresence>
+                        </motion.ul>
+                      )}
+
+                      {/* Add member */}
+                      {!isCollapsed && (
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Add player..."
+                            value={newMemberInput[teamIdx] || ""}
+                            onChange={(e) =>
+                              setNewMemberInput((prev) => ({
+                                ...prev,
+                                [teamIdx]: e.target.value,
+                              }))
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") addMember(teamIdx);
+                            }}
+                            className="flex-1 h-8 px-2.5 text-xs rounded-lg border border-input bg-transparent outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50 placeholder:text-muted-foreground"
+                          />
+                          <Button
+                            size="icon-sm"
+                            variant="outline"
+                            onClick={() => addMember(teamIdx)}
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* Create Room CTA */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                className="glass-card p-6 text-center space-y-4"
+              >
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 text-purple-300 text-xs font-medium">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Multiplayer
+                </div>
+                <h3 className="text-xl font-bold">Want to collaborate live?</h3>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  Create a room and build teams together with friends in real time.
+                  Everyone sees changes instantly.
+                </p>
+                <Link href="/create?type=team-maker">
+                  <Button className="gap-2 bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 text-white border-0">
+                    <Users className="w-4 h-4" />
+                    Create Room
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </Link>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Empty state when no teams generated yet */}
+        {teams.length === 0 && parsedNames.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-16"
+          >
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-purple-500/10 mb-4">
+              <Shuffle className="w-8 h-8 text-purple-400" />
+            </div>
+            <p className="text-muted-foreground">
+              {parsedNames.length} name{parsedNames.length !== 1 ? "s" : ""} ready.
+              Hit <span className="text-purple-300 font-medium">Generate Teams</span> to
+              get started!
+            </p>
+          </motion.div>
+        )}
+      </div>
+    </div>
+  );
+}

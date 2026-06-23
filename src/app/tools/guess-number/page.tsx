@@ -1,0 +1,165 @@
+"use client";
+
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { Hash, ArrowUp, ArrowDown, RotateCcw, Target } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+
+const modes = [
+  { name: "Easy", range: 50, attempts: 10 },
+  { name: "Medium", range: 100, attempts: 7 },
+  { name: "Hard", range: 500, attempts: 10 },
+  { name: "Extreme", range: 1000, attempts: 12 },
+] as const;
+
+export default function GuessNumberPage() {
+  const [mode, setMode] = useState<(typeof modes)[number]>(modes[0]);
+  const [target, setTarget] = useState(() => Math.floor(Math.random() * 50) + 1);
+  const [guess, setGuess] = useState("");
+  const [guesses, setGuesses] = useState<{ value: number; hint: "high" | "low" | "correct" }[]>([]);
+  const [gameOver, setGameOver] = useState(false);
+  const [won, setWon] = useState(false);
+
+  const remaining = mode.attempts - guesses.length;
+  const lastGuess = guesses[guesses.length - 1];
+
+  const makeGuess = () => {
+    const num = parseInt(guess);
+    if (!num || num < 1 || num > mode.range) return;
+
+    let hint: "high" | "low" | "correct";
+    if (num === target) hint = "correct";
+    else hint = num > target ? "high" : "low";
+
+    setGuesses((prev) => [...prev, { value: num, hint }]);
+    setGuess("");
+
+    if (hint === "correct") { setWon(true); setGameOver(true); }
+    else if (guesses.length + 1 >= mode.attempts) { setGameOver(true); }
+  };
+
+  const reset = () => {
+    setTarget(Math.floor(Math.random() * mode.range) + 1);
+    setGuesses([]);
+    setGuess("");
+    setGameOver(false);
+    setWon(false);
+  };
+
+  return (
+    <div className="min-h-screen pt-24 pb-16 px-4">
+      <div className="max-w-2xl mx-auto text-center">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
+            <Hash className="w-4 h-4 text-purple-400" />
+            <span className="text-sm text-muted-foreground">Pick a mode to start</span>
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-bold mb-2">Guess The Number</h1>
+          <p className="text-muted-foreground mb-8">Can you find the secret number?</p>
+        </motion.div>
+
+        {/* Mode Selection */}
+        <div className="flex flex-wrap justify-center gap-2 mb-8">
+          {modes.map((m) => (
+            <button
+              key={m.name}
+              onClick={() => { setMode(m); reset(); }}
+              disabled={guesses.length > 0 && !gameOver}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50 ${
+                mode.name === m.name
+                  ? "bg-purple-600 text-white"
+                  : "glass-card hover:border-white/10"
+              }`}
+            >
+              {m.name}
+              <span className="ml-1.5 text-xs opacity-70">1–{m.range}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Game Info */}
+        <div className="flex justify-center gap-6 mb-8 text-sm">
+          <div className="glass-card px-4 py-2">
+            <span className="text-muted-foreground">Attempts: </span>
+            <span className="font-bold text-white">{remaining}</span>
+          </div>
+          <div className="glass-card px-4 py-2">
+            <span className="text-muted-foreground">Range: </span>
+            <span className="font-bold text-white">1–{mode.range}</span>
+          </div>
+        </div>
+
+        {/* Guess Input */}
+        {!gameOver && (
+          <div className="flex justify-center gap-3 mb-8">
+            <input
+              type="number"
+              min={1}
+              max={mode.range}
+              value={guess}
+              onChange={(e) => setGuess(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && makeGuess()}
+              placeholder={`Enter 1-${mode.range}`}
+              className="w-32 px-4 py-3 rounded-xl bg-black/20 border border-white/10 text-center text-lg font-bold focus:border-purple-500 outline-none"
+            />
+            <Button onClick={makeGuess} className="bg-purple-600 hover:bg-purple-500">
+              <Target className="w-4 h-4 mr-2" /> Guess
+            </Button>
+          </div>
+        )}
+
+        {/* Last hint */}
+        {lastGuess && lastGuess.hint !== "correct" && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
+            <Badge className={lastGuess.hint === "high" ? "bg-red-500/10 text-red-400" : "bg-blue-500/10 text-blue-400"}>
+              {lastGuess.hint === "high" ? <ArrowDown className="w-4 h-4 mr-1" /> : <ArrowUp className="w-4 h-4 mr-1" />}
+              Too {lastGuess.hint}! Try {lastGuess.hint === "high" ? "lower" : "higher"}.
+            </Badge>
+          </motion.div>
+        )}
+
+        {/* Game Over */}
+        {gameOver && (
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="mb-8">
+            <div className={`text-2xl font-bold mb-2 ${won ? "gradient-text" : "text-red-400"}`}>
+              {won ? "🎉 You Got It!" : "😞 Out of Attempts!"}
+            </div>
+            <p className="text-muted-foreground mb-4">
+              {won
+                ? `The number was ${target}. Found in ${guesses.length} tries!`
+                : `The number was ${target}.`}
+            </p>
+            <Button onClick={reset} variant="outline" className="border-white/10">
+              <RotateCcw className="w-4 h-4 mr-2" /> Play Again
+            </Button>
+          </motion.div>
+        )}
+
+        {/* Guess History */}
+        {guesses.length > 0 && (
+          <div className="mt-8 max-w-xs mx-auto">
+            <div className="flex justify-center gap-2 flex-wrap">
+              {guesses.map((g, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${
+                    g.hint === "correct"
+                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                      : g.hint === "high"
+                      ? "bg-red-500/10 text-red-400 border border-red-500/20"
+                      : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                  }`}
+                >
+                  {g.value}
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
