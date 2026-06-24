@@ -1,28 +1,35 @@
 "use client";
 
-import { useRef, useMemo } from "react";
+import { useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Float, Sphere, Torus, MeshDistortMaterial, Environment } from "@react-three/drei";
 import * as THREE from "three";
 
+function createParticlePositions(count: number) {
+  const pos = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    pos[i * 3] = (Math.random() - 0.5) * 20;
+    pos[i * 3 + 1] = (Math.random() - 0.5) * 15;
+    pos[i * 3 + 2] = (Math.random() - 0.5) * 8;
+  }
+  return pos;
+}
+
+const HERO_SCENE_ITEMS = Array.from({ length: 12 }, (_, index) => ({
+  position: [
+    (Math.random() - 0.5) * 14,
+    (Math.random() - 0.5) * 8,
+    (Math.random() - 0.5) * 4 - 2,
+  ] as [number, number, number],
+  scale: Math.random() * 0.6 + 0.2,
+  speed: Math.random() * 0.5 + 0.2,
+  type: Math.random() > 0.5 ? "sphere" : "torus",
+  index,
+}));
+
 function FloatingGeometry() {
   const groupRef = useRef<THREE.Group>(null);
-  const items = useMemo(() => {
-    const arr = [];
-    for (let i = 0; i < 12; i++) {
-      arr.push({
-        position: [
-          (Math.random() - 0.5) * 14,
-          (Math.random() - 0.5) * 8,
-          (Math.random() - 0.5) * 4 - 2,
-        ] as [number, number, number],
-        scale: Math.random() * 0.6 + 0.2,
-        speed: Math.random() * 0.5 + 0.2,
-        type: Math.random() > 0.5 ? "sphere" : "torus",
-      });
-    }
-    return arr;
-  }, []);
+  const items = HERO_SCENE_ITEMS;
 
   useFrame((state) => {
     if (groupRef.current) {
@@ -65,18 +72,10 @@ function FloatingGeometry() {
   );
 }
 
-function ParticleField() {
-  const count = 200;
-  const positions = useMemo(() => {
-    const pos = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 20;
-      pos[i * 3 + 1] = (Math.random() - 0.5) * 15;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 8;
-    }
-    return pos;
-  }, []);
+const PARTICLE_POSITIONS = createParticlePositions(200);
 
+function ParticleField() {
+  const positions = PARTICLE_POSITIONS;
   const ref = useRef<THREE.Points>(null);
 
   useFrame((state) => {

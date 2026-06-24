@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sword, Swords, RotateCcw } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Swords } from "lucide-react";
 
 const choices = [
   { name: "Rock", emoji: "🪨", beats: "Scissors" },

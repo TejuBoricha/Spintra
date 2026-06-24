@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
@@ -9,13 +9,10 @@ import {
   RotateCcw,
   Share2,
   Upload,
-  Sparkles,
   Trash2,
   Save,
-  Download,
   Crown,
   Shuffle,
-  Check,
   Copy,
   ArrowRight,
   Trophy,
@@ -46,10 +43,22 @@ function shuffleArray<T>(arr: T[]): T[] {
 }
 
 export default function NameDrawPage() {
-  const [names, setNames] = useState<string[]>([]);
-  const [textInput, setTextInput] = useState("");
+  const [textInput, setTextInput] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.join("\n");
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return "";
+  });
   const [eliminationMode, setEliminationMode] = useState(true);
-  const [availableNames, setAvailableNames] = useState<string[]>([]);
   const [drawnNames, setDrawnNames] = useState<string[]>([]);
   const [currentWinner, setCurrentWinner] = useState<string | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -58,39 +67,20 @@ export default function NameDrawPage() {
   const [multiWinners, setMultiWinners] = useState<string[]>([]);
 
   const shuffleIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const namesFromInput = textInput
-    .split("\n")
-    .map((n) => n.trim())
-    .filter((n) => n.length > 0);
 
-  // Sync names from textarea
-  useEffect(() => {
-    setNames(namesFromInput);
-  }, [textInput]);
+  const names = useMemo(
+    () =>
+      textInput
+        .split("\n")
+        .map((n) => n.trim())
+        .filter((n) => n.length > 0),
+    [textInput]
+  );
 
-  // Sync available names
-  useEffect(() => {
-    if (eliminationMode) {
-      setAvailableNames(names.filter((n) => !drawnNames.includes(n)));
-    } else {
-      setAvailableNames(names);
-    }
-  }, [names, drawnNames, eliminationMode]);
-
-  // Load saved names on mount
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setTextInput(parsed.join("\n"));
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
+  const availableNames = useMemo(
+    () => (eliminationMode ? names.filter((n) => !drawnNames.includes(n)) : names),
+    [eliminationMode, names, drawnNames]
+  );
 
   const clearShuffleInterval = useCallback(() => {
     if (shuffleIntervalRef.current) {

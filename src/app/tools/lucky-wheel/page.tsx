@@ -8,21 +8,17 @@ import {
   Play,
   Plus,
   Minus,
-  Download,
-  Trash2,
-  Palette,
-  Sparkles,
   ArrowRight,
   Volume2,
   VolumeX,
   RotateCcw,
   Save,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
 
 // ── Types ──────────────────────────────────────────────────
 interface WheelEntry {
@@ -104,13 +100,6 @@ function uid() {
   return Math.random().toString(36).slice(2, 11);
 }
 
-function hexToRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
 function getContrastText(hex: string): string {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
@@ -119,43 +108,34 @@ function getContrastText(hex: string): string {
   return luminance > 0.5 ? "#111" : "#fff";
 }
 
-// ── Confetti component ─────────────────────────────────────
+const CONFETTI_PARTICLES = Array.from({ length: 120 }, () => {
+  const angle = Math.random() * Math.PI * 2;
+  const speed = 3 + Math.random() * 8;
+  const colors = ["#8b5cf6", "#06b6d4", "#f59e0b", "#10b981", "#ef4444", "#ec4899"];
+  return {
+    dx: (Math.random() - 0.5) * 180,
+    dy: (Math.random() - 0.5) * 120,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed - 4,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    size: 4 + Math.random() * 8,
+    rotation: Math.random() * 360,
+    life: 1,
+  };
+});
+
 function Confetti({ active }: { active: boolean }) {
-  const particles = useRef<{ x: number; y: number; vx: number; vy: number; color: string; size: number; rotation: number; life: number }[]>([]);
-
-  useEffect(() => {
-    if (!active) {
-      particles.current = [];
-      return;
-    }
-    const colors = ["#8b5cf6", "#06b6d4", "#f59e0b", "#10b981", "#ef4444", "#ec4899"];
-    for (let i = 0; i < 120; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 3 + Math.random() * 8;
-      particles.current.push({
-        x: window.innerWidth / 2,
-        y: window.innerHeight / 2 - 50,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 4,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        size: 4 + Math.random() * 8,
-        rotation: Math.random() * 360,
-        life: 1,
-      });
-    }
-  }, [active]);
-
   if (!active) return null;
 
   return (
     <div className="fixed inset-0 z-50 pointer-events-none">
-      {particles.current.map((p, i) => (
+      {CONFETTI_PARTICLES.map((p, i) => (
         <div
           key={i}
           className="absolute rounded-sm"
           style={{
-            left: p.x,
-            top: p.y,
+            left: `calc(50% + ${p.dx}px)`,
+            top: `calc(50% + ${p.dy}px - 50px)`,
             width: p.size,
             height: p.size * 0.6,
             backgroundColor: p.color,
@@ -338,11 +318,8 @@ export default function LuckyWheelPage() {
 
     // Initial velocity: 15-25 rad per frame (fast spin)
     velocityRef.current = 0.3 + Math.random() * 0.3;
-    const totalRotation = 5 + Math.random() * 5; // at least 5 full rotations
 
-    let accumulated = 0;
     const animate = () => {
-      accumulated += velocityRef.current;
       velocityRef.current *= friction;
       angleRef.current += velocityRef.current;
 
@@ -355,16 +332,11 @@ export default function LuckyWheelPage() {
         const normalizedAngle =
           ((angleRef.current % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
         const pointerAngle = (2 * Math.PI - normalizedAngle + Math.PI / 2) % (Math.PI * 2);
-        // pointerAngle points at the top (0 radians = 3 o'clock), so top is -π/2
-        // The wheel starts drawing at rotation - π/2, so the segment at the top
-        // maps to angle pointing upward
-        const checkAngle = ((2 * Math.PI - normalizedAngle + Math.PI * 2) % (Math.PI * 2));
 
         let cumulative = 0;
         for (const entry of entries) {
-          const sliceAngle = (entry.weight / totalWeight) * Math.PI * 2;
-          cumulative += sliceAngle;
-          if (checkAngle <= cumulative) {
+          cumulative += (entry.weight / totalWeight) * Math.PI * 2;
+          if (pointerAngle <= cumulative) {
             setWinner(entry.label);
             break;
           }
@@ -559,7 +531,7 @@ export default function LuckyWheelPage() {
               {/* Entry list */}
               <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
                 <AnimatePresence mode="popLayout">
-                  {entries.map((entry, idx) => (
+                  {entries.map((entry) => (
                     <motion.div
                       key={entry.id}
                       layout
