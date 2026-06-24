@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
 import Link from "next/link";
@@ -25,13 +25,20 @@ const navLinks = [
   { href: "/tools/tournament", label: "Tournament", icon: Trophy },
 ];
 
+const subscribeToClient = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mounted = useSyncExternalStore(
+    subscribeToClient,
+    getClientSnapshot,
+    getServerSnapshot
+  );
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => setMounted(true), []);
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -60,18 +67,18 @@ export function Navbar() {
             </motion.div>
             <span className="text-xl font-bold tracking-tight">
               <span className="gradient-text">Spin</span>
-              <span className="text-white">tra</span>
+              <span className="text-foreground">tra</span>
             </span>
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden md:flex items-center gap-1.5">
             {navLinks.map((link) => (
               <Link key={link.href} href={link.href}>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  className="border border-border/70 bg-background/35 text-muted-foreground shadow-sm hover:bg-muted/60 hover:text-foreground"
                 >
                   <link.icon className="w-4 h-4 mr-2" />
                   {link.label}

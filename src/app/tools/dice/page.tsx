@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, RotateCcw, History } from "lucide-react";
+import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const diceTypes = [

@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
   Users,
   Shuffle,
-  Download,
   Plus,
   Minus,
   ArrowRight,
@@ -68,7 +67,6 @@ export default function TeamMakerPage() {
   const [teams, setTeams] = useState<{ name: string; colorIdx: number; members: string[] }[]>([]);
   const [autoBalance, setAutoBalance] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [expandedTeam, setExpandedTeam] = useState<number | null>(null);
   const [newMemberInput, setNewMemberInput] = useState<Record<number, string>>({});
   const [collapsedTeams, setCollapsedTeams] = useState<Set<number>>(new Set());
 
@@ -180,7 +178,7 @@ export default function TeamMakerPage() {
         <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-cyan-500/5 rounded-full blur-[120px]" />
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-24 pb-12">
         {/* ── Header ── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

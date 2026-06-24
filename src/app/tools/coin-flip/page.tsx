@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Coins, TrendingUp, RotateCcw } from "lucide-react";
+import { Coins, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -15,7 +15,7 @@ export default function CoinFlipPage() {
   const [flipping, setFlipping] = useState(false);
   const [result, setResult] = useState<number | null>(null);
   const [history, setHistory] = useState<number[]>([]);
-  const [customLabels, setCustomLabels] = useState({ heads: "Heads", tails: "Tails" });
+  const customLabels = { heads: "Heads", tails: "Tails" };
 
   const stats = {
     total: history.length,

@@ -6,7 +6,6 @@ import Link from "next/link";
 import { Search, TrendingUp, Clock, Heart, Users, Disc3, UserRoundPen, Trophy, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import type { RoomType } from "@/lib/types";
 
 const trendingRooms = [
@@ -83,7 +82,7 @@ export default function ExplorePage() {
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {trendingRooms.map((room, i) => (
-              <Link key={room.id} href={`/room/${room.code}`}>
+              <Link key={room.id} href={`/room?code=${room.code}`}>
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}

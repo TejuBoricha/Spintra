@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Sparkles, Users, Disc3, UserRoundPen, Trophy, Coins, Dice1, Hash, Sword, MessageCircleQuestion, Split, HeartHandshake, Gift, PartyPopper, GraduationCap, Copy, QrCode, Link2, Check } from "lucide-react";
+import { Sparkles, Users, Disc3, UserRoundPen, Trophy, Coins, Dice1, Hash, Sword, MessageCircleQuestion, Split, HeartHandshake, PartyPopper, GraduationCap, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import type { RoomType } from "@/lib/types";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 const roomTypes: { type: RoomType; label: string; icon: React.ComponentType<{ className?: string }>; color: string; desc: string }[] = [
   { type: "team-maker", label: "Team Maker", icon: Users, color: "from-purple-500 to-pink-500", desc: "Build balanced teams together" },
   { type: "lucky-wheel", label: "Lucky Wheel", icon: Disc3, color: "from-cyan-500 to-blue-500", desc: "Spin and win together" },
@@ -60,7 +60,7 @@ function CreateRoomPage() {
     // Simulate API call
     await new Promise((r) => setTimeout(r, 800));
     const code = generateCode();
-    const url = `spintra.com/room/${code}`;
+    const url = `spintra.com/room?code=${code}`;
     setCreatedRoom({ code, url });
     setIsCreating(false);
     toast.success("Room created!");
@@ -76,7 +76,7 @@ function CreateRoomPage() {
 
   const joinRoom = () => {
     if (!createdRoom) return;
-    router.push(`/room/${createdRoom.code}`);
+    router.push(`/room?code=${createdRoom.code}`);
   };
 
   return (

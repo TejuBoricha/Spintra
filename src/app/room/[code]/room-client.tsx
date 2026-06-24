@@ -1,19 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useParams } from "next/navigation";
 import {
-  Users, Send, Crown, MessageCircle, Settings, Lock, Unlock,
-  UserPlus, UserMinus, Sparkles, Copy, Check, Smile, Gift,
-  Mic, MicOff, Phone, PhoneOff, MoreHorizontal, Wifi, WifiOff
+  Users, Send, Crown, MessageCircle, Lock, Unlock,
+  Sparkles, Copy, Check, Smile, MoreHorizontal, Wifi
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import type { User, ChatMessage, RoomParticipant } from "@/lib/types";
 
@@ -29,12 +26,9 @@ const defaultUser: User = {
 
 const emojis = ["👍", "❤️", "😂", "🎉", "🔥", "💯", "👀", "🙌"];
 
-export default function RoomClient() {
-  const params = useParams();
-  const roomCode = params.code as string;
-
+export default function RoomClient({ code: roomCode }: { code: string }) {
   const [currentUser] = useState<User>(defaultUser);
-  const [participants, setParticipants] = useState<RoomParticipant[]>([
+  const [participants] = useState<RoomParticipant[]>([
     // biome-ignore lint/style/noNonNullAssertion: <explanation>
 { id: "1", room_id: "1", user_id: currentUser.id, role: "host", is_online: true, joined_at: new Date().toISOString(), user: { ...currentUser, username: "You" } },
     { id: "2", room_id: "1", user_id: "u2", role: "participant", is_online: true, joined_at: new Date().toISOString(), user: { id: "u2", username: "Alex", avatar_url: "", xp: 500, rank: "explorer", created_at: "" } },
@@ -70,7 +64,7 @@ export default function RoomClient() {
   }, [newMessage, currentUser]);
 
   const copyRoomLink = async () => {
-    await navigator.clipboard.writeText(`spintra.com/room/${roomCode}`);
+    await navigator.clipboard.writeText(`spintra.com/room?code=${roomCode}`);
     setCopied(true);
     toast.success("Room link copied!");
     setTimeout(() => setCopied(false), 2000);

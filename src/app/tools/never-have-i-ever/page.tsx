@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { HeartHandshake, ArrowRight, RotateCcw, CheckCircle, XCircle } from "lucide-react";
+import { HeartHandshake, ArrowRight, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const statements = [
@@ -35,7 +35,6 @@ export default function NeverHaveIEverPage() {
 
   const statement = statements[index % statements.length];
   const iHave = responses[index] === true;
-  const iHavent = responses[index] === false;
 
   const respond = (have: boolean) => {
     setResponses((prev) => ({ ...prev, [index]: have }));
@@ -66,7 +65,7 @@ export default function NeverHaveIEverPage() {
         {total > 0 && (
           <div className="mb-6">
             <span className="text-sm text-muted-foreground">
-              You've done {score} out of {total} ({Math.round((score / total) * 100)}%)
+              You&apos;ve done {score} out of {total} ({Math.round((score / total) * 100)}%)
             </span>
           </div>
         )}

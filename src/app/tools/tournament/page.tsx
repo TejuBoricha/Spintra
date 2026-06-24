@@ -7,28 +7,20 @@ import {
   Trophy,
   Swords,
   Users,
-  Play,
   Share2,
-  Copy,
   RotateCcw,
   Crown,
-  Medal,
-  ChevronRight,
   ArrowRight,
   Check,
-  X,
-  Minus,
-  Upload,
   LayoutTemplate,
-  GripHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import type { TournamentType, TournamentMatch } from "@/lib/types";
+import type { TournamentType } from "@/lib/types";
 
 // ──── Types ────
 interface BracketMatch {
