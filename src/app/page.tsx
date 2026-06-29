@@ -3,46 +3,21 @@
 import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import Link from "next/link";
-import { ArrowRight, Users, Disc3, UserRoundPen, Trophy, Sparkles, Zap, Globe, MessageCircle, Star } from "lucide-react";
+import { ArrowRight, Sparkles, Zap, Globe, MessageCircle, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeroThreeScene } from "@/components/landing/hero-scene";
 import { FeatureCard } from "@/components/landing/feature-card";
 import { AuroraBackground } from "@/components/landing/aurora-bg";
+import { GAMES } from "@/lib/games";
 
-const heroFeatures = [
-  {
-    title: "Team Maker",
-    description: "Build balanced teams instantly with intelligent algorithms. Drag, drop, customize — real-time for everyone.",
-    icon: Users,
-    href: "/tools/team-maker",
-    gradient: "from-purple-500 to-pink-500",
-    stats: "Millions of teams created",
-  },
-  {
-    title: "Lucky Wheel",
-    description: "Physics-based 3D spinning wheel with custom entries, colors, and sounds. Multiplayer synchronized.",
-    icon: Disc3,
-    href: "/tools/lucky-wheel",
-    gradient: "from-cyan-500 to-blue-500",
-    stats: "Everyone watches together",
-  },
-  {
-    title: "Name Draw",
-    description: "Random name picker with elimination mode, CSV imports, and winner spotlight animations.",
-    icon: UserRoundPen,
-    href: "/tools/name-draw",
-    gradient: "from-amber-500 to-orange-500",
-    stats: "Fair draws guaranteed",
-  },
-  {
-    title: "Tournaments",
-    description: "Generate brackets for single/double elimination, round robin, Swiss. Live updates, shareable.",
-    icon: Trophy,
-    href: "/tools/tournament",
-    gradient: "from-emerald-500 to-teal-500",
-    stats: "Pro-level brackets",
-  },
-];
+const heroFeatures = GAMES.map((game) => ({
+  title: game.label,
+  description: game.featureDescription,
+  icon: game.icon,
+  href: game.href,
+  gradient: game.color,
+  stats: game.stats,
+}));
 
 const perks = [
   { icon: Zap, label: "Instant Rooms", desc: "Create in seconds, join in milliseconds" },
@@ -222,11 +197,11 @@ export default function HomePage() {
               <span className="gradient-text">play together</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Four powerful tools. Infinite possibilities. All multiplayer-ready.
+              {GAMES.length} games and room modes. All multiplayer-ready.
             </p>
           </motion.div>
 
-          <div className="grid sm:grid-cols-2 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {heroFeatures.map((feature, i) => (
               <FeatureCard key={feature.title} {...feature} index={i} />
             ))}

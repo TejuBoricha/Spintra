@@ -2,28 +2,29 @@
 
 import { useState, useEffect, useSyncExternalStore } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/theme-provider";
 import Link from "next/link";
 import {
   Sun,
   Moon,
   Menu,
   X,
-  Users,
-  Disc3,
-  UserRoundPen,
-  Trophy,
   Sparkles,
+  ChevronDown,
+  Gamepad2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-
-const navLinks = [
-  { href: "/tools/team-maker", label: "Team Maker", icon: Users },
-  { href: "/tools/lucky-wheel", label: "Lucky Wheel", icon: Disc3 },
-  { href: "/tools/name-draw", label: "Name Draw", icon: UserRoundPen },
-  { href: "/tools/tournament", label: "Tournament", icon: Trophy },
-];
+import { GAMES } from "@/lib/games";
 
 const subscribeToClient = () => () => {};
 const getClientSnapshot = () => true;
@@ -73,18 +74,52 @@ export function Navbar() {
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-1.5">
-            {navLinks.map((link) => (
-              <Link key={link.href} href={link.href}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="border border-border/70 bg-background/35 text-muted-foreground shadow-sm hover:bg-muted/60 hover:text-foreground"
-                >
-                  <link.icon className="w-4 h-4 mr-2" />
-                  {link.label}
-                </Button>
-              </Link>
-            ))}
+            <Link href="/explore">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="border border-border/70 bg-background/35 text-muted-foreground shadow-sm hover:bg-muted/60 hover:text-foreground"
+              >
+                Explore
+              </Button>
+            </Link>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="border border-border/70 bg-background/35 text-muted-foreground shadow-sm hover:bg-muted/60 hover:text-foreground"
+                  >
+                    <Gamepad2 className="w-4 h-4 mr-2" />
+                    Games
+                    <ChevronDown className="w-4 h-4 ml-1 opacity-60" />
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="start" className="w-64 max-h-80 overflow-y-auto">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>All Games</DropdownMenuLabel>
+                  {GAMES.filter((game) => !game.createOnly).map((game) => (
+                    <DropdownMenuItem key={game.type} render={<Link href={game.href} />}>
+                      <game.icon className="w-4 h-4" />
+                      {game.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Room Modes</DropdownMenuLabel>
+                  {GAMES.filter((game) => game.createOnly).map((game) => (
+                    <DropdownMenuItem key={game.type} render={<Link href={game.href} />}>
+                      <game.icon className="w-4 h-4" />
+                      {game.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Right side */}
@@ -133,16 +168,26 @@ export function Navbar() {
             exit={{ opacity: 0, height: 0 }}
             className="md:hidden glass border-t border-white/5 overflow-hidden"
           >
-            <div className="px-4 py-4 space-y-2">
-              {navLinks.map((link) => (
+            <div className="px-4 py-4 space-y-2 max-h-[70vh] overflow-y-auto">
+              <Link
+                href="/explore"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground"
+              >
+                Explore
+              </Link>
+              <p className="px-3 pt-2 pb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Games
+              </p>
+              {GAMES.map((game) => (
                 <Link
-                  key={link.href}
-                  href={link.href}
+                  key={game.type}
+                  href={game.href}
                   onClick={() => setMobileOpen(false)}
                   className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground"
                 >
-                  <link.icon className="w-5 h-5" />
-                  {link.label}
+                  <game.icon className="w-5 h-5" />
+                  {game.label}
                 </Link>
               ))}
               <Link

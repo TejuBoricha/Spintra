@@ -3,31 +3,14 @@
 import { useState, Suspense } from "react";
 import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Sparkles, Users, Disc3, UserRoundPen, Trophy, Coins, Dice1, Hash, Sword, MessageCircleQuestion, Split, HeartHandshake, PartyPopper, GraduationCap, Copy, Check } from "lucide-react";
+import { Sparkles, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import type { RoomType } from "@/lib/types";
-
- 
-const roomTypes: { type: RoomType; label: string; icon: React.ComponentType<{ className?: string }>; color: string; desc: string }[] = [
-  { type: "team-maker", label: "Team Maker", icon: Users, color: "from-purple-500 to-pink-500", desc: "Build balanced teams together" },
-  { type: "lucky-wheel", label: "Lucky Wheel", icon: Disc3, color: "from-cyan-500 to-blue-500", desc: "Spin and win together" },
-  { type: "name-draw", label: "Name Draw", icon: UserRoundPen, color: "from-amber-500 to-orange-500", desc: "Pick random winners" },
-  { type: "tournament", label: "Tournament", icon: Trophy, color: "from-emerald-500 to-teal-500", desc: "Run competitive brackets" },
-  { type: "coin-flip", label: "Coin Flip", icon: Coins, color: "from-yellow-500 to-amber-500", desc: "Heads or tails" },
-  { type: "dice", label: "Dice Roller", icon: Dice1, color: "from-red-500 to-rose-500", desc: "Roll any dice" },
-  { type: "guess-number", label: "Guess Number", icon: Hash, color: "from-blue-500 to-indigo-500", desc: "Number guessing game" },
-  { type: "rps", label: "Rock Paper Scissors", icon: Sword, color: "from-orange-500 to-red-500", desc: "Classic showdown" },
-  { type: "truth-or-dare", label: "Truth or Dare", icon: MessageCircleQuestion, color: "from-pink-500 to-rose-500", desc: "Spicy questions" },
-  { type: "would-you-rather", label: "Would You Rather", icon: Split, color: "from-indigo-500 to-purple-500", desc: "Tough choices" },
-  { type: "never-have-i-ever", label: "Never Have I Ever", icon: HeartHandshake, color: "from-violet-500 to-purple-500", desc: "Group confessions" },
-  { type: "party", label: "Party Mode", icon: PartyPopper, color: "from-fuchsia-500 to-pink-500", desc: "All games unlocked" },
-  { type: "classroom", label: "Classroom", icon: GraduationCap, color: "from-sky-500 to-cyan-500", desc: "Educational activities" },
-];
+import { GAMES } from "@/lib/games";
 
 export default function CreateRoomPageWrapper() {
   return (
@@ -79,6 +62,9 @@ function CreateRoomPage() {
     router.push(`/room?code=${createdRoom.code}`);
   };
 
+  const selectedGame = GAMES.find((game) => game.type === selectedType);
+  const SelectedGameIcon = selectedGame?.icon;
+
   return (
     <div className="min-h-screen pt-24 pb-16 px-4">
       <div className="max-w-4xl mx-auto">
@@ -100,7 +86,7 @@ function CreateRoomPage() {
           <div className="lg:col-span-2 space-y-4">
             <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Choose Game Type</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {roomTypes.map((rt, i) => (
+              {GAMES.map((rt, i) => (
                 <motion.button
                   key={rt.type}
                   initial={{ opacity: 0, y: 20 }}
@@ -162,17 +148,22 @@ function CreateRoomPage() {
                 </div>
 
                 <div className="pt-4 border-t border-white/5">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="secondary" className="text-xs">
-                      <div className={`w-6 h-6 rounded bg-gradient-to-br ${roomTypes.find((r) => r.type === selectedType)?.color} flex items-center justify-center mr-1.5`}>
-                        {(() => {
-                          const Icon = roomTypes.find((r) => r.type === selectedType)?.icon;
-                          return Icon ? <Icon className="w-3.5 h-3.5 text-white" /> : null;
-                        })()}
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Selected Game
+                  </Label>
+                  {selectedGame && SelectedGameIcon && (
+                    <div className="mt-2 flex items-center gap-3 rounded-xl border border-purple-500/30 bg-purple-500/10 p-3">
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${selectedGame.color}`}
+                      >
+                        <SelectedGameIcon className="h-5 w-5 text-white" />
                       </div>
-                      {roomTypes.find((r) => r.type === selectedType)?.label}
-                    </Badge>
-                  </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold">{selectedGame.label}</p>
+                        <p className="text-xs text-muted-foreground">{selectedGame.desc}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {!createdRoom ? (

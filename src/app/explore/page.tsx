@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Search, TrendingUp, Clock, Heart, Users, Disc3, UserRoundPen, Trophy, Sparkles } from "lucide-react";
+import { Search, TrendingUp, Clock, Heart, Sparkles, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import type { RoomType } from "@/lib/types";
+import { GAMES } from "@/lib/games";
 
 const trendingRooms = [
   { id: "1", code: "X7F82K", name: "Friday Game Night", type: "party" as RoomType, participants: 12, host: "GameMaster42", hearts: 234 },
@@ -17,12 +18,13 @@ const trendingRooms = [
   { id: "6", code: "T5VN90", name: "Truth or Dare Party", type: "truth-or-dare" as RoomType, participants: 8, host: "PartyStarter", hearts: 145 },
 ];
 
-const featuredTemplates = [
-  { label: "Cricket Team Builder", type: "team-maker", icon: Users, users: "12.4k" },
-  { label: "Giveaway Wheel Pro", type: "lucky-wheel", icon: Disc3, users: "8.7k" },
-  { label: "Random Student Picker", type: "name-draw", icon: UserRoundPen, users: "15.2k" },
-  { label: "8-Player Tournament", type: "tournament", icon: Trophy, users: "6.3k" },
-];
+const featuredTemplates = GAMES.map((game) => ({
+  label: game.label,
+  type: game.type,
+  icon: game.icon,
+  href: game.href,
+  users: game.stats,
+}));
 
 const categories = ["All", "Trending", "New", "Popular", "Teams", "Party", "Classroom"];
 
@@ -121,11 +123,11 @@ export default function ExplorePage() {
             <Sparkles className="w-5 h-5 text-amber-400" />
             <h2 className="text-2xl font-bold">Featured Templates</h2>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {featuredTemplates.map((t, i) => {
               const Icon = t.icon;
               return (
-                <Link key={t.label} href={`/tools/${t.type}`}>
+                <Link key={t.label} href={t.href}>
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
