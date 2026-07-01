@@ -13,7 +13,9 @@ test('create and join room shows host for creator', async ({ page }) => {
   // Click Join Room
   await page.click('[data-testid="join-room-button"]');
 
-  // Verify URL and host UI
+  // Verify URL and host UI. The default room type is Team Maker, and only
+  // the host sees the "set up teams" prompt (participants see "Waiting for
+  // host..." instead) -- so this doubles as a host-detection check.
   await expect(page).toHaveURL(/\/room\/[A-Z0-9]+/);
-  await expect(page.locator('text=You are the host')).toBeVisible();
+  await expect(page.getByText('Choose how many teams to create')).toBeVisible();
 });

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Send, Crown, MessageCircle, Lock, Unlock,
-  Sparkles, Copy, Check, Smile, MoreHorizontal, Wifi,
-  Play, Target, Shuffle, Volume2, VolumeX, RotateCcw,
-  Share2, Coins, ArrowUp, ArrowDown, Swords, ShieldAlert,
+  Sparkles, Copy, Check, Smile, UserX, Wifi,
+  Target, Shuffle, RotateCcw,
+  Coins, ArrowUp, ArrowDown, Swords, ShieldAlert,
   MessageCircleQuestion, Split, HeartHandshake, Eye
 } from "lucide-react";
 import { GAMES } from "@/lib/games";
@@ -20,6 +21,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import type { User, ChatMessage, RoomParticipant, RoomType } from "@/lib/types";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getOrCreateRoomUser, getLocalRoomCreatorId } from "@/lib/room-user";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 function generateId() {
   return Math.random().toString(36).slice(2, 10);
@@ -27,17 +29,30 @@ function generateId() {
 
 const emojis = ["👍", "❤️", "😂", "🎉", "🔥", "💯", "👀", "🙌"];
 
+// Activity events carry different fields per game kind (coin flip, dice roll,
+// guess submit, ...) — narrowed with `kind` checks where consumed rather than
+// a full discriminated union, since the payload just crosses the wire as-is.
+type ActivityEvent = Record<string, unknown> & { kind: string };
+
 function isDuplicateMessage(messages: ChatMessage[], candidate: ChatMessage) {
+  // `id` catches exact re-deliveries of the same DB row (e.g. resync after reconnect).
+  // The composite fallback is still needed because the optimistic local echo is
+  // assigned a client-generated id that never reaches the database (see sendMessage).
   return messages.some(
     (message) =>
-      message.user_id === candidate.user_id &&
-      message.created_at === candidate.created_at &&
-      message.content === candidate.content
+      message.id === candidate.id ||
+      (message.user_id === candidate.user_id &&
+        message.created_at === candidate.created_at &&
+        message.content === candidate.content)
   );
 }
 
+const MAX_MESSAGE_LENGTH = 500;
+
 export default function RoomClient({ code: roomCode }: { code: string }) {
+  const router = useRouter();
   const [currentUser] = useState<User>(getOrCreateRoomUser);
+  const [maxParticipantsLimit, setMaxParticipantsLimit] = useState<number | null>(null);
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
   const [localCreatorId] = useState<string | null>(() => {
     return getLocalRoomCreatorId(roomCode);
@@ -53,7 +68,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   });
   const [activeActivity, setActiveActivity] = useState<{
     type: string;
-    state: any;
+    state: unknown;
   } | null>(() => {
     if (typeof window === "undefined") return null;
     const initialType = window.localStorage.getItem(`spintra-room-type-${roomCode}`) || "party";
@@ -74,6 +89,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   const [wheelEntries, setWheelEntries] = useState<string[]>(["Option 1", "Option 2", "Option 3"]);
   const [wheelWinner, setWheelWinner] = useState<string | null>(null);
   const [wheelSpinning, setWheelSpinning] = useState(false);
+  const [wheelSpinAngle, setWheelSpinAngle] = useState(1440);
 
   const [guessHistory, setGuessHistory] = useState<{ username: string; guess: number; hint: string }[]>([]);
   const [guessSecretNumber, setGuessSecretNumber] = useState(50);
@@ -122,8 +138,8 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const broadcastRef = useRef<BroadcastChannel | null>(null);
-  const onActivityEventRef = useRef<((event: any) => void) | null>(null);
-  const supabaseChannelRef = useRef<any>(null);
+  const onActivityEventRef = useRef<((event: ActivityEvent) => void) | null>(null);
+  const supabaseChannelRef = useRef<RealtimeChannel | null>(null);
   const activeActivityRef = useRef(activeActivity);
   const isHostRef = useRef(isHost);
 
@@ -159,7 +175,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     }
   }, [currentUser.id]);
 
-  const sendActivityEvent = useCallback((event: any) => {
+  const sendActivityEvent = useCallback((event: ActivityEvent) => {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       if (broadcastRef.current) {
@@ -184,8 +200,12 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
-  // Wire up the activity event dispatcher for incoming real-time events
+  // Wire up the activity event dispatcher for incoming real-time events.
+  // Payload shape varies per activity kind (~20 cases below); typing this as
+  // a full discriminated union is a larger refactor than this pass covers, so
+  // the dynamic field access is scoped to this one handler.
   useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onActivityEventRef.current = (event: any) => {
       const { kind } = event;
       switch (kind) {
@@ -208,6 +228,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           setWheelSpinning(false);
           break;
         case "wheel_spinning":
+          setWheelSpinAngle(1440 + Math.random() * 360);
           setWheelSpinning(true);
           break;
         case "wheel_entries":
@@ -267,10 +288,11 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     };
   }, []);
 
+  const isLocalOnlyMode = getSupabaseBrowserClient() === null;
   const realtimeStatusLabel = realtimeError
     ? "Offline"
     : isRealtimeReady
-    ? "Live"
+    ? (isLocalOnlyMode ? "Live (this device only)" : "Live")
     : "Connecting...";
   const realtimeStatusClass = realtimeError
     ? "bg-red-500/10 text-red-300"
@@ -287,10 +309,6 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     const bc = new BroadcastChannel(channelName);
     broadcastRef.current = bc;
 
-    setIsRealtimeReady(true);
-    setRealtimeError(null);
-    setNotification(null);
-
     // Self registration row
     const selfParticipant: RoomParticipant = {
       id: `local_${currentUser.id}`,
@@ -302,11 +320,17 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       user: currentUser,
     };
 
-    setParticipants((prev) => {
-      if (prev.some((p) => p.user_id === currentUser.id)) {
-        return prev.map((p) => p.user_id === currentUser.id ? { ...p, is_online: true } : p);
-      }
-      return [...prev, selfParticipant];
+    // Deferred so this doesn't set state synchronously within the effect body.
+    queueMicrotask(() => {
+      setIsRealtimeReady(true);
+      setRealtimeError(null);
+      setNotification(null);
+      setParticipants((prev) => {
+        if (prev.some((p) => p.user_id === currentUser.id)) {
+          return prev.map((p) => p.user_id === currentUser.id ? { ...p, is_online: true } : p);
+        }
+        return [...prev, selfParticipant];
+      });
     });
 
     // Notify other tabs that we are online and request status updates
@@ -382,6 +406,15 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           setIsLocked(!!payload);
           break;
 
+        case "KICKED":
+          if (payload === currentUser.id) {
+            toast.error("You were removed from the room by the host.");
+            router.push("/explore");
+            return;
+          }
+          setParticipants((prev) => prev.filter((p) => p.user_id !== payload));
+          break;
+
         case "HOST_PROMOTED":
           if (payload) {
             setParticipants((prev) =>
@@ -447,7 +480,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       bc.close();
       broadcastRef.current = null;
     };
-  }, [roomCode, currentUser, localCreatorId]);
+  }, [roomCode, currentUser, localCreatorId, router]);
 
   const sendMessage = useCallback(async () => {
     if (isLocked && !isHost) {
@@ -455,13 +488,18 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       return;
     }
 
-    if (!newMessage.trim()) return;
+    const trimmed = newMessage.trim();
+    if (!trimmed) return;
+    if (trimmed.length > MAX_MESSAGE_LENGTH) {
+      toast.error(`Message is too long (max ${MAX_MESSAGE_LENGTH} characters).`);
+      return;
+    }
 
     const msg: ChatMessage = {
       id: generateId(),
       room_id: roomCode,
       user_id: currentUser.id,
-      content: newMessage,
+      content: trimmed,
       created_at: new Date().toISOString(),
       user: currentUser,
     };
@@ -519,10 +557,55 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           });
         }
       }
+
+      const supabase = getSupabaseBrowserClient();
+      if (supabase) {
+        supabase
+          .from("rooms")
+          .update({ is_locked: nextValue })
+          .eq("code", roomCode)
+          .then(({ error }) => {
+            if (error) console.error("Failed to sync room lock state:", error);
+          });
+      }
+
       toast.success(nextValue ? "Room locked" : "Room unlocked");
       return nextValue;
     });
   };
+
+  const handleKickParticipant = useCallback(
+    async (participant: RoomParticipant) => {
+      if (!isHost || participant.user_id === currentUser.id) return;
+
+      const supabase = getSupabaseBrowserClient();
+      if (supabase) {
+        try {
+          await supabase
+            .from("room_participants")
+            .delete()
+            .eq("room_id", roomCode)
+            .eq("user_id", participant.user_id);
+          // The removed participant's own client picks this up via the DELETE
+          // subscription on room_participants (see channel effect below).
+        } catch (error) {
+          console.error("Failed to remove participant:", error);
+          toast.error("Unable to remove participant.");
+          return;
+        }
+      } else if (broadcastRef.current) {
+        broadcastRef.current.postMessage({
+          type: "KICKED",
+          payload: participant.user_id,
+          senderId: currentUser.id,
+        });
+      }
+
+      setParticipants((prev) => prev.filter((p) => p.user_id !== participant.user_id));
+      toast.success(`Removed ${participant.user?.username || "participant"} from the room.`);
+    },
+    [isHost, currentUser.id, roomCode]
+  );
 
 
   const electHostIfNeeded = useCallback(
@@ -611,11 +694,23 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       })
       .on("postgres_changes", { event: "DELETE", schema: "public", table: "room_participants", filter: `room_id=eq.${roomCode}` }, (payload) => {
         const removed = payload.old as RoomParticipant;
+        if (removed.user_id === currentUser.id) {
+          toast.error("You were removed from the room by the host.");
+          router.push("/explore");
+          return;
+        }
         setParticipants((prev) => {
           const next = prev.filter((participant) => participant.id !== removed.id);
           electHostIfNeeded(supabase, next);
           return next;
         });
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "rooms", filter: `code=eq.${roomCode}` }, (payload) => {
+        const updated = payload.new as { name?: string; type?: RoomType; is_locked?: boolean; max_participants?: number };
+        if (updated.name) setRoomName(updated.name);
+        if (updated.type) setRoomType(updated.type);
+        if (typeof updated.is_locked === "boolean") setIsLocked(updated.is_locked);
+        if (typeof updated.max_participants === "number") setMaxParticipantsLimit(updated.max_participants);
       })
       .on("broadcast", { event: "activity_change" }, ({ payload }) => {
         if (payload) {
@@ -654,7 +749,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       supabase.removeChannel(channel);
       supabaseChannelRef.current = null;
     };
-  }, [roomCode, electHostIfNeeded]);
+  }, [roomCode, electHostIfNeeded, currentUser.id, router]);
 
   useEffect(() => {
     let isMounted = true;
@@ -674,6 +769,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
 
         if (error) {
           console.error("Failed to load room participants:", error);
+          if (isMounted) toast.error("Couldn't load participants. Try refreshing the page.");
           return;
         }
 
@@ -737,6 +833,51 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         const supabase = getSupabaseBrowserClient();
         if (!supabase) return;
 
+        const { data: existingRow } = await supabase
+          .from("room_participants")
+          .select("id")
+          .eq("room_id", roomCode)
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
+
+        // Only new joiners are subject to the lock/capacity check — participants
+        // already tracked (e.g. reconnecting) should always be able to rejoin.
+        if (!existingRow) {
+          const { data: roomRow } = await supabase
+            .from("rooms")
+            .select("is_locked, max_participants, host_id")
+            .eq("code", roomCode)
+            .maybeSingle();
+
+          if (roomRow) {
+            const isRoomHost = roomRow.host_id === currentUser.id || localCreatorId === currentUser.id;
+
+            if (roomRow.is_locked && !isRoomHost) {
+              if (isMounted) {
+                toast.error("This room is locked by the host.");
+                router.push("/explore");
+              }
+              return;
+            }
+
+            if (typeof roomRow.max_participants === "number") {
+              const { count } = await supabase
+                .from("room_participants")
+                .select("id", { count: "exact", head: true })
+                .eq("room_id", roomCode)
+                .eq("is_online", true);
+
+              if ((count ?? 0) >= roomRow.max_participants) {
+                if (isMounted) {
+                  toast.error("This room is full.");
+                  router.push("/explore");
+                }
+                return;
+              }
+            }
+          }
+        }
+
         const role = await determineRole(supabase);
         const joined_at = new Date().toISOString();
         const { data, error } = await supabase
@@ -795,12 +936,18 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         if (!supabase) return;
         const { data, error } = await supabase
           .from("rooms")
-          .select("name, type")
+          .select("name, type, is_locked, max_participants")
           .eq("code", roomCode)
-          .single();
-        if (isMounted && data && !error) {
+          .maybeSingle();
+        if (error) {
+          console.error("Failed to load room details:", error);
+          return;
+        }
+        if (isMounted && data) {
           setRoomName(data.name);
           setRoomType(data.type as RoomType);
+          setIsLocked(!!data.is_locked);
+          if (typeof data.max_participants === "number") setMaxParticipantsLimit(data.max_participants);
           if (data.type !== "party" && data.type !== "classroom") {
             setActiveActivity((prev) => prev || { type: data.type, state: null });
           }
@@ -833,7 +980,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     return () => {
       isMounted = false;
     };
-  }, [roomCode, currentUser, electHostIfNeeded]);
+  }, [roomCode, currentUser, electHostIfNeeded, localCreatorId, router]);
 
   useEffect(() => {
     let isMounted = true;
@@ -851,6 +998,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
 
         if (error) {
           console.error("Failed to load chat messages:", error);
+          if (isMounted) toast.error("Couldn't load chat history. Try refreshing the page.");
           return;
         }
 
@@ -979,6 +1127,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                  maxLength={MAX_MESSAGE_LENGTH}
                   className="flex-1"
                 />
                 <Button variant="ghost" size="icon" onClick={() => setShowEmojis(!showEmojis)} aria-label="Insert emoji">
@@ -1025,8 +1174,14 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                       <span className="text-xs text-muted-foreground capitalize">{p.role}</span>
                     </div>
                     {isHost && p.user_id !== currentUser.id && (
-                      <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Manage participant ${p.user?.username}`}>
-                        <MoreHorizontal className="w-3.5 h-3.5" />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleKickParticipant(p)}
+                        aria-label={`Remove ${p.user?.username || "participant"} from the room`}
+                      >
+                        <UserX className="w-3.5 h-3.5" />
                       </Button>
                     )}
                   </div>
@@ -1063,7 +1218,10 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
               <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
                 <span>Room #{roomCode}</span>
                 <span>·</span>
-                <span>{participants.filter((p) => p.is_online).length} online</span>
+                <span>
+                  {participants.filter((p) => p.is_online).length}
+                  {maxParticipantsLimit ? ` / ${maxParticipantsLimit}` : ""} online
+                </span>
                 {activeActivity && (
                   <>
                     <span>·</span>
@@ -1359,7 +1517,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                 <h2 className="text-2xl font-bold flex items-center gap-2">🎡 Lucky Wheel</h2>
                 <div className="relative w-64 h-64">
                   <motion.div
-                    animate={wheelSpinning ? { rotate: [0, 1440 + Math.random() * 360] } : {}}
+                    animate={wheelSpinning ? { rotate: [0, wheelSpinAngle] } : {}}
                     transition={{ duration: 3, ease: "easeOut" }}
                     className="w-full h-full rounded-full border-4 border-purple-500/50 overflow-hidden"
                   >
@@ -1485,7 +1643,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                       }}
                     />
                     <Button
-                      onClick={(e) => {
+                      onClick={() => {
                         const input = document.getElementById("guess-input") as HTMLInputElement;
                         const val = parseInt(input?.value);
                         if (!val || val < 1 || val > 100) return;

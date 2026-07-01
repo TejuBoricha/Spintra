@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { HeartHandshake, ArrowRight, CheckCircle, XCircle, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { playPop, playSwipe } from "@/lib/audio";
+import { shuffleArray } from "@/lib/utils";
 
 const statements = [
   "Never have I ever lied in a job interview",
@@ -31,11 +32,12 @@ const statements = [
 
 export default function NeverHaveIEverPage() {
   const [index, setIndex] = useState(0);
+  const [order] = useState(() => shuffleArray(statements.map((_, i) => i)));
   const [responses, setResponses] = useState<Record<number, boolean>>({});
   const [revealed, setRevealed] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  const statement = statements[index % statements.length];
+  const statement = statements[order[index % order.length]];
   const iHave = responses[index] === true;
 
   const respond = (have: boolean) => {

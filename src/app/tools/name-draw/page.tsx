@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { shuffleArray } from "@/lib/utils";
 
 const SAMPLE_SETS: Record<string, string[]> = {
   fruits: ["Apple", "Banana", "Cherry", "Date", "Elderberry", "Fig", "Grape", "Honeydew"],
@@ -35,15 +36,6 @@ const SAMPLE_SETS: Record<string, string[]> = {
 };
 
 const STORAGE_KEY = "spintra-name-draw-saved";
-
-function shuffleArray<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 export default function NameDrawPage() {
   const [textInput, setTextInput] = useState(() => {

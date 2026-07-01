@@ -130,6 +130,7 @@ export default function TruthOrDarePage() {
             <button
               key={c.name}
               onClick={() => { setCategory(c); setMode(null); setCurrent(null); setUsed(new Set()); }}
+              aria-pressed={category.name === c.name}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 category.name === c.name ? "bg-purple-600 text-white" : "glass-card hover:border-white/10"
               }`}

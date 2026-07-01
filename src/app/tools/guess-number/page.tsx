@@ -77,6 +77,7 @@ export default function GuessNumberPage() {
               key={m.name}
               onClick={() => { setMode(m); reset(m); }}
               disabled={guesses.length > 0 && !gameOver}
+              aria-pressed={mode.name === m.name}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50 ${
                 mode.name === m.name
                   ? "bg-purple-600 text-white"

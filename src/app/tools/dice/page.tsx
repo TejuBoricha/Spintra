@@ -60,6 +60,7 @@ export default function DicePage() {
             <button
               key={d.sides}
               onClick={() => { setSelectedDice(d.sides); setResults([]); }}
+              aria-pressed={selectedDice === d.sides}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 selectedDice === d.sides
                   ? "bg-purple-600 text-white shadow-lg shadow-purple-500/25"

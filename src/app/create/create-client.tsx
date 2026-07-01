@@ -13,6 +13,13 @@ import { toast } from "sonner";
 import type { RoomType } from "@/lib/types";
 import { GAMES } from "@/lib/games";
 import { getOrCreateRoomUser, setLocalRoomCreator } from "@/lib/room-user";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+
+declare global {
+  interface Window {
+    e2eRoomClicked?: boolean;
+  }
+}
 
 export default function CreateRoomClient() {
   const router = useRouter();
@@ -30,33 +37,70 @@ export default function CreateRoomClient() {
 
   const generateCode = () => {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    // 32-character alphabet divides 2^32 evenly, so this is unbiased.
+    if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
+      const bytes = new Uint32Array(6);
+      window.crypto.getRandomValues(bytes);
+      return Array.from(bytes, (b) => chars[b % chars.length]).join("");
+    }
     return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
   };
 
   const handleCreate = useCallback(async () => {
     setIsCreating(true);
-    // Simulate API call
-    await new Promise((r) => setTimeout(r, 800));
-    const code = generateCode();
+
+    const supabase = getSupabaseBrowserClient();
+    let code = generateCode();
+    const gameLabel = GAMES.find((g) => g.type === selectedType)?.label || "Game";
+    const finalRoomName = roomName || `${gameLabel} Room`;
+
+    if (supabase) {
+      try {
+        // Regenerate on collision so we never silently reuse an existing room's code.
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const { data: existing } = await supabase.from("rooms").select("code").eq("code", code).maybeSingle();
+          if (!existing) break;
+          code = generateCode();
+        }
+
+        const { error } = await supabase.from("rooms").insert({
+          code,
+          name: finalRoomName,
+          type: selectedType,
+          host_id: currentUser.id,
+          is_public: isPublic,
+          is_locked: false,
+          max_participants: maxParticipants,
+          settings: {},
+        });
+
+        if (error) throw error;
+      } catch (error) {
+        console.error("Failed to persist room to Supabase:", error);
+        toast.warning("Room created locally, but couldn't sync to the server — realtime sync may not work for other devices.");
+      }
+    }
+
     const url = `${window.location.origin}/room/${code}`;
-    
+
     if (typeof window !== "undefined") {
-      const gameLabel = GAMES.find((g) => g.type === selectedType)?.label || "Game";
       window.localStorage.setItem(`spintra-room-type-${code}`, selectedType);
-      window.localStorage.setItem(`spintra-room-name-${code}`, roomName || `${gameLabel} Room`);
+      window.localStorage.setItem(`spintra-room-name-${code}`, finalRoomName);
     }
 
     setCreatedRoom({ code, url });
     setLocalRoomCreator(code, currentUser.id);
     setIsCreating(false);
     toast.success(`Room ${code} created!`);
-  }, [currentUser.id, selectedType, roomName]);
+  }, [currentUser.id, selectedType, roomName, isPublic, maxParticipants]);
 
   // If E2E clicks the server-rendered button, forward that click to this client handler
   useEffect(() => {
-    if (typeof window !== "undefined" && (window as any).e2eRoomClicked) {
-      handleCreate();
-      (window as any).e2eRoomClicked = false;
+    if (typeof window !== "undefined" && window.e2eRoomClicked) {
+      window.e2eRoomClicked = false;
+      // Defer out of the effect body itself so the resulting setState chain
+      // (inside handleCreate) isn't triggered synchronously during the effect.
+      setTimeout(() => handleCreate(), 0);
     }
 
     const el = document.querySelector('[data-testid="create-room-button"]');
@@ -127,6 +171,7 @@ export default function CreateRoomClient() {
                 placeholder="My Awesome Room"
                 value={roomName}
                 onChange={(e) => setRoomName(e.target.value)}
+                maxLength={60}
                 className="mt-1.5"
               />
             </div>

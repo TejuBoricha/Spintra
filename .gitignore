@@ -12,6 +12,13 @@
 
 # testing
 /coverage
+/test-results
+
+# generated lint/build reports and snapshots — regenerate via `npm run lint`
+eslint-report.json
+lint-output.txt
+tool-warnings.json
+create.html
 
 # next.js
 /.next/
@@ -32,6 +39,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel

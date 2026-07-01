@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Split, ArrowRight, ThumbsUp, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { playPop, playSwipe } from "@/lib/audio";
+import { shuffleArray } from "@/lib/utils";
 
 const questions = [
   { optionA: "Be able to fly", optionB: "Be able to read minds" },
@@ -31,11 +32,12 @@ const questions = [
 
 export default function WouldYouRatherPage() {
   const [current, setCurrent] = useState(0);
+  const [order] = useState(() => shuffleArray(questions.map((_, i) => i)));
   const [votes, setVotes] = useState<Record<number, "A" | "B">>({});
   const [showResult, setShowResult] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  const q = questions[current % questions.length];
+  const q = questions[order[current % order.length]];
   const allVotes = Object.values(votes);
   const aVotes = allVotes.filter((v) => v === "A").length;
   const bVotes = allVotes.filter((v) => v === "B").length;

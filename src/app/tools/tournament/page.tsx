@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import type { TournamentType } from "@/lib/types";
+import { shuffleArray } from "@/lib/utils";
 
 // ──── Types ────
 interface BracketMatch {
@@ -46,20 +47,12 @@ interface Tournament {
   currentRound: number;
   winner: string | null;
   losersBracket?: BracketMatch[][]; // For double elimination
+  grandFinal?: BracketMatch | null; // Winners-bracket champ vs. losers-bracket champ
 }
 
 // ──── Helpers ────
 function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
-}
-
-function shuffleArray<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
 }
 
 /** Pad participants to next power of 2 with BYEs */
@@ -248,11 +241,17 @@ function generateDoubleElimination(
     winners.push(roundMatches);
   }
 
-  // Losers bracket (simplified)
-  const losersRounds = numRounds * 2 - 1;
+  // Losers bracket: standard double-elimination shape — 2*(numRounds-1) rounds.
+  // Even rounds (r=2m) receive two losers "paired against each other" (from
+  // winners round 1 when m===0, or from the previous losers round's winners
+  // otherwise). Odd rounds (r=2m+1) receive the same-position winner from the
+  // preceding even round plus the fresh loser dropping from winners round
+  // (m+2). See handleScoreSave for the placement logic that feeds this bracket.
+  const losersRounds = Math.max(0, numRounds - 1) * 2;
   const losers: BracketMatch[][] = [];
   for (let r = 0; r < losersRounds; r++) {
-    const matchCount = Math.max(1, Math.pow(2, Math.max(0, numRounds - 1 - Math.floor(r / 2))));
+    const m = Math.floor(r / 2);
+    const matchCount = Math.pow(2, Math.max(0, numRounds - 2 - m));
     const roundMatches: BracketMatch[] = [];
     for (let i = 0; i < matchCount; i++) {
       roundMatches.push({
@@ -411,6 +410,9 @@ function MatchCard({
     <motion.div
       whileHover={onClick && !isBye ? { scale: 1.02 } : undefined}
       onClick={isBye ? undefined : onClick}
+      data-testid="tournament-match"
+      data-match-status={match.status}
+      data-match-ready={!!(match.player1 && match.player2 && !isBye)}
       className={`
         rounded-lg border px-3 py-2 cursor-pointer transition-colors
         ${statusColors[match.status]}
@@ -458,7 +460,7 @@ export default function TournamentPage() {
     match: BracketMatch;
     roundIdx: number;
     position: number;
-    bracketKey: "rounds" | "losersBracket";
+    bracketKey: "rounds" | "losersBracket" | "grandFinal";
   } | null>(null);
 
   const participants = useMemo(
@@ -527,8 +529,6 @@ export default function TournamentPage() {
       if (!editingMatch || !tournament) return;
 
       const { match, roundIdx, position, bracketKey } = editingMatch;
-      const bracket = bracketKey === "losersBracket" ? tournament.losersBracket! : tournament.rounds;
-
       const winner = s1 > s2 ? match.player1 : s2 > s1 ? match.player2 : null;
       if (winner) {
         playSuccess(soundEnabled);
@@ -536,65 +536,184 @@ export default function TournamentPage() {
         playPop(soundEnabled);
       }
 
+      // Grand Final (double elimination only): one decisive match between the
+      // winners-bracket champion and the losers-bracket champion. Whoever wins
+      // takes the tournament — we intentionally don't implement the optional
+      // "bracket reset" rematch some formats use when the losers-bracket champ
+      // wins, to keep this feature scoped and finishable.
+      if (bracketKey === "grandFinal") {
+        if (!winner) {
+          toast.error("The Grand Final needs a decisive winner.");
+          return;
+        }
+        setTournament({
+          ...tournament,
+          grandFinal: { ...match, score1: s1, score2: s2, winner, status: "completed" },
+          winner,
+        });
+        setEditingMatch(null);
+        toast.success(`🏆 ${winner} wins the tournament!`);
+        return;
+      }
+
+      const bracket = bracketKey === "losersBracket" ? tournament.losersBracket! : tournament.rounds;
+
       // Update the match
       const updatedBracket = bracket.map((round) =>
         round.map((m) => {
           if (m.id === match.id) {
-            return {
-              ...m,
-              score1: s1,
-              score2: s2,
-              winner,
-              status: "completed" as const,
-            };
+            return { ...m, score1: s1, score2: s2, winner, status: "completed" as const };
           }
           return m;
         })
       );
 
-      // For single/double elimination: advance winner to next round
-      if (
-        winner &&
-        (tournament.type === "single-elimination" ||
-          tournament.type === "double-elimination")
-      ) {
+      if (winner && tournament.type === "single-elimination") {
         const nextRoundIdx = roundIdx + 1;
-        if (nextRoundIdx < bracket.length && bracketKey === "rounds") {
+        if (nextRoundIdx < updatedBracket.length) {
           const nextPos = Math.floor(position / 2);
-          updatedBracket[nextRoundIdx] = updatedBracket[nextRoundIdx].map((m) => {
-            if (m.position === nextPos) {
-              return {
-                ...m,
-                [position % 2 === 0 ? "player1" : "player2"]: winner,
-                status: m.player1 && m.player2 && m.status === "pending" ? "in-progress" as const : m.status,
-              };
-            }
-            return m;
-          });
+          updatedBracket[nextRoundIdx] = updatedBracket[nextRoundIdx].map((m) =>
+            m.position === nextPos
+              ? {
+                  ...m,
+                  [position % 2 === 0 ? "player1" : "player2"]: winner,
+                  status: m.player1 && m.player2 && m.status === "pending" ? ("in-progress" as const) : m.status,
+                }
+              : m
+          );
         }
 
-        // Check if we have a final winner
-        const lastRound = updatedBracket[updatedBracket.length - 1];
-        const finalMatch = lastRound?.[0];
+        const finalMatch = updatedBracket[updatedBracket.length - 1]?.[0];
         if (finalMatch?.winner) {
-          setTournament({
-            ...tournament,
-            rounds: updatedBracket as BracketMatch[][],
-            losersBracket: bracketKey === "losersBracket" ? updatedBracket : tournament.losersBracket,
-            winner: finalMatch.winner,
-          });
+          setTournament({ ...tournament, rounds: updatedBracket, winner: finalMatch.winner });
           setEditingMatch(null);
           toast.success(`🏆 ${finalMatch.winner} wins the tournament!`);
           return;
         }
+
+        setTournament({ ...tournament, rounds: updatedBracket });
+        setEditingMatch(null);
+        toast.success(winner ? `${winner} advances!` : "Draw recorded!");
+        return;
       }
 
-      setTournament({
-        ...tournament,
-        rounds: updatedBracket as BracketMatch[][] || tournament.rounds,
-        losersBracket: bracketKey === "losersBracket" ? updatedBracket : tournament.losersBracket,
-      });
+      if (winner && tournament.type === "double-elimination") {
+        const loser = winner === match.player1 ? match.player2 : match.player1;
+        let updatedLosersBracket = tournament.losersBracket;
 
+        if (bracketKey === "rounds") {
+          // Advance the winner within the winners bracket (unchanged shape).
+          const nextRoundIdx = roundIdx + 1;
+          if (nextRoundIdx < updatedBracket.length) {
+            const nextPos = Math.floor(position / 2);
+            updatedBracket[nextRoundIdx] = updatedBracket[nextRoundIdx].map((m) =>
+              m.position === nextPos
+                ? {
+                    ...m,
+                    [position % 2 === 0 ? "player1" : "player2"]: winner,
+                    status: m.player1 && m.player2 && m.status === "pending" ? ("in-progress" as const) : m.status,
+                  }
+                : m
+            );
+          }
+
+          // Drop the loser into the losers bracket. Round 1 losers are paired
+          // against each other; later-round losers join the winner advancing
+          // through the losers bracket at the same position (see
+          // generateDoubleElimination for the round-shape this relies on).
+          if (loser && loser !== "BYE" && updatedLosersBracket) {
+            const rw = roundIdx + 1;
+            const lb = updatedLosersBracket.map((round) => round.map((m) => ({ ...m })));
+            const targetRound = rw === 1 ? 0 : 2 * rw - 3;
+            const targetPos = rw === 1 ? Math.floor(position / 2) : position;
+            const slot = rw === 1 ? (position % 2 === 0 ? "player1" : "player2") : "player2";
+
+            if (lb[targetRound]?.[targetPos]) {
+              lb[targetRound][targetPos] = { ...lb[targetRound][targetPos], [slot]: loser };
+            }
+            lb.forEach((round) => {
+              round.forEach((m, i) => {
+                if (m.player1 && m.player2 && m.status === "pending") {
+                  round[i] = { ...m, status: "in-progress" };
+                }
+              });
+            });
+            updatedLosersBracket = lb;
+          }
+        } else {
+          // bracketKey === "losersBracket": advance the winner within the
+          // losers bracket. Even rounds preserve position (paired against a
+          // fresh drop-in from the winners bracket); odd rounds halve
+          // position like a normal single-elimination advance.
+          const isEvenRound = roundIdx % 2 === 0;
+          const nextRoundIdx = roundIdx + 1;
+          if (nextRoundIdx < updatedBracket.length) {
+            if (isEvenRound) {
+              updatedBracket[nextRoundIdx] = updatedBracket[nextRoundIdx].map((m) =>
+                m.position === position
+                  ? {
+                      ...m,
+                      player1: winner,
+                      status: m.player1 && m.player2 && m.status === "pending" ? ("in-progress" as const) : m.status,
+                    }
+                  : m
+              );
+            } else {
+              const nextPos = Math.floor(position / 2);
+              const slot = position % 2 === 0 ? "player1" : "player2";
+              updatedBracket[nextRoundIdx] = updatedBracket[nextRoundIdx].map((m) =>
+                m.position === nextPos
+                  ? {
+                      ...m,
+                      [slot]: winner,
+                      status: m.player1 && m.player2 && m.status === "pending" ? ("in-progress" as const) : m.status,
+                    }
+                  : m
+              );
+            }
+          }
+          updatedLosersBracket = updatedBracket;
+        }
+
+        const winnersFinal =
+          bracketKey === "rounds"
+            ? updatedBracket[updatedBracket.length - 1]?.[0]
+            : tournament.rounds[tournament.rounds.length - 1]?.[0];
+        const losersFinal = updatedLosersBracket?.[updatedLosersBracket.length - 1]?.[0];
+
+        if (winnersFinal?.winner && losersFinal?.winner && !tournament.grandFinal) {
+          setTournament({
+            ...tournament,
+            rounds: bracketKey === "rounds" ? updatedBracket : tournament.rounds,
+            losersBracket: updatedLosersBracket,
+            grandFinal: {
+              id: generateId(),
+              round: 1,
+              position: 0,
+              player1: winnersFinal.winner,
+              player2: losersFinal.winner,
+              score1: null,
+              score2: null,
+              winner: null,
+              status: "in-progress",
+            },
+          });
+          setEditingMatch(null);
+          toast.success("Grand Final is set!");
+          return;
+        }
+
+        setTournament({
+          ...tournament,
+          rounds: bracketKey === "rounds" ? updatedBracket : tournament.rounds,
+          losersBracket: updatedLosersBracket,
+        });
+        setEditingMatch(null);
+        toast.success(winner ? `${winner} advances!` : "Draw recorded!");
+        return;
+      }
+
+      setTournament({ ...tournament, rounds: updatedBracket });
       setEditingMatch(null);
       toast.success(winner ? `${winner} advances!` : "Draw recorded!");
     },
@@ -1135,6 +1254,26 @@ export default function TournamentPage() {
                             Losers Bracket
                           </h3>
                           {renderSingleEliminationBracket(tournament.losersBracket, "losersBracket")}
+                        </div>
+                      )}
+                      {tournament.grandFinal && (
+                        <div>
+                          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                            Grand Final
+                          </h3>
+                          <div className="max-w-[220px]">
+                            <MatchCard
+                              match={tournament.grandFinal}
+                              onClick={() =>
+                                setEditingMatch({
+                                  match: tournament.grandFinal!,
+                                  roundIdx: 0,
+                                  position: 0,
+                                  bracketKey: "grandFinal",
+                                })
+                              }
+                            />
+                          </div>
                         </div>
                       )}
                     </div>

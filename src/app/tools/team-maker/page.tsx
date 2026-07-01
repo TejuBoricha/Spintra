@@ -22,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { cn } from "@/lib/utils";
+import { cn, shuffleArray } from "@/lib/utils";
 import { playPop, playSuccess } from "@/lib/audio";
 
 // ── Constants ──────────────────────────────────────────────
@@ -50,23 +50,12 @@ const TEMPLATES = [
   { label: "Office", teams: 0, perTeam: 0, icon: "💼" },
 ];
 
-function seededShuffle<T>(arr: T[], seed: number): T[] {
-  const shuffled = [...arr];
-  let s = seed;
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    s = (s * 16807 + 0) % 2147483647;
-    const j = s % (i + 1);
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
-}
-
 // ── Component ──────────────────────────────────────────────
 export default function TeamMakerPage() {
   const [namesInput, setNamesInput] = useState("");
   const [numTeams, setNumTeams] = useState(2);
   const [teams, setTeams] = useState<{ name: string; colorIdx: number; members: string[] }[]>([]);
-  const [autoBalance, setAutoBalance] = useState(false);
+  const [autoBalance, setAutoBalance] = useState(true);
   const [copied, setCopied] = useState(false);
   const [newMemberInput, setNewMemberInput] = useState<Record<number, string>>({});
   const [collapsedTeams, setCollapsedTeams] = useState<Set<number>>(new Set());
@@ -87,26 +76,34 @@ export default function TeamMakerPage() {
     playSuccess(soundEnabled);
 
     const count = Math.min(numTeams, names.length);
-    const shuffled = seededShuffle(names, Date.now());
-    const result: { name: string; colorIdx: number; members: string[] }[] = [];
+    const shuffled = shuffleArray(names);
+    const result: { name: string; colorIdx: number; members: string[] }[] = Array.from(
+      { length: count },
+      (_, t) => ({ name: `Team ${t + 1}`, colorIdx: t % TEAM_COLORS.length, members: [] })
+    );
 
-    const minPerTeam = Math.floor(names.length / count);
-    const extra = names.length % count;
-    let idx = 0;
-
-    for (let t = 0; t < count; t++) {
-      const size = minPerTeam + (t < extra ? 1 : 0);
-      result.push({
-        name: `Team ${t + 1}`,
-        colorIdx: t % TEAM_COLORS.length,
-        members: shuffled.slice(idx, idx + size),
+    if (autoBalance) {
+      // Even split: deal names out so every team's size differs by at most one.
+      const minPerTeam = Math.floor(names.length / count);
+      const extra = names.length % count;
+      let idx = 0;
+      for (let t = 0; t < count; t++) {
+        const size = minPerTeam + (t < extra ? 1 : 0);
+        result[t].members = shuffled.slice(idx, idx + size);
+        idx += size;
+      }
+    } else {
+      // Fully random assignment: each name independently lands on a random
+      // team, so team sizes are not guaranteed to be equal.
+      shuffled.forEach((name) => {
+        const t = Math.floor(Math.random() * count);
+        result[t].members.push(name);
       });
-      idx += size;
     }
 
     setTeams(result);
     setCollapsedTeams(new Set());
-  }, [parsedNames, numTeams, soundEnabled]);
+  }, [parsedNames, numTeams, soundEnabled, autoBalance]);
 
   const moveMember = useCallback((fromTeam: number, toTeam: number, memberIndex: number) => {
     playPop(soundEnabled);
