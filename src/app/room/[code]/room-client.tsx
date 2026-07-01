@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Send, Crown, MessageCircle, Lock, Unlock,
@@ -13,67 +13,440 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import type { User, ChatMessage, RoomParticipant } from "@/lib/types";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getOrCreateRoomUser, getLocalRoomCreatorId } from "@/lib/room-user";
 
-function generateId() { return Math.random().toString(36).slice(2, 10); }
-
-const defaultUser: User = {
-  id: generateId(),
-  username: `Guest_${Math.random().toString(36).slice(2, 6)}`,
-  xp: 0,
-  rank: "rookie",
-  created_at: new Date().toISOString(),
-};
+function generateId() {
+  return Math.random().toString(36).slice(2, 10);
+}
 
 const emojis = ["👍", "❤️", "😂", "🎉", "🔥", "💯", "👀", "🙌"];
 
-export default function RoomClient({ code: roomCode }: { code: string }) {
-  const [currentUser] = useState<User>(defaultUser);
-  const [participants] = useState<RoomParticipant[]>([
-    // biome-ignore lint/style/noNonNullAssertion: <explanation>
-{ id: "1", room_id: "1", user_id: currentUser.id, role: "host", is_online: true, joined_at: new Date().toISOString(), user: { ...currentUser, username: "You" } },
-    { id: "2", room_id: "1", user_id: "u2", role: "participant", is_online: true, joined_at: new Date().toISOString(), user: { id: "u2", username: "Alex", avatar_url: "", xp: 500, rank: "explorer", created_at: "" } },
-    { id: "3", room_id: "1", user_id: "u3", role: "participant", is_online: true, joined_at: new Date().toISOString(), user: { id: "u3", username: "Sam", avatar_url: "", xp: 1200, rank: "challenger", created_at: "" } },
-    { id: "4", room_id: "1", user_id: "u4", role: "spectator", is_online: false, joined_at: new Date().toISOString(), user: { id: "u4", username: "Jordan", avatar_url: "", xp: 300, rank: "rookie", created_at: "" } },
-  ]);
+function isDuplicateMessage(messages: ChatMessage[], candidate: ChatMessage) {
+  return messages.some(
+    (message) =>
+      message.user_id === candidate.user_id &&
+      message.created_at === candidate.created_at &&
+      message.content === candidate.content
+  );
+}
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: "m1", room_id: "1", user_id: "u2", content: "Hey everyone! Ready to play?", created_at: new Date().toISOString(), user: { id: "u2", username: "Alex", avatar_url: "", xp: 500, rank: "explorer", created_at: "" } },
-    { id: "m2", room_id: "1", user_id: "u3", content: "Let's go! 🎉", created_at: new Date().toISOString(), user: { id: "u3", username: "Sam", avatar_url: "", xp: 1200, rank: "challenger", created_at: "" } },
-  ]);
+export default function RoomClient({ code: roomCode }: { code: string }) {
+  const [currentUser] = useState<User>(getOrCreateRoomUser);
+  const [participants, setParticipants] = useState<RoomParticipant[]>([]);
+  const [localCreatorId, setLocalCreatorId] = useState<string | null>(null);
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   const [newMessage, setNewMessage] = useState("");
   const [isLocked, setIsLocked] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
+  const [isRealtimeReady, setIsRealtimeReady] = useState<boolean | null>(null);
+  const [realtimeError, setRealtimeError] = useState<string | null>(null);
+  const [notification, setNotification] = useState<string | null>(null);
 
-  const isHost = true; // Current user is host for demo
+  const isHost =
+    participants.some((p) => p.user_id === currentUser.id && p.role === "host" && p.is_online) ||
+    localCreatorId === currentUser.id;
 
-  const sendMessage = useCallback(() => {
+  const realtimeStatusLabel = realtimeError
+    ? "Offline"
+    : isRealtimeReady
+    ? "Live"
+    : "Connecting...";
+  const realtimeStatusClass = realtimeError
+    ? "bg-red-500/10 text-red-300"
+    : isRealtimeReady
+    ? "bg-emerald-500/10 text-emerald-300"
+    : "bg-amber-500/10 text-amber-300";
+
+  const sendMessage = useCallback(async () => {
+    if (isLocked && !isHost) {
+      toast.error("The room is locked by the host.");
+      return;
+    }
+
     if (!newMessage.trim()) return;
+
     const msg: ChatMessage = {
       id: generateId(),
-      room_id: "1",
+      room_id: roomCode,
       user_id: currentUser.id,
       content: newMessage,
       created_at: new Date().toISOString(),
       user: currentUser,
     };
+
     setMessages((prev) => [...prev, msg]);
     setNewMessage("");
-  }, [newMessage, currentUser]);
+
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      toast.error("Chat is unavailable because Supabase is not configured.");
+      return;
+    }
+
+    try {
+      await supabase.from("chat_messages").insert({
+        room_id: roomCode,
+        user_id: currentUser.id,
+        content: newMessage,
+        created_at: msg.created_at,
+      });
+    } catch (error) {
+      console.error("Chat insert failed:", error);
+      toast.error("Unable to send message. Please try again.");
+    }
+  }, [newMessage, currentUser, roomCode, isHost]);
 
   const copyRoomLink = async () => {
-    await navigator.clipboard.writeText(`spintra.com/room?code=${roomCode}`);
-    setCopied(true);
-    toast.success("Room link copied!");
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/room/${roomCode}`);
+      setCopied(true);
+      toast.success("Room link copied!");
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy room link:", error);
+      toast.error("Unable to copy link. Please copy it manually.");
+    }
   };
 
   const toggleLock = () => {
-    setIsLocked((prev) => !prev);
-    toast.success(isLocked ? "Room unlocked" : "Room locked");
+    setIsLocked((prev) => {
+      const nextValue = !prev;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(`spintra-room-lock-${roomCode}`, nextValue.toString());
+      }
+      toast.success(nextValue ? "Room locked" : "Room unlocked");
+      return nextValue;
+    });
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const savedLock = window.localStorage.getItem(`spintra-room-lock-${roomCode}`);
+    if (savedLock !== null) {
+      setIsLocked(savedLock === "true");
+    }
+  }, [roomCode]);
+
+  const electHostIfNeeded = useCallback(
+    async (
+      supabase: ReturnType<typeof getSupabaseBrowserClient> | null,
+      currentParticipants: RoomParticipant[]
+    ) => {
+      if (!supabase) return;
+
+      const hasOnlineHost = currentParticipants.some(
+        (participant) => participant.role === "host" && participant.is_online
+      );
+      if (hasOnlineHost) return;
+
+      const onlineParticipants = currentParticipants
+        .filter((participant) => participant.is_online)
+        .sort((a, b) => new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime());
+
+      if (!onlineParticipants.length) return;
+
+      const earliest = onlineParticipants[0];
+      if (earliest.user_id !== currentUser.id) return;
+
+      const { error } = await supabase
+        .from("room_participants")
+        .update({ role: "host" })
+        .eq("room_id", roomCode)
+        .eq("user_id", currentUser.id);
+
+      if (error) {
+        console.error("Failed to elect host:", error);
+      } else {
+        setParticipants((prev) =>
+          prev.map((participant) =>
+            participant.user_id === currentUser.id
+              ? { ...participant, role: "host" }
+              : participant
+          )
+        );
+        toast.success("You are now the host.");
+        setNotification("The previous host left, and you have been promoted to host.");
+      }
+    },
+    [currentUser.id, roomCode]
+  );
+
+  useEffect(() => {
+    setLocalCreatorId(getLocalRoomCreatorId(roomCode));
+
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setIsRealtimeReady(false);
+      setRealtimeError("Supabase is not configured.");
+      return;
+    }
+
+    const channel = supabase
+      .channel(`room:${roomCode}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages", filter: `room_id=eq.${roomCode}` }, (payload) => {
+        const incoming = payload.new as ChatMessage;
+        setMessages((prev) => {
+          if (isDuplicateMessage(prev, incoming)) {
+            return prev;
+          }
+          return [...prev, incoming];
+        });
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "room_participants", filter: `room_id=eq.${roomCode}` }, (payload) => {
+        const updated = payload.new as RoomParticipant;
+        setParticipants((prev) => {
+          const next = prev.map((participant) =>
+            participant.id === updated.id ? { ...participant, ...updated } : participant
+          );
+          if (updated.role !== "host" || !updated.is_online) {
+            electHostIfNeeded(supabase, next);
+          }
+          return next;
+        });
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "room_participants", filter: `room_id=eq.${roomCode}` }, (payload) => {
+        const newParticipant = payload.new as RoomParticipant;
+        setParticipants((prev) => {
+          if (prev.some((participant) => participant.id === newParticipant.id)) {
+            return prev;
+          }
+          const next = [...prev, newParticipant];
+          electHostIfNeeded(supabase, next);
+          return next;
+        });
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "room_participants", filter: `room_id=eq.${roomCode}` }, (payload) => {
+        const removed = payload.old as RoomParticipant;
+        setParticipants((prev) => {
+          const next = prev.filter((participant) => participant.id !== removed.id);
+          electHostIfNeeded(supabase, next);
+          return next;
+        });
+      })
+      .subscribe((status: string) => {
+        if (status === "SUBSCRIBED") {
+          setIsRealtimeReady(true);
+          setRealtimeError(null);
+          setNotification(null);
+        } else {
+          setIsRealtimeReady(false);
+          setRealtimeError("Realtime subscription failed.");
+          setNotification("Realtime connection lost. Trying to reconnect...");
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roomCode]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadParticipants = async () => {
+      try {
+        const supabase = getSupabaseBrowserClient();
+        if (!supabase) {
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from("room_participants")
+          .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank")
+          .eq("room_id", roomCode)
+          .order("joined_at", { ascending: true });
+
+        if (error) {
+          console.error("Failed to load room participants:", error);
+          return;
+        }
+
+        if (isMounted && data) {
+          const loadedParticipants = data.map((item) => ({
+            id: item.id,
+            room_id: item.room_id,
+            user_id: item.user_id,
+            role: item.role as RoomParticipant["role"],
+            is_online: item.is_online,
+            joined_at: item.joined_at,
+            user: {
+              id: item.user_id,
+              username: item.username,
+              avatar_url: item.avatar_url,
+              xp: item.xp ?? 0,
+              rank: item.rank as User["rank"],
+              created_at: item.joined_at,
+            },
+          }));
+
+          setParticipants(loadedParticipants);
+          await electHostIfNeeded(supabase, loadedParticipants);
+        }
+      } catch (cause) {
+        console.error("Participant load failed:", cause);
+      }
+    };
+
+    const determineRole = async (supabase: ReturnType<typeof getSupabaseBrowserClient> | null) => {
+      if (!supabase) return "participant" as const;
+
+      const { data, error } = await supabase
+        .from("room_participants")
+        .select("user_id")
+        .eq("room_id", roomCode)
+        .eq("role", "host")
+        .eq("is_online", true)
+        .limit(1);
+
+      if (error) {
+        console.error("Failed to determine room host:", error);
+        return "participant" as const;
+      }
+
+      if (data && data.length > 0) {
+        return data[0].user_id === currentUser.id ? ("host" as const) : ("participant" as const);
+      }
+
+      return "host" as const;
+    };
+
+    const markSelfOffline = () => {
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) return;
+      supabase.from("room_participants").update({ is_online: false }).eq("room_id", roomCode).eq("user_id", currentUser.id);
+    };
+
+    const trackSelf = async () => {
+      try {
+        const supabase = getSupabaseBrowserClient();
+        if (!supabase) return;
+
+        const role = await determineRole(supabase);
+        const joined_at = new Date().toISOString();
+        const { data, error } = await supabase
+          .from("room_participants")
+          .upsert(
+            {
+              room_id: roomCode,
+              user_id: currentUser.id,
+              role,
+              is_online: true,
+              joined_at,
+              username: currentUser.username,
+              avatar_url: currentUser.avatar_url,
+              xp: currentUser.xp,
+              rank: currentUser.rank,
+            },
+            { onConflict: "room_id,user_id" }
+          )
+          .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
+
+        if (error) {
+          console.error("Failed to register participant:", error);
+          return;
+        }
+
+        const participantRow = data?.[0];
+        if (participantRow) {
+          setParticipants((prev) => [
+            ...prev.filter((participant) => participant.user_id !== currentUser.id),
+            {
+              id: participantRow.id,
+              room_id: participantRow.room_id,
+              user_id: participantRow.user_id,
+              role: participantRow.role as RoomParticipant["role"],
+              is_online: participantRow.is_online,
+              joined_at: participantRow.joined_at,
+              user: {
+                id: currentUser.id,
+                username: currentUser.username,
+                avatar_url: currentUser.avatar_url,
+                xp: currentUser.xp,
+                rank: currentUser.rank,
+                created_at: currentUser.created_at,
+              },
+            },
+          ]);
+        }
+      } catch (cause) {
+        console.error("Failed to register participant:", cause);
+      }
+    };
+
+    loadParticipants();
+    trackSelf();
+
+    if (typeof window !== "undefined") {
+      const handleUnload = () => {
+        markSelfOffline();
+      };
+
+      window.addEventListener("beforeunload", handleUnload);
+      window.addEventListener("pagehide", handleUnload);
+
+      return () => {
+        isMounted = false;
+        window.removeEventListener("beforeunload", handleUnload);
+        window.removeEventListener("pagehide", handleUnload);
+        markSelfOffline();
+      };
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [roomCode, currentUser]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadMessages = async () => {
+      try {
+        const supabase = getSupabaseBrowserClient();
+        if (!supabase) return;
+
+        const { data, error } = await supabase
+          .from("chat_messages")
+          .select("id, room_id, user_id, content, created_at")
+          .eq("room_id", roomCode)
+          .order("created_at", { ascending: true });
+
+        if (error) {
+          console.error("Failed to load chat messages:", error);
+          return;
+        }
+
+        if (isMounted && data) {
+          setMessages(
+            data.map((item) => ({
+              ...item,
+              user: participants.find((p) => p.user_id === item.user_id)?.user ?? {
+                id: item.user_id,
+                username: item.user_id === currentUser.id ? "You" : "Guest",
+                avatar_url: "",
+                xp: 0,
+                rank: "rookie",
+                created_at: item.created_at,
+              },
+            }))
+          );
+        }
+      } catch (cause) {
+        console.error("Message load failed:", cause);
+      }
+    };
+
+    loadMessages();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [roomCode, currentUser]);
 
   return (
     <div className="min-h-screen pt-16 flex">
@@ -85,16 +458,33 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-xl font-bold">Team Room</h1>
-                <Badge variant="secondary" className="text-xs">
-                  <Wifi className="w-3 h-3 mr-1 text-emerald-400" />
-                  Live
+                <Badge className={`text-xs ${realtimeStatusClass}`}>
+                  <Wifi className="w-3 h-3 mr-1" />
+                  {realtimeStatusLabel}
                 </Badge>
+                {isLocked && (
+                  <Badge className="text-xs bg-amber-500/10 text-amber-300">
+                    <Lock className="w-3 h-3 mr-1" />
+                    Locked
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
                 <span>Room #{roomCode}</span>
                 <span>·</span>
                 <span>{participants.filter((p) => p.is_online).length} online</span>
               </div>
+              {(realtimeError || notification) && (
+                <div
+                  className={`mt-3 rounded-xl border px-3 py-2 text-sm transition-all ${
+                    realtimeError
+                      ? "border-red-500/20 bg-red-500/10 text-red-200"
+                      : "border-emerald-500/20 bg-emerald-500/10 text-emerald-100"
+                  }`}
+                >
+                  {realtimeError || notification}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -127,15 +517,24 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
             >
               <Sparkles className="w-10 h-10 text-white" />
             </motion.div>
-            <h2 className="text-2xl font-bold mb-2">Waiting for Host</h2>
-            <p className="text-muted-foreground mb-6">
-              The host will start the activity soon. Chat with other participants while you wait!
-            </p>
-            {isHost && (
-              <Button className="bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white border-0">
-                <Sparkles className="w-4 h-4 mr-2" />
-                Start Activity
-              </Button>
+            {isHost ? (
+              <>
+                <h2 className="text-2xl font-bold mb-2">You are the host</h2>
+                <p className="text-muted-foreground mb-6">
+                  You can start the activity or wait for guests to join. Use the controls on the right to manage the room.
+                </p>
+                <Button className="bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white border-0">
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Start Activity
+                </Button>
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl font-bold mb-2">Waiting for Host</h2>
+                <p className="text-muted-foreground mb-6">
+                  The host will start the activity soon. Chat with other participants while you wait!
+                </p>
+              </>
             )}
           </motion.div>
         </div>

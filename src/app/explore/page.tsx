@@ -84,7 +84,7 @@ export default function ExplorePage() {
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {trendingRooms.map((room, i) => (
-              <Link key={room.id} href={`/room?code=${room.code}`}>
+              <Link key={room.id} href={`/room/${room.code}`}>
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
