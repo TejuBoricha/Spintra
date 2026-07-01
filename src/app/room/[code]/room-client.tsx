@@ -34,17 +34,31 @@ function isDuplicateMessage(messages: ChatMessage[], candidate: ChatMessage) {
 export default function RoomClient({ code: roomCode }: { code: string }) {
   const [currentUser] = useState<User>(getOrCreateRoomUser);
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
-  const [localCreatorId, setLocalCreatorId] = useState<string | null>(null);
+  const [localCreatorId] = useState<string | null>(() => {
+    return getLocalRoomCreatorId(roomCode);
+  });
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   const [newMessage, setNewMessage] = useState("");
-  const [isLocked, setIsLocked] = useState(false);
+  const [isLocked, setIsLocked] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const savedLock = window.localStorage.getItem(`spintra-room-lock-${roomCode}`);
+    return savedLock === "true";
+  });
   const [showEmojis, setShowEmojis] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
-  const [isRealtimeReady, setIsRealtimeReady] = useState<boolean | null>(null);
-  const [realtimeError, setRealtimeError] = useState<string | null>(null);
+  const [isRealtimeReady, setIsRealtimeReady] = useState<boolean | null>(() => {
+    if (typeof window === "undefined") return null;
+    const supabase = getSupabaseBrowserClient();
+    return supabase ? null : false;
+  });
+  const [realtimeError, setRealtimeError] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const supabase = getSupabaseBrowserClient();
+    return supabase ? null : "Supabase is not configured.";
+  });
   const [notification, setNotification] = useState<string | null>(null);
 
   const isHost =
@@ -99,7 +113,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       console.error("Chat insert failed:", error);
       toast.error("Unable to send message. Please try again.");
     }
-  }, [newMessage, currentUser, roomCode, isHost]);
+  }, [newMessage, currentUser, roomCode, isHost, isLocked]);
 
   const copyRoomLink = async () => {
     try {
@@ -124,13 +138,6 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     });
   };
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const savedLock = window.localStorage.getItem(`spintra-room-lock-${roomCode}`);
-    if (savedLock !== null) {
-      setIsLocked(savedLock === "true");
-    }
-  }, [roomCode]);
 
   const electHostIfNeeded = useCallback(
     async (
@@ -177,12 +184,8 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   );
 
   useEffect(() => {
-    setLocalCreatorId(getLocalRoomCreatorId(roomCode));
-
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
-      setIsRealtimeReady(false);
-      setRealtimeError("Supabase is not configured.");
       return;
     }
 
@@ -243,7 +246,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [roomCode]);
+  }, [roomCode, electHostIfNeeded]);
 
   useEffect(() => {
     let isMounted = true;
@@ -400,7 +403,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     return () => {
       isMounted = false;
     };
-  }, [roomCode, currentUser]);
+  }, [roomCode, currentUser, electHostIfNeeded]);
 
   useEffect(() => {
     let isMounted = true;
@@ -425,7 +428,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           setMessages(
             data.map((item) => ({
               ...item,
-              user: participants.find((p) => p.user_id === item.user_id)?.user ?? {
+              user: {
                 id: item.user_id,
                 username: item.user_id === currentUser.id ? "You" : "Guest",
                 avatar_url: "",
@@ -446,7 +449,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     return () => {
       isMounted = false;
     };
-  }, [roomCode, currentUser]);
+  }, [roomCode, currentUser.id]);
 
   return (
     <div className="min-h-screen pt-16 flex">
@@ -572,26 +575,35 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
               {/* Messages */}
               <ScrollArea className="flex-1 px-4 py-4">
                 <div className="space-y-4">
-                  {messages.map((msg) => (
-                    <div key={msg.id} className="flex gap-3">
-                      <Avatar className="w-8 h-8 shrink-0">
-                        <AvatarFallback className="text-xs bg-gradient-to-br from-purple-500 to-cyan-500 text-white">
-                          {msg.user?.username?.slice(0, 2).toUpperCase() || "??"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">
-                            {msg.user_id === currentUser.id ? "You" : msg.user?.username}
-                          </span>
-                          {participants.find((p) => p.user_id === msg.user_id)?.role === "host" && (
-                            <Crown className="w-3 h-3 text-amber-400" />
-                          )}
+                  {messages.map((msg) => {
+                    const participant = participants.find((p) => p.user_id === msg.user_id);
+                    const username = msg.user_id === currentUser.id 
+                      ? "You" 
+                      : (participant?.user?.username || msg.user?.username || "Guest");
+                    const initials = username.slice(0, 2).toUpperCase() || "??";
+                    const isMsgHost = participant?.role === "host";
+
+                    return (
+                      <div key={msg.id} className="flex gap-3">
+                        <Avatar className="w-8 h-8 shrink-0">
+                          <AvatarFallback className="text-xs bg-gradient-to-br from-purple-500 to-cyan-500 text-white">
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">
+                              {username}
+                            </span>
+                            {isMsgHost && (
+                              <Crown className="w-3 h-3 text-amber-400" />
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">{msg.content}</p>
                         </div>
-                        <p className="text-sm text-muted-foreground">{msg.content}</p>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </ScrollArea>
 

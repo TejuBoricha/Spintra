@@ -1,23 +1,20 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/layout/navbar";
 import { Toaster } from "sonner";
 
-const geistSans = localFont({
-  src: "../../node_modules/next/dist/next-devtools/server/font/geist-latin.woff2",
+const geistSans = Geist({
   variable: "--font-geist-sans",
-  weight: "100 900",
-  display: "swap",
+  subsets: ["latin"],
 });
 
-const geistMono = localFont({
-  src: "../../node_modules/next/dist/next-devtools/server/font/geist-mono-latin.woff2",
+const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
-  weight: "100 900",
-  display: "swap",
+  subsets: ["latin"],
 });
+
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://spintra.com"),

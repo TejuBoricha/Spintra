@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Sparkles, Copy, Check } from "lucide-react";
@@ -32,7 +32,7 @@ export default function CreateRoomClient() {
     return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
   };
 
-  const handleCreate = async () => {
+  const handleCreate = useCallback(async () => {
     setIsCreating(true);
     // Simulate API call
     await new Promise((r) => setTimeout(r, 800));
@@ -42,7 +42,7 @@ export default function CreateRoomClient() {
     setLocalRoomCreator(code, currentUser.id);
     setIsCreating(false);
     toast.success(`Room ${code} created!`);
-  };
+  }, [currentUser.id]);
 
   // If E2E clicks the server-rendered button, forward that click to this client handler
   useEffect(() => {
@@ -54,7 +54,7 @@ export default function CreateRoomClient() {
     };
     el.addEventListener("click", onClick);
     return () => el.removeEventListener("click", onClick);
-  }, []);
+  }, [handleCreate]);
 
   const copyToClipboard = async () => {
     if (!createdRoom) return;
@@ -75,18 +75,8 @@ export default function CreateRoomClient() {
   return (
     <div className="min-h-screen pt-24 pb-16 px-4">
       <div className="max-w-4xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
-        >
-          <h1 className="text-4xl sm:text-5xl font-bold mb-4">
-            Create a <span className="gradient-text">Room</span>
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            Pick a game type, set up your room, and invite people in seconds.
-          </p>
-        </motion.div>
+        {/* Heading and description are rendered by the parent server Page component */}
+        <div className="mb-6" />
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Room Types */}

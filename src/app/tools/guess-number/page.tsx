@@ -39,8 +39,9 @@ export default function GuessNumberPage() {
     else if (guesses.length + 1 >= mode.attempts) { setGameOver(true); }
   };
 
-  const reset = () => {
-    setTarget(Math.floor(Math.random() * mode.range) + 1);
+  const reset = (newMode?: (typeof modes)[number]) => {
+    const targetRange = newMode ? newMode.range : mode.range;
+    setTarget(Math.floor(Math.random() * targetRange) + 1);
     setGuesses([]);
     setGuess("");
     setGameOver(false);
@@ -64,7 +65,7 @@ export default function GuessNumberPage() {
           {modes.map((m) => (
             <button
               key={m.name}
-              onClick={() => { setMode(m); reset(); }}
+              onClick={() => { setMode(m); reset(m); }}
               disabled={guesses.length > 0 && !gameOver}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50 ${
                 mode.name === m.name
@@ -130,7 +131,7 @@ export default function GuessNumberPage() {
                 ? `The number was ${target}. Found in ${guesses.length} tries!`
                 : `The number was ${target}.`}
             </p>
-            <Button onClick={reset} variant="outline" className="border-white/10">
+            <Button onClick={() => reset()} variant="outline" className="border-white/10">
               <RotateCcw className="w-4 h-4 mr-2" /> Play Again
             </Button>
           </motion.div>
