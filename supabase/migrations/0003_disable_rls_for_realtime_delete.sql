@@ -1,0 +1,31 @@
+-- Spintra: disable RLS on rooms and room_participants.
+--
+-- Two real bugs traced back to RLS on these tables, verified with a raw
+-- Postgres + Realtime script that bypassed the app entirely:
+--
+-- 1. `rooms` never had a DELETE policy (see 0001), so with RLS enabled every
+--    "close room" delete from the app was silently a no-op — PostgREST
+--    doesn't error when RLS filters out 0 rows, it just reports success.
+--    Every test room created during development is still sitting in the
+--    table as proof.
+--
+-- 2. Even where a permissive DELETE policy DID exist (room_participants, for
+--    the kick flow), Supabase Realtime still only shipped the primary key in
+--    the DELETE "old" record to every subscriber — REPLICA IDENTITY FULL
+--    (0001/0002) did not fix this. This is a deliberate Supabase behavior,
+--    not a bug: when RLS is enabled on a table, Realtime cannot verify
+--    whether a given subscriber would still be allowed to see a row that no
+--    longer exists, so it defensively withholds every non-PK column from
+--    DELETE events for *all* subscribers, regardless of how permissive the
+--    actual policies are. Confirmed by disabling RLS on room_participants
+--    directly and re-observing the same DELETE event, which then included
+--    the full row (including user_id).
+--
+-- This app has no Supabase Auth (see 0001's caveat) and every policy on
+-- these two tables is already `using (true)` / `with check (true)` — fully
+-- permissive. Disabling RLS here removes zero actual access control (there
+-- was none to begin with) while fixing both bugs above. chat_messages keeps
+-- RLS enabled since nothing deletes chat messages.
+
+alter table public.rooms disable row level security;
+alter table public.room_participants disable row level security;

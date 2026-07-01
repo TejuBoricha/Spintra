@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Send, Crown, MessageCircle, Lock, Unlock,
-  Sparkles, Copy, Check, Smile, UserX, Wifi,
-  Target, Shuffle, RotateCcw,
+  Sparkles, Copy, Check, Smile, UserX, Wifi, X,
+  Target, Shuffle, RotateCcw, DoorClosed,
   Coins, ArrowUp, ArrowDown, Swords, ShieldAlert,
   MessageCircleQuestion, Split, HeartHandshake, Eye
 } from "lucide-react";
@@ -18,6 +18,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import type { User, ChatMessage, RoomParticipant, RoomType } from "@/lib/types";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getOrCreateRoomUser, getLocalRoomCreatorId } from "@/lib/room-user";
@@ -87,6 +89,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   const [diceRolling, setDiceRolling] = useState(false);
 
   const [wheelEntries, setWheelEntries] = useState<string[]>(["Option 1", "Option 2", "Option 3"]);
+  const [newWheelEntryText, setNewWheelEntryText] = useState("");
   const [wheelWinner, setWheelWinner] = useState<string | null>(null);
   const [wheelSpinning, setWheelSpinning] = useState(false);
   const [wheelSpinAngle, setWheelSpinAngle] = useState(1440);
@@ -130,6 +133,8 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     return supabase ? null : "Supabase is not configured.";
   });
   const [notification, setNotification] = useState<string | null>(null);
+  const [isCloseRoomDialogOpen, setIsCloseRoomDialogOpen] = useState(false);
+  const [isClosingRoom, setIsClosingRoom] = useState(false);
 
   const isHost =
     participants.some((p) => p.user_id === currentUser.id && p.role === "host" && p.is_online) ||
@@ -140,8 +145,12 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   const broadcastRef = useRef<BroadcastChannel | null>(null);
   const onActivityEventRef = useRef<((event: ActivityEvent) => void) | null>(null);
   const supabaseChannelRef = useRef<RealtimeChannel | null>(null);
+  const closingRoomRef = useRef(false);
   const activeActivityRef = useRef(activeActivity);
   const isHostRef = useRef(isHost);
+  const showParticipantsRef = useRef(showParticipants);
+  const isMobileSidebarOpenRef = useRef(isMobileSidebarOpen);
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
 
   useEffect(() => {
     activeActivityRef.current = activeActivity;
@@ -150,6 +159,24 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   useEffect(() => {
     isHostRef.current = isHost;
   }, [isHost]);
+
+  useEffect(() => {
+    showParticipantsRef.current = showParticipants;
+  }, [showParticipants]);
+
+  useEffect(() => {
+    isMobileSidebarOpenRef.current = isMobileSidebarOpen;
+  }, [isMobileSidebarOpen]);
+
+  const markMessageUnreadIfHidden = useCallback(() => {
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+    const chatIsVisible = isMobile
+      ? isMobileSidebarOpenRef.current && !showParticipantsRef.current
+      : !showParticipantsRef.current;
+    if (!chatIsVisible) {
+      setHasUnreadMessages(true);
+    }
+  }, []);
 
   const changeActivity = useCallback((type: string | null) => {
     const nextActivity = type ? { type, state: null } : null;
@@ -195,6 +222,32 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       }
     }
   }, [currentUser.id]);
+
+  const syncWheelEntries = useCallback(
+    (entries: string[]) => {
+      setWheelEntries(entries);
+      sendActivityEvent({ kind: "wheel_entries", entries });
+    },
+    [sendActivityEvent]
+  );
+
+  const addWheelEntry = useCallback(() => {
+    const label = newWheelEntryText.trim();
+    if (!label) return;
+    syncWheelEntries([...wheelEntries, label].slice(0, 12));
+    setNewWheelEntryText("");
+  }, [newWheelEntryText, wheelEntries, syncWheelEntries]);
+
+  const removeWheelEntry = useCallback(
+    (index: number) => {
+      if (wheelEntries.length <= 2) {
+        toast.error("The wheel needs at least 2 options.");
+        return;
+      }
+      syncWheelEntries(wheelEntries.filter((_, i) => i !== index));
+    },
+    [wheelEntries, syncWheelEntries]
+  );
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -389,6 +442,9 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
               if (isDuplicateMessage(prev, payload)) return prev;
               return [...prev, payload];
             });
+            // A rare duplicate re-delivery here just flips a badge that's
+            // already on; not worth extra plumbing to avoid.
+            markMessageUnreadIfHidden();
           }
           break;
 
@@ -413,6 +469,11 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
             return;
           }
           setParticipants((prev) => prev.filter((p) => p.user_id !== payload));
+          break;
+
+        case "ROOM_CLOSED":
+          toast.error("The host closed this room.");
+          router.push("/explore");
           break;
 
         case "HOST_PROMOTED":
@@ -480,7 +541,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       bc.close();
       broadcastRef.current = null;
     };
-  }, [roomCode, currentUser, localCreatorId, router]);
+  }, [roomCode, currentUser, localCreatorId, router, markMessageUnreadIfHidden]);
 
   const sendMessage = useCallback(async () => {
     if (isLocked && !isHost) {
@@ -607,6 +668,35 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     [isHost, currentUser.id, roomCode]
   );
 
+  const handleCloseRoom = useCallback(async () => {
+    if (!isHost) return;
+    setIsClosingRoom(true);
+    closingRoomRef.current = true;
+
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) {
+      try {
+        // Deleting the room row is the single source of truth: every other
+        // participant's client picks it up via the "rooms" DELETE subscription
+        // below, and a DB trigger (see migrations) cascades the delete to that
+        // room's participants/messages rows since they aren't linked by a
+        // foreign key.
+        const { error } = await supabase.from("rooms").delete().eq("code", roomCode);
+        if (error) throw error;
+      } catch (error) {
+        console.error("Failed to close room:", error);
+        toast.error("Unable to close the room. Please try again.");
+        setIsClosingRoom(false);
+        closingRoomRef.current = false;
+        return;
+      }
+    } else if (broadcastRef.current) {
+      broadcastRef.current.postMessage({ type: "ROOM_CLOSED", senderId: currentUser.id });
+    }
+
+    toast.success("Room closed for everyone.");
+    router.push("/explore");
+  }, [isHost, roomCode, currentUser.id, router]);
 
   const electHostIfNeeded = useCallback(
     async (
@@ -668,6 +758,9 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           }
           return [...prev, incoming];
         });
+        if (incoming.user_id !== currentUser.id) {
+          markMessageUnreadIfHidden();
+        }
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "room_participants", filter: `room_id=eq.${roomCode}` }, (payload) => {
         const updated = payload.new as RoomParticipant;
@@ -712,6 +805,13 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         if (typeof updated.is_locked === "boolean") setIsLocked(updated.is_locked);
         if (typeof updated.max_participants === "number") setMaxParticipantsLimit(updated.max_participants);
       })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "rooms", filter: `code=eq.${roomCode}` }, () => {
+        // The host's own client already redirected itself in handleCloseRoom;
+        // this subscription is what tells everyone else the room is gone.
+        if (closingRoomRef.current) return;
+        toast.error("The host closed this room.");
+        router.push("/explore");
+      })
       .on("broadcast", { event: "activity_change" }, ({ payload }) => {
         if (payload) {
           setActiveActivity(payload);
@@ -749,7 +849,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       supabase.removeChannel(channel);
       supabaseChannelRef.current = null;
     };
-  }, [roomCode, electHostIfNeeded, currentUser.id, router]);
+  }, [roomCode, electHostIfNeeded, currentUser.id, router, markMessageUnreadIfHidden]);
 
   useEffect(() => {
     let isMounted = true;
@@ -1034,11 +1134,23 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       {/* Tabs */}
       <div className="flex border-b border-white/5 shrink-0">
         <button
-          onClick={() => setShowParticipants(false)}
-          className={`flex-1 py-3 text-sm font-medium transition-colors ${!showParticipants ? "text-white border-b-2 border-purple-500" : "text-muted-foreground"}`}
+          onClick={() => {
+            setShowParticipants(false);
+            setHasUnreadMessages(false);
+          }}
+          className={`relative flex-1 py-3 text-sm font-medium transition-colors ${!showParticipants ? "text-white border-b-2 border-purple-500" : "text-muted-foreground"}`}
         >
-          <MessageCircle className="w-4 h-4 inline mr-2" />
-          Chat
+          <span className="relative inline-flex">
+            <MessageCircle className="w-4 h-4" />
+            {hasUnreadMessages && (
+              <span
+                className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-purple-500"
+                aria-hidden="true"
+              />
+            )}
+          </span>
+          <span className="ml-2">Chat</span>
+          {hasUnreadMessages && <span className="sr-only"> (new messages)</span>}
         </button>
         <button
           onClick={() => setShowParticipants(true)}
@@ -1130,12 +1242,22 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                   maxLength={MAX_MESSAGE_LENGTH}
                   className="flex-1"
                 />
-                <Button variant="ghost" size="icon" onClick={() => setShowEmojis(!showEmojis)} aria-label="Insert emoji">
-                  <Smile className="w-4 h-4" />
-                </Button>
-                <Button size="icon" onClick={sendMessage} className="bg-purple-600 hover:bg-purple-500" aria-label="Send message">
-                  <Send className="w-4 h-4" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={<Button variant="ghost" size="icon" onClick={() => setShowEmojis(!showEmojis)} aria-label="Insert emoji" />}
+                  >
+                    <Smile className="w-4 h-4" />
+                  </TooltipTrigger>
+                  <TooltipContent>Insert emoji</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={<Button size="icon" onClick={sendMessage} className="bg-purple-600 hover:bg-purple-500" aria-label="Send message" />}
+                  >
+                    <Send className="w-4 h-4" />
+                  </TooltipTrigger>
+                  <TooltipContent>Send message</TooltipContent>
+                </Tooltip>
               </div>
             </div>
           </motion.div>
@@ -1174,15 +1296,22 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                       <span className="text-xs text-muted-foreground capitalize">{p.role}</span>
                     </div>
                     {isHost && p.user_id !== currentUser.id && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => handleKickParticipant(p)}
-                        aria-label={`Remove ${p.user?.username || "participant"} from the room`}
-                      >
-                        <UserX className="w-3.5 h-3.5" />
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => handleKickParticipant(p)}
+                              aria-label={`Remove ${p.user?.username || "participant"} from the room`}
+                            />
+                          }
+                        >
+                          <UserX className="w-3.5 h-3.5" />
+                        </TooltipTrigger>
+                        <TooltipContent>Remove from room</TooltipContent>
+                      </Tooltip>
                     )}
                   </div>
                 ))}
@@ -1243,58 +1372,103 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={copyRoomLink} aria-label="Copy room link">
-                {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-              </Button>
+              <Tooltip>
+                <TooltipTrigger render={<Button variant="ghost" size="icon" onClick={copyRoomLink} aria-label="Copy room link" />}>
+                  {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                </TooltipTrigger>
+                <TooltipContent>{copied ? "Link copied!" : "Copy room link"}</TooltipContent>
+              </Tooltip>
               {isHost && (
                 <>
-                  <Button variant="ghost" size="icon" onClick={toggleLock} aria-label="Toggle room lock state">
-                    {isLocked ? <Lock className="w-4 h-4 text-amber-400" /> : <Unlock className="w-4 h-4" />}
-                  </Button>
-                  {(roomType === "party" || roomType === "classroom") && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setIsPickerOpen(true)}
-                      aria-label="Switch game activity"
-                      className="text-purple-400"
+                  <Tooltip>
+                    <TooltipTrigger render={<Button variant="ghost" size="icon" onClick={toggleLock} aria-label="Toggle room lock state" />}>
+                      {isLocked ? <Lock className="w-4 h-4 text-amber-400" /> : <Unlock className="w-4 h-4" />}
+                    </TooltipTrigger>
+                    <TooltipContent>{isLocked ? "Unlock room (allow new joins)" : "Lock room (block new joins)"}</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setIsCloseRoomDialogOpen(true)}
+                          aria-label="Close room for everyone"
+                          className="text-red-400 hover:text-red-300"
+                        />
+                      }
                     >
-                      <Shuffle className="w-4 h-4" />
-                    </Button>
+                      <DoorClosed className="w-4 h-4" />
+                    </TooltipTrigger>
+                    <TooltipContent>Close room for everyone</TooltipContent>
+                  </Tooltip>
+                  {(roomType === "party" || roomType === "classroom") && (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setIsPickerOpen(true)}
+                            aria-label="Switch game activity"
+                            className="text-purple-400"
+                          />
+                        }
+                      >
+                        <Shuffle className="w-4 h-4" />
+                      </TooltipTrigger>
+                      <TooltipContent>Switch game activity</TooltipContent>
+                    </Tooltip>
                   )}
                   {activeActivity && (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              sendActivityEvent({ kind: "activity_reset" });
+                              if (onActivityEventRef.current) onActivityEventRef.current({ kind: "activity_reset" });
+                              if (roomType === "party" || roomType === "classroom") {
+                                changeActivity(null);
+                              }
+                            }}
+                            aria-label="Reset current activity"
+                            className="text-red-400"
+                          />
+                        }
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                      </TooltipTrigger>
+                      <TooltipContent>End current activity</TooltipContent>
+                    </Tooltip>
+                  )}
+                </>
+              )}
+              <Tooltip>
+                <TooltipTrigger
+                  render={
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => {
-                        sendActivityEvent({ kind: "activity_reset" });
-                        if (onActivityEventRef.current) onActivityEventRef.current({ kind: "activity_reset" });
-                        if (roomType === "party" || roomType === "classroom") {
-                          changeActivity(null);
+                        if (typeof window !== "undefined" && window.innerWidth < 768) {
+                          setIsMobileSidebarOpen(true);
+                          if (!showParticipants) setHasUnreadMessages(false);
+                        } else {
+                          setShowParticipants(!showParticipants);
+                          if (showParticipants) setHasUnreadMessages(false);
                         }
                       }}
-                      aria-label="Reset current activity"
-                      className="text-red-400"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                    </Button>
-                  )}
-                </>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  if (typeof window !== "undefined" && window.innerWidth < 768) {
-                    setIsMobileSidebarOpen(true);
-                  } else {
-                    setShowParticipants(!showParticipants);
+                      aria-label="Toggle chat and participants sidebar"
+                    />
                   }
-                }}
-                aria-label="Toggle chat and participants sidebar"
-              >
-                <Users className="w-4 h-4" />
-              </Button>
+                >
+                  <Users className="w-4 h-4" />
+                </TooltipTrigger>
+                <TooltipContent>Chat & participants</TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </div>
@@ -1530,6 +1704,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                           className={`absolute inset-0 flex items-center justify-end pr-6 text-xs font-bold text-white bg-gradient-to-r ${colors[i % colors.length]} to-transparent`}
                           style={{ transform: `rotate(${angle}deg)`, transformOrigin: "center", clipPath: `polygon(50% 50%, 100% 0, 100% ${100 / wheelEntries.length * 2}%)` }}
                         >
+                          <span className="max-w-[70px] truncate">{entry}</span>
                         </div>
                       );
                     })}
@@ -1555,8 +1730,40 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                   <div className="w-full space-y-3">
                     <div className="flex flex-wrap gap-2">
                       {wheelEntries.map((e, i) => (
-                        <Badge key={i} className="bg-purple-500/20 text-purple-300">{e}</Badge>
+                        <Badge
+                          key={i}
+                          className="bg-purple-500/20 text-purple-300 pr-1 gap-1"
+                        >
+                          {e}
+                          <button
+                            type="button"
+                            onClick={() => removeWheelEntry(i)}
+                            disabled={wheelSpinning}
+                            aria-label={`Remove ${e}`}
+                            className="rounded-full hover:bg-white/10 disabled:opacity-50"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </Badge>
                       ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        value={newWheelEntryText}
+                        onChange={(e) => setNewWheelEntryText(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && addWheelEntry()}
+                        placeholder="Add an option..."
+                        maxLength={40}
+                        disabled={wheelSpinning || wheelEntries.length >= 12}
+                        className="flex-1"
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={addWheelEntry}
+                        disabled={wheelSpinning || !newWheelEntryText.trim() || wheelEntries.length >= 12}
+                      >
+                        Add
+                      </Button>
                     </div>
                     <Button
                       disabled={wheelSpinning}
@@ -2110,6 +2317,30 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           {sidebarContent}
         </SheetContent>
       </Sheet>
+
+      {/* Close Room confirmation */}
+      <Dialog open={isCloseRoomDialogOpen} onOpenChange={setIsCloseRoomDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Close this room?</DialogTitle>
+            <DialogDescription>
+              {`Everyone still here will be disconnected and sent back to Explore, and the chat history for this room will be permanently deleted. The room code ${roomCode} will stop working. This can't be undone.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCloseRoomDialogOpen(false)} disabled={isClosingRoom}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCloseRoom}
+              disabled={isClosingRoom}
+            >
+              {isClosingRoom ? "Closing..." : "Close room for everyone"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

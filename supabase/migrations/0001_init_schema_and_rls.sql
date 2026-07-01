@@ -64,6 +64,13 @@ create index if not exists room_participants_room_id_idx on public.room_particip
 create index if not exists chat_messages_room_id_idx on public.chat_messages (room_id);
 create index if not exists rooms_code_idx on public.rooms (code);
 
+-- By default Postgres logical replication (which Supabase Realtime reads
+-- from) only includes primary-key columns in the "old" record on UPDATE and
+-- DELETE. The app's kick flow needs the removed row's user_id to tell a
+-- kicked client it was specifically them, so the full previous row must be
+-- captured.
+alter table public.room_participants replica identity full;
+
 -- ============================================================================
 -- Host-election guard (DB-level, auth-independent)
 -- ============================================================================

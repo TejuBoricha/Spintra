@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/layout/navbar";
@@ -63,6 +64,22 @@ export default function RootLayout({
             }}
           />
         </Providers>
+        {/* E2E test bridge: catches clicks on the hidden server-rendered
+            create-room button (src/app/create/page.tsx) that happen before
+            React hydration attaches the real handler. beforeInteractive
+            requires next/script rather than a raw <script> tag, and per
+            Next's docs that strategy must live in the root layout. */}
+        <Script id="e2e-create-room-bridge" strategy="beforeInteractive">
+          {`
+            window.e2eRoomClicked = false;
+            document.addEventListener('click', function(e) {
+              var btn = e.target;
+              if (btn && (btn.getAttribute('data-testid') === 'create-room-button' || btn.closest('[data-testid="create-room-button"]'))) {
+                window.e2eRoomClicked = true;
+              }
+            });
+          `}
+        </Script>
       </body>
     </html>
   );
