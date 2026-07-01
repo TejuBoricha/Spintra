@@ -236,3 +236,111 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(139, 92, 246, 0.5);
 }
+
+/* ─── Light-Mode Global Contrast Fixes ─── */
+
+/* In light mode, any text-white becomes dark foreground */
+.light .text-white {
+  color: var(--foreground) !important;
+}
+
+/* Gradient-colored text that relies on white stays as-is,
+   but standalone white text inside cards/glass should flip */
+.light .glass-card,
+.light .glass {
+  color: var(--foreground);
+}
+
+/* White-alpha borders → dark-alpha borders in light mode */
+.light [class*="border-white\\/"] {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* White-alpha backgrounds → dark-alpha backgrounds in light mode */
+.light [class*="bg-white\\/"] {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Hover bg-white/5 etc → subtle dark hover */
+.light [class*="hover\\:bg-white"] :hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Status badge text colors - ensure readability in light mode */
+.light .text-red-300 { color: #dc2626 !important; }
+.light .text-emerald-300 { color: #059669 !important; }
+.light .text-amber-300 { color: #d97706 !important; }
+.light .text-purple-300 { color: #7c3aed !important; }
+.light .text-cyan-300 { color: #0891b2 !important; }
+.light .text-pink-300 { color: #db2777 !important; }
+.light .text-violet-300 { color: #7c3aed !important; }
+.light .text-rose-300 { color: #e11d48 !important; }
+.light .text-indigo-300 { color: #4f46e5 !important; }
+.light .text-blue-300 { color: #2563eb !important; }
+
+/* Badge alpha-backgrounds — darken slightly for light mode readability */
+.light [class*="bg-red-500\\/10"] { background-color: rgba(239, 68, 68, 0.12) !important; }
+.light [class*="bg-emerald-500\\/10"] { background-color: rgba(16, 185, 129, 0.12) !important; }
+.light [class*="bg-amber-500\\/10"] { background-color: rgba(245, 158, 11, 0.12) !important; }
+.light [class*="bg-purple-500\\/10"],
+.light [class*="bg-purple-500\\/20"] { background-color: rgba(139, 92, 246, 0.12) !important; }
+.light [class*="bg-cyan-500\\/10"],
+.light [class*="bg-cyan-500\\/20"] { background-color: rgba(6, 182, 212, 0.12) !important; }
+.light [class*="bg-violet-500\\/10"] { background-color: rgba(124, 58, 237, 0.12) !important; }
+.light [class*="bg-pink-500\\/10"],
+.light [class*="bg-pink-500\\/20"] { background-color: rgba(236, 72, 153, 0.12) !important; }
+.light [class*="bg-rose-500\\/10"],
+.light [class*="bg-rose-500\\/20"] { background-color: rgba(244, 63, 94, 0.12) !important; }
+
+/* White/10 bg on badges → soft gray */
+.light [class*="bg-white\\/10"] { background-color: rgba(0, 0, 0, 0.06) !important; }
+.light [class*="text-white\\/60"] { color: var(--muted-foreground) !important; }
+.light [class*="text-white\\/40"] { color: var(--muted-foreground) !important; }
+
+/* Gradient buttons should keep white text */
+.light [class*="bg-gradient-to-r"] .text-white,
+.light [class*="bg-gradient-to-r"],
+.light [class*="bg-gradient-to-br"],
+.light button[class*="from-purple"],
+.light button[class*="from-amber"],
+.light button[class*="from-pink"],
+.light button[class*="from-cyan"],
+.light button[class*="from-emerald"],
+.light button[class*="from-violet"],
+.light button[class*="from-red"],
+.light button[class*="from-indigo"] {
+  color: #ffffff;
+}
+
+/* Keep avatar fallback text white on gradient */
+.light .bg-gradient-to-br.from-purple-500 .text-white,
+.light [class*="bg-gradient-to-br"][class*="from-purple"] {
+  color: #ffffff !important;
+}
+
+/* ─── Glass Card Children text-white Exceptions ─── */
+/* Inside glass-card, coin/dice display circles should keep white text */
+.light .glass-card [class*="bg-gradient-to-br"] {
+  color: #ffffff !important;
+}
+
+/* Room header status label fix in light mode */
+.light .glass h1 {
+  color: var(--foreground);
+}
+
+/* Sidebar tab text fix */
+.light .border-b-2.border-purple-500 {
+  color: var(--foreground) !important;
+}
+
+/* Chat bubble names and messages */
+.light .font-medium.text-sm {
+  color: var(--foreground);
+}
+
+/* Keep gradient text working */
+.light .gradient-text {
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+}

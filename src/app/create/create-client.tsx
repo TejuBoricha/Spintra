@@ -39,11 +39,18 @@ export default function CreateRoomClient() {
     await new Promise((r) => setTimeout(r, 800));
     const code = generateCode();
     const url = `${window.location.origin}/room/${code}`;
+    
+    if (typeof window !== "undefined") {
+      const gameLabel = GAMES.find((g) => g.type === selectedType)?.label || "Game";
+      window.localStorage.setItem(`spintra-room-type-${code}`, selectedType);
+      window.localStorage.setItem(`spintra-room-name-${code}`, roomName || `${gameLabel} Room`);
+    }
+
     setCreatedRoom({ code, url });
     setLocalRoomCreator(code, currentUser.id);
     setIsCreating(false);
     toast.success(`Room ${code} created!`);
-  }, [currentUser.id]);
+  }, [currentUser.id, selectedType, roomName]);
 
   // If E2E clicks the server-rendered button, forward that click to this client handler
   useEffect(() => {
