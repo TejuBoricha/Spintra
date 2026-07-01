@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { HeartHandshake, ArrowRight, CheckCircle, XCircle } from "lucide-react";
+import { HeartHandshake, ArrowRight, CheckCircle, XCircle, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { playPop, playSwipe } from "@/lib/audio";
 
 const statements = [
   "Never have I ever lied in a job interview",
@@ -32,16 +33,19 @@ export default function NeverHaveIEverPage() {
   const [index, setIndex] = useState(0);
   const [responses, setResponses] = useState<Record<number, boolean>>({});
   const [revealed, setRevealed] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   const statement = statements[index % statements.length];
   const iHave = responses[index] === true;
 
   const respond = (have: boolean) => {
+    playPop(soundEnabled);
     setResponses((prev) => ({ ...prev, [index]: have }));
     setRevealed(true);
   };
 
   const next = () => {
+    playSwipe(soundEnabled);
     setIndex((prev) => prev + 1);
     setRevealed(false);
   };
@@ -94,7 +98,7 @@ export default function NeverHaveIEverPage() {
 
         {/* Decision */}
         {!revealed ? (
-          <div className="flex justify-center gap-4 mb-4">
+          <div className="flex justify-center items-center gap-4 mb-4">
             <Button
               size="lg"
               onClick={() => respond(true)}
@@ -109,15 +113,41 @@ export default function NeverHaveIEverPage() {
             >
               <XCircle className="w-5 h-5 mr-2" /> Never Have
             </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              title={soundEnabled ? "Sound On" : "Sound Off"}
+              className="h-12 w-12 border-white/10 rounded-lg"
+            >
+              {soundEnabled ? (
+                <Volume2 className="w-5 h-5" />
+              ) : (
+                <VolumeX className="w-5 h-5" />
+              )}
+            </Button>
           </div>
         ) : (
           <div className="mb-4">
             <p className={`text-lg font-semibold ${iHave ? "text-pink-400" : "text-emerald-400"}`}>
               {iHave ? "😳 You've done it!" : "👼 You're innocent!"}
             </p>
-            <div className="mt-4">
+            <div className="mt-4 flex justify-center items-center gap-3">
               <Button onClick={next} className="bg-gradient-to-r from-purple-600 to-cyan-500 border-0">
                 Next <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                title={soundEnabled ? "Sound On" : "Sound Off"}
+                className="h-10 w-10 border-white/10 rounded-lg"
+              >
+                {soundEnabled ? (
+                  <Volume2 className="w-4 h-4" />
+                ) : (
+                  <VolumeX className="w-4 h-4" />
+                )}
               </Button>
             </div>
           </div>

@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircleQuestion, ShieldAlert } from "lucide-react";
+import { MessageCircleQuestion, ShieldAlert, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { playSwipe } from "@/lib/audio";
 
 const categories = [
   {
@@ -98,9 +99,11 @@ export default function TruthOrDarePage() {
   const [mode, setMode] = useState<"truth" | "dare" | null>(null);
   const [current, setCurrent] = useState<string | null>(null);
   const [used, setUsed] = useState<Set<string>>(new Set());
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   const generate = (type: "truth" | "dare") => {
     setMode(type);
+    playSwipe(soundEnabled);
     const pool = type === "truth" ? category.truths : category.dares;
     const available = pool.filter((q) => !used.has(q));
     if (available.length === 0) {
@@ -155,33 +158,48 @@ export default function TruthOrDarePage() {
         </AnimatePresence>
 
         {/* Action Buttons */}
-        {!current ? (
-          <div className="flex justify-center gap-4">
-            <Button
-              size="lg"
-              onClick={() => generate("truth")}
-              className="px-8 py-6 bg-blue-600 hover:bg-blue-500 text-lg"
-            >
-              <MessageCircleQuestion className="w-5 h-5 mr-2" /> Truth
-            </Button>
-            <Button
-              size="lg"
-              onClick={() => generate("dare")}
-              className="px-8 py-6 bg-red-600 hover:bg-red-500 text-lg"
-            >
-              <ShieldAlert className="w-5 h-5 mr-2" /> Dare
-            </Button>
-          </div>
-        ) : (
-          <div className="flex justify-center gap-4">
-            <Button onClick={() => generate("truth")} variant="outline" className="border-blue-500/20 text-blue-400">
-              <MessageCircleQuestion className="w-4 h-4 mr-2" /> New Truth
-            </Button>
-            <Button onClick={() => generate("dare")} variant="outline" className="border-red-500/20 text-red-400">
-              <ShieldAlert className="w-4 h-4 mr-2" /> New Dare
-            </Button>
-          </div>
-        )}
+        <div className="flex flex-wrap justify-center items-center gap-4">
+          {!current ? (
+            <>
+              <Button
+                size="lg"
+                onClick={() => generate("truth")}
+                className="px-8 py-6 bg-blue-600 hover:bg-blue-500 text-lg"
+              >
+                <MessageCircleQuestion className="w-5 h-5 mr-2" /> Truth
+              </Button>
+              <Button
+                size="lg"
+                onClick={() => generate("dare")}
+                className="px-8 py-6 bg-red-600 hover:bg-red-500 text-lg"
+              >
+                <ShieldAlert className="w-5 h-5 mr-2" /> Dare
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button onClick={() => generate("truth")} variant="outline" className="border-blue-500/20 text-blue-400">
+                <MessageCircleQuestion className="w-4 h-4 mr-2" /> New Truth
+              </Button>
+              <Button onClick={() => generate("dare")} variant="outline" className="border-red-500/20 text-red-400">
+                <ShieldAlert className="w-4 h-4 mr-2" /> New Dare
+              </Button>
+            </>
+          )}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            title={soundEnabled ? "Sound On" : "Sound Off"}
+            className="h-10 w-10 border-white/10"
+          >
+            {soundEnabled ? (
+              <Volume2 className="w-4 h-4" />
+            ) : (
+              <VolumeX className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -23,6 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { playPop, playSuccess } from "@/lib/audio";
 
 // ── Constants ──────────────────────────────────────────────
 const TEAM_COLORS: { bg: string; text: string; ring: string; label: string }[] = [
@@ -69,6 +70,7 @@ export default function TeamMakerPage() {
   const [copied, setCopied] = useState(false);
   const [newMemberInput, setNewMemberInput] = useState<Record<number, string>>({});
   const [collapsedTeams, setCollapsedTeams] = useState<Set<number>>(new Set());
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -82,6 +84,7 @@ export default function TeamMakerPage() {
   const generateTeams = useCallback(() => {
     const names = parsedNames;
     if (names.length === 0) return;
+    playSuccess(soundEnabled);
 
     const count = Math.min(numTeams, names.length);
     const shuffled = seededShuffle(names, Date.now());
@@ -103,9 +106,10 @@ export default function TeamMakerPage() {
 
     setTeams(result);
     setCollapsedTeams(new Set());
-  }, [parsedNames, numTeams]);
+  }, [parsedNames, numTeams, soundEnabled]);
 
   const moveMember = useCallback((fromTeam: number, toTeam: number, memberIndex: number) => {
+    playPop(soundEnabled);
     setTeams((prev) => {
       const next = prev.map((t) => ({ ...t, members: [...t.members] }));
       const member = next[fromTeam].members[memberIndex];
@@ -113,19 +117,21 @@ export default function TeamMakerPage() {
       next[toTeam].members.push(member);
       return next;
     });
-  }, []);
+  }, [soundEnabled]);
 
   const removeMember = useCallback((teamIdx: number, memberIdx: number) => {
+    playPop(soundEnabled);
     setTeams((prev) => {
       const next = prev.map((t) => ({ ...t, members: [...t.members] }));
       next[teamIdx].members.splice(memberIdx, 1);
       return next;
     });
-  }, []);
+  }, [soundEnabled]);
 
   const addMember = useCallback((teamIdx: number) => {
     const name = (newMemberInput[teamIdx] || "").trim();
     if (!name) return;
+    playPop(soundEnabled);
     setTeams((prev) => {
       const next = prev.map((t) => ({ ...t, members: [...t.members] }));
       next[teamIdx].members.push(name);
@@ -136,7 +142,7 @@ export default function TeamMakerPage() {
       delete next[teamIdx];
       return next;
     });
-  }, [newMemberInput]);
+  }, [newMemberInput, soundEnabled]);
 
   const toggleCollapse = useCallback((teamIdx: number) => {
     setCollapsedTeams((prev) => {
@@ -253,6 +259,15 @@ export default function TeamMakerPage() {
                 <p className="text-xs text-muted-foreground">Distribute names evenly across teams</p>
               </div>
               <Switch checked={autoBalance} onCheckedChange={setAutoBalance} />
+            </div>
+ 
+            {/* Sound toggle */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium cursor-pointer">Sound Effects</Label>
+                <p className="text-xs text-muted-foreground">Play sounds when shuffling or adding players</p>
+              </div>
+              <Switch checked={soundEnabled} onCheckedChange={setSoundEnabled} />
             </div>
 
             {/* Generate button */}

@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, History } from "lucide-react";
+import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, History, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { playDiceRoll, playTick } from "@/lib/audio";
 
 const diceTypes = [
   { sides: 4, label: "D4" },
@@ -26,17 +27,20 @@ export default function DicePage() {
   const [count, setCount] = useState(1);
   const [results, setResults] = useState<number[]>([]);
   const [rolling, setRolling] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const [history, setHistory] = useState<{ dice: number; count: number; results: number[] }[]>([]);
 
   const roll = () => {
     if (rolling) return;
     setRolling(true);
     setResults([]);
+    playDiceRoll(soundEnabled);
     setTimeout(() => {
       const newResults = Array.from({ length: count }, () => Math.floor(Math.random() * selectedDice) + 1);
       setResults(newResults);
       setHistory((prev) => [{ dice: selectedDice, count, results: newResults }, ...prev].slice(0, 20));
       setRolling(false);
+      playTick(soundEnabled);
     }, 600);
   };
 
@@ -110,15 +114,31 @@ export default function DicePage() {
           </motion.div>
         )}
 
-        <Button
-          size="lg"
-          onClick={roll}
-          disabled={rolling}
-          className="text-lg px-10 py-6 bg-gradient-to-r from-purple-600 to-cyan-500 text-white border-0 shadow-xl shadow-purple-500/25"
-        >
-          <Dice6 className={`w-5 h-5 mr-2 ${rolling ? "animate-spin" : ""}`} />
-          Roll {count}d{selectedDice}
-        </Button>
+        <div className="flex items-center justify-center gap-4">
+          <Button
+            size="lg"
+            onClick={roll}
+            disabled={rolling}
+            className="text-lg px-10 py-6 bg-gradient-to-r from-purple-600 to-cyan-500 text-white border-0 shadow-xl shadow-purple-500/25"
+          >
+            <Dice6 className={`w-5 h-5 mr-2 ${rolling ? "animate-spin" : ""}`} />
+            Roll {count}d{selectedDice}
+          </Button>
+ 
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            title={soundEnabled ? "Sound On" : "Sound Off"}
+            className="h-12 w-12 rounded-full border-white/10"
+          >
+            {soundEnabled ? (
+              <Volume2 className="w-5 h-5" />
+            ) : (
+              <VolumeX className="w-5 h-5" />
+            )}
+          </Button>
+        </div>
 
         {/* History */}
         {history.length > 0 && (

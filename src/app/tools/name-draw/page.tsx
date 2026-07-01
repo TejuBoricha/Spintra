@@ -16,7 +16,10 @@ import {
   Copy,
   ArrowRight,
   Trophy,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
+import { playSuccess, playTick } from "@/lib/audio";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -65,6 +68,7 @@ export default function NameDrawPage() {
   const [shufflingName, setShufflingName] = useState<string>("");
   const [drawCount, setDrawCount] = useState(1);
   const [multiWinners, setMultiWinners] = useState<string[]>([]);
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   const shuffleIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -127,6 +131,7 @@ export default function NameDrawPage() {
             setMultiWinners(picked);
             setDrawnNames((prev) => [...prev, ...picked]);
             setIsDrawing(false);
+            playSuccess(soundEnabled);
 
             if (eliminationMode && picked.length === availableNames.length) {
               toast("🎉 All names have been drawn!", {
@@ -137,9 +142,10 @@ export default function NameDrawPage() {
           return;
         }
         setShufflingName(availableNames[Math.floor(Math.random() * availableNames.length)]);
+        playTick(soundEnabled);
       }, 80);
     },
-    [availableNames, eliminationMode, clearShuffleInterval]
+    [availableNames, eliminationMode, clearShuffleInterval, soundEnabled]
   );
 
   // Cleanup on unmount
@@ -603,6 +609,19 @@ export default function NameDrawPage() {
                 className="glass border-white/10 hover:border-white/20"
               >
                 <Share2 className="w-4 h-4" />
+              </Button>
+              <Button
+                size="lg"
+                variant="ghost"
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                title={soundEnabled ? "Sound On" : "Sound Off"}
+                className="glass border-white/10 hover:border-white/20"
+              >
+                {soundEnabled ? (
+                  <Volume2 className="w-4 h-4" />
+                ) : (
+                  <VolumeX className="w-4 h-4" />
+                )}
               </Button>
             </div>
 

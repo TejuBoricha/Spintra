@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Swords } from "lucide-react";
+import { Swords, Volume2, VolumeX } from "lucide-react";
+import { playPop, playSuccess, playFailure } from "@/lib/audio";
 
 const choices = [
   { name: "Rock", emoji: "🪨", beats: "Scissors" },
@@ -16,6 +17,7 @@ export default function RPSPage() {
   const [result, setResult] = useState<"win" | "lose" | "draw" | null>(null);
   const [playing, setPlaying] = useState(false);
   const [score, setScore] = useState({ wins: 0, losses: 0, draws: 0 });
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   const play = (choice: string) => {
     if (playing) return;
@@ -23,6 +25,7 @@ export default function RPSPage() {
     setPlayerChoice(choice);
     setAiChoice(null);
     setResult(null);
+    playPop(soundEnabled);
 
     setTimeout(() => {
       const ai = choices[Math.floor(Math.random() * 3)];
@@ -40,6 +43,10 @@ export default function RPSPage() {
         draws: prev.draws + (outcome === "draw" ? 1 : 0),
       }));
       setPlaying(false);
+
+      if (outcome === "win") playSuccess(soundEnabled);
+      else if (outcome === "lose") playFailure(soundEnabled);
+      else playPop(soundEnabled);
     }, 1000);
   };
 
@@ -51,7 +58,20 @@ export default function RPSPage() {
       <div className="max-w-2xl mx-auto text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Rock Paper Scissors</h1>
-          <p className="text-muted-foreground mb-8">Challenge the AI — classic showdown.</p>
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <p className="text-muted-foreground">Challenge the AI — classic showdown.</p>
+            <button
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              title={soundEnabled ? "Sound On" : "Sound Off"}
+              className="p-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+            >
+              {soundEnabled ? (
+                <Volume2 className="w-4 h-4" />
+              ) : (
+                <VolumeX className="w-4 h-4" />
+              )}
+            </button>
+          </div>
 
           {/* Score */}
           <div className="flex justify-center gap-4 mb-8">

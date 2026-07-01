@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Split, ArrowRight, ThumbsUp } from "lucide-react";
+import { Split, ArrowRight, ThumbsUp, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { playPop, playSwipe } from "@/lib/audio";
 
 const questions = [
   { optionA: "Be able to fly", optionB: "Be able to read minds" },
@@ -32,6 +33,7 @@ export default function WouldYouRatherPage() {
   const [current, setCurrent] = useState(0);
   const [votes, setVotes] = useState<Record<number, "A" | "B">>({});
   const [showResult, setShowResult] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   const q = questions[current % questions.length];
   const allVotes = Object.values(votes);
@@ -40,11 +42,13 @@ export default function WouldYouRatherPage() {
   const total = allVotes.length;
 
   const vote = (choice: "A" | "B") => {
+    playPop(soundEnabled);
     setVotes((prev) => ({ ...prev, [current]: choice }));
     setShowResult(true);
   };
 
   const next = () => {
+    playSwipe(soundEnabled);
     setCurrent((prev) => prev + 1);
     setShowResult(false);
   };
@@ -58,7 +62,22 @@ export default function WouldYouRatherPage() {
             <span className="text-sm text-muted-foreground">Tough choices ahead</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Would You Rather</h1>
-          <p className="text-muted-foreground mb-8">Pick your side — no middle ground.</p>
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <p className="text-muted-foreground">Pick your side — no middle ground.</p>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              title={soundEnabled ? "Sound On" : "Sound Off"}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            >
+              {soundEnabled ? (
+                <Volume2 className="w-4 h-4" />
+              ) : (
+                <VolumeX className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
         </motion.div>
 
         {/* Question Card */}

@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Coins, TrendingUp } from "lucide-react";
+import { Coins, TrendingUp, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { playCoinFlip, playTick } from "@/lib/audio";
 
 const faces = [
   { label: "Heads", emoji: "🪙", color: "from-yellow-500 to-amber-600" },
@@ -15,6 +16,7 @@ export default function CoinFlipPage() {
   const [flipping, setFlipping] = useState(false);
   const [result, setResult] = useState<number | null>(null);
   const [history, setHistory] = useState<number[]>([]);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const customLabels = { heads: "Heads", tails: "Tails" };
 
   const stats = {
@@ -29,11 +31,13 @@ export default function CoinFlipPage() {
     if (flipping) return;
     setFlipping(true);
     setResult(null);
+    playCoinFlip(soundEnabled);
     setTimeout(() => {
       const outcome = Math.random() > 0.5 ? 0 : 1;
       setResult(outcome);
       setHistory((prev) => [outcome, ...prev].slice(0, 50));
       setFlipping(false);
+      playTick(soundEnabled);
     }, 1200);
   };
 
@@ -83,15 +87,31 @@ export default function CoinFlipPage() {
           </motion.div>
         )}
 
-        <Button
-          size="lg"
-          onClick={flip}
-          disabled={flipping}
-          className="text-lg px-10 py-6 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-white border-0 shadow-xl shadow-yellow-500/25 mb-16"
-        >
-          <Coins className={`w-5 h-5 mr-2 ${flipping ? "animate-spin" : ""}`} />
-          {flipping ? "Flipping..." : "Flip Coin"}
-        </Button>
+        <div className="flex items-center justify-center gap-4 mb-16">
+          <Button
+            size="lg"
+            onClick={flip}
+            disabled={flipping}
+            className="text-lg px-10 py-6 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-white border-0 shadow-xl shadow-yellow-500/25"
+          >
+            <Coins className={`w-5 h-5 mr-2 ${flipping ? "animate-spin" : ""}`} />
+            {flipping ? "Flipping..." : "Flip Coin"}
+          </Button>
+ 
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            title={soundEnabled ? "Sound On" : "Sound Off"}
+            className="h-12 w-12 rounded-full border-white/10"
+          >
+            {soundEnabled ? (
+              <Volume2 className="w-5 h-5" />
+            ) : (
+              <VolumeX className="w-5 h-5" />
+            )}
+          </Button>
+        </div>
 
         {/* Stats */}
         {history.length > 0 && (

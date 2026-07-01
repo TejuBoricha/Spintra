@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Hash, ArrowUp, ArrowDown, RotateCcw, Target } from "lucide-react";
+import { Hash, ArrowUp, ArrowDown, RotateCcw, Target, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { playSuccess, playFailure, playPop } from "@/lib/audio";
 
 const modes = [
   { name: "Easy", range: 50, attempts: 10 },
@@ -20,6 +21,7 @@ export default function GuessNumberPage() {
   const [guesses, setGuesses] = useState<{ value: number; hint: "high" | "low" | "correct" }[]>([]);
   const [gameOver, setGameOver] = useState(false);
   const [won, setWon] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   const remaining = mode.attempts - guesses.length;
   const lastGuess = guesses[guesses.length - 1];
@@ -35,8 +37,16 @@ export default function GuessNumberPage() {
     setGuesses((prev) => [...prev, { value: num, hint }]);
     setGuess("");
 
-    if (hint === "correct") { setWon(true); setGameOver(true); }
-    else if (guesses.length + 1 >= mode.attempts) { setGameOver(true); }
+    if (hint === "correct") {
+      setWon(true);
+      setGameOver(true);
+      playSuccess(soundEnabled);
+    } else if (guesses.length + 1 >= mode.attempts) {
+      setGameOver(true);
+      playFailure(soundEnabled);
+    } else {
+      playPop(soundEnabled);
+    }
   };
 
   const reset = (newMode?: (typeof modes)[number]) => {
@@ -107,6 +117,19 @@ export default function GuessNumberPage() {
             <Button onClick={makeGuess} className="bg-purple-600 hover:bg-purple-500">
               <Target className="w-4 h-4 mr-2" /> Guess
             </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              title={soundEnabled ? "Sound On" : "Sound Off"}
+              className="h-12 w-12 rounded-xl border-white/10"
+            >
+              {soundEnabled ? (
+                <Volume2 className="w-5 h-5" />
+              ) : (
+                <VolumeX className="w-5 h-5" />
+              )}
+            </Button>
           </div>
         )}
 
@@ -131,9 +154,24 @@ export default function GuessNumberPage() {
                 ? `The number was ${target}. Found in ${guesses.length} tries!`
                 : `The number was ${target}.`}
             </p>
-            <Button onClick={() => reset()} variant="outline" className="border-white/10">
-              <RotateCcw className="w-4 h-4 mr-2" /> Play Again
-            </Button>
+            <div className="flex justify-center gap-3">
+              <Button onClick={() => reset()} variant="outline" className="border-white/10">
+                <RotateCcw className="w-4 h-4 mr-2" /> Play Again
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                title={soundEnabled ? "Sound On" : "Sound Off"}
+                className="h-10 w-10 border-white/10 rounded-lg"
+              >
+                {soundEnabled ? (
+                  <Volume2 className="w-4 h-4" />
+                ) : (
+                  <VolumeX className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
           </motion.div>
         )}
 

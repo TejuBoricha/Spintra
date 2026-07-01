@@ -13,7 +13,10 @@ import {
   ArrowRight,
   Check,
   LayoutTemplate,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
+import { playPop, playSuccess } from "@/lib/audio";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -450,6 +453,7 @@ export default function TournamentPage() {
   const [seedInput, setSeedInput] = useState("");
   const [tournamentType, setTournamentType] = useState<TournamentType>("single-elimination");
   const [tournament, setTournament] = useState<Tournament | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const [editingMatch, setEditingMatch] = useState<{
     match: BracketMatch;
     roundIdx: number;
@@ -480,6 +484,7 @@ export default function TournamentPage() {
       toast.error("Need at least 2 participants!");
       return;
     }
+    playSuccess(soundEnabled);
 
     let rounds: BracketMatch[][] = [];
     let losersBracket: BracketMatch[][] | undefined;
@@ -515,7 +520,7 @@ export default function TournamentPage() {
     });
 
     toast.success("Bracket generated!");
-  }, [participants, seeds, tournamentType]);
+  }, [participants, seeds, tournamentType, soundEnabled]);
 
   const handleScoreSave = useCallback(
     (s1: number, s2: number) => {
@@ -525,6 +530,11 @@ export default function TournamentPage() {
       const bracket = bracketKey === "losersBracket" ? tournament.losersBracket! : tournament.rounds;
 
       const winner = s1 > s2 ? match.player1 : s2 > s1 ? match.player2 : null;
+      if (winner) {
+        playSuccess(soundEnabled);
+      } else {
+        playPop(soundEnabled);
+      }
 
       // Update the match
       const updatedBracket = bracket.map((round) =>
@@ -588,7 +598,7 @@ export default function TournamentPage() {
       setEditingMatch(null);
       toast.success(winner ? `${winner} advances!` : "Draw recorded!");
     },
-    [editingMatch, tournament]
+    [editingMatch, tournament, soundEnabled]
   );
 
   const applyTemplate = useCallback((key: string) => {
@@ -850,9 +860,22 @@ export default function TournamentPage() {
           >
             {/* Tournament Type */}
             <div className="glass-card p-5 space-y-4">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                Format
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                  Format
+                </h2>
+                <button
+                  onClick={() => setSoundEnabled(!soundEnabled)}
+                  title={soundEnabled ? "Sound On" : "Sound Off"}
+                  className="p-1 rounded hover:bg-white/[0.05] transition-colors text-muted-foreground hover:text-foreground"
+                >
+                  {soundEnabled ? (
+                    <Volume2 className="w-4 h-4 text-emerald-400" />
+                  ) : (
+                    <VolumeX className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
               <Tabs
                 value={tournamentType}
                 onValueChange={(v) => {

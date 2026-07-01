@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { playTick } from "@/lib/audio";
 
 // ── Types ──────────────────────────────────────────────────
 interface WheelEntry {
@@ -183,6 +184,7 @@ export default function LuckyWheelPage() {
   const angleRef = useRef(0);
   const velocityRef = useRef(0);
   const animationRef = useRef<number>(0);
+  const lastSegmentIndexRef = useRef<number>(-1);
   const friction = 0.985;
 
   const totalWeight = entries.reduce((s, e) => s + e.weight, 0);
@@ -315,12 +317,14 @@ export default function LuckyWheelPage() {
   // ── Spin logic ──
   const spin = useCallback(() => {
     if (spinning || entries.length === 0) return;
+    playTick(soundEnabled);
     setSpinning(true);
     setWinner(null);
     setShowConfetti(false);
 
     // Initial velocity: 15-25 rad per frame (fast spin)
     velocityRef.current = 0.3 + Math.random() * 0.3;
+    lastSegmentIndexRef.current = -1;
 
     const animate = () => {
       velocityRef.current *= friction;
@@ -328,23 +332,31 @@ export default function LuckyWheelPage() {
 
       drawWheel(angleRef.current);
 
+      const normalizedAngle =
+        ((angleRef.current % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+      const pointerAngle = (2 * Math.PI - normalizedAngle + Math.PI / 2) % (Math.PI * 2);
+
+      let cumulative = 0;
+      let curIndex = 0;
+      for (let i = 0; i < entries.length; i++) {
+        cumulative += (entries[i].weight / totalWeight) * Math.PI * 2;
+        if (pointerAngle <= cumulative) {
+          curIndex = i;
+          break;
+        }
+      }
+
+      if (curIndex !== lastSegmentIndexRef.current) {
+        if (lastSegmentIndexRef.current !== -1) {
+          playTick(soundEnabled);
+        }
+        lastSegmentIndexRef.current = curIndex;
+      }
+
       if (velocityRef.current > 0.0005) {
         animationRef.current = requestAnimationFrame(animate);
       } else {
-        // Determine winner
-        const normalizedAngle =
-          ((angleRef.current % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-        const pointerAngle = (2 * Math.PI - normalizedAngle + Math.PI / 2) % (Math.PI * 2);
-
-        let cumulative = 0;
-        for (const entry of entries) {
-          cumulative += (entry.weight / totalWeight) * Math.PI * 2;
-          if (pointerAngle <= cumulative) {
-            setWinner(entry.label);
-            break;
-          }
-        }
-
+        setWinner(entries[curIndex].label);
         setSpinning(false);
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 3000);
@@ -352,7 +364,7 @@ export default function LuckyWheelPage() {
     };
 
     animationRef.current = requestAnimationFrame(animate);
-  }, [spinning, entries, totalWeight, drawWheel]);
+  }, [spinning, entries, totalWeight, drawWheel, soundEnabled]);
 
   // ── Initial draw and resize ──
   useEffect(() => {
