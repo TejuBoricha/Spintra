@@ -69,6 +69,7 @@ export default function WouldYouRatherPage() {
               size="icon-sm"
               onClick={() => setSoundEnabled(!soundEnabled)}
               title={soundEnabled ? "Sound On" : "Sound Off"}
+              aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
               className="h-8 w-8 text-muted-foreground hover:text-foreground"
             >
               {soundEnabled ? (

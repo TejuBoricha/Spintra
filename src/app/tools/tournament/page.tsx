@@ -867,6 +867,7 @@ export default function TournamentPage() {
                 <button
                   onClick={() => setSoundEnabled(!soundEnabled)}
                   title={soundEnabled ? "Sound On" : "Sound Off"}
+                  aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
                   className="p-1 rounded hover:bg-white/[0.05] transition-colors text-muted-foreground hover:text-foreground"
                 >
                   {soundEnabled ? (

@@ -32,6 +32,71 @@ export default function ExplorePage() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
 
+  const filteredRooms = trendingRooms.filter((room) => {
+    // Search check
+    const query = search.toLowerCase().trim();
+    if (query) {
+      const matchName = room.name.toLowerCase().includes(query);
+      const matchCode = room.code.toLowerCase().includes(query);
+      const matchHost = room.host.toLowerCase().includes(query);
+      const matchType = room.type.toLowerCase().includes(query);
+      if (!matchName && !matchCode && !matchHost && !matchType) return false;
+    }
+
+    // Category check
+    if (activeCategory === "All") return true;
+    if (activeCategory === "Trending") return room.hearts > 200;
+    if (activeCategory === "New") return room.code.startsWith("X") || room.code.startsWith("A");
+    if (activeCategory === "Popular") return room.hearts > 300 || room.participants > 15;
+    if (activeCategory === "Teams") return room.type === "team-maker" || room.type === "tournament";
+    if (activeCategory === "Party") {
+      return ["party", "truth-or-dare", "lucky-wheel", "rps", "would-you-rather", "never-have-i-ever", "coin-flip", "dice"].includes(room.type);
+    }
+    if (activeCategory === "Classroom") return ["name-draw", "guess-number"].includes(room.type);
+    return true;
+  });
+
+  const filteredTemplates = featuredTemplates.filter((t) => {
+    const query = search.toLowerCase().trim();
+    if (query) {
+      const matchLabel = t.label.toLowerCase().includes(query);
+      const matchType = t.type.toLowerCase().includes(query);
+      if (!matchLabel && !matchType) return false;
+    }
+
+    if (activeCategory === "All") return true;
+    if (activeCategory === "Teams") return t.type === "team-maker" || t.type === "tournament";
+    if (activeCategory === "Party") {
+      return ["lucky-wheel", "coin-flip", "dice", "rps", "truth-or-dare", "would-you-rather", "never-have-i-ever"].includes(t.type);
+    }
+    if (activeCategory === "Classroom") return ["name-draw", "guess-number"].includes(t.type);
+    return true;
+  });
+
+  const filteredActivities = [
+    { action: "created a", item: "Team Room", user: "Alex", time: "2 min ago", emoji: "👥", type: "team-maker" },
+    { action: "spun the", item: "Giveaway Wheel", user: "Sarah", time: "5 min ago", emoji: "🎡", type: "lucky-wheel" },
+    { action: "won the", item: "Fortune Wheel", user: "Mike", time: "8 min ago", emoji: "🏆", type: "lucky-wheel" },
+    { action: "ran a", item: "Tournament Bracket", user: "Jordan", time: "12 min ago", emoji: "🏅", type: "tournament" },
+    { action: "drew a winner in", item: "Name Draw", user: "Emma", time: "15 min ago", emoji: "🎯", type: "name-draw" },
+  ].filter((act) => {
+    const query = search.toLowerCase().trim();
+    if (query) {
+      const matchUser = act.user.toLowerCase().includes(query);
+      const matchItem = act.item.toLowerCase().includes(query);
+      const matchAction = act.action.toLowerCase().includes(query);
+      if (!matchUser && !matchItem && !matchAction) return false;
+    }
+
+    if (activeCategory === "All") return true;
+    if (activeCategory === "Teams") return act.type === "team-maker" || act.type === "tournament";
+    if (activeCategory === "Party") {
+      return ["lucky-wheel", "coin-flip", "dice", "rps", "truth-or-dare", "would-you-rather", "never-have-i-ever"].includes(act.type);
+    }
+    if (activeCategory === "Classroom") return ["name-draw", "guess-number"].includes(act.type);
+    return true;
+  });
+
   return (
     <div className="min-h-screen pt-24 pb-16 px-4">
       <div className="max-w-6xl mx-auto">
@@ -82,39 +147,45 @@ export default function ExplorePage() {
             <h2 className="text-2xl font-bold">Trending Rooms</h2>
             <Badge variant="secondary" className="ml-2">Live</Badge>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {trendingRooms.map((room, i) => (
-              <Link key={room.id} href={`/room/${room.code}`}>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="glass-card p-5 group cursor-pointer hover:border-purple-500/30 card-3d"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="font-semibold group-hover:text-white transition-colors">{room.name}</h3>
-                      <p className="text-sm text-muted-foreground">#{room.code}</p>
+          {filteredRooms.length === 0 ? (
+            <div className="glass-card p-12 text-center text-muted-foreground text-sm">
+              No live matching rooms found. Create a room to start playing!
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredRooms.map((room, i) => (
+                <Link key={room.id} href={`/room/${room.code}`}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="glass-card p-5 group cursor-pointer hover:border-purple-500/30 card-3d"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="font-semibold group-hover:text-white transition-colors">{room.name}</h3>
+                        <p className="text-sm text-muted-foreground">#{room.code}</p>
+                      </div>
+                      <Badge variant="secondary" className="capitalize text-xs">
+                        {room.type.replace("-", " ")}
+                      </Badge>
                     </div>
-                    <Badge variant="secondary" className="capitalize text-xs">
-                      {room.type.replace("-", " ")}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <div className="flex items-center gap-3">
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3.5 h-3.5" /> {room.participants}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Heart className="w-3.5 h-3.5 text-red-400" /> {room.hearts}
-                      </span>
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1">
+                          <Users className="w-3.5 h-3.5" /> {room.participants}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Heart className="w-3.5 h-3.5 text-red-400" /> {room.hearts}
+                        </span>
+                      </div>
+                      <span>by @{room.host}</span>
                     </div>
-                    <span>by @{room.host}</span>
-                  </div>
-                </motion.div>
-              </Link>
-            ))}
-          </div>
+                  </motion.div>
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Featured Templates */}
@@ -123,27 +194,33 @@ export default function ExplorePage() {
             <Sparkles className="w-5 h-5 text-amber-400" />
             <h2 className="text-2xl font-bold">Featured Templates</h2>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {featuredTemplates.map((t, i) => {
-              const Icon = t.icon;
-              return (
-                <Link key={t.label} href={t.href}>
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.08 }}
-                    className="glass-card p-5 text-center group cursor-pointer card-3d"
-                  >
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-                      <Icon className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="font-semibold text-sm">{t.label}</h3>
-                    <p className="text-xs text-muted-foreground mt-1">{t.users} uses</p>
-                  </motion.div>
-                </Link>
-              );
-            })}
-          </div>
+          {filteredTemplates.length === 0 ? (
+            <div className="glass-card p-12 text-center text-muted-foreground text-sm">
+              No matching templates found.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filteredTemplates.map((t, i) => {
+                const Icon = t.icon;
+                return (
+                  <Link key={t.label} href={t.href}>
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.08 }}
+                      className="glass-card p-5 text-center group cursor-pointer card-3d"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                        <Icon className="w-6 h-6 text-white" />
+                      </div>
+                      <h3 className="font-semibold text-sm">{t.label}</h3>
+                      <p className="text-xs text-muted-foreground mt-1">{t.users} uses</p>
+                    </motion.div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         {/* Recent Activity */}
@@ -152,31 +229,31 @@ export default function ExplorePage() {
             <Clock className="w-5 h-5 text-purple-400" />
             <h2 className="text-2xl font-bold">Recent Activity</h2>
           </div>
-          <div className="space-y-3">
-            {[
-              { action: "created a", item: "Team Room", user: "Alex", time: "2 min ago", emoji: "👥" },
-              { action: "spun the", item: "Giveaway Wheel", user: "Sarah", time: "5 min ago", emoji: "🎡" },
-              { action: "won the", item: "Fortune Wheel", user: "Mike", time: "8 min ago", emoji: "🏆" },
-              { action: "ran a", item: "Tournament Bracket", user: "Jordan", time: "12 min ago", emoji: "🏅" },
-              { action: "drew a winner in", item: "Name Draw", user: "Emma", time: "15 min ago", emoji: "🎯" },
-            ].map((activity, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="glass-card p-4 flex items-center gap-4"
-              >
-                <span className="text-2xl">{activity.emoji}</span>
-                <div className="flex-1">
-                  <span className="font-medium">{activity.user}</span>{" "}
-                  <span className="text-muted-foreground">{activity.action}</span>{" "}
-                  <span className="font-medium">{activity.item}</span>
-                </div>
-                <span className="text-sm text-muted-foreground">{activity.time}</span>
-              </motion.div>
-            ))}
-          </div>
+          {filteredActivities.length === 0 ? (
+            <div className="glass-card p-8 text-center text-muted-foreground text-sm">
+              No recent activity matching your filters.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredActivities.map((activity, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="glass-card p-4 flex items-center gap-4"
+                >
+                  <span className="text-2xl">{activity.emoji}</span>
+                  <div className="flex-1">
+                    <span className="font-medium">{activity.user}</span>{" "}
+                    <span className="text-muted-foreground">{activity.action}</span>{" "}
+                    <span className="font-medium">{activity.item}</span>
+                  </div>
+                  <span className="text-sm text-muted-foreground">{activity.time}</span>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </div>

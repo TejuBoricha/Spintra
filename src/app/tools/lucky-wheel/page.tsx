@@ -499,6 +499,7 @@ export default function LuckyWheelPage() {
                 size="icon"
                 onClick={() => setSoundEnabled(!soundEnabled)}
                 title={soundEnabled ? "Sound On" : "Sound Off"}
+                aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
                 className="h-10 w-10 rounded-full"
               >
                 {soundEnabled ? (

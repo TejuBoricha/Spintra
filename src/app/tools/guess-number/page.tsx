@@ -122,6 +122,7 @@ export default function GuessNumberPage() {
               size="icon"
               onClick={() => setSoundEnabled(!soundEnabled)}
               title={soundEnabled ? "Sound On" : "Sound Off"}
+              aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
               className="h-12 w-12 rounded-xl border-white/10"
             >
               {soundEnabled ? (
@@ -163,6 +164,7 @@ export default function GuessNumberPage() {
                 size="icon"
                 onClick={() => setSoundEnabled(!soundEnabled)}
                 title={soundEnabled ? "Sound On" : "Sound Off"}
+                aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
                 className="h-10 w-10 border-white/10 rounded-lg"
               >
                 {soundEnabled ? (

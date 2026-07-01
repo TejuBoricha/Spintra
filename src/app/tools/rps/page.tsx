@@ -63,6 +63,7 @@ export default function RPSPage() {
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
               title={soundEnabled ? "Sound On" : "Sound Off"}
+              aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
               className="p-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
             >
               {soundEnabled ? (

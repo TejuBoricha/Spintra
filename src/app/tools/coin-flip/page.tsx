@@ -103,6 +103,7 @@ export default function CoinFlipPage() {
             size="icon"
             onClick={() => setSoundEnabled(!soundEnabled)}
             title={soundEnabled ? "Sound On" : "Sound Off"}
+            aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
             className="h-12 w-12 rounded-full border-white/10"
           >
             {soundEnabled ? (

@@ -598,6 +598,7 @@ export default function NameDrawPage() {
                 onClick={reset}
                 disabled={drawnNames.length === 0 && !currentWinner}
                 className="glass border-white/10 hover:border-white/20"
+                aria-label="Reset draw history"
               >
                 <RotateCcw className="w-4 h-4" />
               </Button>
@@ -607,6 +608,7 @@ export default function NameDrawPage() {
                 onClick={shareResults}
                 disabled={drawnNames.length === 0}
                 className="glass border-white/10 hover:border-white/20"
+                aria-label="Share results"
               >
                 <Share2 className="w-4 h-4" />
               </Button>
@@ -615,6 +617,7 @@ export default function NameDrawPage() {
                 variant="ghost"
                 onClick={() => setSoundEnabled(!soundEnabled)}
                 title={soundEnabled ? "Sound On" : "Sound Off"}
+                aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
                 className="glass border-white/10 hover:border-white/20"
               >
                 {soundEnabled ? (

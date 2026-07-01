@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Send, Crown, MessageCircle, Lock, Unlock,
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import type { User, ChatMessage, RoomParticipant } from "@/lib/types";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getOrCreateRoomUser, getLocalRoomCreatorId } from "@/lib/room-user";
@@ -64,6 +65,13 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   const isHost =
     participants.some((p) => p.user_id === currentUser.id && p.role === "host" && p.is_online) ||
     localCreatorId === currentUser.id;
+
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length]);
 
   const realtimeStatusLabel = realtimeError
     ? "Offline"
@@ -451,8 +459,166 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     };
   }, [roomCode, currentUser.id]);
 
+  const sidebarContent = (
+    <div className="flex-1 flex flex-col h-full bg-background/50 backdrop-blur-sm overflow-hidden">
+      {/* Tabs */}
+      <div className="flex border-b border-white/5 shrink-0">
+        <button
+          onClick={() => setShowParticipants(false)}
+          className={`flex-1 py-3 text-sm font-medium transition-colors ${!showParticipants ? "text-white border-b-2 border-purple-500" : "text-muted-foreground"}`}
+        >
+          <MessageCircle className="w-4 h-4 inline mr-2" />
+          Chat
+        </button>
+        <button
+          onClick={() => setShowParticipants(true)}
+          className={`flex-1 py-3 text-sm font-medium transition-colors ${showParticipants ? "text-white border-b-2 border-purple-500" : "text-muted-foreground"}`}
+        >
+          <Users className="w-4 h-4 inline mr-2" />
+          People ({participants.length})
+        </button>
+      </div>
+
+      <AnimatePresence mode="wait">
+        {!showParticipants ? (
+          <motion.div
+            key="chat"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="flex-1 flex flex-col overflow-hidden h-full"
+          >
+            {/* Messages */}
+            <ScrollArea className="flex-1 px-4 py-4 overflow-y-auto">
+              <div className="space-y-4">
+                {messages.map((msg) => {
+                  const participant = participants.find((p) => p.user_id === msg.user_id);
+                  const username = msg.user_id === currentUser.id 
+                    ? "You" 
+                    : (participant?.user?.username || msg.user?.username || "Guest");
+                  const initials = username.slice(0, 2).toUpperCase() || "??";
+                  const isMsgHost = participant?.role === "host";
+
+                  return (
+                    <div key={msg.id} className="flex gap-3">
+                      <Avatar className="w-8 h-8 shrink-0">
+                        <AvatarFallback className="text-xs bg-gradient-to-br from-purple-500 to-cyan-500 text-white">
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">
+                            {username}
+                          </span>
+                          {isMsgHost && (
+                            <Crown className="w-3 h-3 text-amber-400" />
+                          )}
+                         </div>
+                        <p className="text-sm text-muted-foreground">{msg.content}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div ref={messagesEndRef} />
+              </div>
+            </ScrollArea>
+
+            {/* Emoji bar */}
+            <AnimatePresence>
+              {showEmojis && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="px-4 py-2 border-t border-white/5 flex gap-1 shrink-0"
+                >
+                  {emojis.map((emoji) => (
+                    <button
+                      key={emoji}
+                      onClick={() => {
+                        setNewMessage((prev) => prev + emoji);
+                        setShowEmojis(false);
+                      }}
+                      className="w-8 h-8 flex items-center justify-center hover:bg-white/5 rounded-lg text-lg transition-colors"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Input */}
+            <div className="p-4 border-t border-white/5 shrink-0">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Type a message..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                  className="flex-1"
+                />
+                <Button variant="ghost" size="icon" onClick={() => setShowEmojis(!showEmojis)} aria-label="Insert emoji">
+                  <Smile className="w-4 h-4" />
+                </Button>
+                <Button size="icon" onClick={sendMessage} className="bg-purple-600 hover:bg-purple-500" aria-label="Send message">
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="participants"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="flex-1 overflow-hidden h-full"
+          >
+            <ScrollArea className="h-full px-4 py-4 overflow-y-auto">
+              <div className="space-y-1">
+                {participants.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
+                  >
+                    <div className="relative">
+                      <Avatar className="w-9 h-9">
+                        <AvatarFallback className="text-xs bg-gradient-to-br from-purple-500 to-cyan-500 text-white">
+                          {p.user?.username?.slice(0, 2).toUpperCase() || "??"}
+                        </AvatarFallback>
+                      </Avatar>
+                      {p.is_online && (
+                         <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-background" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium truncate">
+                          {p.user_id === currentUser.id ? "You" : p.user?.username}
+                        </span>
+                        {p.role === "host" && <Crown className="w-3 h-3 text-amber-400 shrink-0" />}
+                      </div>
+                      <span className="text-xs text-muted-foreground capitalize">{p.role}</span>
+                    </div>
+                    {isHost && p.user_id !== currentUser.id && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Manage participant ${p.user?.username}`}>
+                        <MoreHorizontal className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen pt-16 flex">
+    <div className="min-h-screen pt-16 flex flex-col md:flex-row">
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Room Header */}
@@ -491,15 +657,26 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={copyRoomLink}>
+              <Button variant="ghost" size="icon" onClick={copyRoomLink} aria-label="Copy room link">
                 {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
               </Button>
               {isHost && (
-                <Button variant="ghost" size="icon" onClick={toggleLock}>
+                <Button variant="ghost" size="icon" onClick={toggleLock} aria-label="Toggle room lock state">
                   {isLocked ? <Lock className="w-4 h-4 text-amber-400" /> : <Unlock className="w-4 h-4" />}
                 </Button>
               )}
-              <Button variant="ghost" size="icon" onClick={() => setShowParticipants(!showParticipants)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  if (typeof window !== "undefined" && window.innerWidth < 768) {
+                    setIsMobileSidebarOpen(true);
+                  } else {
+                    setShowParticipants(!showParticipants);
+                  }
+                }}
+                aria-label="Toggle chat and participants sidebar"
+              >
                 <Users className="w-4 h-4" />
               </Button>
             </div>
@@ -543,161 +720,17 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         </div>
       </div>
 
-      {/* Sidebar - Chat & Participants */}
-      <div className="w-80 border-l border-white/5 flex flex-col bg-background/50 backdrop-blur-sm">
-        {/* Tabs */}
-        <div className="flex border-b border-white/5">
-          <button
-            onClick={() => setShowParticipants(false)}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${!showParticipants ? "text-white border-b-2 border-purple-500" : "text-muted-foreground"}`}
-          >
-            <MessageCircle className="w-4 h-4 inline mr-2" />
-            Chat
-          </button>
-          <button
-            onClick={() => setShowParticipants(true)}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${showParticipants ? "text-white border-b-2 border-purple-500" : "text-muted-foreground"}`}
-          >
-            <Users className="w-4 h-4 inline mr-2" />
-            People ({participants.length})
-          </button>
-        </div>
-
-        <AnimatePresence mode="wait">
-          {!showParticipants ? (
-            <motion.div
-              key="chat"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="flex-1 flex flex-col"
-            >
-              {/* Messages */}
-              <ScrollArea className="flex-1 px-4 py-4">
-                <div className="space-y-4">
-                  {messages.map((msg) => {
-                    const participant = participants.find((p) => p.user_id === msg.user_id);
-                    const username = msg.user_id === currentUser.id 
-                      ? "You" 
-                      : (participant?.user?.username || msg.user?.username || "Guest");
-                    const initials = username.slice(0, 2).toUpperCase() || "??";
-                    const isMsgHost = participant?.role === "host";
-
-                    return (
-                      <div key={msg.id} className="flex gap-3">
-                        <Avatar className="w-8 h-8 shrink-0">
-                          <AvatarFallback className="text-xs bg-gradient-to-br from-purple-500 to-cyan-500 text-white">
-                            {initials}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">
-                              {username}
-                            </span>
-                            {isMsgHost && (
-                              <Crown className="w-3 h-3 text-amber-400" />
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground">{msg.content}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
-
-              {/* Emoji bar */}
-              <AnimatePresence>
-                {showEmojis && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="px-4 py-2 border-t border-white/5 flex gap-1"
-                  >
-                    {emojis.map((emoji) => (
-                      <button
-                        key={emoji}
-                        onClick={() => {
-                          setNewMessage((prev) => prev + emoji);
-                          setShowEmojis(false);
-                        }}
-                        className="w-8 h-8 flex items-center justify-center hover:bg-white/5 rounded-lg text-lg transition-colors"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Input */}
-              <div className="p-4 border-t border-white/5">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Type a message..."
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                    className="flex-1"
-                  />
-                  <Button variant="ghost" size="icon" onClick={() => setShowEmojis(!showEmojis)}>
-                    <Smile className="w-4 h-4" />
-                  </Button>
-                  <Button size="icon" onClick={sendMessage} className="bg-purple-600 hover:bg-purple-500">
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="participants"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="flex-1"
-            >
-              <ScrollArea className="h-full px-4 py-4">
-                <div className="space-y-1">
-                  {participants.map((p) => (
-                    <div
-                      key={p.id}
-                      className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
-                    >
-                      <div className="relative">
-                        <Avatar className="w-9 h-9">
-                          <AvatarFallback className="text-xs bg-gradient-to-br from-purple-500 to-cyan-500 text-white">
-                            {p.user?.username?.slice(0, 2).toUpperCase() || "??"}
-                          </AvatarFallback>
-                        </Avatar>
-                        {p.is_online && (
-                          <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-background" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium truncate">
-                            {p.user_id === currentUser.id ? "You" : p.user?.username}
-                          </span>
-                          {p.role === "host" && <Crown className="w-3 h-3 text-amber-400 shrink-0" />}
-                        </div>
-                        <span className="text-xs text-muted-foreground capitalize">{p.role}</span>
-                      </div>
-                      {isHost && p.user_id !== currentUser.id && (
-                        <Button variant="ghost" size="icon" className="h-7 w-7">
-                          <MoreHorizontal className="w-3.5 h-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </motion.div>
-          )}
-        </AnimatePresence>
+      {/* Desktop Sidebar - Chat & Participants */}
+      <div className="hidden md:flex md:w-80 md:border-l md:border-white/5 md:flex-col md:bg-background/50 md:backdrop-blur-sm">
+        {sidebarContent}
       </div>
+
+      {/* Mobile Sidebar Slide-over Drawer */}
+      <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
+        <SheetContent side="right" className="p-0 w-80 bg-background border-l border-white/5 flex flex-col h-full">
+          {sidebarContent}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

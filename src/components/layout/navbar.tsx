@@ -129,6 +129,7 @@ export function Navbar() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
                 className="text-muted-foreground"
               >
                 {theme === "dark" ? (
@@ -152,6 +153,7 @@ export function Navbar() {
               size="icon"
               className="md:hidden"
               onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
             >
               {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </Button>

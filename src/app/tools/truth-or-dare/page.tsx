@@ -191,6 +191,7 @@ export default function TruthOrDarePage() {
             size="icon"
             onClick={() => setSoundEnabled(!soundEnabled)}
             title={soundEnabled ? "Sound On" : "Sound Off"}
+            aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
             className="h-10 w-10 border-white/10"
           >
             {soundEnabled ? (

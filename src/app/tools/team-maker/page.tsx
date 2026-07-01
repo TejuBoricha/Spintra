@@ -27,18 +27,18 @@ import { playPop, playSuccess } from "@/lib/audio";
 
 // ── Constants ──────────────────────────────────────────────
 const TEAM_COLORS: { bg: string; text: string; ring: string; label: string }[] = [
-  { bg: "bg-purple-500/20", text: "text-purple-300", ring: "ring-purple-500/30", label: "Purple" },
-  { bg: "bg-cyan-500/20", text: "text-cyan-300", ring: "ring-cyan-500/30", label: "Cyan" },
-  { bg: "bg-emerald-500/20", text: "text-emerald-300", ring: "ring-emerald-500/30", label: "Emerald" },
-  { bg: "bg-amber-500/20", text: "text-amber-300", ring: "ring-amber-500/30", label: "Amber" },
-  { bg: "bg-pink-500/20", text: "text-pink-300", ring: "ring-pink-500/30", label: "Pink" },
-  { bg: "bg-blue-500/20", text: "text-blue-300", ring: "ring-blue-500/30", label: "Blue" },
-  { bg: "bg-orange-500/20", text: "text-orange-300", ring: "ring-orange-500/30", label: "Orange" },
-  { bg: "bg-teal-500/20", text: "text-teal-300", ring: "ring-teal-500/30", label: "Teal" },
-  { bg: "bg-red-500/20", text: "text-red-300", ring: "ring-red-500/30", label: "Red" },
-  { bg: "bg-indigo-500/20", text: "text-indigo-300", ring: "ring-indigo-500/30", label: "Indigo" },
-  { bg: "bg-lime-500/20", text: "text-lime-300", ring: "ring-lime-500/30", label: "Lime" },
-  { bg: "bg-rose-500/20", text: "text-rose-300", ring: "ring-rose-500/30", label: "Rose" },
+  { bg: "dark:bg-purple-500/20 bg-purple-500/10", text: "dark:text-purple-300 text-purple-700 font-medium", ring: "dark:ring-purple-500/30 ring-purple-500/20", label: "Purple" },
+  { bg: "dark:bg-cyan-500/20 bg-cyan-500/10", text: "dark:text-cyan-300 text-cyan-700 font-medium", ring: "dark:ring-cyan-500/30 ring-cyan-500/20", label: "Cyan" },
+  { bg: "dark:bg-emerald-500/20 bg-emerald-500/10", text: "dark:text-emerald-300 text-emerald-700 font-medium", ring: "dark:ring-emerald-500/30 ring-emerald-500/20", label: "Emerald" },
+  { bg: "dark:bg-amber-500/20 bg-amber-500/10", text: "dark:text-amber-300 text-amber-800 font-medium", ring: "dark:ring-amber-500/30 ring-amber-500/20", label: "Amber" },
+  { bg: "dark:bg-pink-500/20 bg-pink-500/10", text: "dark:text-pink-300 text-pink-700 font-medium", ring: "dark:ring-pink-500/30 ring-pink-500/20", label: "Pink" },
+  { bg: "dark:bg-blue-500/20 bg-blue-500/10", text: "dark:text-blue-300 text-blue-700 font-medium", ring: "dark:ring-blue-500/30 ring-blue-500/20", label: "Blue" },
+  { bg: "dark:bg-orange-500/20 bg-orange-500/10", text: "dark:text-orange-300 text-orange-800 font-medium", ring: "dark:ring-orange-500/30 ring-orange-500/20", label: "Orange" },
+  { bg: "dark:bg-teal-500/20 bg-teal-500/10", text: "dark:text-teal-300 text-teal-700 font-medium", ring: "dark:ring-teal-500/30 ring-teal-500/20", label: "Teal" },
+  { bg: "dark:bg-red-500/20 bg-red-500/10", text: "dark:text-red-300 text-red-700 font-medium", ring: "dark:ring-red-500/30 ring-red-500/20", label: "Red" },
+  { bg: "dark:bg-indigo-500/20 bg-indigo-500/10", text: "dark:text-indigo-300 text-indigo-700 font-medium", ring: "dark:ring-indigo-500/30 ring-indigo-500/20", label: "Indigo" },
+  { bg: "dark:bg-lime-500/20 bg-lime-500/10", text: "dark:text-lime-300 text-lime-800 font-medium", ring: "dark:ring-lime-500/30 ring-lime-500/20", label: "Lime" },
+  { bg: "dark:bg-rose-500/20 bg-rose-500/10", text: "dark:text-rose-300 text-rose-700 font-medium", ring: "dark:ring-rose-500/30 ring-rose-500/20", label: "Rose" },
 ];
 
 const TEMPLATES = [
@@ -255,19 +255,19 @@ export default function TeamMakerPage() {
             {/* Auto-balance toggle */}
             <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
               <div className="space-y-0.5">
-                <Label className="text-sm font-medium cursor-pointer">Auto-Balance</Label>
+                <Label htmlFor="auto-balance-switch" className="text-sm font-medium cursor-pointer">Auto-Balance</Label>
                 <p className="text-xs text-muted-foreground">Distribute names evenly across teams</p>
               </div>
-              <Switch checked={autoBalance} onCheckedChange={setAutoBalance} />
+              <Switch id="auto-balance-switch" checked={autoBalance} onCheckedChange={setAutoBalance} />
             </div>
  
             {/* Sound toggle */}
             <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
               <div className="space-y-0.5">
-                <Label className="text-sm font-medium cursor-pointer">Sound Effects</Label>
+                <Label htmlFor="sound-effects-switch" className="text-sm font-medium cursor-pointer">Sound Effects</Label>
                 <p className="text-xs text-muted-foreground">Play sounds when shuffling or adding players</p>
               </div>
-              <Switch checked={soundEnabled} onCheckedChange={setSoundEnabled} />
+              <Switch id="sound-effects-switch" checked={soundEnabled} onCheckedChange={setSoundEnabled} />
             </div>
 
             {/* Generate button */}
