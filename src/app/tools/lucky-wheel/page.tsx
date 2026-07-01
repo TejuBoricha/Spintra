@@ -160,7 +160,18 @@ function Confetti({ active }: { active: boolean }) {
 
 // ── Component ──────────────────────────────────────────────
 export default function LuckyWheelPage() {
-  const [entries, setEntries] = useState<WheelEntry[]>(DEFAULT_ENTRIES);
+  const [entries, setEntries] = useState<WheelEntry[]>(() => {
+    if (typeof window === "undefined") {
+      return DEFAULT_ENTRIES;
+    }
+
+    try {
+      const saved = localStorage.getItem("spintra-lucky-wheel");
+      return saved ? (JSON.parse(saved) as WheelEntry[]) : DEFAULT_ENTRIES;
+    } catch {
+      return DEFAULT_ENTRIES;
+    }
+  });
   const [spinning, setSpinning] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -175,15 +186,6 @@ export default function LuckyWheelPage() {
   const friction = 0.985;
 
   const totalWeight = entries.reduce((s, e) => s + e.weight, 0);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("spintra-lucky-wheel");
-      if (saved) setEntries(JSON.parse(saved));
-    } catch {
-      // ignore invalid saved data
-    }
-  }, []);
 
   // ── Save to localStorage ──
   const saveWheel = useCallback(() => {

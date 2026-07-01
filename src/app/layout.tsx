@@ -20,6 +20,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://spintra.com"),
   title: "Spintra — Decisions. Games. Teams. Together.",
   description:
     "Create rooms, invite friends, spin wheels, draw names, build teams, run tournaments, and play together in real time.",
