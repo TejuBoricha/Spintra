@@ -66,7 +66,7 @@ export function Navbar() {
               className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0"
             >
               <Image
-                src="/logo.png"
+                src="/icons/logo.png"
                 alt="Spintra"
                 width={32}
                 height={32}

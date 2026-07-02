@@ -251,7 +251,7 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded overflow-hidden flex-shrink-0">
-              <Image src="/logo.png" alt="Spintra" width={24} height={24} className="w-full h-full object-cover" />
+              <Image src="/icons/logo.png" alt="Spintra" width={24} height={24} className="w-full h-full object-cover" />
             </div>
             <span className="font-semibold">
               <span className="gradient-text">Spin</span>tra

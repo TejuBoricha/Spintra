@@ -19,7 +19,7 @@ import { getGameByType } from "@/lib/games";
 import { fireConfetti } from "@/components/celebration";
 
 // WebGL D6 die — loaded client-side only (Three.js requires browser APIs)
-const D6Canvas = dynamic(() => import("./D6Canvas"), {
+const D6Canvas = dynamic(() => import("./d6-canvas"), {
   ssr: false,
   loading: () => (
     <div style={{ width: 120, height: 120, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.3 }}>

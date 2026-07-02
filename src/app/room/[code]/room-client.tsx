@@ -1545,7 +1545,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                     transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
                     className="w-20 h-20 mx-auto mb-6 rounded-full overflow-hidden"
                   >
-                    <Image src="/logo.png" alt="Spintra" width={80} height={80} className="w-full h-full object-cover" />
+                    <Image src="/icons/logo.png" alt="Spintra" width={80} height={80} className="w-full h-full object-cover" />
                   </motion.div>
                   {isHost ? (
                     <>
