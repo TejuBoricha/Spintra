@@ -5,12 +5,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Coins, TrendingUp, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Emoji } from "@/components/emoji";
 import { playCoinFlip, playTick } from "@/lib/audio";
+import { getGameByType } from "@/lib/games";
+
+const GameIcon = getGameByType("coin-flip")!.icon;
 
 const faces = [
-  { label: "Heads", emoji: "🪙", color: "from-yellow-500 to-amber-600" },
-  { label: "Tails", emoji: "🦅", color: "from-slate-400 to-slate-600" },
-];
+  { label: "Heads", emoji: "coin", color: "from-yellow-500 to-amber-600" },
+  { label: "Tails", emoji: "eagle", color: "from-slate-400 to-slate-600" },
+] as const;
 
 export default function CoinFlipPage() {
   const [flipping, setFlipping] = useState(false);
@@ -46,7 +50,7 @@ export default function CoinFlipPage() {
       <div className="max-w-2xl mx-auto text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
-            <Coins className="w-4 h-4 text-yellow-400" />
+            <GameIcon className="w-4 h-4 text-yellow-400" />
             <span className="text-sm text-muted-foreground">50/50 chance</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Coin Flip</h1>
@@ -67,9 +71,8 @@ export default function CoinFlipPage() {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0 }}
-                className="text-6xl"
               >
-                {result !== null ? faces[result].emoji : "🪙"}
+                <Emoji name={result !== null ? faces[result].emoji : "coin"} size={80} pop />
               </motion.span>
             </AnimatePresence>
           </div>
@@ -115,7 +118,7 @@ export default function CoinFlipPage() {
         </div>
 
         {/* Stats */}
-        {history.length > 0 && (
+        {history.length > 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -137,10 +140,15 @@ export default function CoinFlipPage() {
             </div>
             <div className="mt-4 flex justify-center gap-2 flex-wrap">
               {history.slice(0, 20).map((h, i) => (
-                <span key={i} className="text-lg">{faces[h].emoji}</span>
+                <Emoji key={i} name={faces[h].emoji} size={22} animated={false} />
               ))}
             </div>
           </motion.div>
+        ) : (
+          <div className="glass-card p-6 max-w-md mx-auto text-center text-muted-foreground text-sm flex flex-col items-center gap-2">
+            <TrendingUp className="w-6 h-6 text-purple-400/60" />
+            Flip to start tracking stats.
+          </div>
         )}
       </div>
     </div>

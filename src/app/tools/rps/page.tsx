@@ -3,13 +3,18 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Swords, Volume2, VolumeX } from "lucide-react";
+import { Emoji, type EmojiName } from "@/components/emoji";
+import { fireConfetti } from "@/components/celebration";
 import { playPop, playSuccess, playFailure } from "@/lib/audio";
+import { getGameByType } from "@/lib/games";
+
+const GameIcon = getGameByType("rps")!.icon;
 
 const choices = [
-  { name: "Rock", emoji: "🪨", beats: "Scissors" },
-  { name: "Paper", emoji: "📄", beats: "Rock" },
-  { name: "Scissors", emoji: "✂️", beats: "Paper" },
-];
+  { name: "Rock", emoji: "rock", beats: "Scissors" },
+  { name: "Paper", emoji: "page_facing_up", beats: "Rock" },
+  { name: "Scissors", emoji: "scissors", beats: "Paper" },
+] satisfies { name: string; emoji: EmojiName; beats: string }[];
 
 export default function RPSPage() {
   const [playerChoice, setPlayerChoice] = useState<string | null>(null);
@@ -44,19 +49,23 @@ export default function RPSPage() {
       }));
       setPlaying(false);
 
-      if (outcome === "win") playSuccess(soundEnabled);
+      if (outcome === "win") { playSuccess(soundEnabled); fireConfetti(); }
       else if (outcome === "lose") playFailure(soundEnabled);
       else playPop(soundEnabled);
     }, 1000);
   };
 
-  const outcomeEmoji = { win: "🎉", lose: "😢", draw: "🤝" };
+  const outcomeEmoji = { win: "party_popper", lose: "crying_face", draw: "handshake" } satisfies Record<string, EmojiName>;
   const outcomeText = { win: "You Win!", lose: "AI Wins!", draw: "Draw!" };
 
   return (
     <div className="min-h-screen pt-24 pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
+            <GameIcon className="w-4 h-4 text-orange-400" />
+            <span className="text-sm text-muted-foreground">Classic showdown</span>
+          </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Rock Paper Scissors</h1>
           <div className="flex items-center justify-center gap-3 mb-8">
             <p className="text-muted-foreground">Challenge the AI — classic showdown.</p>
@@ -101,9 +110,13 @@ export default function RPSPage() {
                 key={playerChoice}
                 initial={{ scale: 0.5 }}
                 animate={{ scale: 1 }}
-                className="w-24 h-24 rounded-2xl glass-card flex items-center justify-center text-5xl"
+                className="w-24 h-24 rounded-2xl glass-card flex items-center justify-center"
               >
-                {playerChoice ? choices.find((c) => c.name === playerChoice)?.emoji : "❓"}
+                {playerChoice ? (
+                  <Emoji name={choices.find((c) => c.name === playerChoice)!.emoji} size={56} pop />
+                ) : (
+                  <Emoji name="question_mark" size={56} />
+                )}
               </motion.div>
             </div>
 
@@ -124,7 +137,7 @@ export default function RPSPage() {
                 initial={aiChoice ? { scale: 0.5 } : {}}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.3 }}
-                className="w-24 h-24 rounded-2xl glass-card flex items-center justify-center text-5xl"
+                className="w-24 h-24 rounded-2xl glass-card flex items-center justify-center"
               >
                 {playing ? (
                   <motion.div
@@ -134,9 +147,9 @@ export default function RPSPage() {
                     <Swords className="w-12 h-12 text-purple-400" />
                   </motion.div>
                 ) : aiChoice ? (
-                  choices.find((c) => c.name === aiChoice)?.emoji
+                  <Emoji name={choices.find((c) => c.name === aiChoice)!.emoji} size={56} pop />
                 ) : (
-                  "🤖"
+                  <Emoji name="robot" size={56} />
                 )}
               </motion.div>
             </div>
@@ -150,9 +163,9 @@ export default function RPSPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="mb-8 text-2xl font-bold"
+              className="mb-8 text-2xl font-bold flex items-center justify-center gap-2"
             >
-              {outcomeEmoji[result]} {outcomeText[result]}
+              <Emoji name={outcomeEmoji[result]} size={32} pop /> {outcomeText[result]}
             </motion.div>
           )}
         </AnimatePresence>
@@ -168,7 +181,7 @@ export default function RPSPage() {
               disabled={playing}
               className="w-24 h-24 rounded-2xl glass-card flex flex-col items-center justify-center gap-2 hover:border-purple-500/30 transition-all disabled:opacity-50"
             >
-              <span className="text-3xl">{choice.emoji}</span>
+              <Emoji name={choice.emoji} size={40} animated={false} />
               <span className="text-xs text-muted-foreground">{choice.name}</span>
             </motion.button>
           ))}

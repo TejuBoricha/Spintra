@@ -20,6 +20,8 @@ import { toast } from "sonner";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Emoji, renderTextWithEmoji, EMOJI_UNICODE } from "@/components/emoji";
+import { Logo } from "@/components/logo";
 import type { User, ChatMessage, RoomParticipant, RoomType } from "@/lib/types";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getOrCreateRoomUser, getLocalRoomCreatorId } from "@/lib/room-user";
@@ -29,7 +31,11 @@ function generateId() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-const emojis = ["👍", "❤️", "😂", "🎉", "🔥", "💯", "👀", "🙌"];
+const REACTION_NAMES = [
+  "thumbs_up", "red_heart", "face_with_tears_of_joy", "party_popper",
+  "fire", "hundred_points", "eyes", "raising_hands",
+] as const;
+const RPS_EMOJI = { Rock: "raised_fist", Paper: "raised_hand", Scissors: "victory_hand" } as const;
 
 // Activity events carry different fields per game kind (coin flip, dice roll,
 // guess submit, ...) — narrowed with `kind` checks where consumed rather than
@@ -1197,7 +1203,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                             <Crown className="w-3 h-3 text-amber-400" />
                           )}
                          </div>
-                        <p className="text-sm text-muted-foreground">{msg.content}</p>
+                        <p className="text-sm text-muted-foreground">{renderTextWithEmoji(msg.content)}</p>
                       </div>
                     </div>
                   );
@@ -1215,16 +1221,16 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                   exit={{ opacity: 0, y: 10 }}
                   className="px-4 py-2 border-t border-white/5 flex gap-1 shrink-0"
                 >
-                  {emojis.map((emoji) => (
+                  {REACTION_NAMES.map((name) => (
                     <button
-                      key={emoji}
+                      key={name}
                       onClick={() => {
-                        setNewMessage((prev) => prev + emoji);
+                        setNewMessage((prev) => prev + EMOJI_UNICODE[name]);
                         setShowEmojis(false);
                       }}
-                      className="w-8 h-8 flex items-center justify-center hover:bg-white/5 rounded-lg text-lg transition-colors"
+                      className="w-8 h-8 flex items-center justify-center hover:bg-white/5 rounded-lg transition-colors"
                     >
-                      {emoji}
+                      <Emoji name={name} size={22} />
                     </button>
                   ))}
                 </motion.div>
@@ -1282,9 +1288,11 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                           {p.user?.username?.slice(0, 2).toUpperCase() || "??"}
                         </AvatarFallback>
                       </Avatar>
-                      {p.is_online && (
-                         <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-background" />
-                      )}
+                      <div
+                        className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-background ${
+                          p.is_online ? "bg-emerald-400" : "bg-zinc-500"
+                        }`}
+                      />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -1537,7 +1545,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                     transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
                     className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center"
                   >
-                    <Sparkles className="w-10 h-10 text-white" />
+                    <Logo size={40} className="text-white" />
                   </motion.div>
                   {isHost ? (
                     <>
@@ -1632,7 +1640,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                 exit={{ opacity: 0, y: -20 }}
                 className="flex flex-col items-center gap-6 max-w-md mx-auto pt-8"
               >
-                <h2 className="text-2xl font-bold flex items-center gap-2">🎲 Dice Roller</h2>
+                <h2 className="text-2xl font-bold flex items-center gap-2"><Emoji name="game_die" size={28} /> Dice Roller</h2>
                 <div className="flex flex-wrap gap-4 justify-center">
                   {(diceResults.length > 0 ? diceResults : [0]).map((val, i) => (
                     <motion.div
@@ -1688,7 +1696,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                 exit={{ opacity: 0, y: -20 }}
                 className="flex flex-col items-center gap-6 max-w-lg mx-auto pt-8"
               >
-                <h2 className="text-2xl font-bold flex items-center gap-2">🎡 Lucky Wheel</h2>
+                <h2 className="text-2xl font-bold flex items-center gap-2"><Emoji name="ferris_wheel" size={28} /> Lucky Wheel</h2>
                 <div className="relative w-64 h-64">
                   <motion.div
                     animate={wheelSpinning ? { rotate: [0, wheelSpinAngle] } : {}}
@@ -1709,8 +1717,8 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                       );
                     })}
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-12 h-12 rounded-full bg-background border-2 border-purple-500/50 flex items-center justify-center text-lg">
-                        🎡
+                      <div className="w-12 h-12 rounded-full bg-background border-2 border-purple-500/50 flex items-center justify-center">
+                        <Emoji name="ferris_wheel" size={28} animated={!wheelSpinning} />
                       </div>
                     </div>
                   </motion.div>
@@ -1723,7 +1731,9 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                     className="text-center p-4 glass-card rounded-xl"
                   >
                     <p className="text-sm text-muted-foreground mb-1">Winner!</p>
-                    <p className="text-2xl font-bold text-purple-400">{wheelWinner} 🎉</p>
+                    <p className="text-2xl font-bold text-purple-400 flex items-center justify-center gap-2">
+                      {wheelWinner} <Emoji name="party_popper" size={28} pop />
+                    </p>
                   </motion.div>
                 )}
                 {isHost && (
@@ -1907,14 +1917,18 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                     animate={{ opacity: 1, scale: 1, rotateX: 0 }}
                     className={`glass-card p-8 rounded-2xl text-center w-full border-2 ${todPrompt.type === "truth" ? "border-cyan-500/50" : "border-pink-500/50"}`}
                   >
-                    <Badge className={`mb-4 ${todPrompt.type === "truth" ? "bg-cyan-500/20 text-cyan-300" : "bg-pink-500/20 text-pink-300"}`}>
-                      {todPrompt.type === "truth" ? "Truth 🤔" : "Dare 🔥"}
+                    <Badge className={`mb-4 gap-1 ${todPrompt.type === "truth" ? "bg-cyan-500/20 text-cyan-300" : "bg-pink-500/20 text-pink-300"}`}>
+                      {todPrompt.type === "truth" ? (
+                        <>Truth <Emoji name="thinking_face" size={18} /></>
+                      ) : (
+                        <>Dare <Emoji name="fire" size={18} /></>
+                      )}
                     </Badge>
                     <p className="text-xl font-semibold">{todPrompt.text}</p>
                   </motion.div>
                 ) : (
                   <div className="glass-card p-8 rounded-2xl text-center w-full border border-white/10">
-                    <p className="text-4xl mb-3">🎭</p>
+                    <p className="mb-3 flex justify-center"><Emoji name="performing_arts" size={48} /></p>
                     <p className="text-muted-foreground">{isHost ? "Choose Truth or Dare above" : "Waiting for host to draw a card…"}</p>
                   </div>
                 )}
@@ -1995,7 +2009,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                   </>
                 ) : (
                   <div className="glass-card p-8 rounded-2xl text-center w-full border border-white/10">
-                    <p className="text-4xl mb-3">🤔</p>
+                    <p className="mb-3 flex justify-center"><Emoji name="thinking_face" size={48} /></p>
                     <p className="text-muted-foreground">{isHost ? "Press New Question to start" : "Waiting for host…"}</p>
                   </div>
                 )}
@@ -2058,7 +2072,13 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                                 : "border-white/20 hover:border-white/40"
                             }`}
                           >
-                            <div>{choice === "have" ? "✋ I have" : "🙅 Never"}</div>
+                            <div className="flex items-center justify-center gap-1.5">
+                              {choice === "have" ? (
+                                <><Emoji name="raised_hand" size={20} /> I have</>
+                              ) : (
+                                <><Emoji name="person_gesturing_no" size={20} /> Never</>
+                              )}
+                            </div>
                             <div className="text-3xl font-black mt-1">{count}</div>
                           </motion.button>
                         );
@@ -2067,7 +2087,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                   </>
                 ) : (
                   <div className="glass-card p-8 rounded-2xl text-center w-full border border-white/10">
-                    <p className="text-4xl mb-3">🙈</p>
+                    <p className="mb-3 flex justify-center"><Emoji name="see_no_evil_monkey" size={48} /></p>
                     <p className="text-muted-foreground">{isHost ? "Press Next Statement to start" : "Waiting for host…"}</p>
                   </div>
                 )}
@@ -2088,36 +2108,41 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                 </h2>
                 {!rpsChoices[currentUser.id] ? (
                   <div className="flex gap-4">
-                    {["✊ Rock", "✋ Paper", "✌️ Scissors"].map((opt) => {
-                      const choice = opt.split(" ")[1];
-                      return (
-                        <motion.button
-                          key={choice}
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => {
-                            sendActivityEvent({ kind: "rps_choice", userId: currentUser.id, username: currentUser.username, choice });
-                            if (onActivityEventRef.current) onActivityEventRef.current({ kind: "rps_choice", userId: currentUser.id, username: currentUser.username, choice });
-                          }}
-                          className="flex flex-col items-center gap-2 p-6 rounded-2xl border-2 border-white/20 hover:border-red-500/50 hover:bg-red-500/10 transition-all text-4xl"
-                        >
-                          {opt.split(" ")[0]}
-                          <span className="text-xs text-muted-foreground">{choice}</span>
-                        </motion.button>
-                      );
-                    })}
+                    {(["Rock", "Paper", "Scissors"] as const).map((choice) => (
+                      <motion.button
+                        key={choice}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => {
+                          sendActivityEvent({ kind: "rps_choice", userId: currentUser.id, username: currentUser.username, choice });
+                          if (onActivityEventRef.current) onActivityEventRef.current({ kind: "rps_choice", userId: currentUser.id, username: currentUser.username, choice });
+                        }}
+                        className="flex flex-col items-center gap-2 p-6 rounded-2xl border-2 border-white/20 hover:border-red-500/50 hover:bg-red-500/10 transition-all"
+                      >
+                        <Emoji name={RPS_EMOJI[choice]} size={44} animated={false} />
+                        <span className="text-xs text-muted-foreground">{choice}</span>
+                      </motion.button>
+                    ))}
                   </div>
                 ) : (
                   <div className="glass-card p-4 rounded-xl text-center">
                     <p className="text-sm text-muted-foreground mb-1">Your pick</p>
-                    <p className="text-3xl font-bold">{{"Rock":"✊","Paper":"✋","Scissors":"✌️"}[rpsChoices[currentUser.id].choice] || "?"} {rpsChoices[currentUser.id].choice}</p>
+                    <p className="text-3xl font-bold flex items-center justify-center gap-2">
+                      <Emoji name={RPS_EMOJI[rpsChoices[currentUser.id].choice as keyof typeof RPS_EMOJI]} size={32} pop /> {rpsChoices[currentUser.id].choice}
+                    </p>
                   </div>
                 )}
                 <div className="w-full space-y-2">
                   {Object.values(rpsChoices).map((r, i) => (
                     <div key={i} className="flex items-center gap-3 px-4 py-2 glass rounded-xl">
                       <span className="font-medium text-sm">{r.username}</span>
-                      <span className="ml-auto text-xl">{r.username === currentUser.username || isHost ? ({"Rock":"✊","Paper":"✋","Scissors":"✌️"}[r.choice] || "?") : "🤫"}</span>
+                      <span className="ml-auto">
+                        {r.username === currentUser.username || isHost ? (
+                          <Emoji name={RPS_EMOJI[r.choice as keyof typeof RPS_EMOJI]} size={24} animated={false} />
+                        ) : (
+                          <Emoji name="shushing_face" size={24} animated={false} />
+                        )}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -2187,7 +2212,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                   </div>
                 ) : (
                   <div className="glass-card p-8 rounded-2xl text-center border border-white/10">
-                    <p className="text-4xl mb-3">👥</p>
+                    <p className="mb-3 flex justify-center"><Emoji name="busts_in_silhouette" size={48} /></p>
                     <p className="text-muted-foreground">{isHost ? "Choose how many teams to create" : "Waiting for host to create teams…"}</p>
                   </div>
                 )}
@@ -2213,11 +2238,13 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                     className="text-center glass-card p-10 rounded-2xl border-2 border-pink-500/50 w-full"
                   >
                     <p className="text-sm text-muted-foreground mb-2">Selected</p>
-                    <p className="text-4xl font-black text-pink-400">{ndWinner} 🎉</p>
+                    <p className="text-4xl font-black text-pink-400 flex items-center justify-center gap-2">
+                      {ndWinner} <Emoji name="party_popper" size={36} pop />
+                    </p>
                   </motion.div>
                 ) : (
                   <div className="glass-card p-10 rounded-2xl text-center border border-white/10 w-full">
-                    <p className="text-4xl mb-3">🎟️</p>
+                    <p className="mb-3 flex justify-center"><Emoji name="admission_tickets" size={48} /></p>
                     <p className="text-muted-foreground">{isHost ? "Draw a name from the room" : "Waiting for host to draw…"}</p>
                   </div>
                 )}
@@ -2260,7 +2287,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                   </div>
                 ) : (
                   <div className="glass-card p-8 rounded-2xl text-center border border-white/10">
-                    <p className="text-4xl mb-3">🏆</p>
+                    <p className="mb-3 flex justify-center"><Emoji name="trophy" size={48} /></p>
                     <p className="text-muted-foreground">{isHost ? "Generate bracket below" : "Waiting for host to set up bracket…"}</p>
                   </div>
                 )}
@@ -2294,10 +2321,16 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                 className="flex items-center justify-center min-h-[400px]"
               >
                 <div className="text-center glass-card p-12 max-w-md w-full">
-                  <p className="text-5xl mb-4">{activeActivity.type === "party" ? "🎉" : "📚"}</p>
+                  <p className="mb-4 flex justify-center">
+                    <Emoji name={activeActivity.type === "party" ? "party_popper" : "books"} size={56} />
+                  </p>
                   <h2 className="text-2xl font-bold mb-2 capitalize">{activeActivity.type} Mode</h2>
                   <p className="text-muted-foreground mb-6">
-                    {isHost ? "Use the 🔀 button in the header to pick a game activity for the room." : "The host will choose an activity soon!"}
+                    {isHost ? (
+                      <>Use the <Shuffle className="w-4 h-4 inline align-text-bottom" /> button in the header to pick a game activity for the room.</>
+                    ) : (
+                      "The host will choose an activity soon!"
+                    )}
                   </p>
                 </div>
               </motion.div>

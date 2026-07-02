@@ -5,6 +5,9 @@ import { motion } from "framer-motion";
 import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, History, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { playDiceRoll, playTick } from "@/lib/audio";
+import { getGameByType } from "@/lib/games";
+
+const GameIcon = getGameByType("dice")!.icon;
 
 const diceTypes = [
   { sides: 4, label: "D4" },
@@ -50,6 +53,10 @@ export default function DicePage() {
     <div className="min-h-screen pt-24 pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
+            <GameIcon className="w-4 h-4 text-red-400" />
+            <span className="text-sm text-muted-foreground">Any dice, any count</span>
+          </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Dice Roller</h1>
           <p className="text-muted-foreground mb-8">Roll any dice, any amount.</p>
         </motion.div>

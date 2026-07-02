@@ -25,6 +25,11 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import type { TournamentType } from "@/lib/types";
 import { shuffleArray } from "@/lib/utils";
+import { Emoji } from "@/components/emoji";
+import { fireConfetti, CelebrationBanner } from "@/components/celebration";
+import { getGameByType } from "@/lib/games";
+
+const GameIcon = getGameByType("tournament")!.icon;
 
 // ──── Types ────
 interface BracketMatch {
@@ -552,7 +557,8 @@ export default function TournamentPage() {
           winner,
         });
         setEditingMatch(null);
-        toast.success(`🏆 ${winner} wins the tournament!`);
+        fireConfetti();
+        toast.success(`${winner} wins the tournament!`, { icon: <Emoji name="trophy" size={18} /> });
         return;
       }
 
@@ -587,7 +593,8 @@ export default function TournamentPage() {
         if (finalMatch?.winner) {
           setTournament({ ...tournament, rounds: updatedBracket, winner: finalMatch.winner });
           setEditingMatch(null);
-          toast.success(`🏆 ${finalMatch.winner} wins the tournament!`);
+          fireConfetti();
+          toast.success(`${finalMatch.winner} wins the tournament!`, { icon: <Emoji name="trophy" size={18} /> });
           return;
         }
 
@@ -956,7 +963,7 @@ export default function TournamentPage() {
           className="text-center mb-10"
         >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass text-sm mb-4">
-            <Trophy className="w-4 h-4 text-emerald-400" />
+            <GameIcon className="w-4 h-4 text-emerald-400" />
             <span className="text-muted-foreground">Bracket Generator</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-3">
@@ -1198,38 +1205,12 @@ export default function TournamentPage() {
 
                 {/* Champion Banner */}
                 {tournament.winner && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="glass-card p-6 text-center relative overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-emerald-500/10" />
-                    <div className="relative z-10">
-                      <motion.div
-                        initial={{ scale: 0, rotate: -180 }}
-                        animate={{ scale: 1, rotate: 0 }}
-                        transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                      >
-                        <Crown className="w-12 h-12 text-amber-400 mx-auto mb-3" />
-                      </motion.div>
-                      <motion.p
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400 bg-clip-text text-transparent"
-                      >
-                        {tournament.winner}
-                      </motion.p>
-                      <motion.p
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.4 }}
-                        className="text-emerald-400/80 font-medium mt-2"
-                      >
-                        🏆 Tournament Champion
-                      </motion.p>
-                    </div>
-                  </motion.div>
+                  <CelebrationBanner
+                    icon={<Crown className="w-12 h-12 text-amber-400" />}
+                    title={tournament.winner}
+                    subtitle={<><Emoji name="trophy" size={20} pop /> Tournament Champion</>}
+                    titleClassName="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400 bg-clip-text text-transparent"
+                  />
                 )}
 
                 {/* Bracket Display */}

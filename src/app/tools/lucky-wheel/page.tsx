@@ -19,7 +19,12 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Emoji, type EmojiName } from "@/components/emoji";
+import { fireConfetti, CelebrationBanner } from "@/components/celebration";
 import { playTick } from "@/lib/audio";
+import { getGameByType } from "@/lib/games";
+
+const GameIcon = getGameByType("lucky-wheel")!.icon;
 
 // ── Types ──────────────────────────────────────────────────
 interface WheelEntry {
@@ -45,10 +50,10 @@ const PALETTE = [
   "#0ea5e9", "#d946ef", "#34d399", "#fb923c", "#a3e635",
 ];
 
-const TEMPLATES: { label: string; icon: string; entries: WheelEntry[] }[] = [
+const TEMPLATES: { label: string; icon: EmojiName; entries: WheelEntry[] }[] = [
   {
     label: "Giveaway Prizes",
-    icon: "🎁",
+    icon: "wrapped_gift",
     entries: [
       { id: "g1", label: "Grand Prize", color: "#f59e0b", weight: 1 },
       { id: "g2", label: "Gift Card $50", color: "#8b5cf6", weight: 2 },
@@ -60,7 +65,7 @@ const TEMPLATES: { label: string; icon: string; entries: WheelEntry[] }[] = [
   },
   {
     label: "Dinner Picks",
-    icon: "🍕",
+    icon: "pizza",
     entries: [
       { id: "d1", label: "Pizza", color: "#ef4444", weight: 2 },
       { id: "d2", label: "Sushi", color: "#06b6d4", weight: 2 },
@@ -72,7 +77,7 @@ const TEMPLATES: { label: string; icon: string; entries: WheelEntry[] }[] = [
   },
   {
     label: "Movie Night",
-    icon: "🎬",
+    icon: "clapper_board",
     entries: [
       { id: "m1", label: "Action", color: "#ef4444", weight: 1 },
       { id: "m2", label: "Comedy", color: "#f59e0b", weight: 1 },
@@ -84,7 +89,7 @@ const TEMPLATES: { label: string; icon: string; entries: WheelEntry[] }[] = [
   },
   {
     label: "Chores",
-    icon: "🧹",
+    icon: "broom",
     entries: [
       { id: "c1", label: "Dishes", color: "#06b6d4", weight: 1 },
       { id: "c2", label: "Vacuum", color: "#8b5cf6", weight: 1 },
@@ -109,56 +114,6 @@ function getContrastText(hex: string): string {
   return luminance > 0.5 ? "#111" : "#fff";
 }
 
-const CONFETTI_PARTICLES = Array.from({ length: 120 }, () => {
-  const angle = Math.random() * Math.PI * 2;
-  const speed = 3 + Math.random() * 8;
-  const colors = ["#8b5cf6", "#06b6d4", "#f59e0b", "#10b981", "#ef4444", "#ec4899"];
-  return {
-    dx: (Math.random() - 0.5) * 180,
-    dy: (Math.random() - 0.5) * 120,
-    vx: Math.cos(angle) * speed,
-    vy: Math.sin(angle) * speed - 4,
-    color: colors[Math.floor(Math.random() * colors.length)],
-    size: 4 + Math.random() * 8,
-    rotation: Math.random() * 360,
-    life: 1,
-  };
-});
-
-function Confetti({ active }: { active: boolean }) {
-  if (!active) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 pointer-events-none">
-      {CONFETTI_PARTICLES.map((p, i) => (
-        <div
-          key={i}
-          className="absolute rounded-sm"
-          style={{
-            left: `calc(50% + ${p.dx}px)`,
-            top: `calc(50% + ${p.dy}px - 50px)`,
-            width: p.size,
-            height: p.size * 0.6,
-            backgroundColor: p.color,
-            transform: `rotate(${p.rotation}deg)`,
-            opacity: p.life,
-          }}
-        />
-      ))}
-      {/* Animate the confetti */}
-      <style jsx>{`
-       @keyframes fall {
-         0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-         100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-       }
-       div > div {
-         animation: fall 2.5s ease-in forwards;
-       }
-     `}</style>
-    </div>
-  );
-}
-
 // ── Component ──────────────────────────────────────────────
 export default function LuckyWheelPage() {
   const [entries, setEntries] = useState<WheelEntry[]>(() => {
@@ -175,7 +130,6 @@ export default function LuckyWheelPage() {
   });
   const [spinning, setSpinning] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
-  const [showConfetti, setShowConfetti] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [newEntryLabel, setNewEntryLabel] = useState("");
 
@@ -320,7 +274,6 @@ export default function LuckyWheelPage() {
     playTick(soundEnabled);
     setSpinning(true);
     setWinner(null);
-    setShowConfetti(false);
 
     // Initial velocity: 15-25 rad per frame (fast spin)
     velocityRef.current = 0.3 + Math.random() * 0.3;
@@ -358,8 +311,7 @@ export default function LuckyWheelPage() {
       } else {
         setWinner(entries[curIndex].label);
         setSpinning(false);
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 3000);
+        fireConfetti();
       }
     };
 
@@ -409,19 +361,15 @@ export default function LuckyWheelPage() {
   const applyTemplate = useCallback((tpl: (typeof TEMPLATES)[0]) => {
     setEntries(tpl.entries.map((e) => ({ ...e, id: uid() })));
     setWinner(null);
-    setShowConfetti(false);
   }, []);
 
   const resetToDefault = useCallback(() => {
     setEntries(DEFAULT_ENTRIES.map((e) => ({ ...e, id: uid() })));
     setWinner(null);
-    setShowConfetti(false);
   }, []);
 
   return (
     <div className="relative min-h-screen" ref={containerRef}>
-      <Confetti active={showConfetti} />
-
       {/* Background */}
       <div className="fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-background" />
@@ -438,7 +386,7 @@ export default function LuckyWheelPage() {
           className="text-center mb-10"
         >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass text-sm text-muted-foreground mb-6">
-            <Disc3 className="w-4 h-4" />
+            <GameIcon className="w-4 h-4" />
             Wheel Tool
           </div>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4">
@@ -461,15 +409,12 @@ export default function LuckyWheelPage() {
             {/* Winner announcement */}
             <AnimatePresence>
               {winner && !spinning && (
-                <motion.div
-                  initial={{ opacity: 0, y: -20, scale: 0.9 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="mb-6 px-6 py-3 rounded-xl glass-card text-center"
-                >
-                  <span className="text-xs text-muted-foreground block mb-1">🎉 Winner!</span>
-                  <span className="text-2xl font-bold gradient-text">{winner}</span>
-                </motion.div>
+                <CelebrationBanner
+                  icon={<Emoji name="party_popper" size={40} pop />}
+                  title={winner}
+                  subtitle="Winner!"
+                  className="mb-6 w-full max-w-md"
+                />
               )}
             </AnimatePresence>
 
@@ -638,7 +583,7 @@ export default function LuckyWheelPage() {
                     onClick={() => applyTemplate(tpl)}
                     className="flex items-center gap-3 p-2.5 rounded-lg border border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.04] hover:border-cyan-500/20 transition-all text-left group"
                   >
-                    <span className="text-lg">{tpl.icon}</span>
+                    <Emoji name={tpl.icon} size={22} animated={false} />
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium group-hover:text-cyan-300 transition-colors">
                         {tpl.label}

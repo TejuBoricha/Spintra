@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Split, ArrowRight, ThumbsUp, Volume2, VolumeX } from "lucide-react";
+import { ArrowRight, ThumbsUp, Volume2, VolumeX } from "lucide-react";
+import { getGameByType } from "@/lib/games";
+
+const GameIcon = getGameByType("would-you-rather")!.icon;
 import { Button } from "@/components/ui/button";
 import { playPop, playSwipe } from "@/lib/audio";
 import { shuffleArray } from "@/lib/utils";
@@ -60,7 +63,7 @@ export default function WouldYouRatherPage() {
       <div className="max-w-2xl mx-auto text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
-            <Split className="w-4 h-4 text-purple-400" />
+            <GameIcon className="w-4 h-4 text-purple-400" />
             <span className="text-sm text-muted-foreground">Tough choices ahead</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Would You Rather</h1>

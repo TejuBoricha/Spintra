@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
   Users,
+  UserPlus,
   Shuffle,
   Plus,
   Minus,
@@ -23,7 +24,11 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { cn, shuffleArray } from "@/lib/utils";
+import { getGameByType } from "@/lib/games";
+import { Emoji, type EmojiName } from "@/components/emoji";
 import { playPop, playSuccess } from "@/lib/audio";
+
+const GameIcon = getGameByType("team-maker")!.icon;
 
 // ── Constants ──────────────────────────────────────────────
 const TEAM_COLORS: { bg: string; text: string; ring: string; label: string }[] = [
@@ -42,13 +47,13 @@ const TEAM_COLORS: { bg: string; text: string; ring: string; label: string }[] =
 ];
 
 const TEMPLATES = [
-  { label: "Cricket", teams: 2, perTeam: 11, icon: "🏏" },
-  { label: "Football", teams: 2, perTeam: 11, icon: "⚽" },
-  { label: "Valorant", teams: 2, perTeam: 5, icon: "🎯" },
-  { label: "BGMI", teams: 4, perTeam: 4, icon: "🎮" },
-  { label: "CS2", teams: 2, perTeam: 5, icon: "🔫" },
-  { label: "Office", teams: 0, perTeam: 0, icon: "💼" },
-];
+  { label: "Cricket", teams: 2, perTeam: 11, icon: "cricket_game" },
+  { label: "Football", teams: 2, perTeam: 11, icon: "soccer_ball" },
+  { label: "Valorant", teams: 2, perTeam: 5, icon: "bullseye" },
+  { label: "BGMI", teams: 4, perTeam: 4, icon: "video_game" },
+  { label: "CS2", teams: 2, perTeam: 5, icon: "water_pistol" },
+  { label: "Office", teams: 0, perTeam: 0, icon: "briefcase" },
+] satisfies { label: string; teams: number; perTeam: number; icon: EmojiName }[];
 
 // ── Component ──────────────────────────────────────────────
 export default function TeamMakerPage() {
@@ -190,7 +195,7 @@ export default function TeamMakerPage() {
           className="text-center mb-12"
         >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass text-sm text-muted-foreground mb-6">
-            <Users className="w-4 h-4" />
+            <GameIcon className="w-4 h-4" />
             Team Tool
           </div>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4">
@@ -296,7 +301,7 @@ export default function TeamMakerPage() {
                   onClick={() => applyTemplate(tpl)}
                   className="flex items-center gap-3 p-3 rounded-lg border border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.04] hover:border-purple-500/20 transition-all text-left group"
                 >
-                  <span className="text-xl">{tpl.icon}</span>
+                  <Emoji name={tpl.icon} size={24} animated={false} />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium group-hover:text-purple-300 transition-colors">
                       {tpl.label}
@@ -517,6 +522,22 @@ export default function TeamMakerPage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Empty state when no names entered yet */}
+        {parsedNames.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-16"
+          >
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-purple-500/10 mb-4">
+              <UserPlus className="w-8 h-8 text-purple-400" />
+            </div>
+            <p className="text-muted-foreground">
+              Add some names above to start building teams.
+            </p>
+          </motion.div>
+        )}
 
         {/* Empty state when no teams generated yet */}
         {teams.length === 0 && parsedNames.length > 0 && (

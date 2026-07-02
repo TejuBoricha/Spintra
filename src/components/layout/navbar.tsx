@@ -13,6 +13,7 @@ import {
   ChevronDown,
   Gamepad2,
 } from "lucide-react";
+import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -64,7 +65,7 @@ export function Navbar() {
               transition={{ duration: 0.5, ease: "easeInOut" }}
               className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-cyan-400 flex items-center justify-center"
             >
-              <Sparkles className="w-5 h-5 text-white" />
+              <Logo size={20} className="text-white" />
             </motion.div>
             <span className="text-xl font-bold tracking-tight">
               <span className="gradient-text">Spin</span>

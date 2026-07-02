@@ -27,6 +27,10 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { shuffleArray } from "@/lib/utils";
+import { getGameByType } from "@/lib/games";
+import { Emoji } from "@/components/emoji";
+
+const GameIcon = getGameByType("name-draw")!.icon;
 
 const SAMPLE_SETS: Record<string, string[]> = {
   fruits: ["Apple", "Banana", "Cherry", "Date", "Elderberry", "Fig", "Grape", "Honeydew"],
@@ -126,8 +130,9 @@ export default function NameDrawPage() {
             playSuccess(soundEnabled);
 
             if (eliminationMode && picked.length === availableNames.length) {
-              toast("🎉 All names have been drawn!", {
+              toast("All names have been drawn!", {
                 description: "Reset to draw again.",
+                icon: <Emoji name="party_popper" size={18} />,
               });
             }
           }, 100);
@@ -267,7 +272,7 @@ export default function NameDrawPage() {
           className="text-center mb-10"
         >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass text-sm mb-4">
-            <Crown className="w-4 h-4 text-amber-400" />
+            <GameIcon className="w-4 h-4 text-amber-400" />
             <span className="text-muted-foreground">Random Picker</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-3">

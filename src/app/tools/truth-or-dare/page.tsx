@@ -5,12 +5,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircleQuestion, ShieldAlert, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { Emoji, type EmojiName } from "@/components/emoji";
 import { playSwipe } from "@/lib/audio";
+import { getGameByType } from "@/lib/games";
+
+const GameIcon = getGameByType("truth-or-dare")!.icon;
 
 const categories = [
   {
     name: "Friends",
-    icon: "👥",
+    icon: "busts_in_silhouette",
     truths: [
       "What's the most embarrassing thing you've done in public?",
       "Who in this room would you swap lives with for a day?",
@@ -30,7 +35,7 @@ const categories = [
   },
   {
     name: "Party",
-    icon: "🎉",
+    icon: "party_popper",
     truths: [
       "What's the craziest thing you've done at a party?",
       "Who here would you most want on your team in a zombie apocalypse?",
@@ -48,7 +53,7 @@ const categories = [
   },
   {
     name: "Couples",
-    icon: "💕",
+    icon: "two_hearts",
     truths: [
       "What was your first impression of your partner?",
       "What's your partner's most annoying habit?",
@@ -64,7 +69,7 @@ const categories = [
   },
   {
     name: "Funny",
-    icon: "😂",
+    icon: "face_with_tears_of_joy",
     truths: [
       "What's the dumbest thing you believed as a kid?",
       "What's your most irrational fear?",
@@ -80,7 +85,7 @@ const categories = [
   },
   {
     name: "Extreme",
-    icon: "🔥",
+    icon: "fire",
     truths: [
       "What's the most illegal thing you've ever done?",
       "What's a secret you've never told anyone?",
@@ -92,7 +97,7 @@ const categories = [
       "Let someone go through your phone for 30 seconds",
     ],
   },
-];
+] satisfies { name: string; icon: EmojiName; truths: string[]; dares: string[] }[];
 
 export default function TruthOrDarePage() {
   const [category, setCategory] = useState(categories[0]);
@@ -107,6 +112,9 @@ export default function TruthOrDarePage() {
     const pool = type === "truth" ? category.truths : category.dares;
     const available = pool.filter((q) => !used.has(q));
     if (available.length === 0) {
+      toast("You've seen them all — shuffling for another round", {
+        icon: <Emoji name="party_popper" size={18} />,
+      });
       setUsed(new Set());
       setCurrent(pool[Math.floor(Math.random() * pool.length)]);
       return;
@@ -120,6 +128,10 @@ export default function TruthOrDarePage() {
     <div className="min-h-screen pt-24 pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
+            <GameIcon className="w-4 h-4 text-pink-400" />
+            <span className="text-sm text-muted-foreground">Spicy questions</span>
+          </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Truth or Dare</h1>
           <p className="text-muted-foreground mb-8">Spice up any gathering.</p>
         </motion.div>
@@ -135,7 +147,7 @@ export default function TruthOrDarePage() {
                 category.name === c.name ? "bg-purple-600 text-white" : "glass-card hover:border-white/10"
               }`}
             >
-              {c.icon} {c.name}
+              <Emoji name={c.icon} size={18} animated={false} className="mr-1" /> {c.name}
             </button>
           ))}
         </div>

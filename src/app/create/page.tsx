@@ -1,4 +1,5 @@
 import React, { Suspense } from "react";
+import { Loader2 } from "lucide-react";
 import CreateRoomClient from "./create-client";
 
 export default function Page() {
@@ -18,7 +19,7 @@ export default function Page() {
           </div>
 
           {/* Client interactive UI mounts here - wrapped in Suspense for CSR hooks */}
-          <Suspense fallback={<div className="min-h-20" />}> 
+          <Suspense fallback={<div className="min-h-20 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-purple-400" /></div>}>
             <CreateRoomClient />
           </Suspense>
         </div>

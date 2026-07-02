@@ -2,10 +2,15 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { HeartHandshake, ArrowRight, CheckCircle, XCircle, Volume2, VolumeX } from "lucide-react";
+import { ArrowRight, CheckCircle, XCircle, Volume2, VolumeX } from "lucide-react";
+import { getGameByType } from "@/lib/games";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { Emoji } from "@/components/emoji";
 import { playPop, playSwipe } from "@/lib/audio";
 import { shuffleArray } from "@/lib/utils";
+
+const GameIcon = getGameByType("never-have-i-ever")!.icon;
 
 const statements = [
   "Never have I ever lied in a job interview",
@@ -48,7 +53,13 @@ export default function NeverHaveIEverPage() {
 
   const next = () => {
     playSwipe(soundEnabled);
-    setIndex((prev) => prev + 1);
+    const nextIndex = index + 1;
+    if (nextIndex % order.length === 0) {
+      toast("You've seen them all — shuffling for another round", {
+        icon: <Emoji name="party_popper" size={18} />,
+      });
+    }
+    setIndex(nextIndex);
     setRevealed(false);
   };
 
@@ -60,7 +71,7 @@ export default function NeverHaveIEverPage() {
       <div className="max-w-2xl mx-auto text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
-            <HeartHandshake className="w-4 h-4 text-pink-400" />
+            <GameIcon className="w-4 h-4 text-pink-400" />
             <span className="text-sm text-muted-foreground">Group confessions</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Never Have I Ever</h1>
@@ -132,8 +143,12 @@ export default function NeverHaveIEverPage() {
           </div>
         ) : (
           <div className="mb-4">
-            <p className={`text-lg font-semibold ${iHave ? "text-pink-400" : "text-emerald-400"}`}>
-              {iHave ? "😳 You've done it!" : "👼 You're innocent!"}
+            <p className={`text-lg font-semibold flex items-center justify-center gap-2 ${iHave ? "text-pink-400" : "text-emerald-400"}`}>
+              {iHave ? (
+                <><Emoji name="flushed_face" size={22} pop /> You&apos;ve done it!</>
+              ) : (
+                <><Emoji name="baby_angel" size={22} pop /> You&apos;re innocent!</>
+              )}
             </p>
             <div className="mt-4 flex justify-center items-center gap-3">
               <Button onClick={next} className="bg-gradient-to-r from-purple-600 to-cyan-500 border-0">

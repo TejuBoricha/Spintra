@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Search, TrendingUp, Clock, Heart, Sparkles, Users } from "lucide-react";
+import { Search, TrendingUp, Clock, Heart, Sparkles, Users, Radar, LayoutGrid, History } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Emoji, type EmojiName } from "@/components/emoji";
 import type { RoomType } from "@/lib/types";
 import { GAMES } from "@/lib/games";
 
@@ -73,13 +74,14 @@ export default function ExplorePage() {
     return true;
   });
 
-  const filteredActivities = [
-    { action: "created a", item: "Team Room", user: "Alex", time: "2 min ago", emoji: "👥", type: "team-maker" },
-    { action: "spun the", item: "Giveaway Wheel", user: "Sarah", time: "5 min ago", emoji: "🎡", type: "lucky-wheel" },
-    { action: "won the", item: "Fortune Wheel", user: "Mike", time: "8 min ago", emoji: "🏆", type: "lucky-wheel" },
-    { action: "ran a", item: "Tournament Bracket", user: "Jordan", time: "12 min ago", emoji: "🏅", type: "tournament" },
-    { action: "drew a winner in", item: "Name Draw", user: "Emma", time: "15 min ago", emoji: "🎯", type: "name-draw" },
-  ].filter((act) => {
+  const recentActivities: { action: string; item: string; user: string; time: string; emoji: EmojiName; type: string }[] = [
+    { action: "created a", item: "Team Room", user: "Alex", time: "2 min ago", emoji: "busts_in_silhouette", type: "team-maker" },
+    { action: "spun the", item: "Giveaway Wheel", user: "Sarah", time: "5 min ago", emoji: "ferris_wheel", type: "lucky-wheel" },
+    { action: "won the", item: "Fortune Wheel", user: "Mike", time: "8 min ago", emoji: "trophy", type: "lucky-wheel" },
+    { action: "ran a", item: "Tournament Bracket", user: "Jordan", time: "12 min ago", emoji: "sports_medal", type: "tournament" },
+    { action: "drew a winner in", item: "Name Draw", user: "Emma", time: "15 min ago", emoji: "bullseye", type: "name-draw" },
+  ];
+  const filteredActivities = recentActivities.filter((act) => {
     const query = search.toLowerCase().trim();
     if (query) {
       const matchUser = act.user.toLowerCase().includes(query);
@@ -148,7 +150,8 @@ export default function ExplorePage() {
             <Badge variant="secondary" className="ml-2">Live</Badge>
           </div>
           {filteredRooms.length === 0 ? (
-            <div className="glass-card p-12 text-center text-muted-foreground text-sm">
+            <div className="glass-card p-12 text-center text-muted-foreground text-sm flex flex-col items-center gap-3">
+              <Radar className="w-8 h-8 text-purple-400/60" />
               No live matching rooms found. Create a room to start playing!
             </div>
           ) : (
@@ -195,7 +198,8 @@ export default function ExplorePage() {
             <h2 className="text-2xl font-bold">Featured Templates</h2>
           </div>
           {filteredTemplates.length === 0 ? (
-            <div className="glass-card p-12 text-center text-muted-foreground text-sm">
+            <div className="glass-card p-12 text-center text-muted-foreground text-sm flex flex-col items-center gap-3">
+              <LayoutGrid className="w-8 h-8 text-amber-400/60" />
               No matching templates found.
             </div>
           ) : (
@@ -230,7 +234,8 @@ export default function ExplorePage() {
             <h2 className="text-2xl font-bold">Recent Activity</h2>
           </div>
           {filteredActivities.length === 0 ? (
-            <div className="glass-card p-8 text-center text-muted-foreground text-sm">
+            <div className="glass-card p-8 text-center text-muted-foreground text-sm flex flex-col items-center gap-3">
+              <History className="w-8 h-8 text-purple-400/60" />
               No recent activity matching your filters.
             </div>
           ) : (
@@ -243,7 +248,7 @@ export default function ExplorePage() {
                   transition={{ delay: i * 0.05 }}
                   className="glass-card p-4 flex items-center gap-4"
                 >
-                  <span className="text-2xl">{activity.emoji}</span>
+                  <Emoji name={activity.emoji} size={28} />
                   <div className="flex-1">
                     <span className="font-medium">{activity.user}</span>{" "}
                     <span className="text-muted-foreground">{activity.action}</span>{" "}

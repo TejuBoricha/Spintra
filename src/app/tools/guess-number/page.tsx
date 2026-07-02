@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Hash, ArrowUp, ArrowDown, RotateCcw, Target, Volume2, VolumeX } from "lucide-react";
+import { ArrowUp, ArrowDown, RotateCcw, Target, Volume2, VolumeX } from "lucide-react";
+import { getGameByType } from "@/lib/games";
+
+const GameIcon = getGameByType("guess-number")!.icon;
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Emoji } from "@/components/emoji";
 import { playSuccess, playFailure, playPop } from "@/lib/audio";
 
 const modes = [
@@ -63,7 +67,7 @@ export default function GuessNumberPage() {
       <div className="max-w-2xl mx-auto text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
-            <Hash className="w-4 h-4 text-purple-400" />
+            <GameIcon className="w-4 h-4 text-purple-400" />
             <span className="text-sm text-muted-foreground">Pick a mode to start</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Guess The Number</h1>
@@ -148,8 +152,9 @@ export default function GuessNumberPage() {
         {/* Game Over */}
         {gameOver && (
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="mb-8">
-            <div className={`text-2xl font-bold mb-2 ${won ? "gradient-text" : "text-red-400"}`}>
-              {won ? "🎉 You Got It!" : "😞 Out of Attempts!"}
+            <div className={`text-2xl font-bold mb-2 flex items-center justify-center gap-2 ${won ? "gradient-text" : "text-red-400"}`}>
+              <Emoji name={won ? "party_popper" : "disappointed_face"} size={32} pop />
+              {won ? "You Got It!" : "Out of Attempts!"}
             </div>
             <p className="text-muted-foreground mb-4">
               {won
