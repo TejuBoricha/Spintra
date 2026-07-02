@@ -42,21 +42,23 @@ const SAMPLE_SETS: Record<string, string[]> = {
 const STORAGE_KEY = "spintra-name-draw-saved";
 
 export default function NameDrawPage() {
-  const [textInput, setTextInput] = useState(() => {
-    if (typeof window === "undefined") return "";
+  const [textInput, setTextInput] = useState("");
+
+  // Load saved names from localStorage on client mount to prevent hydration mismatch
+  useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.join("\n");
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setTextInput(parsed.join("\n"));
         }
       }
     } catch {
       // ignore
     }
-    return "";
-  });
+  }, []);
   const [eliminationMode, setEliminationMode] = useState(true);
   const [drawnNames, setDrawnNames] = useState<string[]>([]);
   const [currentWinner, setCurrentWinner] = useState<string | null>(null);

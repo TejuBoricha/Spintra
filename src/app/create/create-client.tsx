@@ -21,6 +21,13 @@ declare global {
   }
 }
 
+function withTimeout<T>(promise: PromiseLike<T>, ms = 2000): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms)),
+  ]);
+}
+
 export default function CreateRoomClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -58,21 +65,27 @@ export default function CreateRoomClient() {
       try {
         // Regenerate on collision so we never silently reuse an existing room's code.
         for (let attempt = 0; attempt < 5; attempt++) {
-          const { data: existing } = await supabase.from("rooms").select("code").eq("code", code).maybeSingle();
+          const { data: existing } = await withTimeout(
+            supabase.from("rooms").select("code").eq("code", code).maybeSingle(),
+            2000
+          );
           if (!existing) break;
           code = generateCode();
         }
 
-        const { error } = await supabase.from("rooms").insert({
-          code,
-          name: finalRoomName,
-          type: selectedType,
-          host_id: currentUser.id,
-          is_public: isPublic,
-          is_locked: false,
-          max_participants: maxParticipants,
-          settings: {},
-        });
+        const { error } = await withTimeout(
+          supabase.from("rooms").insert({
+            code,
+            name: finalRoomName,
+            type: selectedType,
+            host_id: currentUser.id,
+            is_public: isPublic,
+            is_locked: false,
+            max_participants: maxParticipants,
+            settings: {},
+          }),
+          2000
+        );
 
         if (error) throw error;
       } catch (error) {

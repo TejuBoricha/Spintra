@@ -114,20 +114,29 @@ function getContrastText(hex: string): string {
   return luminance > 0.5 ? "#111" : "#fff";
 }
 
+function adjustBrightness(hex: string, percent: number): string {
+  const num = parseInt(hex.replace("#", ""), 16);
+  const amt = Math.round(2.55 * percent);
+  const R = (num >> 16) + amt;
+  const G = ((num >> 8) & 0x00ff) + amt;
+  const B = (num & 0x0000ff) + amt;
+  return (
+    "#" +
+    (
+      0x1000000 +
+      (R < 255 ? (R < 0 ? 0 : R) : 255) * 0x10000 +
+      (G < 255 ? (G < 0 ? 0 : G) : 255) * 0x100 +
+      (B < 255 ? (B < 0 ? 0 : B) : 255)
+    )
+      .toString(16)
+      .slice(1)
+  );
+}
+
 // ── Component ──────────────────────────────────────────────
 export default function LuckyWheelPage() {
-  const [entries, setEntries] = useState<WheelEntry[]>(() => {
-    if (typeof window === "undefined") {
-      return DEFAULT_ENTRIES;
-    }
-
-    try {
-      const saved = localStorage.getItem("spintra-lucky-wheel");
-      return saved ? (JSON.parse(saved) as WheelEntry[]) : DEFAULT_ENTRIES;
-    } catch {
-      return DEFAULT_ENTRIES;
-    }
-  });
+  const [entries, setEntries] = useState<WheelEntry[]>(DEFAULT_ENTRIES);
+  const [hasHydrated, setHasHydrated] = useState(false);
   const [spinning, setSpinning] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -137,16 +146,32 @@ export default function LuckyWheelPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const angleRef = useRef(0);
   const velocityRef = useRef(0);
-  const animationRef = useRef<number>(0);
   const lastSegmentIndexRef = useRef<number>(-1);
+  const tickerWobbleRef = useRef<number>(0);
   const friction = 0.985;
 
   const totalWeight = entries.reduce((s, e) => s + e.weight, 0);
 
+  // Load from localStorage on client-side mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("spintra-lucky-wheel");
+      if (saved) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setEntries(JSON.parse(saved) as WheelEntry[]);
+      }
+    } catch {
+      // Ignore
+    }
+    setHasHydrated(true);
+  }, []);
+
   // ── Save to localStorage ──
   const saveWheel = useCallback(() => {
-    localStorage.setItem("spintra-lucky-wheel", JSON.stringify(entries));
-  }, [entries]);
+    if (hasHydrated) {
+      localStorage.setItem("spintra-lucky-wheel", JSON.stringify(entries));
+    }
+  }, [entries, hasHydrated]);
 
   useEffect(() => {
     saveWheel();
@@ -170,7 +195,7 @@ export default function LuckyWheelPage() {
       const h = rect.height;
       const cx = w / 2;
       const cy = h / 2;
-      const radius = Math.min(cx, cy) - 8;
+      const radius = Math.min(cx, cy) - 30;
 
       ctx.clearRect(0, 0, w, h);
 
@@ -188,84 +213,232 @@ export default function LuckyWheelPage() {
         const sliceAngle = (entry.weight / totalWeight) * Math.PI * 2;
         const endAngle = startAngle + sliceAngle;
 
-        // Segment fill
+        // Segment fill gradient (radial linear gradient from center to outer edge)
+        const grad = ctx.createLinearGradient(
+          cx,
+          cy,
+          cx + Math.cos(startAngle + sliceAngle / 2) * radius,
+          cy + Math.sin(startAngle + sliceAngle / 2) * radius
+        );
+        grad.addColorStop(0, adjustBrightness(entry.color, -40)); // darker center
+        grad.addColorStop(0.5, entry.color);
+        grad.addColorStop(1, adjustBrightness(entry.color, 12)); // brighter edge
+
         ctx.beginPath();
         ctx.moveTo(cx, cy);
         ctx.arc(cx, cy, radius, startAngle, endAngle);
         ctx.closePath();
-        ctx.fillStyle = entry.color;
+        ctx.fillStyle = grad;
         ctx.fill();
 
-        // Segment border
-        ctx.strokeStyle = "rgba(255,255,255,0.1)";
+        // Segment border (clean translucent separator)
+        ctx.strokeStyle = "rgba(255,255,255,0.12)";
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // Label
+        // Label drawing
         const midAngle = startAngle + sliceAngle / 2;
-        const labelRadius = radius * 0.65;
-        const lx = cx + Math.cos(midAngle) * labelRadius;
-        const ly = cy + Math.sin(midAngle) * labelRadius;
 
         ctx.save();
-        ctx.translate(lx, ly);
-        ctx.rotate(midAngle + Math.PI / 2);
+        ctx.translate(cx, cy);
+        ctx.rotate(midAngle);
+
+        const cleanAngle = ((midAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+        const shouldFlip = cleanAngle > Math.PI / 2 && cleanAngle < (3 * Math.PI) / 2;
+
         ctx.fillStyle = getContrastText(entry.color);
-        ctx.font = `${Math.max(10, Math.min(13, radius / entries.length / 3))}px sans-serif`;
-        ctx.textAlign = "center";
+
+        const maxWidthAtMid = radius * 0.6 * Math.sin(sliceAngle / 2) * 2;
+        const fontSize = Math.max(10, Math.min(15, maxWidthAtMid * 0.85));
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        ctx.textBaseline = "middle";
+
         const label = entry.label.length > 14 ? entry.label.slice(0, 12) + "…" : entry.label;
-        ctx.fillText(label, 0, 0);
+
+        if (shouldFlip) {
+          ctx.rotate(Math.PI);
+          ctx.textAlign = "left";
+          ctx.shadowColor = "rgba(0,0,0,0.2)";
+          ctx.shadowBlur = 2;
+          ctx.fillText(label, -radius * 0.82, 0);
+        } else {
+          ctx.textAlign = "right";
+          ctx.shadowColor = "rgba(0,0,0,0.2)";
+          ctx.shadowBlur = 2;
+          ctx.fillText(label, radius * 0.82, 0);
+        }
         ctx.restore();
 
         startAngle = endAngle;
       });
 
-      // Center circle
-      const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius * 0.25);
-      gradient.addColorStop(0, "#1e1e30");
-      gradient.addColorStop(1, "#12121a");
-      ctx.beginPath();
-      ctx.arc(cx, cy, radius * 0.14, 0, Math.PI * 2);
-      ctx.fillStyle = gradient;
-      ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.15)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Outer ring
-      ctx.beginPath();
-      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(255,255,255,0.12)";
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      // Shadow ring
+      // ── Outer Rim Border & LED lights ──
+      // Dark rim backing
       ctx.beginPath();
       ctx.arc(cx, cy, radius + 6, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(139,92,246,0.15)";
+      ctx.strokeStyle = "#12121a";
+      ctx.lineWidth = 14;
+      ctx.stroke();
+
+      // Sleek inner border overlay
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius + 6, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(255,255,255,0.06)";
       ctx.lineWidth = 12;
       ctx.stroke();
 
-      // Pointer at top
-      const pointerSize = 14;
+      // Circumference LED chase bulbs
+      const totalLights = 24;
+      const chaseSpeed = spinning ? rotation * 8 : Date.now() / 250;
+      const activeLightIndex = Math.floor(chaseSpeed % totalLights);
+
+      for (let i = 0; i < totalLights; i++) {
+        const angle = (i / totalLights) * Math.PI * 2;
+        const lx = cx + Math.cos(angle) * (radius + 6);
+        const ly = cy + Math.sin(angle) * (radius + 6);
+
+        ctx.beginPath();
+        ctx.arc(lx, ly, 3.5, 0, Math.PI * 2);
+
+        const diff = (i - activeLightIndex + totalLights) % totalLights;
+
+        ctx.save();
+        if (diff === 0) {
+          ctx.fillStyle = "#ffffff";
+          ctx.shadowColor = "#06b6d4";
+          ctx.shadowBlur = 12;
+        } else if (diff === 1 || diff === 2) {
+          ctx.fillStyle = "#06b6d4";
+          ctx.shadowColor = "#06b6d4";
+          ctx.shadowBlur = 6;
+        } else {
+          ctx.fillStyle = "#2a2a3c";
+          ctx.strokeStyle = "rgba(255,255,255,0.1)";
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // ── 3D Metallic Center Cap ──
+      // 1. Chrome outer bezel
+      const centerRadius = radius * 0.16;
+      const chromeGrad = ctx.createLinearGradient(
+        cx - centerRadius,
+        cy - centerRadius,
+        cx + centerRadius,
+        cy + centerRadius
+      );
+      chromeGrad.addColorStop(0, "#ffffff");
+      chromeGrad.addColorStop(0.2, "#d1d5db");
+      chromeGrad.addColorStop(0.45, "#4b5563");
+      chromeGrad.addColorStop(0.7, "#f3f4f6");
+      chromeGrad.addColorStop(1, "#1f2937");
+
       ctx.beginPath();
-      ctx.moveTo(cx, cy - radius - 2);
-      ctx.lineTo(cx - pointerSize, cy - radius - 22);
-      ctx.lineTo(cx + pointerSize, cy - radius - 22);
-      ctx.closePath();
-      ctx.fillStyle = "#f0f0f5";
+      ctx.arc(cx, cy, centerRadius, 0, Math.PI * 2);
+      ctx.fillStyle = chromeGrad;
       ctx.fill();
-      ctx.strokeStyle = "rgba(0,0,0,0.3)";
+      ctx.strokeStyle = "rgba(0,0,0,0.35)";
       ctx.lineWidth = 1;
       ctx.stroke();
 
-      // Small pointer circle
+      // 2. Glossy dark center core
+      const innerRadius = centerRadius - 4;
+      const innerGrad = ctx.createRadialGradient(
+        cx - 2,
+        cy - 2,
+        0,
+        cx,
+        cy,
+        innerRadius
+      );
+      innerGrad.addColorStop(0, "#374151");
+      innerGrad.addColorStop(0.8, "#111827");
+      innerGrad.addColorStop(1, "#030712");
+
       ctx.beginPath();
-      ctx.arc(cx, cy - radius - 2, 4, 0, Math.PI * 2);
-      ctx.fillStyle = "#f0f0f5";
+      ctx.arc(cx, cy, innerRadius, 0, Math.PI * 2);
+      ctx.fillStyle = innerGrad;
       ctx.fill();
+
+      // 3. Center glossy highlight overlay
+      ctx.beginPath();
+      ctx.ellipse(
+        cx - innerRadius * 0.35,
+        cy - innerRadius * 0.35,
+        innerRadius * 0.45,
+        innerRadius * 0.25,
+        -Math.PI / 4,
+        0,
+        Math.PI * 2
+      );
+      const glossGrad = ctx.createLinearGradient(
+        cx - innerRadius * 0.6,
+        cy - innerRadius * 0.6,
+        cx,
+        cy
+      );
+      glossGrad.addColorStop(0, "rgba(255,255,255,0.35)");
+      glossGrad.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = glossGrad;
+      ctx.fill();
+
+      // ── Futuristic Neon Ticker Pointer ──
+      const pointerPivotY = cy - radius - 24;
+      const pointerLength = 22;
+      const pointerHalfWidth = 14;
+      const wobble = tickerWobbleRef.current;
+
+      ctx.save();
+      ctx.translate(cx, pointerPivotY);
+      ctx.rotate(wobble);
+
+      // Shadow for pointer needle
+      ctx.shadowColor = "rgba(0,0,0,0.3)";
+      ctx.shadowBlur = 5;
+      ctx.shadowOffsetY = 2;
+
+      // Outer needle border
+      ctx.beginPath();
+      ctx.moveTo(0, pointerLength);
+      ctx.lineTo(-pointerHalfWidth, 0);
+      ctx.lineTo(pointerHalfWidth, 0);
+      ctx.closePath();
+      const ptrChrome = ctx.createLinearGradient(-pointerHalfWidth, 0, pointerHalfWidth, 0);
+      ptrChrome.addColorStop(0, "#9ca3af");
+      ptrChrome.addColorStop(0.5, "#ffffff");
+      ptrChrome.addColorStop(1, "#4b5563");
+      ctx.fillStyle = ptrChrome;
+      ctx.fill();
+
+      ctx.shadowBlur = 0; // reset shadow
+      ctx.shadowOffsetY = 0;
+      ctx.strokeStyle = "rgba(0,0,0,0.4)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Inner glowing needle body
+      ctx.beginPath();
+      ctx.moveTo(0, pointerLength - 3);
+      ctx.lineTo(-pointerHalfWidth + 3, 2);
+      ctx.lineTo(pointerHalfWidth - 3, 2);
+      ctx.closePath();
+      ctx.fillStyle = "#1e1e2f";
+      ctx.fill();
+
+      // Sleek neon gem at pivot point
+      ctx.beginPath();
+      ctx.arc(0, 1, 5, 0, Math.PI * 2);
+      ctx.fillStyle = "#22d3ee";
+      ctx.shadowColor = "#06b6d4";
+      ctx.shadowBlur = 8;
+      ctx.fill();
+
+      ctx.restore();
     },
-    [entries, totalWeight]
+    [entries, totalWeight, spinning]
   );
 
   // ── Spin logic ──
@@ -274,61 +447,67 @@ export default function LuckyWheelPage() {
     playTick(soundEnabled);
     setSpinning(true);
     setWinner(null);
-
-    // Initial velocity: 15-25 rad per frame (fast spin)
     velocityRef.current = 0.3 + Math.random() * 0.3;
     lastSegmentIndexRef.current = -1;
+  }, [spinning, entries, soundEnabled]);
 
-    const animate = () => {
-      velocityRef.current *= friction;
-      angleRef.current += velocityRef.current;
+  // ── Continuous animation loop for physics & rendering ──
+  useEffect(() => {
+    let animId = 0;
 
+    const tick = () => {
+      // 1. Update spinning physics if active
+      if (spinning) {
+        velocityRef.current *= friction;
+        angleRef.current += velocityRef.current;
+
+        const normalizedAngle =
+          ((angleRef.current % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+        const pointerAngle = (2 * Math.PI - normalizedAngle) % (Math.PI * 2);
+
+        let cumulative = 0;
+        let curIndex = 0;
+        for (let i = 0; i < entries.length; i++) {
+          cumulative += (entries[i].weight / totalWeight) * Math.PI * 2;
+          if (pointerAngle <= cumulative) {
+            curIndex = i;
+            break;
+          }
+        }
+
+        if (curIndex !== lastSegmentIndexRef.current) {
+          if (lastSegmentIndexRef.current !== -1) {
+            playTick(soundEnabled);
+            tickerWobbleRef.current = -0.38; // bounce pointer
+          }
+          lastSegmentIndexRef.current = curIndex;
+        }
+
+        if (velocityRef.current <= 0.0005) {
+          // Stopped spinning
+          setWinner(entries[curIndex].label);
+          setSpinning(false);
+          velocityRef.current = 0;
+          fireConfetti();
+        }
+      }
+
+      // 2. Damp pointer wobble
+      tickerWobbleRef.current *= 0.82;
+
+      // 3. Draw frame
       drawWheel(angleRef.current);
 
-      const normalizedAngle =
-        ((angleRef.current % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-      const pointerAngle = (2 * Math.PI - normalizedAngle + Math.PI / 2) % (Math.PI * 2);
-
-      let cumulative = 0;
-      let curIndex = 0;
-      for (let i = 0; i < entries.length; i++) {
-        cumulative += (entries[i].weight / totalWeight) * Math.PI * 2;
-        if (pointerAngle <= cumulative) {
-          curIndex = i;
-          break;
-        }
-      }
-
-      if (curIndex !== lastSegmentIndexRef.current) {
-        if (lastSegmentIndexRef.current !== -1) {
-          playTick(soundEnabled);
-        }
-        lastSegmentIndexRef.current = curIndex;
-      }
-
-      if (velocityRef.current > 0.0005) {
-        animationRef.current = requestAnimationFrame(animate);
-      } else {
-        setWinner(entries[curIndex].label);
-        setSpinning(false);
-        fireConfetti();
-      }
+      animId = requestAnimationFrame(tick);
     };
 
-    animationRef.current = requestAnimationFrame(animate);
+    animId = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(animId);
+    };
   }, [spinning, entries, totalWeight, drawWheel, soundEnabled]);
 
-  // ── Initial draw and resize ──
-  useEffect(() => {
-    drawWheel(angleRef.current);
 
-    const handleResize = () => drawWheel(angleRef.current);
-    window.addEventListener("resize", handleResize);
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      cancelAnimationFrame(animationRef.current);
-    };
-  }, [drawWheel]);
 
   // ── CRUD helpers ──
   const addEntry = useCallback(() => {
