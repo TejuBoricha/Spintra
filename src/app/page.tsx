@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, Sparkles, Zap, Globe, MessageCircle, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeroThreeScene } from "@/components/landing/hero-scene";
@@ -249,8 +250,8 @@ export default function HomePage() {
       <footer className="relative z-10 border-t border-white/5 py-12 px-4">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-gradient-to-br from-purple-500 to-cyan-400 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
+            <div className="w-6 h-6 rounded overflow-hidden flex-shrink-0">
+              <Image src="/logo.png" alt="Spintra" width={24} height={24} className="w-full h-full object-cover" />
             </div>
             <span className="font-semibold">
               <span className="gradient-text">Spin</span>tra

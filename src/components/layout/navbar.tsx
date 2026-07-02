@@ -4,6 +4,7 @@ import { useState, useEffect, useSyncExternalStore } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/components/theme-provider";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Sun,
   Moon,
@@ -13,7 +14,6 @@ import {
   ChevronDown,
   Gamepad2,
 } from "lucide-react";
-import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -59,13 +59,20 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
+          <Link href="/" className="flex items-center gap-2.5 group">
             <motion.div
-              whileHover={{ rotate: 180 }}
-              transition={{ duration: 0.5, ease: "easeInOut" }}
-              className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-cyan-400 flex items-center justify-center"
+              whileHover={{ scale: 1.08 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0"
             >
-              <Logo size={20} className="text-white" />
+              <Image
+                src="/logo.png"
+                alt="Spintra"
+                width={32}
+                height={32}
+                className="w-full h-full object-cover"
+                priority
+              />
             </motion.div>
             <span className="text-xl font-bold tracking-tight">
               <span className="gradient-text">Spin</span>

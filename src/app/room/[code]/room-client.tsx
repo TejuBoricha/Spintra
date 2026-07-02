@@ -21,7 +21,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Emoji, renderTextWithEmoji, EMOJI_UNICODE } from "@/components/emoji";
-import { Logo } from "@/components/logo";
+import Image from "next/image";
 import type { User, ChatMessage, RoomParticipant, RoomType } from "@/lib/types";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getOrCreateRoomUser, getLocalRoomCreatorId } from "@/lib/room-user";
@@ -1543,9 +1543,9 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                   <motion.div
                     animate={{ rotate: 360 }}
                     transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
-                    className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center"
+                    className="w-20 h-20 mx-auto mb-6 rounded-full overflow-hidden"
                   >
-                    <Logo size={40} className="text-white" />
+                    <Image src="/logo.png" alt="Spintra" width={80} height={80} className="w-full h-full object-cover" />
                   </motion.div>
                   {isHost ? (
                     <>
