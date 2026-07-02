@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, CheckCircle, XCircle, Volume2, VolumeX } from "lucide-react";
 import { getGameByType } from "@/lib/games";
@@ -37,12 +37,19 @@ const statements = [
 
 export default function NeverHaveIEverPage() {
   const [index, setIndex] = useState(0);
-  const [order] = useState(() => shuffleArray(statements.map((_, i) => i)));
+  const [order, setOrder] = useState<number[]>([]);
   const [responses, setResponses] = useState<Record<number, boolean>>({});
   const [revealed, setRevealed] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [hasHydrated, setHasHydrated] = useState(false);
 
-  const statement = statements[order[index % order.length]];
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOrder(shuffleArray(statements.map((_, i) => i)));
+    setHasHydrated(true);
+  }, []);
+
+  const statement = order.length > 0 ? statements[order[index % order.length]] : "";
   const iHave = responses[index] === true;
 
   const respond = (have: boolean) => {
@@ -104,7 +111,9 @@ export default function NeverHaveIEverPage() {
               />
             )}
             <div className="relative z-10">
-              <p className="text-2xl font-medium leading-relaxed">{statement}</p>
+              <p className="text-2xl font-medium leading-relaxed">
+                {hasHydrated ? statement : <span className="opacity-0">Loading...</span>}
+              </p>
             </div>
           </motion.div>
         </AnimatePresence>

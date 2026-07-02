@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Coins, TrendingUp, Volume2, VolumeX } from "lucide-react";
+import { Coins, TrendingUp, Volume2, VolumeX, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Emoji } from "@/components/emoji";
 import { playCoinFlip, playTick } from "@/lib/audio";
@@ -22,6 +23,12 @@ export default function CoinFlipPage() {
   const [history, setHistory] = useState<number[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const customLabels = { heads: "Heads", tails: "Tails" };
+
+  const resetStats = () => {
+    setHistory([]);
+    setResult(null);
+    toast.success("Flip statistics reset!");
+  };
 
   const stats = {
     total: history.length,
@@ -124,9 +131,21 @@ export default function CoinFlipPage() {
             animate={{ opacity: 1 }}
             className="glass-card p-6 max-w-md mx-auto"
           >
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-purple-400" />
-              Statistics
+            <h3 className="text-lg font-semibold mb-4 flex items-center justify-between w-full">
+              <span className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-purple-400" />
+                Statistics
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={resetStats}
+                disabled={flipping}
+                className="text-xs text-muted-foreground hover:text-red-400 h-8 gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Reset
+              </Button>
             </h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="p-3 rounded-lg bg-yellow-500/10">

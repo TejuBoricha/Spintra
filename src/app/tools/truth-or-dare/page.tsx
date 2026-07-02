@@ -115,8 +115,9 @@ export default function TruthOrDarePage() {
       toast("You've seen them all — shuffling for another round", {
         icon: <Emoji name="party_popper" size={18} />,
       });
-      setUsed(new Set());
-      setCurrent(pool[Math.floor(Math.random() * pool.length)]);
+      const newPick = pool[Math.floor(Math.random() * pool.length)];
+      setCurrent(newPick);
+      setUsed(new Set([newPick]));
       return;
     }
     const pick = available[Math.floor(Math.random() * available.length)];

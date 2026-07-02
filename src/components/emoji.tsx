@@ -88,7 +88,17 @@ export function Emoji({ name, size = 24, animated = true, pop = false, className
       animate={pop ? { scale: 1, rotate: 0 } : undefined}
       whileHover={animated ? { scale: 1.25, rotate: [0, -8, 8, -4, 0] } : undefined}
       whileTap={animated ? { scale: 0.85 } : undefined}
-      transition={pop ? { type: "spring", stiffness: 350, damping: 14 } : { type: "spring", stiffness: 400, damping: 12 }}
+      transition={
+        pop
+          ? {
+              scale: { type: "spring", stiffness: 350, damping: 14 },
+              rotate: { type: "tween", duration: 0.4, ease: "easeInOut" },
+            }
+          : {
+              scale: { type: "spring", stiffness: 400, damping: 12 },
+              rotate: { type: "tween", duration: 0.4, ease: "easeInOut" },
+            }
+      }
     />
   );
 }

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Emoji } from "@/components/emoji";
 import { playSuccess, playFailure, playPop } from "@/lib/audio";
+import { toast } from "sonner";
 
 const modes = [
   { name: "Easy", range: 50, attempts: 10 },
@@ -32,7 +33,10 @@ export default function GuessNumberPage() {
 
   const makeGuess = () => {
     const num = parseInt(guess);
-    if (!num || num < 1 || num > mode.range) return;
+    if (isNaN(num) || num < 1 || num > mode.range) {
+      toast.error(`Please enter a valid number between 1 and ${mode.range}`);
+      return;
+    }
 
     let hint: "high" | "low" | "correct";
     if (num === target) hint = "correct";

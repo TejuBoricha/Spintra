@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ThumbsUp, Volume2, VolumeX } from "lucide-react";
 import { getGameByType } from "@/lib/games";
@@ -35,12 +35,17 @@ const questions = [
 
 export default function WouldYouRatherPage() {
   const [current, setCurrent] = useState(0);
-  const [order] = useState(() => shuffleArray(questions.map((_, i) => i)));
+  const [order, setOrder] = useState<number[]>([]);
   const [votes, setVotes] = useState<Record<number, "A" | "B">>({});
   const [showResult, setShowResult] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  const q = questions[order[current % order.length]];
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOrder(shuffleArray(questions.map((_, i) => i)));
+  }, []);
+
+  const q = order.length > 0 ? questions[order[current % order.length]] : null;
   const allVotes = Object.values(votes);
   const aVotes = allVotes.filter((v) => v === "A").length;
   const bVotes = allVotes.filter((v) => v === "B").length;
@@ -97,51 +102,59 @@ export default function WouldYouRatherPage() {
           >
             <p className="text-xl font-medium mb-6">Would you rather...</p>
             <div className="space-y-4">
-              <button
-                onClick={() => !showResult && vote("A")}
-                disabled={showResult}
-                className={`w-full p-5 rounded-xl text-lg font-semibold transition-all relative overflow-hidden ${
-                  showResult
-                    ? "glass-card cursor-default"
-                    : "glass-card hover:border-purple-500/30 hover:bg-purple-500/5 cursor-pointer"
-                }`}
-              >
-                {q.optionA}
-                {showResult && (
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: total > 0 ? `${(aVotes / total) * 100}%` : "0%" }}
-                    className="absolute inset-0 bg-purple-500/10 rounded-xl z-0"
-                  />
-                )}
-                <span className="relative z-10">{showResult && `${total > 0 ? Math.round((aVotes / Math.max(total, 1)) * 100) : 50}%`}</span>
-              </button>
+              {q ? (
+                <>
+                  <button
+                    onClick={() => !showResult && vote("A")}
+                    disabled={showResult}
+                    className={`w-full p-5 rounded-xl text-lg font-semibold transition-all relative overflow-hidden ${
+                      showResult
+                        ? "glass-card cursor-default"
+                        : "glass-card hover:border-purple-500/30 hover:bg-purple-500/5 cursor-pointer"
+                    }`}
+                  >
+                    {q.optionA}
+                    {showResult && (
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: total > 0 ? `${(aVotes / total) * 100}%` : "0%" }}
+                        className="absolute inset-0 bg-purple-500/10 rounded-xl z-0"
+                      />
+                    )}
+                    <span className="relative z-10">{showResult && `${total > 0 ? Math.round((aVotes / Math.max(total, 1)) * 100) : 50}%`}</span>
+                  </button>
 
-              <div className="flex items-center justify-center gap-4">
-                <div className="w-px h-6 bg-white/10" />
-                <span className="text-sm font-bold text-muted-foreground uppercase">or</span>
-                <div className="w-px h-6 bg-white/10" />
-              </div>
+                  <div className="flex items-center justify-center gap-4">
+                    <div className="w-px h-6 bg-white/10" />
+                    <span className="text-sm font-bold text-muted-foreground uppercase">or</span>
+                    <div className="w-px h-6 bg-white/10" />
+                  </div>
 
-              <button
-                onClick={() => !showResult && vote("B")}
-                disabled={showResult}
-                className={`w-full p-5 rounded-xl text-lg font-semibold transition-all relative overflow-hidden ${
-                  showResult
-                    ? "glass-card cursor-default"
-                    : "glass-card hover:border-cyan-500/30 hover:bg-cyan-500/5 cursor-pointer"
-                }`}
-              >
-                {q.optionB}
-                {showResult && (
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: total > 0 ? `${(bVotes / total) * 100}%` : "0%" }}
-                    className="absolute inset-0 bg-cyan-500/10 rounded-xl z-0"
-                  />
-                )}
-                <span className="relative z-10">{showResult && `${total > 0 ? Math.round((bVotes / Math.max(total, 1)) * 100) : 50}%`}</span>
-              </button>
+                  <button
+                    onClick={() => !showResult && vote("B")}
+                    disabled={showResult}
+                    className={`w-full p-5 rounded-xl text-lg font-semibold transition-all relative overflow-hidden ${
+                      showResult
+                        ? "glass-card cursor-default"
+                        : "glass-card hover:border-cyan-500/30 hover:bg-cyan-500/5 cursor-pointer"
+                    }`}
+                  >
+                    {q.optionB}
+                    {showResult && (
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: total > 0 ? `${(bVotes / total) * 100}%` : "0%" }}
+                        className="absolute inset-0 bg-cyan-500/10 rounded-xl z-0"
+                      />
+                    )}
+                    <span className="relative z-10">{showResult && `${total > 0 ? Math.round((bVotes / Math.max(total, 1)) * 100) : 50}%`}</span>
+                  </button>
+                </>
+              ) : (
+                <div className="h-40 flex items-center justify-center">
+                  <span className="text-muted-foreground text-sm opacity-50">Loading options...</span>
+                </div>
+              )}
             </div>
           </motion.div>
         </AnimatePresence>
