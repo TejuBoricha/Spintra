@@ -60,4 +60,6 @@ Title, completion date, and a pointer to the full implementation detail in `CHAN
 | `HANDOFF.md` Sync | 2026-07-04 | Session 18 |
 | Redundant Event Type Casts Removed (all 14 activities) | 2026-07-04 | Session 19 |
 | `AI_RULES.md` Definition of Done + Mandatory Change Report | 2026-07-04 | Session 20 |
-| Documentation System Refactor (this pass — see `CHANGELOG_AI.md` for the full report) | 2026-07-04 | Session 21 |
+| Documentation System Refactor | 2026-07-04 | Session 21 |
+| ADR Backfill, Automated Drift Check, CI Node-Version Fix, Governance Review V2 | 2026-07-04 | Session 22 |
+| Composed `verify`/`ci` Scripts, Stale-Reference Cleanup, README Polish | 2026-07-04 | Session 23 |

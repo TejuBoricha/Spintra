@@ -122,6 +122,30 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 23: Composed verify/ci Scripts, Stale-Reference Cleanup, README Polish
+
+**AI:** Claude Code (Anthropic)
+**Task:** Staff-Engineer-style review of `scripts/check-docs-drift.mjs` and `package.json`'s validation scripts (user-requested, review-only), followed by implementing the one recommendation with clear value, then two further review passes (documentation accuracy, README look-and-feel) at the user's request.
+**Files Modified:**
+- `package.json` — added composed `"verify": "npm run typecheck && npm run lint && npm run docs:check"` and `"ci": "npm run verify && npm run build && npm run test:smoke"` scripts. Committed separately from the Session 22 work so the two are distinguishable in history.
+- `docs/TASKS.md`, `docs/ENGINEERING_GOVERNANCE_REVIEW_V2.md` — fixed 3 references to `scripts/check-docs-drift.js`, the script's pre-rename name (it was renamed to `.mjs` during Session 22 to satisfy `@typescript-eslint/no-require-imports`, but 2 docs still cited the old name).
+- `docs/ARCHITECTURE.md` §9 Build Pipeline, `README.md`'s Scripts table — both were missing `docs:check`/`verify`/`ci` entirely (never updated when those scripts were added); added all three.
+- `README.md` — added a GitHub Actions CI status badge; added an explicit "License" section ("All rights reserved" — the repo had none, which silently defaults to no reuse rights); fixed the Testing section, which only listed 3 of the 6 actual CI steps (missing the security audit and documentation drift check); moved the Next.js breaking-changes callout out of the above-the-fold area (it was the first thing a visitor saw after the one-line pitch) into its own "Development notes" section near the bottom.
+
+**Purpose:**
+- Turn the review's one unambiguous recommendation (composed local scripts mirroring the CI gate) into an actual change rather than leaving it as unactioned prose.
+- Two follow-up "final review" requests surfaced real staleness (wrong script filename in 2 docs, 2 incomplete script inventories) and a structural README issue (dev-facing caveat crowding out the project pitch) — fixed all of them since they were genuine, verified defects rather than speculative polish.
+
+**Outcome:**
+- `npm run verify` passes clean after every change in this session.
+- Confirmed via repo-wide grep that no `check-docs-drift.js` (old name) references remain anywhere.
+- `ci.yml`'s step order (audit → typecheck → lint → docs:check → build → smoke) was confirmed to already match what `npm run ci` executes, plus the audit step — no inconsistency found there, so nothing was changed in `ci.yml` this session.
+- Declined to add a screenshot/GIF to the README (no browser/screenshot tool available in this environment) and declined to invent a live-demo URL (none found in the repo) — both left as open, user-owned follow-ups rather than guessed at.
+
+**Risks:** None — documentation/config only, verified against `npm run verify` after each change.
+
+---
+
 ## [2026-07-04] — Session 22: Resolved All 3 Remaining Documentation Risks
 
 **AI:** Claude Code (Anthropic)

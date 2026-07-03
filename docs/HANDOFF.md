@@ -6,7 +6,7 @@ Portable session-continuity note for any AI assistant (Antigravity, Claude Code,
 
 ## Last Completed Task
 
-A full documentation-system refactor: gave every file in `docs/` a single, non-overlapping responsibility, relocating duplicated content to its correct home instead of deleting it, and fixed several real staleness bugs found in the process (a live phantom-`users`-table reference still present in `ARCHITECTURE.md`'s Authentication Flow section, a stale "mid-refactor" folder structure diagram, a missing `soundEnabled` field in the documented context shape, and an undocumented `ErrorBoundary` pattern). Full detail: `CHANGELOG_AI.md` Session 21.
+Added composed `verify`/`ci` npm scripts (the one concrete recommendation from a Staff-Engineer-style review of the drift-check tooling), then two further review passes that each caught and fixed real staleness: `docs/TASKS.md` and `docs/ENGINEERING_GOVERNANCE_REVIEW_V2.md` still cited the drift script's pre-rename filename (`check-docs-drift.js` instead of `.mjs`); `docs/ARCHITECTURE.md` §9 and `README.md`'s Scripts table were both missing the `docs:check`/`verify`/`ci` entries; and `README.md` got a CI badge, a License section, a corrected Testing section, and had its Next.js breaking-changes callout moved out of the above-the-fold area into its own "Development notes" section. Full detail: `CHANGELOG_AI.md` Session 23 (and Session 22 for the documentation-refactor risk fixes — ADR backfill, drift script, CI Node-version fix, governance review V2 — that preceded it and had also not yet been synced into this file).
 
 ---
 
