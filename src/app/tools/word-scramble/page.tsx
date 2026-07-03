@@ -11,6 +11,7 @@ import { fireConfetti } from "@/components/celebration";
 import { playPop, playSuccess } from "@/lib/audio";
 import { getGameByType } from "@/lib/games";
 import { toast } from "sonner";
+import { shuffleArray } from "@/lib/utils";
 
 const GameIcon = getGameByType("word-scramble")!.icon;
 
@@ -24,7 +25,7 @@ function scramble(word: string): string {
   let letters = word.split("");
   let attempt = letters.join("");
   while (attempt === word) {
-    letters = [...letters].sort(() => Math.random() - 0.5);
+    letters = shuffleArray(letters);
     attempt = letters.join("");
   }
   return attempt;
@@ -46,7 +47,7 @@ export default function WordScramblePage() {
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   useEffect(() => {
-    const shuffledOrder = [...WORDS.keys()].sort(() => Math.random() - 0.5);
+    const shuffledOrder = shuffleArray([...WORDS.keys()]);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- see comment above the initial state
     setOrder(shuffledOrder);
     setScrambled(scramble(WORDS[shuffledOrder[0]]));

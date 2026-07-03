@@ -6,8 +6,9 @@ import { Volume2, VolumeX, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Emoji } from "@/components/emoji";
 import { fireConfetti, CelebrationBanner } from "@/components/celebration";
-import { playPop, playSuccess } from "@/lib/audio";
 import { getGameByType } from "@/lib/games";
+import { shuffleArray } from "@/lib/utils";
+import { playPop, playSuccess } from "@/lib/audio";
 
 const GameIcon = getGameByType("bingo")!.icon;
 
@@ -21,7 +22,7 @@ const COLUMN_RANGES: Record<string, [number, number]> = {
 const COLUMNS = Object.keys(COLUMN_RANGES);
 
 function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
+  return shuffleArray(arr);
 }
 
 function generateCard(): number[][] {

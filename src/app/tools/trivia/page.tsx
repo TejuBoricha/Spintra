@@ -9,6 +9,7 @@ import { Emoji } from "@/components/emoji";
 import { fireConfetti, CelebrationBanner } from "@/components/celebration";
 import { playPop, playSuccess, playFailure } from "@/lib/audio";
 import { getGameByType } from "@/lib/games";
+import { shuffleArray } from "@/lib/utils";
 
 const GameIcon = getGameByType("trivia")!.icon;
 
@@ -37,7 +38,7 @@ export default function TriviaPage() {
   const [order, setOrder] = useState(() => QUESTIONS.map((_, i) => i));
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- see comment above the initial state
-    setOrder([...QUESTIONS.keys()].sort(() => Math.random() - 0.5));
+    setOrder(shuffleArray([...QUESTIONS.keys()]));
   }, []);
 
   const [index, setIndex] = useState(0);

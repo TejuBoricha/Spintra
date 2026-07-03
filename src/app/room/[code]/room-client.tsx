@@ -197,7 +197,9 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
 
   // Sync client-only values from localStorage/environment post-mount to prevent hydration mismatches
   useEffect(() => {
+    let isMounted = true;
     queueMicrotask(() => {
+      if (!isMounted) return;
       setHasMounted(true);
       const supabase = getSupabaseBrowserClient();
       if (!supabase) {
@@ -223,7 +225,20 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         setIsLocked(savedLock === "true");
       }
     });
-  }, [roomCode]);
+
+    return () => {
+      isMounted = false;
+      const supabase = getSupabaseBrowserClient();
+      if (supabase && currentUser?.id) {
+        supabase
+          .from("room_participants")
+          .update({ is_online: false })
+          .eq("room_id", roomCode)
+          .eq("user_id", currentUser.id)
+          .then();
+      }
+    };
+  }, [roomCode, currentUser?.id]);
 
   useEffect(() => {
     activeActivityRef.current = activeActivity;
@@ -651,6 +666,15 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         payload: currentUser.id,
         senderId: currentUser.id,
       });
+      const supabase = getSupabaseBrowserClient();
+      if (supabase) {
+        supabase
+          .from("room_participants")
+          .update({ is_online: false })
+          .eq("room_id", roomCode)
+          .eq("user_id", currentUser.id)
+          .then();
+      }
     };
 
     window.addEventListener("beforeunload", handleUnload);
@@ -894,12 +918,32 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
             .flat()
             .map((p) => (p as unknown as { user_id: string }).user_id)
         );
-        setParticipants((prev) =>
-          prev.map((participant) => ({
+        setParticipants((prev) => {
+          const updated = prev.map((participant) => ({
             ...participant,
             is_online: onlineIds.has(participant.user_id),
-          }))
-        );
+          }));
+
+          // Self-healing presence logic: if we are host, update any crashed participants to is_online = false in the DB
+          if (isHostRef.current) {
+            const supabaseClient = getSupabaseBrowserClient();
+            if (supabaseClient) {
+              const crashed = prev.filter(
+                (p) => p.is_online && !onlineIds.has(p.user_id) && p.user_id !== currentUser.id
+              );
+              if (crashed.length > 0) {
+                supabaseClient
+                  .from("room_participants")
+                  .update({ is_online: false })
+                  .in("user_id", crashed.map((p) => p.user_id))
+                  .eq("room_id", roomCode)
+                  .then();
+              }
+            }
+          }
+
+          return updated;
+        });
       })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages", filter: `room_id=eq.${roomCode}` }, (payload) => {
         const incoming = payload.new as ChatMessage;
