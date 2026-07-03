@@ -50,12 +50,14 @@ Unknown (not tracked in sessions). Assume `main` unless the user specifies other
 - ✅ Tools pages for all 14 games at `/tools/[slug]`
 - ✅ Explore page, Home page
 - ✅ Dynamic Trivia Question Bank (50 questions, categorized, with host category & difficulty filters and non-repeat shuffler)
+- ✅ GitHub Actions CI Pipeline (npm audit, typescript typecheck, eslint code lint, production build verification, Playwright E2E smoke tests)
 
 ### Bugs Fixed
 - ✅ **Hydration mismatch** — `isHost` is now gated behind `hasMounted` state
 - ✅ **is_online presence** — updates to `false` on `beforeunload` / `pagehide` / unmount
 - ✅ **Host self-healing presence** — host batch-updates stale rows on disconnect detection
 - ✅ **Biased shuffle** — replaced `sort(() => Math.random() - 0.5)` with Fisher-Yates `shuffleArray` in Bingo, Trivia, WordScramble, TeamMaker, and Tournament
+- ✅ **Chat message duplication** — resolved optimistic local echo duplications by matching database and client UUID layouts, and comparing parsed datetime integers robustly
 
 ### DB Migrations Applied
 - ✅ `0001` — init schema and RLS
@@ -177,35 +179,22 @@ No custom REST or GraphQL APIs. All communication is via Supabase Realtime.
 
 ---
 
-## Recent Architectural Changes (Session 4)
+## Recent Architectural Changes
 
-1. **Created `RoomActivityContext`** — shared context providing `isHost`, `currentUser`, `participants`, `sendActivityEvent`, `registerEventListener` to all activities
-2. **Added Pub/Sub fan-out** — `listenersRef` (Set of callbacks) + `registerEventListener` + `handleActivityEvent` dispatcher in `room-client.tsx`
-3. **Introduced lazy loading** — 4 activities now use `next/dynamic` with `ssr: false`
-4. **Migrated 4 activities** to zero-prop pattern — they subscribe to events via `registerEventListener` and own their state locally
-5. **Added `shuffleArray`** to `src/lib/utils.ts`
+### Session 5 & 6 (Full Modularisation)
+1. **Dynamic Import Registry:** Replaced monolithic switch case loops in `room-client.tsx` with a single centralized plugin registry mapping game types to dynamic React imports.
+2. **Re-render Optimization:** Split context hook into stable parameters (`RoomActivityContext`) and dynamic rosters (`RoomParticipantsContext`) to prevent game panel re-renders when participants enter/leave.
+3. **Class-based ErrorBoundary:** Wrapped the dynamic active game view inside a localized ErrorBoundary to isolate crashes.
+4. **Discriminated Union Event Types:** Fully typed all 14 multiplayer game broadcast payloads inside `src/lib/types.ts`.
+
+### Session 7 (Trivia Expansion & Chat Duplicate Hotfix)
+1. **Categorized Trivia Bank:** Expanded the hardcoded trivia question collection to a 50-card local database with Category and Difficulty properties.
+2. **Host Settings Dropdowns:** Created interactive category/difficulty selectors for the Host to filter questions before launching trivia rounds.
+3. **duplicate Prevention shuffler:** Handled question reuse within session decks using local ledger index lists sorted by the Fisher-Yates helper.
+4. **Chat Echo Duplicate Fix:** Synced client-generated UUID message IDs directly to database inserts, and compared parsed timestamp milliseconds (`.getTime()`) to filter optimistic local echoes correctly.
 
 ---
 
-## Important Assumptions & Reasoning
+## Architectural Decisions
 
-### Why Strangler Fig (not big-bang rewrite)?
-The app must remain functional at every step. A full rewrite of `room-client.tsx` in one commit would break the entire room experience. Incremental migration keeps the app shippable throughout.
-
-### Why split Context into Stable + Dynamic?
-A single context that includes `participants` causes every mounted activity to re-render when someone joins or leaves. With 14 activities potentially mounted, this is a significant unnecessary re-render budget. Only 3 activities (TeamMaker, Tournament, NameDraw) actually need the participants list.
-
-### Why `key={activeActivity.type}` on the dynamic component?
-Forces a full unmount+remount when the activity type changes, cleanly resetting all local state. This is intentional — it prevents stale state from the previous game bleeding into the next.
-
-### Why BroadcastChannel fallback?
-The project works with or without Supabase configured (useful for demos, local dev, or offline). `getSupabaseBrowserClient()` returns `null` when `.env.local` is absent; the fallback synchronises tabs on the same machine via `BroadcastChannel`.
-
-### Why not Zustand for game state?
-Zustand is installed but not used in rooms. The Pub/Sub + local state pattern is sufficient for per-activity state and avoids introducing a global store that would couple activities to each other.
-
-### Why `shuffleArray` instead of `.sort()`?
-`Array.prototype.sort(() => Math.random() - 0.5)` is statistically biased — some permutations are significantly more likely than others due to how comparison-based sort algorithms interact with random comparators. Fisher-Yates produces a provably uniform distribution.
-
-### Why discriminated union for ActivityEvent?
-The current `Record<string, unknown> & { kind: string }` type requires `as any` to read any field, suppressing the entire TypeScript safety net. The discriminated union lets TypeScript narrow the type automatically on `event.kind`, giving full IDE autocomplete and catching wrong field names at compile time.
+All detailed architectural choices and justifications (e.g. Strangler Fig migration, Stable/Dynamic Context separation, Lazy registries, Event Bus, UUID chat message syncing) are documented in detail inside the [Architecture Decisions log (ADR)](file:///c:/Users/tejas/Desktop/Spintra-1/docs/DECISIONS.md). Please refer to it before making design modifications.

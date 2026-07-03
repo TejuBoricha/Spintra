@@ -57,8 +57,15 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 }
 
-function generateId() {
-  return Math.random().toString(36).slice(2, 10);
+function generateUUID() {
+  if (typeof window !== "undefined" && window.crypto && window.crypto.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
 const REACTION_NAMES = [
@@ -67,14 +74,11 @@ const REACTION_NAMES = [
 ] as const;
 
 function isDuplicateMessage(messages: ChatMessage[], candidate: ChatMessage) {
-  // `id` catches exact re-deliveries of the same DB row (e.g. resync after reconnect).
-  // The composite fallback is still needed because the optimistic local echo is
-  // assigned a client-generated id that never reaches the database (see sendMessage).
   return messages.some(
     (message) =>
       message.id === candidate.id ||
       (message.user_id === candidate.user_id &&
-        message.created_at === candidate.created_at &&
+        new Date(message.created_at).getTime() === new Date(candidate.created_at).getTime() &&
         message.content === candidate.content)
   );
 }
@@ -533,7 +537,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     }
 
     const msg: ChatMessage = {
-      id: generateId(),
+      id: generateUUID(),
       room_id: roomCode,
       user_id: currentUser.id,
       content: trimmed,
@@ -558,6 +562,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
 
     try {
       await supabase.from("chat_messages").insert({
+        id: msg.id,
         room_id: roomCode,
         user_id: currentUser.id,
         content: msg.content,

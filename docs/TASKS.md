@@ -1,0 +1,57 @@
+# Spintra Project Task List & Technical Debt
+
+This document tracks all active, remaining, and completed tasks for the Spintra project, including technical debt items and upcoming roadmap priorities.
+
+---
+
+## 1. Active Priorities
+
+No active task is currently in progress. All refactoring plan steps and trivia question expansions have been completed successfully.
+
+---
+
+## 2. Technical Debt Backlog
+
+- `[ ]` **Trivia Database Migration:** Migrate the static [`src/lib/trivia-questions.ts`](file:///c:/Users/tejas/Desktop/Spintra-1/src/lib/trivia-questions.ts) file to a database table to support dynamic admin editing/moderation.
+- `[ ]` **Chat Pagination:** Implement pagination or infinite scroll on chat message queries (currently pulls the entire list, which could degrade performance over time in active rooms).
+- `[ ]` **Message ID Generation:** Migrate message ID generation from `generateUUID` helper fallback to native database UUID serialization if browser APIs fail.
+- `[ ]` **Mobile Viewport Optimization:** Audit and align game viewports on small screens (specifically scaling lucky wheel, bingo grids, and tournament bracket lists).
+
+---
+
+## 3. Future Roadmap Backlog
+
+- `[ ]` **Visual Scoreboard:** Build a persistent real-time leaderboard component displaying user ranks during and after trivia activities.
+- `[ ]` **Tournament Bracket Tree UI:** Replace the flat matches list with a visual tree rendering matches in quarter/semi-final brackets.
+- `[ ]` **XP and Leveling System:** Implement an XP rewards engine that updates player stats and ranks (e.g. rookie to explorer to challenger) upon activity wins.
+- `[ ]` **Room Settings Panel:** Add host configurations for max participant counts, chat moderation, and activity timers.
+
+---
+
+## 4. Completed Milestones
+
+- `[x]` **Phase 1: Foundation & Presence Bugs**
+  - Gated `isHost` behind `hasMounted` to prevent server/client hydration mismatches.
+  - Implemented self-healing presence checks batching updates for left participants.
+  - Applied migration `0007` database updates.
+- `[x]` **Phase 2: Activity Randomization Improvements**
+  - Swapped biased random sorts for uniform Fisher-Yates array shuffles.
+  - Hooked win celebration triggers.
+- `[x]` **Phase 3: Zero-Prop Modular Refactor**
+  - Extracted shared activity metadata and participants roster to separate stable/dynamic context hooks.
+  - Created centralized dynamically split lazy-registry.
+  - Modularized all 14 game viewport components to context subscriptions.
+  - Deleted legacy monolithic states, switch blocks, and prop declarations in `room-client.tsx`.
+- `[x]` **Phase 4: Trivia Expansion & Host Controls**
+  - Created 50 categorized question bank with category/difficulty filters.
+  - Implemented non-repeat shuffler deck checks.
+- `[x]` **Phase 5: Local Echo Duplication Hotfix**
+  - Unified UUID representation format between client and database inserts.
+  - Upgraded timestamp matching in duplicate message evaluations to parse datetime string formats.
+- `[x]` **Phase 6: Continuous Integration Pipeline**
+  - Configured GitHub Actions workflow `.github/workflows/ci.yml`.
+  - Configured automated NPM dependencies caching and installations.
+  - Integrated moderate-level NPM security audits.
+  - Configured strict typecheck, linter formatting validation, and production compiles.
+  - Configured isolated Playwright E2E smoke tests inside Ubuntu CI containers.
+  - Added failed report artifact upload capture hook.

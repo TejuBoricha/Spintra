@@ -122,22 +122,46 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
-## [2026-07-03] — Session 7: Trivia Question Bank Expansion & Host Control Filters
+## [2026-07-03] — Session 8: Continuous Integration (CI) Pipeline & Workflow Entrypoint
 **AI:** Antigravity (Google DeepMind)
-**Task:** Expand Trivia question bank to 50+ questions with category/difficulty filters and duplicate prevention.
+**Task:** Establish professional Continuous Integration workflow via GitHub Actions, apply DevOps optimizations, and create a single onboarding entrypoint.
+**Files Modified/Created:**
+- `.github/workflows/ci.yml` (NEW) — GitHub Actions CI pipeline configuration
+- `START_HERE.md` (NEW) — Onboarding entrypoint and workflow pointer for developers and AI assistants
+
+**Purpose:**
+- Implement automated quality gates (caching dependencies, security audits, TypeScript typecheck, ESLint, Next production build validation, and Playwright Chromium smoke test suite).
+- Secure pull request merge validation checkpoints.
+- Provide a clear, single entrypoint explaining repository workflow rules and document order of operations.
+
+**Outcome:**
+- Highly optimized, secure, and cost-efficient CI pipeline created with Next.js and Playwright caches.
+- `START_HERE.md` available in the project root.
+- All documents, typechecks, and linter runs verified successfully.
+
+**Risks:** None.
+
+---
+
+## [2026-07-03] — Session 7: Trivia Question Bank Expansion, Host Controls & Chat Duplicate Hotfix
+**AI:** Antigravity (Google DeepMind)
+**Task:** Expand Trivia question bank to 50+ questions with category/difficulty filters and duplicate prevention; fix local echo chat message duplication.
 **Files Modified/Created:**
 - `src/lib/trivia-questions.ts` (NEW) — dynamic database of 50+ categorized questions
 - `src/lib/types.ts` — updated `TriviaQuestionEvent` definition to carry category and difficulty fields
 - `src/app/room/[code]/activities/trivia-activity.tsx` — integrated questions bank, built host drop-down controls, implemented badge renders for participants, and added no-repeat deck ledger shuffler
+- `src/app/room/[code]/room-client.tsx` — changed client-side `generateId` to valid `generateUUID`, passed client-generated `id` to database `insert` block, and upgraded `isDuplicateMessage` to do timezone-robust millisecond-based `.getTime()` comparison for message duplicate checks
 
 **Purpose:**
 - Upgrade the basic Trivia game mode from a small hardcoded set of 8 questions to a robust, high-fidelity experience.
 - Give hosts the capability to target specific subjects and difficulty levels.
 - Settle duplicate question issues using active deck state.
+- Resolve the double-rendering message bug that caused the sender's own chat message to duplicate when the database INSERT triggered a realtime broadcast with a different ID format.
 
 **Outcome:**
 - 50 categorized questions available.
 - UI elements match the premium glassmorphism theme.
+- Chat message duplication fully resolved by syncing client/database IDs and matching timestamps robustly.
 - Typecheck, linter, and dynamic build fully verified.
 
 **Risks:** None.

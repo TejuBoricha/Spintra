@@ -1,32 +1,72 @@
-name: CI
+name: Spintra Continuous Integration
 
 on:
   push:
-    branches: [main]
+    branches: [ "**" ]
   pull_request:
-    branches: [main]
+    branches: [ "**" ]
 
 jobs:
-  test:
+  validate:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: npm
+          node-version: 20.x
+          cache: 'npm'
 
-      - run: npm ci
+      - name: Install Dependencies
+        run: npm ci
 
-      - name: Lint
-        run: npm run lint
+      - name: Strict Dependency Security Audit
+        run: npm audit --audit-level=high # Block build on high or critical vulnerability findings
 
-      - name: Typecheck
+      - name: TypeScript Type Checking
         run: npm run typecheck
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+      - name: Static Analysis Linting
+        run: npm run lint
 
-      - name: Smoke test (builds and starts the app)
+      - name: Cache Playwright Browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright Chromium & Dependencies
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install chromium --with-deps
+
+      - name: Install Playwright System Dependencies (if cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Restore Next.js Build Cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
+
+      - name: Production Build Validation
+        run: npm run build
+
+      - name: Execute Playwright E2E Smoke Tests
         run: npm run test:smoke
+
+      - name: Upload Test Artifacts on Failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
