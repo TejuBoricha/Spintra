@@ -152,6 +152,8 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   // Sub-game states are now fully modularised and localized to each activity component.
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
 
   const [newMessage, setNewMessage] = useState("");
   const [isLocked, setIsLocked] = useState<boolean>(false);
@@ -191,6 +193,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollContainerRef = useRef<HTMLDivElement>(null);
   const broadcastRef = useRef<BroadcastChannel | null>(null);
   const listenersRef = useRef<Set<(event: ActivityEvent) => void>>(new Set());
   const registerEventListener = useCallback((listener: (event: ActivityEvent) => void) => {
@@ -1167,6 +1170,8 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         const supabase = getSupabaseBrowserClient();
         if (!supabase) return;
 
+        if (isMounted) setHasMoreMessages(true);
+
         const { data, error } = await supabase
           .from("chat_messages")
           .select("id, room_id, user_id, content, created_at")
@@ -1194,6 +1199,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           }));
           formattedMessages.reverse();
           setMessages(formattedMessages);
+          setHasMoreMessages(data.length === 100);
         }
       } catch (cause) {
         console.error("Message load failed:", cause);
@@ -1206,6 +1212,63 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       isMounted = false;
     };
   }, [roomCode, currentUser.id, authReady]);
+
+  const loadOlderMessages = useCallback(async () => {
+    if (loadingOlderMessages || !hasMoreMessages || messages.length === 0) return;
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
+
+    setLoadingOlderMessages(true);
+    const viewport = chatScrollContainerRef.current?.querySelector<HTMLElement>('[data-slot="scroll-area-viewport"]');
+    const prevScrollHeight = viewport?.scrollHeight ?? 0;
+    const prevScrollTop = viewport?.scrollTop ?? 0;
+
+    try {
+      // .lt() on created_at can't distinguish ties at the same millisecond,
+      // but that's an acceptable edge case for a party-room chat's volume.
+      const oldestCreatedAt = messages[0].created_at;
+      const { data, error } = await supabase
+        .from("chat_messages")
+        .select("id, room_id, user_id, content, created_at")
+        .eq("room_id", roomCode)
+        .lt("created_at", oldestCreatedAt)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error("Failed to load older messages:", error);
+        toast.error("Couldn't load older messages.");
+        return;
+      }
+
+      if (data) {
+        setHasMoreMessages(data.length === 50);
+        const formattedOlder = data.map((item) => ({
+          ...item,
+          user: {
+            id: item.user_id,
+            username: item.user_id === currentUser.id ? "You" : "Guest",
+            avatar_url: "",
+            xp: 0,
+            rank: "rookie" as const,
+            created_at: item.created_at,
+          },
+        }));
+        formattedOlder.reverse();
+        setMessages((prev) => [...formattedOlder, ...prev]);
+
+        requestAnimationFrame(() => {
+          if (viewport) {
+            viewport.scrollTop = prevScrollTop + (viewport.scrollHeight - prevScrollHeight);
+          }
+        });
+      }
+    } catch (cause) {
+      console.error("Older message load failed:", cause);
+    } finally {
+      setLoadingOlderMessages(false);
+    }
+  }, [messages, roomCode, currentUser.id, hasMoreMessages, loadingOlderMessages]);
 
   const sidebarContent = (
     <div className="flex-1 flex flex-col h-full bg-background/50 backdrop-blur-sm overflow-hidden">
@@ -1249,8 +1312,22 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
             className="flex-1 flex flex-col overflow-hidden h-full"
           >
             {/* Messages */}
-            <ScrollArea className="flex-1 px-4 py-4 overflow-y-auto">
-              <div className="space-y-4">
+            <div ref={chatScrollContainerRef} className="contents">
+              <ScrollArea className="flex-1 px-4 py-4 overflow-y-auto">
+                <div className="space-y-4">
+                {hasMoreMessages && (
+                  <div className="flex justify-center pb-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={loadOlderMessages}
+                      disabled={loadingOlderMessages}
+                      className="text-xs h-7"
+                    >
+                      {loadingOlderMessages ? "Loading…" : "Load older messages"}
+                    </Button>
+                  </div>
+                )}
                 <AnimatePresence initial={false}>
                   {messages.map((msg) => {
                     const participant = participants.find((p) => p.user_id === msg.user_id);
@@ -1290,8 +1367,9 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                   })}
                 </AnimatePresence>
                 <div ref={messagesEndRef} />
-              </div>
-            </ScrollArea>
+                </div>
+              </ScrollArea>
+            </div>
 
             {/* Emoji bar */}
             <AnimatePresence>

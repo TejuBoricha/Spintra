@@ -13,7 +13,7 @@ No active task is currently in progress. All refactoring plan steps and trivia q
 ## 2. Technical Debt Backlog
 
 - `[ ]` **Trivia Database Migration:** Migrate the static [`src/lib/trivia-questions.ts`](file:///c:/Users/tejas/Desktop/Spintra-1/src/lib/trivia-questions.ts) file to a database table to support dynamic admin editing/moderation.
-- `[ ]` **Chat Pagination:** Implement pagination or infinite scroll on chat message queries (currently pulls the entire list, which could degrade performance over time in active rooms).
+- `[x]` **Chat Pagination:** Resolved 2026-07-04 (Claude Code) — added a "Load older messages" button using a `created_at` cursor (`.lt()`), 50 messages per page, with scroll-position preservation. Not live-tested (chat requires real Supabase; this sandbox can't reach the live project) — verified via typecheck/lint/build only.
 - `[ ]` **Message ID Generation:** Migrate message ID generation from `generateUUID` helper fallback to native database UUID serialization if browser APIs fail.
 - `[ ]` **Mobile Viewport Optimization:** Audit and align game viewports on small screens (specifically scaling lucky wheel, bingo grids, and tournament bracket lists).
 

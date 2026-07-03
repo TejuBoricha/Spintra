@@ -1,7 +1,7 @@
 # AI_CONTEXT.md — Spintra Project Living Memory
 > The authoritative source of truth for the current state of the project.
 > **Always update this file after every significant milestone.**
-> Last updated: 2026-07-04T01:45 IST
+> Last updated: 2026-07-04T02:20 IST
 
 ---
 
@@ -129,6 +129,7 @@ None identified.
 - CI bumped from Node 20 → 22 (`.github/workflows/ci.yml`) since GitHub deprecated Node 20 runners; added an `engines` field to `package.json` (`>=20.9.0`, matching Next.js's own minimum) so the requirement is explicit.
 - Added `.github/dependabot.yml` (npm + github-actions ecosystems, weekly) — closes the "no automated dependency audits" gap noted in `ENGINEERING_GOVERNANCE_REVIEW.md`.
 - `README.md` restructured with a table of contents and corrected the stale "11 tools" count to 14.
+- Implemented chat pagination ("Load older messages" button, cursor-based on `created_at`) in `room-client.tsx` — not live-tested (see `CHANGELOG_AI.md` Session 12 for the exact reason).
 
 ---
 
@@ -136,7 +137,7 @@ None identified.
 
 - Trivia question bank is static file — could be migrated to a database table if dynamic administrative editing is needed.
 - Tournament activity shows bracket as a flat list, not a visual bracket tree
-- No pagination on chat messages — could get very long in active rooms
+- ~~No pagination on chat messages~~ — resolved 2026-07-04, see "Recent Session Notes"
 - `generateId()` in `room-client.tsx` (line 47) uses `Math.random()` — could collide for message IDs
 - Several activities have static prompt lists hardcoded (Truth or Dare, WYR, NHIE) — should be database-driven
 

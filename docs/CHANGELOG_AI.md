@@ -122,6 +122,30 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 12: Chat Pagination
+
+**AI:** Claude Code (Anthropic)
+**Task:** Implement "Load older messages" for room chat, closing the `TASKS.md` debt item.
+**Files Modified:**
+- `src/app/room/[code]/room-client.tsx`:
+  - Added `hasMoreMessages` / `loadingOlderMessages` state and a `chatScrollContainerRef` ref.
+  - Initial `loadMessages` effect now sets `hasMoreMessages` based on whether a full page (100) was returned.
+  - New `loadOlderMessages` callback: queries `chat_messages` with `.lt("created_at", oldestLoadedMessage.created_at)`, descending, limit 50; prepends results; restores scroll position via `requestAnimationFrame` using the viewport's `scrollHeight` delta.
+  - Added a "Load older messages" button above the message list, shown only while `hasMoreMessages` is true.
+
+**Purpose:**
+- Previously the chat only ever fetched the most recent 100 messages on mount with no way to see anything older — in an active/long-running room, earlier messages became permanently unreachable on rejoin.
+
+**Outcome:**
+- `npm run typecheck` / `npm run lint` / `npm run build`: all pass.
+- **Not live-tested.** Chat pagination requires a real Supabase connection (no BroadcastChannel fallback exists for chat), and this sandbox cannot reach the live Supabase project, nor can a second dev-server instance be started in this directory without stopping the user's already-running server (Next.js enforces a single-instance lock per project directory). Verified via static analysis, typecheck/lint/build, and by matching an established scroll-preservation pattern — not via an actual click-through.
+
+**Risks:**
+- The `.lt()` cursor doesn't disambiguate messages sharing the exact same millisecond timestamp — accepted as a low-probability edge case rather than adding a compound cursor, per the KISS/YAGNI principle in `AI_RULES.md`.
+- Scroll-position restoration assumes the `[data-slot="scroll-area-viewport"]` DOM structure inside `@base-ui/react`'s `ScrollArea` — if that internal structure changes in a future dependency bump, the scroll-restore silently no-ops (falls back to `viewport` being `null`) rather than crashing, but should be re-verified after any `@base-ui/react` upgrade.
+
+---
+
 ## [2026-07-04] — Session 11: Security Fix, CI/Node Bump, Dependabot, Word Scramble UX Fix
 
 **AI:** Claude Code (Anthropic)
