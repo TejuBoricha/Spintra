@@ -122,6 +122,21 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 18: HANDOFF.md Sync (End-of-Session)
+
+**AI:** Claude Code (Anthropic)
+**Task:** Bring `HANDOFF.md` up to date — it still described the pre-session "Dynamic UI Audio Integration" stopping point, missing this entire session's work (Sessions 11–17).
+**Files Modified:**
+- `docs/HANDOFF.md` — added a "Current Progress" bullet per Session 11–17 change; updated "Last Completed Task"; removed chat-pagination/mobile-viewport from "Roadmap Remaining Work" (both now done) and added the room settings panel item back in from `TASKS.md`; added a "Known verification gap" note under Verification Status covering the two changes that were only statically verified, not live-tested.
+
+**Purpose:**
+- `AI_RULES.md`'s End-of-Session Checklist (and now §8) requires the handoff doc to reflect the exact stopping point before a session ends — it had drifted several sessions behind.
+
+**Outcome:** Documentation-only change.
+**Risks:** None.
+
+---
+
 ## [2026-07-04] — Session 17: AI_RULES.md — New "Context Optimization" Section
 
 **AI:** Claude Code (Anthropic)
