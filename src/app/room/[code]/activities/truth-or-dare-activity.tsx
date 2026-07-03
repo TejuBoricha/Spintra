@@ -8,9 +8,56 @@ import { Badge } from "@/components/ui/badge";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
 
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+
+const BACKUP_TRUTHS = [
+  "What's your biggest fear?",
+  "What's the most embarrassing thing you've done?",
+  "What's a secret you've never told anyone?",
+  "Who was your first crush?",
+  "What's the worst lie you've told?"
+];
+
+const BACKUP_DARES = [
+  "Do your best celebrity impression",
+  "Speak in an accent for the next 3 minutes",
+  "Text your crush right now",
+  "Do 10 jumping jacks",
+  "Sing a song for 30 seconds"
+];
+
 export function TruthOrDareActivity() {
   const { isHost, sendActivityEvent, registerEventListener } = useRoomActivity();
   const [todPrompt, setTodPrompt] = useState<{ type: string; text: string } | null>(null);
+  const [prompts, setPrompts] = useState<{ truths: string[]; dares: string[] }>({
+    truths: BACKUP_TRUTHS,
+    dares: BACKUP_DARES,
+  });
+
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    if (supabase && isHost) {
+      supabase
+        .from("activity_prompts")
+        .select("*")
+        .eq("activity_type", "truth-or-dare")
+        .then(({ data, error }) => {
+          if (data && !error) {
+            const fetchedTruths = data
+              .filter((p) => p.category === "truth")
+              .map((p) => (p.prompt_data as { text: string }).text);
+            const fetchedDares = data
+              .filter((p) => p.category === "dare")
+              .map((p) => (p.prompt_data as { text: string }).text);
+
+            setPrompts({
+              truths: fetchedTruths.length > 0 ? fetchedTruths : BACKUP_TRUTHS,
+              dares: fetchedDares.length > 0 ? fetchedDares : BACKUP_DARES,
+            });
+          }
+        });
+    }
+  }, [isHost]);
 
   useEffect(() => {
     return registerEventListener((event) => {
@@ -37,13 +84,13 @@ export function TruthOrDareActivity() {
       {isHost && (
         <div className="flex gap-3 w-full">
           {[
-            { type: "truth", label: "Draw Truth", color: "from-cyan-600 to-blue-600", prompts: ["What's your biggest fear?","What's the most embarrassing thing you've done?","What's a secret you've never told anyone?","Who was your first crush?","What's the worst lie you've told?"] },
-            { type: "dare", label: "Draw Dare", color: "from-pink-600 to-red-600", prompts: ["Do your best celebrity impression","Speak in an accent for the next 3 minutes","Text your crush right now","Do 10 jumping jacks","Sing a song for 30 seconds"] },
+            { type: "truth", label: "Draw Truth", color: "from-cyan-600 to-blue-600", list: prompts.truths },
+            { type: "dare", label: "Draw Dare", color: "from-pink-600 to-red-600", list: prompts.dares },
           ].map((btn) => (
             <Button
               key={btn.type}
               onClick={() => {
-                const text = btn.prompts[Math.floor(Math.random() * btn.prompts.length)];
+                const text = btn.list[Math.floor(Math.random() * btn.list.length)];
                 sendActivityEvent({ kind: "tod_prompt", promptType: btn.type as "truth" | "dare", text });
               }}
               className={`flex-1 bg-gradient-to-r ${btn.color} text-white border-0`}

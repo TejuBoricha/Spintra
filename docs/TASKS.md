@@ -55,3 +55,9 @@ No active task is currently in progress. All refactoring plan steps and trivia q
   - Configured strict typecheck, linter formatting validation, and production compiles.
   - Configured isolated Playwright E2E smoke tests inside Ubuntu CI containers.
   - Added failed report artifact upload capture hook.
+- `[x]` **Phase 7: Dynamic Prompts Migration**
+  - Created table `public.activity_prompts` (Migration `0008`) and enabled standard Row Level Security.
+  - Seeded dynamic prompts for Truth or Dare, Would You Rather, and Never Have I Ever.
+  - Refactored Truth or Dare, Would You Rather, and Never Have I Ever viewports to query prompts dynamically.
+  - Built automatic cache initialization on Host mount to minimize DB load.
+  - Integrated static hardcoded backup lists for offline local BroadcastChannel mode.

@@ -50,3 +50,15 @@ This document tracks major architectural decisions made in the Spintra codebase.
 - **Context:** Optimistically rendered chat messages generated alphanumeric IDs. Upon database insert, Postgres assigned UUIDs. Since the local ID and replicated database ID did not match, the duplication checker failed, causing the sender's own bubble to double-render on replication loops. Timezone string differences also broke matches.
 - **Decision:** Synced the client's optimistic ID generator to produce valid UUIDs via `crypto.randomUUID()` and explicitly passed this client ID to database INSERT queries. Upgraded duplicate matching comparisons to match raw parsed millisecond timestamps (`.getTime()`).
 - **Consequences:** Complete elimination of double-rendering message bugs while retaining fast local echo feedback.
+
+---
+
+## ADR-006: Unified Activity Prompts Schema & Mount Cache
+- **Status:** Approved & Completed
+- **Date:** 2026-07-03
+- **Context:** Individual game prompts (Truth or Dare, Would You Rather, Never Have I Ever) were historically hardcoded as script arrays inside active viewports. To make these pools customizable via database schemas without causing high DB read loads or code repetition, we needed a generic database pattern.
+- **Decision:** 
+  1. Created a unified public `activity_prompts` table rather than separate game tables to avoid schema clutter. Standardized on JSONB `prompt_data` blocks to support different question geometries.
+  2. Implemented dynamic cache queries. The Host fetches all prompts for that specific activity *once* on component mount, storing them locally. Next drawings select from this local array to prevent DB read load.
+  3. Integrated fallback script lists so the app functions natively under offline local fallback setups.
+- **Consequences:** Easy dynamic prompt editing via DB tools. High-performance caching, zero DB load on question drawing actions, and full backward compatibility with local setups.

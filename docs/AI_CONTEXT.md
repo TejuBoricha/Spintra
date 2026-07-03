@@ -51,6 +51,7 @@ Unknown (not tracked in sessions). Assume `main` unless the user specifies other
 - ✅ Explore page, Home page
 - ✅ Dynamic Trivia Question Bank (50 questions, categorized, with host category & difficulty filters and non-repeat shuffler)
 - ✅ GitHub Actions CI Pipeline (npm audit, typescript typecheck, eslint code lint, production build verification, Playwright E2E smoke tests)
+- ✅ Dynamic Prompt Migration (Truth or Dare, Would You Rather, Never Have I Ever statements loaded dynamically from Supabase schemas)
 
 ### Bugs Fixed
 - ✅ **Hydration mismatch** — `isHost` is now gated behind `hasMounted` state
@@ -67,6 +68,7 @@ Unknown (not tracked in sessions). Assume `main` unless the user specifies other
 - ✅ `0005` — enable anonymous auth RLS
 - ✅ `0006` — allow host promotion update
 - ✅ `0007` — allow host to update participants rows (needed for presence healing)
+- ✅ `0008` — create and seed public activity prompts table (Truth or Dare, Would You Rather, Never Have I Ever)
 
 ### Modularisation (Complete — 14/14)
 - ✅ Created `RoomActivityContext` (stable) and `RoomParticipantsContext` (dynamic) to split state re-renders

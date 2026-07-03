@@ -29,11 +29,12 @@ Spintra is a real-time multiplayer party game and classroom activity platform. U
 - **Trivia Expansion:** Created [trivia-questions.ts](file:///c:/Users/tejas/Desktop/Spintra-1/src/lib/trivia-questions.ts) containing 50 questions across 6 categories. Added host settings (Category and Difficulty dropdown selectors) and badges displaying categories/difficulties on participant screens.
 - **Duplicate Message Hotfix:** Replaced client-generated alphanumeric IDs with valid UUIDs, passed them explicitly to the database insert statement to unify references, and matched timestamps via raw millisecond comparison (`.getTime()`) to prevent local echo duplication.
 - **Continuous Integration Pipeline:** Configured local verification pipelines (install dependencies, dependency audit scans, strict tsc compilation, lint rules checking, next production build validation, Playwright chromium smoke test suite execution) as a GitHub Actions workflow.
+- **Dynamic Prompt Migration:** Created and seeded the `activity_prompts` database table (migration `0008`) and refactored Truth or Dare, Would You Rather, and Never Have I Ever to fetch prompts dynamically with local fallbacks.
 
 ---
 
 ## 4. Current State
-- **Last Completed Task:** GitHub Actions CI workflow implemented.
+- **Last Completed Task:** Refactored prompt viewports to fetch dynamically from database schemas.
 - **Roadmap Remaining Work:**
   1. Add visual scoreboard/leaderboard mapping trivia score tallies.
   2. Implement visual tree rendering for Tournament bracket matchups.

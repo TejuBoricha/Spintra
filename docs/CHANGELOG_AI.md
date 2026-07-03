@@ -122,6 +122,28 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-03] — Session 9: Database-Driven Activity Prompts & Fallback System
+**AI:** Antigravity (Google DeepMind)
+**Task:** Refactor prompt viewports to fetch dynamically from database schemas.
+**Files Modified/Created:**
+- `supabase/migrations/0008_create_activity_prompts.sql` (NEW) — Migration file to create and seed the dynamic activity prompts table
+- `src/app/room/[code]/activities/truth-or-dare-activity.tsx` — Updated to load dynamic prompts from Supabase with static backup fallbacks
+- `src/app/room/[code]/activities/would-you-rather-activity.tsx` — Updated to load dynamic prompts from Supabase with static backup fallbacks
+- `src/app/room/[code]/activities/never-have-i-ever-activity.tsx` — Updated to load dynamic prompts from Supabase with static backup fallbacks
+
+**Purpose:**
+- Migrate game prompts from hardcoded client-side script arrays into central database tables for dynamic maintenance and extensions.
+- Enable high-fidelity real-time querying without losing zero-configuration local sandbox capabilities (fully preserves BroadcastChannel offline modes).
+
+**Outcome:**
+- Unified `activity_prompts` table created and seeded.
+- Active prompts fetched dynamically on component mount to reduce runtime DB load.
+- Automated tests, lint checks, and typechecks pass with 0 errors.
+
+**Risks:** None.
+
+---
+
 ## [2026-07-03] — Session 8: Continuous Integration (CI) Pipeline & Workflow Entrypoint
 **AI:** Antigravity (Google DeepMind)
 **Task:** Establish professional Continuous Integration workflow via GitHub Actions, apply DevOps optimizations, and create a single onboarding entrypoint.

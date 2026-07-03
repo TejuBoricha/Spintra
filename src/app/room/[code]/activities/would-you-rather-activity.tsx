@@ -8,10 +8,39 @@ import { Badge } from "@/components/ui/badge";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
 
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+
+const BACKUP_PROMPTS = [
+  { a: "Be able to fly", b: "Be invisible" },
+  { a: "Always be cold", b: "Always be hot" },
+  { a: "Live without music", b: "Live without movies" },
+  { a: "Have super strength", b: "Have super speed" },
+  { a: "Travel to the past", b: "Travel to the future" },
+];
+
 export function WouldYouRatherActivity() {
   const { isHost, currentUser, sendActivityEvent, registerEventListener } = useRoomActivity();
   const [wyrPrompt, setWyrPrompt] = useState<{ a: string; b: string } | null>(null);
   const [wyrVotes, setWyrVotes] = useState<Record<string, { username: string; option: "A" | "B" }>>({});
+  const [prompts, setPrompts] = useState<{ a: string; b: string }[]>(BACKUP_PROMPTS);
+
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    if (supabase && isHost) {
+      supabase
+        .from("activity_prompts")
+        .select("*")
+        .eq("activity_type", "would-you-rather")
+        .then(({ data, error }) => {
+          if (data && !error) {
+            const fetched = data.map((p) => p.prompt_data as { a: string; b: string });
+            if (fetched.length > 0) {
+              setPrompts(fetched);
+            }
+          }
+        });
+    }
+  }, [isHost]);
 
   useEffect(() => {
     return registerEventListener((event) => {
@@ -46,13 +75,6 @@ export function WouldYouRatherActivity() {
       {isHost && (
         <Button
           onClick={() => {
-            const prompts: { a: string; b: string }[] = [
-              { a: "Be able to fly", b: "Be invisible" },
-              { a: "Always be cold", b: "Always be hot" },
-              { a: "Live without music", b: "Live without movies" },
-              { a: "Have super strength", b: "Have super speed" },
-              { a: "Travel to the past", b: "Travel to the future" },
-            ];
             const prompt = prompts[Math.floor(Math.random() * prompts.length)];
             sendActivityEvent({ kind: "wyr_prompt", ...prompt });
           }}

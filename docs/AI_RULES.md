@@ -1,3 +1,19 @@
+# AI Engineering Workflow
+
+Version: 1.0.0
+
+Status: Stable
+
+This document defines the permanent AI Engineering Workflow for this repository.
+
+Changes to this document should be rare and only made when they provide clear long-term value.
+
+Avoid changing the engineering workflow during normal feature development.
+
+Feature development should follow this workflow rather than modifying it.
+
+---
+
 # AI Constitution — Repository Engineering Rules
 
 This constitution governs all engineering activities in this repository. Every AI assistant (Antigravity, Claude Code, VS Code Agent, Cursor, Windsurf, Gemini CLI, or any other) must follow these rules strictly before, during, and after executing any task.
@@ -18,6 +34,12 @@ When multiple technical solutions exist, engineers must prioritize choices in th
 9. **Readability:** Is it simple, clean, and self-documenting?
 10. **Developer Experience (DX):** Does it provide clean typing and compiler assistance?
 11. **Feature Velocity:** Does it support rapid iterations without compromising items 1-10?
+
+- **Rules Modifications:** Do not modify `AI_RULES.md` unless:
+  - A recurring issue has been observed across multiple development sessions,
+  - The improvement benefits future development,
+  - And the change has been evaluated for long-term maintainability.
+  Treat `AI_RULES.md` as a stable engineering standard rather than a document that changes frequently.
 
 ---
 
@@ -62,15 +84,24 @@ If any check fails, do not proceed. Revert or repair the changes immediately.
 
 - **Synchronized Reality:** Documentation is a first-class citizen of the codebase. All updates to features or database schemas must be mirrored in their respective documentation files immediately.
 - **Mandatory Change Report:** Every significant refactor, bug fix, or feature update must include a report containing:
-  - **Status:** (e.g., Completed, In Progress)
-  - **Issue:** Summary of the problem
+  - **Status:** Current operational state
   - **Severity:** (Critical / High / Medium / Low / Informational)
+  - **Issue:** Summary of the problem
   - **Root Cause:** Detailed explanation of why the problem occurred
   - **Impact:** What parts of the system or users were affected
-  - **Solution:** Explanation of the code changes applied
+  - **Before:** Existing implementation logic
+  - **After:** Upgraded implementation logic
+  - **Affected Components:** List of client components or folders
+  - **Affected APIs:** Mapped connection protocols or realtime topics
+  - **Affected Database:** Migrations or schemas touched
   - **Files Modified:** List of file paths
-  - **Verification:** Step-by-step commands and test results
+  - **Solution:** Explanation of the code changes applied
+  - **Verification:** Step-by-step commands and check results
+  - **Testing Performed:** Local simulation or E2E tests run
+  - **Performance Impact:** Resource cost or rendering changes
   - **Risk:** Assessment of potential side effects or regressions
+  - **Rollback Plan:** Steps to restore prior state
+  - **Related ADR:** Reference to decisions log if applicable
   - **Future Recommendation:** Architectural cleanup or scaling suggestions
 
 ---

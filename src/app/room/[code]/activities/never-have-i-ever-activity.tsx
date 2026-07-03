@@ -7,10 +7,39 @@ import { Button } from "@/components/ui/button";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
 
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+
+const BACKUP_STATEMENTS = [
+  "Never have I ever lied to get out of trouble",
+  "Never have I ever pulled an all-nighter",
+  "Never have I ever gone skydiving",
+  "Never have I ever eaten something off the floor",
+  "Never have I ever ghosted someone",
+];
+
 export function NeverHaveIEverActivity() {
   const { isHost, currentUser, sendActivityEvent, registerEventListener } = useRoomActivity();
   const [nhiePrompt, setNhiePrompt] = useState<string | null>(null);
   const [nhieConfessions, setNhieConfessions] = useState<Record<string, { username: string; choice: "have" | "never" }>>({});
+  const [statements, setStatements] = useState<string[]>(BACKUP_STATEMENTS);
+
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    if (supabase && isHost) {
+      supabase
+        .from("activity_prompts")
+        .select("*")
+        .eq("activity_type", "never-have-i-ever")
+        .then(({ data, error }) => {
+          if (data && !error) {
+            const fetched = data.map((p) => (p.prompt_data as { text: string }).text);
+            if (fetched.length > 0) {
+              setStatements(fetched);
+            }
+          }
+        });
+    }
+  }, [isHost]);
 
   useEffect(() => {
     return registerEventListener((event) => {
@@ -45,14 +74,7 @@ export function NeverHaveIEverActivity() {
       {isHost && (
         <Button
           onClick={() => {
-            const stmts = [
-              "Never have I ever lied to get out of trouble",
-              "Never have I ever pulled an all-nighter",
-              "Never have I ever gone skydiving",
-              "Never have I ever eaten something off the floor",
-              "Never have I ever ghosted someone",
-            ];
-            const text = stmts[Math.floor(Math.random() * stmts.length)];
+            const text = statements[Math.floor(Math.random() * statements.length)];
             sendActivityEvent({ kind: "nhie_prompt", text });
           }}
           className="bg-gradient-to-r from-violet-600 to-purple-600 text-white border-0"
