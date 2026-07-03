@@ -10,6 +10,7 @@ import { Emoji } from "@/components/emoji";
 import { fireConfetti } from "@/components/celebration";
 import { playPop, playSuccess } from "@/lib/audio";
 import { getGameByType } from "@/lib/games";
+import { toast } from "sonner";
 
 const GameIcon = getGameByType("word-scramble")!.icon;
 
@@ -72,6 +73,7 @@ export default function WordScramblePage() {
       fireConfetti();
     } else {
       playPop(soundEnabled);
+      toast.error("Not quite — try again!");
     }
   };
 
