@@ -38,8 +38,8 @@ The Spintra documentation system exhibits a mature, structured approach to repos
 ## 3. Industry Practices Assessment
 
 ### Missing Industry Practices
-- **CI/CD Quality Check Automation:** Although local verification commands are defined, there is no active GitHub Actions/GitLab CI yaml configuring typecheck/lint/test execution on remote commits automatically.
-- **Automated Dependency Audits:** No automated security scanner (e.g., Dependabot or Snyk) mapped to check library vulnerabilities.
+- ~~**CI/CD Quality Check Automation:**~~ Resolved — `.github/workflows/ci.yml` runs typecheck/lint/build/smoke-test on every push and PR.
+- ~~**Automated Dependency Audits:**~~ Resolved 2026-07-04 — `.github/dependabot.yml` added (npm + github-actions ecosystems, weekly).
 
 ### Improvements Implemented in This Session
 - **ADR Initialization:** Moved all design assumptions and justifications from `docs/AI_CONTEXT.md` to [`docs/DECISIONS.md`](file:///c:/Users/tejas/Desktop/Spintra-1/docs/DECISIONS.md) in standard Architecture Decision Record formats.

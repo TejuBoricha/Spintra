@@ -1,7 +1,7 @@
 # AI_CONTEXT.md — Spintra Project Living Memory
 > The authoritative source of truth for the current state of the project.
 > **Always update this file after every significant milestone.**
-> Last updated: 2026-07-03T19:34 IST
+> Last updated: 2026-07-04T01:45 IST
 
 ---
 
@@ -59,6 +59,7 @@ Unknown (not tracked in sessions). Assume `main` unless the user specifies other
 - ✅ **Host self-healing presence** — host batch-updates stale rows on disconnect detection
 - ✅ **Biased shuffle** — replaced `sort(() => Math.random() - 0.5)` with Fisher-Yates `shuffleArray` in Bingo, Trivia, WordScramble, TeamMaker, and Tournament
 - ✅ **Chat message duplication** — resolved optimistic local echo duplications by matching database and client UUID layouts, and comparing parsed datetime integers robustly
+- ✅ **Word Scramble silent wrong-guess** — both `/tools/word-scramble` and the in-room `word-scramble-activity.tsx` gave zero visible feedback on an incorrect guess (only an easily-missed sound). Added a `toast.error("Not quite — try again!")` in both, matching the existing pattern in `lucky-wheel-activity.tsx`.
 
 ### DB Migrations Applied
 - ✅ `0001` — init schema and RLS
@@ -121,6 +122,13 @@ No immediate active tasks. Wait for new instructions or feature requests (e.g., 
 ## Known Issues
 
 None identified.
+
+## Recent Session Notes (Claude Code, 2026-07-04)
+
+- **Security fix:** `docs/AI_CONTEXT.md` previously committed a live Postgres connection string with a plaintext password for this project (matching `.env.local`'s project ref). The repo is public — treat that password as compromised and rotate it in the Supabase dashboard if not already done; the string has been redacted from this file.
+- CI bumped from Node 20 → 22 (`.github/workflows/ci.yml`) since GitHub deprecated Node 20 runners; added an `engines` field to `package.json` (`>=20.9.0`, matching Next.js's own minimum) so the requirement is explicit.
+- Added `.github/dependabot.yml` (npm + github-actions ecosystems, weekly) — closes the "no automated dependency audits" gap noted in `ENGINEERING_GOVERNANCE_REVIEW.md`.
+- `README.md` restructured with a table of contents and corrected the stale "11 tools" count to 14.
 
 ---
 

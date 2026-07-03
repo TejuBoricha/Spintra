@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
 import { shuffleArray } from "@/lib/utils";
+import { toast } from "sonner";
 
 const WORDS = [
   "PUZZLE", "GALAXY", "WIZARD", "CASTLE", "DRAGON", "PLANET", "GUITAR", "FOREST",
@@ -70,6 +71,7 @@ export function WordScrambleActivity() {
       sendActivityEvent({ kind: "scramble_correct", username: currentUser.username });
     } else {
       playFailure(soundEnabled);
+      toast.error("Not quite — try again!");
     }
     setGuess("");
   };

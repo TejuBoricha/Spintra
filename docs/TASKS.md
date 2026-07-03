@@ -65,3 +65,9 @@ No active task is currently in progress. All refactoring plan steps and trivia q
   - Exposed `soundEnabled` in the stable context interface.
   - Initialized local sound toggle state (with `localStorage` caching) and created header Volume Toggle button.
   - Connected synthesized Web Audio API sound effects (tick, metal flip, low-pitch dice clatter, card swipes, selection pops, success fanfare, failure buzzer) inside all modular multiplayer room activity components.
+- `[x]` **Phase 9: Security & Ops Cleanup (Claude Code, 2026-07-04)**
+  - Redacted a leaked live Postgres connection string/password from `docs/AI_CONTEXT.md`.
+  - Bumped CI to Node 22, added `engines` field to `package.json`.
+  - Added `.github/dependabot.yml` (npm + github-actions, weekly).
+  - Fixed silent wrong-guess UX in Word Scramble (both `/tools/word-scramble` and `word-scramble-activity.tsx`) — added `toast.error` feedback.
+  - Restructured `README.md` (table of contents, corrected game count).

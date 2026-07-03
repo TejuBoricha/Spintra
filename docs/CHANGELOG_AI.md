@@ -122,6 +122,36 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 11: Security Fix, CI/Node Bump, Dependabot, Word Scramble UX Fix
+
+**AI:** Claude Code (Anthropic)
+**Task:** Redact a leaked DB credential, close CI deprecation warning, add dependency auditing, fix a silent-failure UX bug found via user report.
+**Files Modified:**
+- `docs/AI_CONTEXT.md` — redacted a committed live Postgres connection string (plaintext password, matching the live `.env.local` project ref); added a "Recent Session Notes" entry documenting the fix
+- `.github/workflows/ci.yml` — `node-version: 20` → `22` (GitHub Actions deprecated Node 20 runners)
+- `package.json` / `package-lock.json` — added `engines.node: ">=20.9.0"` (matches Next.js's own actual minimum)
+- `.github/dependabot.yml` (NEW) — weekly npm + github-actions dependency update PRs
+- `src/app/tools/word-scramble/page.tsx`, `src/app/room/[code]/activities/word-scramble-activity.tsx` — added `toast.error("Not quite — try again!")` on a wrong guess (previously silent apart from an easily-missed sound cue), matching the existing `toast` pattern already used in `lucky-wheel-activity.tsx`
+- `README.md` — restructured with a table of contents; corrected stale "11 tools" count to 14; added the `activities/` folder to the documented project structure
+- `.vscode/settings.json` (NEW) — file-nesting config for the Explorer sidebar (cosmetic only)
+
+**Purpose:**
+- The leaked connection string is a real, live credential in a public repo — highest priority per the Security decision-priority rule in `AI_RULES.md`.
+- CI was silently running on a forced Node 24 override with a deprecation warning; pinning explicitly avoids drift.
+- No automated dependency scanning existed (flagged as a gap in `ENGINEERING_GOVERNANCE_REVIEW.md`).
+- User reported "word scramble does nothing when I submit" — traced to a real bug (no visual feedback on wrong guesses), not a UX misunderstanding (bingo was separately verified as working correctly via live Playwright testing).
+
+**Outcome:**
+- Credential redacted and pushed; **rotation of the actual Supabase database password still requires manual action in the Supabase dashboard — not something an AI assistant can do.**
+- `npm run typecheck` / `npm run lint` / `npm run build`: all pass.
+- Word Scramble fix live-verified in the standalone page via Playwright (toast appears on wrong guess); the room-activity version was not live-tested this session because Next.js's dev-server lock prevented running an isolated second instance without stopping the user's own running dev server — the fix is an identical 3-line change to the already-verified pattern.
+
+**Risks:**
+- The leaked password must still be rotated by the user; this session's fix only prevents further exposure from the current file state, it does not undo prior exposure.
+- Word Scramble room-activity fix is unverified live (see above) — low risk given it mirrors a proven pattern, but flagged for honesty per `AI_RULES.md` verification requirements.
+
+---
+
 ## [2026-07-03] — Session 10: Dynamic UI Audio Integration & Premium Sound Effects
 **AI:** Antigravity (Google DeepMind)
 **Task:** Expose soundEnabled state in Stable Context, add volume toggle control in the Room Header, and play real-time synthesized audio feedback across modular games.
