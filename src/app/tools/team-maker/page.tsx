@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
@@ -109,6 +109,15 @@ export default function TeamMakerPage() {
     setTeams(result);
     setCollapsedTeams(new Set());
   }, [parsedNames, numTeams, soundEnabled, autoBalance]);
+
+  useEffect(() => {
+    if (teams.length > 0) {
+      setTimeout(() => {
+        generateTeams();
+      }, 0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoBalance]);
 
   const moveMember = useCallback((fromTeam: number, toTeam: number, memberIndex: number) => {
     playPop(soundEnabled);
