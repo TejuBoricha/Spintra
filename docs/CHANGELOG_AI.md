@@ -122,6 +122,26 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 16: New docs/START_HERE.md + docs/INDEX.md, Removed Conflicting Root Entry Point
+
+**AI:** Claude Code (Anthropic)
+**Task:** Create a lightweight `docs/START_HERE.md` per explicit user request (entry point directing readers to read only task-relevant docs, not everything).
+**Files Modified:**
+- `docs/START_HERE.md` (NEW) — explains the AI Engineering Workflow, states `docs/` is the source of truth, directs readers to `docs/INDEX.md` and to read selectively, points to `AI_RULES.md` for the engineering constitution (not duplicated here), and states the end-of-session documentation-sync requirement. Kept under one page per the request.
+- `docs/INDEX.md` (NEW) — one-line-per-file lookup table for every doc in `docs/`, created because `START_HERE.md` needed something concrete to point readers to for "read only what's relevant."
+- `START_HERE.md` (DELETED, project root) — the root file from Session 8 told readers to read all 7 docs "in order" before writing any code, directly contradicting the new `docs/START_HERE.md`'s "read only what's relevant" instruction. Flagged the conflict to the user, who chose deletion over keeping both or redirecting.
+
+**Purpose:**
+- User explicitly requested this file with a specific philosophy (selective reading over exhaustive reading) different from the existing root entry point.
+
+**Outcome:**
+- Single, unambiguous entry point now exists at `docs/START_HERE.md`.
+- No other files reference the deleted root `START_HERE.md` except `CHANGELOG_AI.md`'s own Session 8 entry, which is append-only and correctly reflects what existed at that time — left untouched.
+
+**Risks:** None — documentation only.
+
+---
+
 ## [2026-07-04] — Session 15: ER Diagram + Corrected Phantom `users` Table
 
 **AI:** Claude Code (Anthropic)
