@@ -60,16 +60,6 @@ export default function NameDrawPage() {
     }
   }, []);
   const [eliminationMode, setEliminationMode] = useState(true);
-  const [drawnNames, setDrawnNames] = useState<string[]>([]);
-  const [currentWinner, setCurrentWinner] = useState<string | null>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [shufflingName, setShufflingName] = useState<string>("");
-  const [drawCount, setDrawCount] = useState(1);
-  const [multiWinners, setMultiWinners] = useState<string[]>([]);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-
-  const shuffleIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   const names = useMemo(
     () =>
       textInput
@@ -79,9 +69,31 @@ export default function NameDrawPage() {
     [textInput]
   );
 
+  const [drawnIndices, setDrawnIndices] = useState<number[]>([]);
+  const drawnNames = useMemo(
+    () => drawnIndices.map((idx) => names[idx] || "Player"),
+    [drawnIndices, names]
+  );
+  const [currentWinner, setCurrentWinner] = useState<string | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [shufflingName, setShufflingName] = useState<string>("");
+  const [drawCount, setDrawCount] = useState(1);
+  const [multiWinners, setMultiWinners] = useState<string[]>([]);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  const shuffleIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const availableNamesList = useMemo(
+    () => {
+      const mapped = names.map((name, id) => ({ id, name }));
+      return eliminationMode ? mapped.filter((obj) => !drawnIndices.includes(obj.id)) : mapped;
+    },
+    [eliminationMode, names, drawnIndices]
+  );
+
   const availableNames = useMemo(
-    () => (eliminationMode ? names.filter((n) => !drawnNames.includes(n)) : names),
-    [eliminationMode, names, drawnNames]
+    () => availableNamesList.map((o) => o.name),
+    [availableNamesList]
   );
 
   const clearShuffleInterval = useCallback(() => {
@@ -93,14 +105,14 @@ export default function NameDrawPage() {
 
   const doDraw = useCallback(
     (count: number) => {
-      if (availableNames.length === 0) {
+      if (availableNamesList.length === 0) {
         toast.error("No names to draw from!");
         return;
       }
 
-      if (count > availableNames.length) {
-        toast.warning(`Only ${availableNames.length} names available`);
-        count = availableNames.length;
+      if (count > availableNamesList.length) {
+        toast.warning(`Only ${availableNamesList.length} names available`);
+        count = availableNamesList.length;
       }
 
       setIsDrawing(true);
@@ -108,7 +120,9 @@ export default function NameDrawPage() {
       setMultiWinners([]);
 
       // Pick winner(s) upfront
-      const picked = shuffleArray(availableNames).slice(0, count);
+      const pickedObjects = shuffleArray(availableNamesList).slice(0, count);
+      const picked = pickedObjects.map((o) => o.name);
+      const pickedIndices = pickedObjects.map((o) => o.id);
 
       // Shuffle animation: cycle through names rapidly
       let cycles = 0;
@@ -127,11 +141,11 @@ export default function NameDrawPage() {
               setCurrentWinner(picked[0]);
             }
             setMultiWinners(picked);
-            setDrawnNames((prev) => [...prev, ...picked]);
+            setDrawnIndices((prev) => [...prev, ...pickedIndices]);
             setIsDrawing(false);
             playSuccess(soundEnabled);
 
-            if (eliminationMode && picked.length === availableNames.length) {
+            if (eliminationMode && picked.length === availableNamesList.length) {
               toast("All names have been drawn!", {
                 description: "Reset to draw again.",
                 icon: <Emoji name="party_popper" size={18} />,
@@ -140,11 +154,11 @@ export default function NameDrawPage() {
           }, 100);
           return;
         }
-        setShufflingName(availableNames[Math.floor(Math.random() * availableNames.length)]);
+        setShufflingName(availableNamesList[Math.floor(Math.random() * availableNamesList.length)].name);
         playTick(soundEnabled);
       }, 80);
     },
-    [availableNames, eliminationMode, clearShuffleInterval, soundEnabled]
+    [availableNamesList, eliminationMode, clearShuffleInterval, soundEnabled]
   );
 
   // Cleanup on unmount
@@ -154,7 +168,7 @@ export default function NameDrawPage() {
 
   const reset = useCallback(() => {
     clearShuffleInterval();
-    setDrawnNames([]);
+    setDrawnIndices([]);
     setCurrentWinner(null);
     setMultiWinners([]);
     setShufflingName("");
@@ -164,7 +178,7 @@ export default function NameDrawPage() {
 
   const clearAll = useCallback(() => {
     setTextInput("");
-    setDrawnNames([]);
+    setDrawnIndices([]);
     setCurrentWinner(null);
     setMultiWinners([]);
     setShufflingName("");
@@ -183,7 +197,7 @@ export default function NameDrawPage() {
       const merged = [...new Set([...existing, ...samples])];
       return merged.join("\n");
     });
-    setDrawnNames([]);
+    setDrawnIndices([]);
     setCurrentWinner(null);
     setMultiWinners([]);
     toast.success(`Added ${samples.length} names!`);
@@ -213,7 +227,7 @@ export default function NameDrawPage() {
           const merged = [...new Set([...existing, ...parsed])];
           return merged.join("\n");
         });
-        setDrawnNames([]);
+        setDrawnIndices([]);
         setCurrentWinner(null);
         setMultiWinners([]);
         toast.success(`Imported ${parsed.length} names!`);
