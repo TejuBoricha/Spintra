@@ -1,10 +1,15 @@
-export type RoomType = "team-maker" | "lucky-wheel" | "name-draw" | "tournament" | "coin-flip" | "dice" | "guess-number" | "rps" | "truth-or-dare" | "would-you-rather" | "never-have-i-ever" | "party" | "classroom";
+export type RoomType = "team-maker" | "lucky-wheel" | "name-draw" | "tournament" | "coin-flip" | "dice" | "guess-number" | "rps" | "truth-or-dare" | "would-you-rather" | "never-have-i-ever" | "trivia" | "bingo" | "word-scramble" | "party" | "classroom";
 
 export type GameMode = "easy" | "medium" | "hard" | "extreme";
 
 export type TournamentType = "single-elimination" | "double-elimination" | "round-robin" | "swiss";
 
 export type UserRole = "host" | "participant" | "spectator";
+
+// Room activity events carry different fields per game kind (coin flip, dice
+// roll, guess submit, ...) — narrowed with `kind` checks where consumed rather
+// than a full discriminated union, since the payload just crosses the wire as-is.
+export type ActivityEvent = Record<string, unknown> & { kind: string };
 
 export type UserRank = "rookie" | "explorer" | "challenger" | "master" | "legend";
 

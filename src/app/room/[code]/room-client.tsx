@@ -5,12 +5,9 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Send, Crown, MessageCircle, Lock, Unlock,
-  Sparkles, Copy, Check, Smile, UserX, Wifi, X,
-  Target, Shuffle, RotateCcw, DoorClosed,
-  Coins, ArrowUp, ArrowDown, Swords, ShieldAlert,
-  MessageCircleQuestion, Split, HeartHandshake, Eye
+  Copy, Check, Smile, UserX, Wifi,
+  Shuffle, RotateCcw, DoorClosed,
 } from "lucide-react";
-import { GAMES } from "@/lib/games";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -21,11 +18,27 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Emoji, renderTextWithEmoji, EMOJI_UNICODE } from "@/components/emoji";
-import Image from "next/image";
-import type { User, ChatMessage, RoomParticipant, RoomType } from "@/lib/types";
+import type { User, ChatMessage, RoomParticipant, RoomType, ActivityEvent } from "@/lib/types";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getOrCreateRoomUser, getLocalRoomCreatorId } from "@/lib/room-user";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { IdleScreen } from "./activities/idle-screen";
+import { AggregateIdleScreen } from "./activities/aggregate-idle-screen";
+import { ActivityPickerDialog } from "./activities/activity-picker-dialog";
+import { CoinFlipActivity } from "./activities/coin-flip-activity";
+import { DiceActivity } from "./activities/dice-activity";
+import { LuckyWheelActivity } from "./activities/lucky-wheel-activity";
+import { GuessNumberActivity } from "./activities/guess-number-activity";
+import { TruthOrDareActivity } from "./activities/truth-or-dare-activity";
+import { WouldYouRatherActivity } from "./activities/would-you-rather-activity";
+import { NeverHaveIEverActivity } from "./activities/never-have-i-ever-activity";
+import { RpsActivity } from "./activities/rps-activity";
+import { TeamMakerActivity } from "./activities/team-maker-activity";
+import { NameDrawActivity } from "./activities/name-draw-activity";
+import { TournamentActivity } from "./activities/tournament-activity";
+import { TriviaActivity } from "./activities/trivia-activity";
+import { BingoActivity } from "./activities/bingo-activity";
+import { WordScrambleActivity } from "./activities/word-scramble-activity";
 
 function generateId() {
   return Math.random().toString(36).slice(2, 10);
@@ -35,12 +48,6 @@ const REACTION_NAMES = [
   "thumbs_up", "red_heart", "face_with_tears_of_joy", "party_popper",
   "fire", "hundred_points", "eyes", "raising_hands",
 ] as const;
-const RPS_EMOJI = { Rock: "raised_fist", Paper: "raised_hand", Scissors: "victory_hand" } as const;
-
-// Activity events carry different fields per game kind (coin flip, dice roll,
-// guess submit, ...) — narrowed with `kind` checks where consumed rather than
-// a full discriminated union, since the payload just crosses the wire as-is.
-type ActivityEvent = Record<string, unknown> & { kind: string };
 
 function isDuplicateMessage(messages: ChatMessage[], candidate: ChatMessage) {
   // `id` catches exact re-deliveries of the same DB row (e.g. resync after reconnect).
@@ -116,6 +123,15 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   const [tmTeams, setTmTeams] = useState<{ name: string; members: string[] }[]>([]);
 
   const [ndWinner, setNdWinner] = useState<string | null>(null);
+
+  const [triviaQuestion, setTriviaQuestion] = useState<{ text: string; options: string[]; correctIndex: number; num: number } | null>(null);
+  const [triviaAnswers, setTriviaAnswers] = useState<Record<string, { username: string; choiceIndex: number; correct: boolean }>>({});
+
+  const [bingoCalled, setBingoCalled] = useState<number[]>([]);
+  const [bingoWinner, setBingoWinner] = useState<string | null>(null);
+
+  const [scrambleWord, setScrambleWord] = useState<{ scrambled: string; answer: string } | null>(null);
+  const [scrambleWinner, setScrambleWinner] = useState<string | null>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
@@ -329,6 +345,30 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         case "nd_winner":
           setNdWinner(event.winner);
           break;
+        case "trivia_question":
+          setTriviaQuestion({ text: event.text, options: event.options, correctIndex: event.correctIndex, num: event.num });
+          setTriviaAnswers({});
+          break;
+        case "trivia_answer":
+          setTriviaAnswers((prev) => ({ ...prev, [event.userId]: { username: event.username, choiceIndex: event.choiceIndex, correct: event.correct } }));
+          break;
+        case "bingo_call":
+          setBingoCalled((prev) => [...prev, event.number]);
+          break;
+        case "bingo_win":
+          setBingoWinner(event.username);
+          break;
+        case "bingo_reset":
+          setBingoCalled([]);
+          setBingoWinner(null);
+          break;
+        case "scramble_word":
+          setScrambleWord({ scrambled: event.scrambled, answer: event.answer });
+          setScrambleWinner(null);
+          break;
+        case "scramble_correct":
+          setScrambleWinner(event.username);
+          break;
         case "activity_reset":
           setCoinResult(null);
           setDiceResults([]);
@@ -342,6 +382,12 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           setRpsChoices({});
           setTmTeams([]);
           setNdWinner(null);
+          setTriviaQuestion(null);
+          setTriviaAnswers({});
+          setBingoCalled([]);
+          setBingoWinner(null);
+          setScrambleWord(null);
+          setScrambleWinner(null);
           break;
       }
     };
@@ -1486,854 +1532,205 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           <AnimatePresence mode="wait">
             {/* ── Activity Picker (party / classroom hosts) ── */}
             {isPickerOpen && isHost && (
-              <motion.div
+              <ActivityPickerDialog
                 key="picker"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-                onClick={() => setIsPickerOpen(false)}
-              >
-                <motion.div
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                      className="glass-card p-6 w-full max-w-lg rounded-2xl"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-purple-400" />
-                    Choose an Activity
-                  </h2>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {GAMES.filter((g) => g.type !== "party" && g.type !== "classroom").map((g) => {
-                      const Icon = g.icon;
-                      return (
-                        <button
-                          key={g.type}
-                          onClick={() => {
-                            changeActivity(g.type);
-                            setIsPickerOpen(false);
-                          }}
-                          className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all text-sm font-medium hover:border-purple-500/50 hover:bg-purple-500/10 ${
-                            activeActivity?.type === g.type
-                              ? "border-purple-500 bg-purple-500/20 text-purple-300"
-                              : "border-white/10 text-muted-foreground"
-                          }`}
-                        >
-                          <Icon className="w-6 h-6" />
-                          <span>{g.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              </motion.div>
+                activeActivityType={activeActivity?.type}
+                onClose={() => setIsPickerOpen(false)}
+                onSelect={(type) => {
+                  changeActivity(type);
+                  setIsPickerOpen(false);
+                }}
+              />
             )}
 
             {/* ── No Activity Selected ── */}
             {!activeActivity && (
-              <motion.div
-                key="idle"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="flex items-center justify-center min-h-[400px]"
-              >
-                <div className="text-center glass-card p-12 max-w-md w-full">
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
-                    className="w-20 h-20 mx-auto mb-6 rounded-full overflow-hidden"
-                  >
-                    <Image src="/icons/logo.png" alt="Spintra" width={80} height={80} className="w-full h-full object-cover" />
-                  </motion.div>
-                  {isHost ? (
-                    <>
-                      <h2 className="text-2xl font-bold mb-2">You are the Host</h2>
-                      <p className="text-muted-foreground mb-6">
-                        Pick an activity to play with your room. Participants will see it automatically.
-                      </p>
-                      <Button
-                        onClick={() => setIsPickerOpen(true)}
-                        className="bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white border-0"
-                      >
-                        <Shuffle className="w-4 h-4 mr-2" />
-                        Choose Activity
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <h2 className="text-2xl font-bold mb-2">Waiting for Host</h2>
-                      <p className="text-muted-foreground">
-                        The host will start an activity soon. Chat with participants while you wait!
-                      </p>
-                    </>
-                  )}
-                </div>
-              </motion.div>
+              <IdleScreen key="idle" isHost={isHost} onChooseActivity={() => setIsPickerOpen(true)} />
             )}
 
-            {/* ══════════════════════════════════════════════ */}
             {/* ── COIN FLIP ── */}
             {activeActivity?.type === "coin-flip" && (
-              <motion.div
+              <CoinFlipActivity
                 key="coin-flip"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="flex flex-col items-center gap-8 max-w-sm mx-auto pt-8"
-              >
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                  <Coins className="w-6 h-6 text-amber-400" /> Coin Flip
-                </h2>
-                <motion.div
-                  animate={coinFlipping ? { rotateY: [0, 720], scale: [1, 1.2, 1] } : {}}
-                  transition={{ duration: 1.2, ease: "easeInOut" }}
-                  className={`w-36 h-36 rounded-full flex items-center justify-center text-5xl font-black shadow-2xl border-4 ${
-                    coinResult === "Heads"
-                      ? "bg-gradient-to-br from-amber-400 to-yellow-600 border-amber-500 text-white"
-                      : coinResult === "Tails"
-                      ? "bg-gradient-to-br from-slate-400 to-slate-600 border-slate-500 text-white"
-                      : "bg-gradient-to-br from-purple-500/30 to-cyan-500/30 border-white/20 text-white/40"
-                  }`}
-                >
-                  {coinResult === "Heads" ? "H" : coinResult === "Tails" ? "T" : "?"}
-                </motion.div>
-                {coinResult && (
-                  <motion.p
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="text-3xl font-bold text-amber-400"
-                  >
-                    {coinResult}!
-                  </motion.p>
-                )}
-                {isHost && (
-                  <Button
-                    disabled={coinFlipping}
-                    onClick={() => {
-                      sendActivityEvent({ kind: "coin_flipping" });
-                      if (onActivityEventRef.current) onActivityEventRef.current({ kind: "coin_flipping" });
-                      setTimeout(() => {
-                        const result = Math.random() < 0.5 ? "Heads" : "Tails";
-                        sendActivityEvent({ kind: "coin_flip", result });
-                        if (onActivityEventRef.current) onActivityEventRef.current({ kind: "coin_flip", result });
-                      }, 1300);
-                    }}
-                    className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-white border-0 w-full"
-                  >
-                    {coinFlipping ? "Flipping…" : "Flip Coin"}
-                  </Button>
-                )}
-                {!isHost && !coinResult && (
-                  <p className="text-muted-foreground text-sm">Waiting for host to flip…</p>
-                )}
-              </motion.div>
+                isHost={isHost}
+                coinResult={coinResult}
+                coinFlipping={coinFlipping}
+                sendActivityEvent={sendActivityEvent}
+                onActivityEventRef={onActivityEventRef}
+              />
             )}
 
             {/* ── DICE ROLLER ── */}
             {activeActivity?.type === "dice" && (
-              <motion.div
+              <DiceActivity
                 key="dice"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="flex flex-col items-center gap-6 max-w-md mx-auto pt-8"
-              >
-                <h2 className="text-2xl font-bold flex items-center gap-2"><Emoji name="game_die" size={28} /> Dice Roller</h2>
-                <div className="flex flex-wrap gap-4 justify-center">
-                  {(diceResults.length > 0 ? diceResults : [0]).map((val, i) => (
-                    <motion.div
-                      key={i}
-                      animate={diceRolling ? { rotate: [0, 180, 360], scale: [1, 1.3, 1] } : {}}
-                      transition={{ duration: 0.8, delay: i * 0.1 }}
-                      className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-4xl font-black text-white shadow-xl border border-purple-500/50"
-                    >
-                      {val === 0 ? "?" : ["⚀","⚁","⚂","⚃","⚄","⚅"][val - 1]}
-                    </motion.div>
-                  ))}
-                </div>
-                {diceResults.length > 1 && (
-                  <p className="text-lg font-semibold text-purple-300">
-                    Total: {diceResults.reduce((a, b) => a + b, 0)}
-                  </p>
-                )}
-                {isHost && (
-                  <div className="flex gap-3 flex-wrap justify-center">
-                    {[1, 2, 4].map((count) => (
-                      <Button
-                        key={count}
-                        disabled={diceRolling}
-                        onClick={() => {
-                          sendActivityEvent({ kind: "dice_rolling" });
-                          if (onActivityEventRef.current) onActivityEventRef.current({ kind: "dice_rolling" });
-                          setTimeout(() => {
-                            const results = Array.from({ length: count }, () => Math.ceil(Math.random() * 6));
-                            sendActivityEvent({ kind: "dice_roll", results });
-                            if (onActivityEventRef.current) onActivityEventRef.current({ kind: "dice_roll", results });
-                          }, 900);
-                        }}
-                        variant="outline"
-                        className="border-purple-500/50 hover:bg-purple-500/20"
-                      >
-                        Roll {count}d6
-                      </Button>
-                    ))}
-                  </div>
-                )}
-                {!isHost && diceResults.length === 0 && (
-                  <p className="text-muted-foreground text-sm">Waiting for host to roll…</p>
-                )}
-              </motion.div>
+                isHost={isHost}
+                diceResults={diceResults}
+                diceRolling={diceRolling}
+                sendActivityEvent={sendActivityEvent}
+                onActivityEventRef={onActivityEventRef}
+              />
             )}
 
             {/* ── LUCKY WHEEL ── */}
             {activeActivity?.type === "lucky-wheel" && (
-              <motion.div
+              <LuckyWheelActivity
                 key="lucky-wheel"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="flex flex-col items-center gap-6 max-w-lg mx-auto pt-8"
-              >
-                <h2 className="text-2xl font-bold flex items-center gap-2"><Emoji name="ferris_wheel" size={28} /> Lucky Wheel</h2>
-                <div className="relative w-64 h-64">
-                  <motion.div
-                    animate={wheelSpinning ? { rotate: [0, wheelSpinAngle] } : {}}
-                    transition={{ duration: 3, ease: "easeOut" }}
-                    className="w-full h-full rounded-full border-4 border-purple-500/50 overflow-hidden"
-                  >
-                    {wheelEntries.map((entry, i) => {
-                      const angle = (360 / wheelEntries.length) * i;
-                      const colors = ["from-purple-500", "from-cyan-500", "from-amber-500", "from-pink-500", "from-emerald-500", "from-indigo-500"];
-                      return (
-                        <div
-                          key={i}
-                          className={`absolute inset-0 flex items-center justify-end pr-6 text-xs font-bold text-white bg-gradient-to-r ${colors[i % colors.length]} to-transparent`}
-                          style={{ transform: `rotate(${angle}deg)`, transformOrigin: "center", clipPath: `polygon(50% 50%, 100% 0, 100% ${100 / wheelEntries.length * 2}%)` }}
-                        >
-                          <span className="max-w-[70px] truncate">{entry}</span>
-                        </div>
-                      );
-                    })}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-12 h-12 rounded-full bg-background border-2 border-purple-500/50 flex items-center justify-center">
-                        <Emoji name="ferris_wheel" size={28} animated={!wheelSpinning} />
-                      </div>
-                    </div>
-                  </motion.div>
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 text-2xl">▼</div>
-                </div>
-                {wheelWinner && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="text-center p-4 glass-card rounded-xl"
-                  >
-                    <p className="text-sm text-muted-foreground mb-1">Winner!</p>
-                    <p className="text-2xl font-bold text-purple-400 flex items-center justify-center gap-2">
-                      {wheelWinner} <Emoji name="party_popper" size={28} pop />
-                    </p>
-                  </motion.div>
-                )}
-                {isHost && (
-                  <div className="w-full space-y-3">
-                    <div className="flex flex-wrap gap-2">
-                      {wheelEntries.map((e, i) => (
-                        <Badge
-                          key={i}
-                          className="bg-purple-500/20 text-purple-300 pr-1 gap-1"
-                        >
-                          {e}
-                          <button
-                            type="button"
-                            onClick={() => removeWheelEntry(i)}
-                            disabled={wheelSpinning}
-                            aria-label={`Remove ${e}`}
-                            className="rounded-full hover:bg-white/10 disabled:opacity-50"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <Input
-                        value={newWheelEntryText}
-                        onChange={(e) => setNewWheelEntryText(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && addWheelEntry()}
-                        placeholder="Add an option..."
-                        maxLength={40}
-                        disabled={wheelSpinning || wheelEntries.length >= 12}
-                        className="flex-1"
-                      />
-                      <Button
-                        variant="outline"
-                        onClick={addWheelEntry}
-                        disabled={wheelSpinning || !newWheelEntryText.trim() || wheelEntries.length >= 12}
-                      >
-                        Add
-                      </Button>
-                    </div>
-                    <Button
-                      disabled={wheelSpinning}
-                      onClick={() => {
-                        sendActivityEvent({ kind: "wheel_spinning" });
-                        if (onActivityEventRef.current) onActivityEventRef.current({ kind: "wheel_spinning" });
-                        setTimeout(() => {
-                          const winner = wheelEntries[Math.floor(Math.random() * wheelEntries.length)];
-                          sendActivityEvent({ kind: "wheel_spin", winner });
-                          if (onActivityEventRef.current) onActivityEventRef.current({ kind: "wheel_spin", winner });
-                        }, 3100);
-                      }}
-                      className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white border-0"
-                    >
-                      {wheelSpinning ? "Spinning…" : "Spin the Wheel!"}
-                    </Button>
-                  </div>
-                )}
-              </motion.div>
+                isHost={isHost}
+                wheelEntries={wheelEntries}
+                newWheelEntryText={newWheelEntryText}
+                setNewWheelEntryText={setNewWheelEntryText}
+                wheelWinner={wheelWinner}
+                wheelSpinning={wheelSpinning}
+                wheelSpinAngle={wheelSpinAngle}
+                sendActivityEvent={sendActivityEvent}
+                onActivityEventRef={onActivityEventRef}
+                addWheelEntry={addWheelEntry}
+                removeWheelEntry={removeWheelEntry}
+              />
             )}
 
             {/* ── GUESS THE NUMBER ── */}
             {activeActivity?.type === "guess-number" && (
-              <motion.div
+              <GuessNumberActivity
                 key="guess-number"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="flex flex-col gap-6 max-w-md mx-auto pt-8"
-              >
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                  <Target className="w-6 h-6 text-cyan-400" /> Guess the Number
-                </h2>
-                {isHost && (
-                  <div className="glass-card p-4 rounded-xl space-y-2">
-                    <p className="text-sm text-muted-foreground">Secret number (only you can see):</p>
-                    <div className="flex gap-2 items-center">
-                      <span className="text-3xl font-black text-cyan-400">{guessSecretNumber}</span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          const secret = Math.floor(Math.random() * 100) + 1;
-                          setGuessSecretNumber(secret);
-                          sendActivityEvent({ kind: "guess_reset", secret });
-                        }}
-                        className="ml-auto border-white/20"
-                      >
-                        New Number
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {guessHistory.map((g, i) => (
-                    <div key={i} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${g.hint === "correct" ? "bg-emerald-500/20 text-emerald-300" : "bg-white/5"}`}>
-                      <span className="font-medium">{g.username}</span>
-                      <span className="ml-auto font-mono">{g.guess}</span>
-                      <span className={g.hint === "too high" ? "text-red-400" : g.hint === "too low" ? "text-amber-400" : "text-emerald-400"}>
-                        {g.hint === "too high" ? <ArrowDown className="w-4 h-4" /> : g.hint === "too low" ? <ArrowUp className="w-4 h-4" /> : "✓"}
-                      </span>
-                    </div>
-                  ))}
-                  {guessHistory.length === 0 && <p className="text-muted-foreground text-sm text-center py-4">No guesses yet…</p>}
-                </div>
-                {!isHost && (
-                  <div className="flex gap-2">
-                    <Input
-                      id="guess-input"
-                      type="number"
-                      min={1}
-                      max={100}
-                      placeholder="1 – 100"
-                      className="flex-1"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          const val = parseInt((e.target as HTMLInputElement).value);
-                          if (!val || val < 1 || val > 100) return;
-                          const hint = val === guessSecretNumber ? "correct" : val > guessSecretNumber ? "too high" : "too low";
-                          sendActivityEvent({ kind: "guess_submit", username: currentUser.username, guess: val, hint });
-                          if (onActivityEventRef.current) onActivityEventRef.current({ kind: "guess_submit", username: currentUser.username, guess: val, hint });
-                          (e.target as HTMLInputElement).value = "";
-                        }
-                      }}
-                    />
-                    <Button
-                      onClick={() => {
-                        const input = document.getElementById("guess-input") as HTMLInputElement;
-                        const val = parseInt(input?.value);
-                        if (!val || val < 1 || val > 100) return;
-                        const hint = val === guessSecretNumber ? "correct" : val > guessSecretNumber ? "too high" : "too low";
-                        sendActivityEvent({ kind: "guess_submit", username: currentUser.username, guess: val, hint });
-                        if (onActivityEventRef.current) onActivityEventRef.current({ kind: "guess_submit", username: currentUser.username, guess: val, hint });
-                        if (input) input.value = "";
-                      }}
-                      className="bg-cyan-600 hover:bg-cyan-500 text-white border-0"
-                    >
-                      Guess
-                    </Button>
-                  </div>
-                )}
-              </motion.div>
+                isHost={isHost}
+                guessSecretNumber={guessSecretNumber}
+                setGuessSecretNumber={setGuessSecretNumber}
+                guessHistory={guessHistory}
+                currentUser={currentUser}
+                sendActivityEvent={sendActivityEvent}
+                onActivityEventRef={onActivityEventRef}
+              />
             )}
 
             {/* ── TRUTH OR DARE ── */}
             {activeActivity?.type === "truth-or-dare" && (
-              <motion.div
+              <TruthOrDareActivity
                 key="tod"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="flex flex-col items-center gap-8 max-w-md mx-auto pt-8"
-              >
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                  <ShieldAlert className="w-6 h-6 text-pink-400" /> Truth or Dare
-                </h2>
-                {isHost && (
-                  <div className="flex gap-3 w-full">
-                    {[
-                      { type: "truth", label: "Draw Truth", color: "from-cyan-600 to-blue-600", prompts: ["What's your biggest fear?","What's the most embarrassing thing you've done?","What's a secret you've never told anyone?","Who was your first crush?","What's the worst lie you've told?"] },
-                      { type: "dare", label: "Draw Dare", color: "from-pink-600 to-red-600", prompts: ["Do your best celebrity impression","Speak in an accent for the next 3 minutes","Text your crush right now","Do 10 jumping jacks","Sing a song for 30 seconds"] },
-                    ].map((btn) => (
-                      <Button
-                        key={btn.type}
-                        onClick={() => {
-                          const text = btn.prompts[Math.floor(Math.random() * btn.prompts.length)];
-                          sendActivityEvent({ kind: "tod_prompt", promptType: btn.type, text });
-                          if (onActivityEventRef.current) onActivityEventRef.current({ kind: "tod_prompt", promptType: btn.type, text });
-                        }}
-                        className={`flex-1 bg-gradient-to-r ${btn.color} text-white border-0`}
-                      >
-                        {btn.label}
-                      </Button>
-                    ))}
-                  </div>
-                )}
-                {todPrompt ? (
-                  <motion.div
-                    key={todPrompt.text}
-                    initial={{ opacity: 0, scale: 0.9, rotateX: -20 }}
-                    animate={{ opacity: 1, scale: 1, rotateX: 0 }}
-                    className={`glass-card p-8 rounded-2xl text-center w-full border-2 ${todPrompt.type === "truth" ? "border-cyan-500/50" : "border-pink-500/50"}`}
-                  >
-                    <Badge className={`mb-4 gap-1 ${todPrompt.type === "truth" ? "bg-cyan-500/20 text-cyan-300" : "bg-pink-500/20 text-pink-300"}`}>
-                      {todPrompt.type === "truth" ? (
-                        <>Truth <Emoji name="thinking_face" size={18} /></>
-                      ) : (
-                        <>Dare <Emoji name="fire" size={18} /></>
-                      )}
-                    </Badge>
-                    <p className="text-xl font-semibold">{todPrompt.text}</p>
-                  </motion.div>
-                ) : (
-                  <div className="glass-card p-8 rounded-2xl text-center w-full border border-white/10">
-                    <p className="mb-3 flex justify-center"><Emoji name="performing_arts" size={48} /></p>
-                    <p className="text-muted-foreground">{isHost ? "Choose Truth or Dare above" : "Waiting for host to draw a card…"}</p>
-                  </div>
-                )}
-              </motion.div>
+                isHost={isHost}
+                todPrompt={todPrompt}
+                sendActivityEvent={sendActivityEvent}
+                onActivityEventRef={onActivityEventRef}
+              />
             )}
 
             {/* ── WOULD YOU RATHER ── */}
             {activeActivity?.type === "would-you-rather" && (
-              <motion.div
+              <WouldYouRatherActivity
                 key="wyr"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="flex flex-col items-center gap-6 max-w-lg mx-auto pt-8"
-              >
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                  <MessageCircleQuestion className="w-6 h-6 text-emerald-400" /> Would You Rather
-                </h2>
-                {isHost && (
-                  <Button
-                    onClick={() => {
-                      const prompts: { a: string; b: string }[] = [
-                        { a: "Be able to fly", b: "Be invisible" },
-                        { a: "Always be cold", b: "Always be hot" },
-                        { a: "Live without music", b: "Live without movies" },
-                        { a: "Have super strength", b: "Have super speed" },
-                        { a: "Travel to the past", b: "Travel to the future" },
-                      ];
-                      const prompt = prompts[Math.floor(Math.random() * prompts.length)];
-                      sendActivityEvent({ kind: "wyr_prompt", ...prompt });
-                      if (onActivityEventRef.current) onActivityEventRef.current({ kind: "wyr_prompt", ...prompt });
-                    }}
-                    className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-0"
-                  >
-                    <Shuffle className="w-4 h-4 mr-2" /> New Question
-                  </Button>
-                )}
-                {wyrPrompt ? (
-                  <>
-                    <div className="grid grid-cols-2 gap-4 w-full">
-                      {(["A", "B"] as const).map((opt) => {
-                        const text = opt === "A" ? wyrPrompt.a : wyrPrompt.b;
-                        const voteCount = Object.values(wyrVotes).filter((v) => v.option === opt).length;
-                        const myVote = wyrVotes[currentUser.id]?.option;
-                        return (
-                          <motion.button
-                            key={opt}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => {
-                              if (myVote) return;
-                              sendActivityEvent({ kind: "wyr_vote", userId: currentUser.id, username: currentUser.username, option: opt });
-                              if (onActivityEventRef.current) onActivityEventRef.current({ kind: "wyr_vote", userId: currentUser.id, username: currentUser.username, option: opt });
-                            }}
-                            className={`p-6 rounded-2xl border-2 text-left transition-all ${
-                              myVote === opt
-                                ? "border-emerald-500 bg-emerald-500/20"
-                                : myVote
-                                ? "border-white/10 opacity-60"
-                                : "border-white/20 hover:border-emerald-500/50 hover:bg-emerald-500/10"
-                            }`}
-                          >
-                            <Badge className="mb-3 bg-white/10 text-white/60">Option {opt}</Badge>
-                            <p className="font-semibold">{text}</p>
-                            <p className="mt-3 text-2xl font-black text-emerald-400">{voteCount}</p>
-                            <p className="text-xs text-muted-foreground">vote{voteCount !== 1 ? "s" : ""}</p>
-                          </motion.button>
-                        );
-                      })}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {Object.values(wyrVotes).map((v, i) => (
-                        <Badge key={i} className={v.option === "A" ? "bg-emerald-500/20 text-emerald-300" : "bg-blue-500/20 text-blue-300"}>
-                          {v.username} → {v.option}
-                        </Badge>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div className="glass-card p-8 rounded-2xl text-center w-full border border-white/10">
-                    <p className="mb-3 flex justify-center"><Emoji name="thinking_face" size={48} /></p>
-                    <p className="text-muted-foreground">{isHost ? "Press New Question to start" : "Waiting for host…"}</p>
-                  </div>
-                )}
-              </motion.div>
+                isHost={isHost}
+                wyrPrompt={wyrPrompt}
+                wyrVotes={wyrVotes}
+                currentUser={currentUser}
+                sendActivityEvent={sendActivityEvent}
+                onActivityEventRef={onActivityEventRef}
+              />
             )}
 
             {/* ── NEVER HAVE I EVER ── */}
             {activeActivity?.type === "never-have-i-ever" && (
-              <motion.div
+              <NeverHaveIEverActivity
                 key="nhie"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="flex flex-col items-center gap-6 max-w-md mx-auto pt-8"
-              >
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                  <Eye className="w-6 h-6 text-violet-400" /> Never Have I Ever
-                </h2>
-                {isHost && (
-                  <Button
-                    onClick={() => {
-                      const stmts = [
-                        "Never have I ever lied to get out of trouble",
-                        "Never have I ever pulled an all-nighter",
-                        "Never have I ever gone skydiving",
-                        "Never have I ever eaten something off the floor",
-                        "Never have I ever ghosted someone",
-                      ];
-                      const text = stmts[Math.floor(Math.random() * stmts.length)];
-                      sendActivityEvent({ kind: "nhie_prompt", text });
-                      if (onActivityEventRef.current) onActivityEventRef.current({ kind: "nhie_prompt", text });
-                    }}
-                    className="bg-gradient-to-r from-violet-600 to-purple-600 text-white border-0"
-                  >
-                    <Shuffle className="w-4 h-4 mr-2" /> Next Statement
-                  </Button>
-                )}
-                {nhiePrompt ? (
-                  <>
-                    <div className="glass-card p-6 rounded-2xl text-center w-full border border-violet-500/30">
-                      <p className="text-lg font-semibold">{nhiePrompt}</p>
-                    </div>
-                    <div className="flex gap-4 w-full">
-                      {(["have", "never"] as const).map((choice) => {
-                        const count = Object.values(nhieConfessions).filter((c) => c.choice === choice).length;
-                        const myChoice = nhieConfessions[currentUser.id]?.choice;
-                        return (
-                          <motion.button
-                            key={choice}
-                            whileHover={{ scale: 1.03 }}
-                            whileTap={{ scale: 0.97 }}
-                            onClick={() => {
-                              if (myChoice) return;
-                              sendActivityEvent({ kind: "nhie_confess", userId: currentUser.id, username: currentUser.username, choice });
-                              if (onActivityEventRef.current) onActivityEventRef.current({ kind: "nhie_confess", userId: currentUser.id, username: currentUser.username, choice });
-                            }}
-                            className={`flex-1 py-6 rounded-2xl border-2 font-bold text-lg transition-all ${
-                              myChoice === choice
-                                ? choice === "have" ? "border-rose-500 bg-rose-500/20 text-rose-300" : "border-emerald-500 bg-emerald-500/20 text-emerald-300"
-                                : "border-white/20 hover:border-white/40"
-                            }`}
-                          >
-                            <div className="flex items-center justify-center gap-1.5">
-                              {choice === "have" ? (
-                                <><Emoji name="raised_hand" size={20} /> I have</>
-                              ) : (
-                                <><Emoji name="person_gesturing_no" size={20} /> Never</>
-                              )}
-                            </div>
-                            <div className="text-3xl font-black mt-1">{count}</div>
-                          </motion.button>
-                        );
-                      })}
-                    </div>
-                  </>
-                ) : (
-                  <div className="glass-card p-8 rounded-2xl text-center w-full border border-white/10">
-                    <p className="mb-3 flex justify-center"><Emoji name="see_no_evil_monkey" size={48} /></p>
-                    <p className="text-muted-foreground">{isHost ? "Press Next Statement to start" : "Waiting for host…"}</p>
-                  </div>
-                )}
-              </motion.div>
+                isHost={isHost}
+                nhiePrompt={nhiePrompt}
+                nhieConfessions={nhieConfessions}
+                currentUser={currentUser}
+                sendActivityEvent={sendActivityEvent}
+                onActivityEventRef={onActivityEventRef}
+              />
             )}
 
             {/* ── ROCK PAPER SCISSORS ── */}
             {activeActivity?.type === "rps" && (
-              <motion.div
+              <RpsActivity
                 key="rps"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="flex flex-col items-center gap-6 max-w-md mx-auto pt-8"
-              >
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                  <Swords className="w-6 h-6 text-red-400" /> Rock Paper Scissors
-                </h2>
-                {!rpsChoices[currentUser.id] ? (
-                  <div className="flex gap-4">
-                    {(["Rock", "Paper", "Scissors"] as const).map((choice) => (
-                      <motion.button
-                        key={choice}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => {
-                          sendActivityEvent({ kind: "rps_choice", userId: currentUser.id, username: currentUser.username, choice });
-                          if (onActivityEventRef.current) onActivityEventRef.current({ kind: "rps_choice", userId: currentUser.id, username: currentUser.username, choice });
-                        }}
-                        className="flex flex-col items-center gap-2 p-6 rounded-2xl border-2 border-white/20 hover:border-red-500/50 hover:bg-red-500/10 transition-all"
-                      >
-                        <Emoji name={RPS_EMOJI[choice]} size={44} animated={false} />
-                        <span className="text-xs text-muted-foreground">{choice}</span>
-                      </motion.button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="glass-card p-4 rounded-xl text-center">
-                    <p className="text-sm text-muted-foreground mb-1">Your pick</p>
-                    <p className="text-3xl font-bold flex items-center justify-center gap-2">
-                      <Emoji name={RPS_EMOJI[rpsChoices[currentUser.id].choice as keyof typeof RPS_EMOJI]} size={32} pop /> {rpsChoices[currentUser.id].choice}
-                    </p>
-                  </div>
-                )}
-                <div className="w-full space-y-2">
-                  {Object.values(rpsChoices).map((r, i) => (
-                    <div key={i} className="flex items-center gap-3 px-4 py-2 glass rounded-xl">
-                      <span className="font-medium text-sm">{r.username}</span>
-                      <span className="ml-auto">
-                        {r.username === currentUser.username || isHost ? (
-                          <Emoji name={RPS_EMOJI[r.choice as keyof typeof RPS_EMOJI]} size={24} animated={false} />
-                        ) : (
-                          <Emoji name="shushing_face" size={24} animated={false} />
-                        )}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                {isHost && Object.keys(rpsChoices).length >= 2 && (
-                  <Button
-                    onClick={() => {
-                      sendActivityEvent({ kind: "rps_reset" });
-                      if (onActivityEventRef.current) onActivityEventRef.current({ kind: "rps_reset" });
-                    }}
-                    variant="outline"
-                    className="border-red-500/30 text-red-400 hover:bg-red-500/10"
-                  >
-                    <RotateCcw className="w-4 h-4 mr-2" /> New Round
-                  </Button>
-                )}
-              </motion.div>
+                isHost={isHost}
+                rpsChoices={rpsChoices}
+                currentUser={currentUser}
+                sendActivityEvent={sendActivityEvent}
+                onActivityEventRef={onActivityEventRef}
+              />
             )}
 
             {/* ── TEAM MAKER ── */}
             {activeActivity?.type === "team-maker" && (
-              <motion.div
+              <TeamMakerActivity
                 key="team-maker"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="flex flex-col gap-6 max-w-lg mx-auto pt-8"
-              >
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                  <Split className="w-6 h-6 text-cyan-400" /> Team Maker
-                </h2>
-                {isHost && (
-                  <div className="flex gap-3 flex-wrap">
-                    {[2, 3, 4].map((n) => (
-                      <Button
-                        key={n}
-                        variant="outline"
-                        className="border-cyan-500/30 hover:bg-cyan-500/10"
-                        onClick={() => {
-                          const names = participants.filter((p) => p.is_online).map((p) => p.user?.username || "Guest");
-                          const shuffled = [...names].sort(() => Math.random() - 0.5);
-                          const teams = Array.from({ length: n }, (_, i) => ({
-                            name: `Team ${i + 1}`,
-                            members: shuffled.filter((_, j) => j % n === i),
-                          }));
-                          sendActivityEvent({ kind: "tm_teams", teams });
-                          if (onActivityEventRef.current) onActivityEventRef.current({ kind: "tm_teams", teams });
-                        }}
-                      >
-                        {n} Teams
-                      </Button>
-                    ))}
-                  </div>
-                )}
-                {tmTeams.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-4">
-                    {tmTeams.map((team, i) => {
-                      const colors = ["border-purple-500/50 bg-purple-500/10","border-cyan-500/50 bg-cyan-500/10","border-amber-500/50 bg-amber-500/10","border-emerald-500/50 bg-emerald-500/10"];
-                      return (
-                        <div key={i} className={`p-4 rounded-2xl border-2 ${colors[i % colors.length]}`}>
-                          <p className="font-bold mb-2 text-sm">{team.name}</p>
-                          {team.members.map((m, j) => (
-                            <p key={j} className="text-sm text-muted-foreground">{m}</p>
-                          ))}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="glass-card p-8 rounded-2xl text-center border border-white/10">
-                    <p className="mb-3 flex justify-center"><Emoji name="busts_in_silhouette" size={48} /></p>
-                    <p className="text-muted-foreground">{isHost ? "Choose how many teams to create" : "Waiting for host to create teams…"}</p>
-                  </div>
-                )}
-              </motion.div>
+                isHost={isHost}
+                participants={participants}
+                tmTeams={tmTeams}
+                sendActivityEvent={sendActivityEvent}
+                onActivityEventRef={onActivityEventRef}
+              />
             )}
 
             {/* ── NAME DRAW ── */}
             {activeActivity?.type === "name-draw" && (
-              <motion.div
+              <NameDrawActivity
                 key="name-draw"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="flex flex-col items-center gap-8 max-w-md mx-auto pt-8"
-              >
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                  <HeartHandshake className="w-6 h-6 text-pink-400" /> Name Draw
-                </h2>
-                {ndWinner ? (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="text-center glass-card p-10 rounded-2xl border-2 border-pink-500/50 w-full"
-                  >
-                    <p className="text-sm text-muted-foreground mb-2">Selected</p>
-                    <p className="text-4xl font-black text-pink-400 flex items-center justify-center gap-2">
-                      {ndWinner} <Emoji name="party_popper" size={36} pop />
-                    </p>
-                  </motion.div>
-                ) : (
-                  <div className="glass-card p-10 rounded-2xl text-center border border-white/10 w-full">
-                    <p className="mb-3 flex justify-center"><Emoji name="admission_tickets" size={48} /></p>
-                    <p className="text-muted-foreground">{isHost ? "Draw a name from the room" : "Waiting for host to draw…"}</p>
-                  </div>
-                )}
-                {isHost && (
-                  <Button
-                    onClick={() => {
-                      const online = participants.filter((p) => p.is_online);
-                      const winner = online[Math.floor(Math.random() * online.length)]?.user?.username || "?";
-                      sendActivityEvent({ kind: "nd_winner", winner });
-                      if (onActivityEventRef.current) onActivityEventRef.current({ kind: "nd_winner", winner });
-                    }}
-                    className="w-full bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white border-0"
-                  >
-                    <Shuffle className="w-4 h-4 mr-2" /> Draw a Name
-                  </Button>
-                )}
-              </motion.div>
+                isHost={isHost}
+                participants={participants}
+                ndWinner={ndWinner}
+                sendActivityEvent={sendActivityEvent}
+                onActivityEventRef={onActivityEventRef}
+              />
             )}
 
             {/* ── TOURNAMENT ── */}
             {activeActivity?.type === "tournament" && (
-              <motion.div
+              <TournamentActivity
                 key="tournament"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="flex flex-col gap-6 max-w-lg mx-auto pt-8"
-              >
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                  <Swords className="w-6 h-6 text-amber-400" /> Tournament Bracket
-                </h2>
-                {tmTeams.length > 0 ? (
-                  <div className="space-y-3">
-                    {tmTeams.map((round, i) => (
-                      <div key={i} className="flex items-center gap-3 glass p-3 rounded-xl">
-                        <Badge className="bg-amber-500/20 text-amber-300">Match {i + 1}</Badge>
-                        <span className="font-medium">{round.members.join(" vs ")}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="glass-card p-8 rounded-2xl text-center border border-white/10">
-                    <p className="mb-3 flex justify-center"><Emoji name="trophy" size={48} /></p>
-                    <p className="text-muted-foreground">{isHost ? "Generate bracket below" : "Waiting for host to set up bracket…"}</p>
-                  </div>
-                )}
-                {isHost && (
-                  <Button
-                    onClick={() => {
-                      const names = participants.filter((p) => p.is_online).map((p) => p.user?.username || "Guest");
-                      const shuffled = [...names].sort(() => Math.random() - 0.5);
-                      const matches: { name: string; members: string[] }[] = [];
-                      for (let i = 0; i < shuffled.length - 1; i += 2) {
-                        matches.push({ name: `Match ${matches.length + 1}`, members: [shuffled[i], shuffled[i + 1] || "BYE"] });
-                      }
-                      sendActivityEvent({ kind: "tm_teams", teams: matches });
-                      if (onActivityEventRef.current) onActivityEventRef.current({ kind: "tm_teams", teams: matches });
-                    }}
-                    className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white border-0"
-                  >
-                    <Shuffle className="w-4 h-4 mr-2" /> Generate Bracket
-                  </Button>
-                )}
-              </motion.div>
+                isHost={isHost}
+                participants={participants}
+                tmTeams={tmTeams}
+                sendActivityEvent={sendActivityEvent}
+                onActivityEventRef={onActivityEventRef}
+              />
+            )}
+
+            {/* ── TRIVIA ── */}
+            {activeActivity?.type === "trivia" && (
+              <TriviaActivity
+                key="trivia"
+                isHost={isHost}
+                currentUser={currentUser}
+                triviaQuestion={triviaQuestion}
+                triviaAnswers={triviaAnswers}
+                sendActivityEvent={sendActivityEvent}
+                onActivityEventRef={onActivityEventRef}
+              />
+            )}
+
+            {/* ── BINGO ── */}
+            {activeActivity?.type === "bingo" && (
+              <BingoActivity
+                key="bingo"
+                isHost={isHost}
+                currentUser={currentUser}
+                bingoCalled={bingoCalled}
+                bingoWinner={bingoWinner}
+                sendActivityEvent={sendActivityEvent}
+                onActivityEventRef={onActivityEventRef}
+              />
+            )}
+
+            {/* ── WORD SCRAMBLE ── */}
+            {activeActivity?.type === "word-scramble" && (
+              <WordScrambleActivity
+                key="word-scramble"
+                isHost={isHost}
+                currentUser={currentUser}
+                scrambleWord={scrambleWord}
+                scrambleWinner={scrambleWinner}
+                sendActivityEvent={sendActivityEvent}
+                onActivityEventRef={onActivityEventRef}
+              />
             )}
 
             {/* ── PARTY / CLASSROOM with no sub-activity ── */}
             {(activeActivity?.type === "party" || activeActivity?.type === "classroom") && (
-              <motion.div
-                key="aggregate-idle"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="flex items-center justify-center min-h-[400px]"
-              >
-                <div className="text-center glass-card p-12 max-w-md w-full">
-                  <p className="mb-4 flex justify-center">
-                    <Emoji name={activeActivity.type === "party" ? "party_popper" : "books"} size={56} />
-                  </p>
-                  <h2 className="text-2xl font-bold mb-2 capitalize">{activeActivity.type} Mode</h2>
-                  <p className="text-muted-foreground mb-6">
-                    {isHost ? (
-                      <>Use the <Shuffle className="w-4 h-4 inline align-text-bottom" /> button in the header to pick a game activity for the room.</>
-                    ) : (
-                      "The host will choose an activity soon!"
-                    )}
-                  </p>
-                </div>
-              </motion.div>
+              <AggregateIdleScreen key="aggregate-idle" activityType={activeActivity.type} isHost={isHost} />
             )}
           </AnimatePresence>
         </div>

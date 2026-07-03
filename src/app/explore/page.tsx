@@ -51,7 +51,7 @@ export default function ExplorePage() {
     if (activeCategory === "Popular") return room.hearts > 300 || room.participants > 15;
     if (activeCategory === "Teams") return room.type === "team-maker" || room.type === "tournament";
     if (activeCategory === "Party") {
-      return ["party", "truth-or-dare", "lucky-wheel", "rps", "would-you-rather", "never-have-i-ever", "coin-flip", "dice"].includes(room.type);
+      return ["party", "truth-or-dare", "lucky-wheel", "rps", "would-you-rather", "never-have-i-ever", "coin-flip", "dice", "trivia", "bingo", "word-scramble"].includes(room.type);
     }
     if (activeCategory === "Classroom") return ["name-draw", "guess-number"].includes(room.type);
     return true;
@@ -68,7 +68,7 @@ export default function ExplorePage() {
     if (activeCategory === "All") return true;
     if (activeCategory === "Teams") return t.type === "team-maker" || t.type === "tournament";
     if (activeCategory === "Party") {
-      return ["lucky-wheel", "coin-flip", "dice", "rps", "truth-or-dare", "would-you-rather", "never-have-i-ever"].includes(t.type);
+      return ["lucky-wheel", "coin-flip", "dice", "rps", "truth-or-dare", "would-you-rather", "never-have-i-ever", "trivia", "bingo", "word-scramble"].includes(t.type);
     }
     if (activeCategory === "Classroom") return ["name-draw", "guess-number"].includes(t.type);
     return true;
@@ -93,7 +93,7 @@ export default function ExplorePage() {
     if (activeCategory === "All") return true;
     if (activeCategory === "Teams") return act.type === "team-maker" || act.type === "tournament";
     if (activeCategory === "Party") {
-      return ["lucky-wheel", "coin-flip", "dice", "rps", "truth-or-dare", "would-you-rather", "never-have-i-ever"].includes(act.type);
+      return ["lucky-wheel", "coin-flip", "dice", "rps", "truth-or-dare", "would-you-rather", "never-have-i-ever", "trivia", "bingo", "word-scramble"].includes(act.type);
     }
     if (activeCategory === "Classroom") return ["name-draw", "guess-number"].includes(act.type);
     return true;

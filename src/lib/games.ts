@@ -13,6 +13,9 @@ import {
   HeartHandshake,
   PartyPopper,
   GraduationCap,
+  Lightbulb,
+  Grid3x3,
+  Shuffle,
 } from "lucide-react";
 import type { RoomType } from "@/lib/types";
 
@@ -142,6 +145,36 @@ export const GAMES: GameDefinition[] = [
     featureDescription: "Play never have I ever with prompts that keep the room laughing.",
     stats: "Icebreaker classic",
     href: "/tools/never-have-i-ever",
+  },
+  {
+    type: "trivia",
+    label: "Trivia",
+    icon: Lightbulb,
+    color: "from-yellow-400 to-orange-500",
+    desc: "Test your knowledge",
+    featureDescription: "Answer multiple-choice trivia questions and race to the top of the scoreboard.",
+    stats: "Know-it-alls welcome",
+    href: "/tools/trivia",
+  },
+  {
+    type: "bingo",
+    label: "Bingo",
+    icon: Grid3x3,
+    color: "from-teal-500 to-cyan-600",
+    desc: "Classic number bingo",
+    featureDescription: "Call numbers, mark your card, and shout bingo the moment you get a line.",
+    stats: "A party classic",
+    href: "/tools/bingo",
+  },
+  {
+    type: "word-scramble",
+    label: "Word Scramble",
+    icon: Shuffle,
+    color: "from-lime-500 to-green-600",
+    desc: "Unscramble the word",
+    featureDescription: "Race to unscramble the word before anyone else — hints included.",
+    stats: "Fast-paced wordplay",
+    href: "/tools/word-scramble",
   },
   {
     type: "party",

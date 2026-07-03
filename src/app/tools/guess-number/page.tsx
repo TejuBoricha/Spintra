@@ -9,6 +9,7 @@ const GameIcon = getGameByType("guess-number")!.icon;
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Emoji } from "@/components/emoji";
+import { fireConfetti } from "@/components/celebration";
 import { playSuccess, playFailure, playPop } from "@/lib/audio";
 import { toast } from "sonner";
 
@@ -49,6 +50,7 @@ export default function GuessNumberPage() {
       setWon(true);
       setGameOver(true);
       playSuccess(soundEnabled);
+      fireConfetti();
     } else if (guesses.length + 1 >= mode.attempts) {
       setGameOver(true);
       playFailure(soundEnabled);
