@@ -45,11 +45,11 @@ Since V1, the documentation system underwent a full onboarding review and refact
 ## 3. Industry Practices Assessment
 
 ### Newly Implemented Since V1
-- **Automated documentation drift detection:** `scripts/check-docs-drift.js`, wired into `npm run docs:check` and into CI (`.github/workflows/ci.yml`, step "Documentation Drift Check"). Verifies `docs/ARCHITECTURE.md`'s documented folder listing and migrations table against the real filesystem on every push/PR — turning V1's "keep docs in sync" recommendation into an enforced, failing check rather than a discipline that depends on someone remembering to look.
+- **Automated documentation drift detection:** `scripts/check-docs-drift.mjs`, wired into `npm run docs:check` and into CI (`.github/workflows/ci.yml`, step "Documentation Drift Check"). Verifies `docs/ARCHITECTURE.md`'s documented folder listing and migrations table against the real filesystem on every push/PR — turning V1's "keep docs in sync" recommendation into an enforced, failing check rather than a discipline that depends on someone remembering to look.
 - **ADR template formalized** (`DECISIONS.md`), now requiring "Alternatives Considered" and an optional "Follow-up Actions" field for all future entries.
 
 ### Still Recommended, Not Implemented
-- **Broader drift coverage** — extending `check-docs-drift.js` (or a follow-up script) to also verify `ARCHITECTURE.md`'s documented React context shape against the actual `RoomActivityContextType`/`RoomParticipantsContextType` interfaces in source, and spot-checking that `TASKS.md`'s `CHANGELOG_AI.md` session-number references resolve. Out of scope for this pass; a reasonable next increment given the pattern that's now established.
+- **Broader drift coverage** — extending `check-docs-drift.mjs` (or a follow-up script) to also verify `ARCHITECTURE.md`'s documented React context shape against the actual `RoomActivityContextType`/`RoomParticipantsContextType` interfaces in source, and spot-checking that `TASKS.md`'s `CHANGELOG_AI.md` session-number references resolve. Out of scope for this pass; a reasonable next increment given the pattern that's now established.
 - **A "last verified" timestamp per ARCHITECTURE.md subsection** — would make it obvious which parts of that large file were checked most recently vs. which might be older/less-verified, rather than a single top-of-file "Last updated" date covering a 400+ line document.
 
 ---

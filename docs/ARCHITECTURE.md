@@ -332,7 +332,10 @@ npm run dev        # next dev — starts local dev server at localhost:3000
 npm run build      # next build — production build, runs typecheck + lint
 npm run typecheck  # tsc --noEmit — TypeScript only
 npm run lint       # eslint — linting only
+npm run docs:check # scripts/check-docs-drift.mjs — docs/ vs. real filesystem
+npm run verify     # typecheck + lint + docs:check — full local quality gate
 npm run test:smoke # npx playwright test — E2E smoke tests
+npm run ci         # verify + build + test:smoke — mirrors the CI pipeline locally
 ```
 
 **Node requirement:** >=20.9.0 (see `package.json` engines field)

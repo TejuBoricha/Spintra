@@ -100,7 +100,10 @@ fully secure setup; migrating to Supabase Anonymous Auth is the real fix.
 | `npm run start` | Serve the production build |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | `tsc --noEmit` |
+| `npm run docs:check` | Verify `docs/` hasn't drifted from the real filesystem |
+| `npm run verify` | typecheck + lint + docs:check |
 | `npm run test:smoke` | Playwright smoke test (room create/join flow) |
+| `npm run ci` | verify + build + test:smoke (full CI gate, locally) |
 
 ## Project structure
 
