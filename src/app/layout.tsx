@@ -4,7 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/layout/navbar";
-import { Toaster } from "sonner";
+import { Toaster } from "@/components/ui/toaster";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -53,20 +53,15 @@ export default function RootLayout({
         <Providers>
           <Navbar />
           <main className="min-h-screen">{children}</main>
-          <Toaster
-            position="bottom-center"
-            toastOptions={{
-              className: "!bg-background/80 !backdrop-blur-xl !border !border-white/10",
-            }}
-          />
+          <Toaster position="bottom-center" />
         </Providers>
         {/* E2E test bridge: catches clicks on the hidden server-rendered
             create-room button (src/app/create/page.tsx) that happen before
             React hydration attaches the real handler. beforeInteractive
             requires next/script rather than a raw <script> tag, and per
             Next's docs that strategy must live in the root layout. */}
-        <Script id="e2e-create-room-bridge" strategy="beforeInteractive">
-          {`
+        <Script id="e2e-create-room-bridge" strategy="afterInteractive" dangerouslySetInnerHTML={{
+          __html: `
             window.e2eRoomClicked = false;
             document.addEventListener('click', function(e) {
               var btn = e.target;
@@ -74,8 +69,8 @@ export default function RootLayout({
                 window.e2eRoomClicked = true;
               }
             });
-          `}
-        </Script>
+          `
+        }} />
       </body>
     </html>
   );

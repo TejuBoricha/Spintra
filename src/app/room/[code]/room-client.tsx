@@ -118,25 +118,13 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     return getLocalRoomCreatorId(roomCode);
   });
 
-  const [roomType, setRoomType] = useState<RoomType>(() => {
-    if (typeof window === "undefined") return "party";
-    return (window.localStorage.getItem(`spintra-room-type-${roomCode}`) as RoomType) || "party";
-  });
-  const [roomName, setRoomName] = useState<string>(() => {
-    if (typeof window === "undefined") return "Game Room";
-    return window.localStorage.getItem(`spintra-room-name-${roomCode}`) || "Game Room";
-  });
+  const [roomType, setRoomType] = useState<RoomType>("party");
+  const [roomName, setRoomName] = useState<string>("Game Room");
+  const [roomHostId, setRoomHostId] = useState<string | null>(null);
   const [activeActivity, setActiveActivity] = useState<{
     type: string;
     state: unknown;
-  } | null>(() => {
-    if (typeof window === "undefined") return null;
-    const initialType = window.localStorage.getItem(`spintra-room-type-${roomCode}`) || "party";
-    if (initialType !== "party" && initialType !== "classroom") {
-      return { type: initialType, state: null };
-    }
-    return null;
-  });
+  } | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
   // Sub-game states for real-time synchronization
@@ -181,31 +169,17 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   const [newMessage, setNewMessage] = useState("");
-  const [isLocked, setIsLocked] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    const savedLock = window.localStorage.getItem(`spintra-room-lock-${roomCode}`);
-    return savedLock === "true";
-  });
+  const [isLocked, setIsLocked] = useState<boolean>(false);
   const [showEmojis, setShowEmojis] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
-  const [isRealtimeReady, setIsRealtimeReady] = useState<boolean | null>(() => {
-    if (typeof window === "undefined") return null;
-    const supabase = getSupabaseBrowserClient();
-    return supabase ? null : false;
-  });
-  const [realtimeError, setRealtimeError] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    const supabase = getSupabaseBrowserClient();
-    return supabase ? null : "Supabase is not configured.";
-  });
+  const [isRealtimeReady, setIsRealtimeReady] = useState<boolean | null>(null);
+  const [realtimeError, setRealtimeError] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
   const [isCloseRoomDialogOpen, setIsCloseRoomDialogOpen] = useState(false);
   const [isClosingRoom, setIsClosingRoom] = useState(false);
 
-  const isHost =
-    participants.some((p) => p.user_id === currentUser.id && p.role === "host" && p.is_online) ||
-    localCreatorId === currentUser.id;
+  const isHost = roomHostId ? roomHostId === currentUser.id : localCreatorId === currentUser.id;
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -218,6 +192,35 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   const showParticipantsRef = useRef(showParticipants);
   const isMobileSidebarOpenRef = useRef(isMobileSidebarOpen);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+
+  // Sync client-only values from localStorage/environment post-mount to prevent hydration mismatches
+  useEffect(() => {
+    queueMicrotask(() => {
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) {
+        setIsRealtimeReady(false);
+        setRealtimeError("Supabase is not configured.");
+      }
+
+      const savedType = window.localStorage.getItem(`spintra-room-type-${roomCode}`) as RoomType;
+      if (savedType) {
+        setRoomType(savedType);
+        if (savedType !== "party" && savedType !== "classroom") {
+          setActiveActivity({ type: savedType, state: null });
+        }
+      }
+
+      const savedName = window.localStorage.getItem(`spintra-room-name-${roomCode}`);
+      if (savedName) {
+        setRoomName(savedName);
+      }
+
+      const savedLock = window.localStorage.getItem(`spintra-room-lock-${roomCode}`);
+      if (savedLock) {
+        setIsLocked(savedLock === "true");
+      }
+    });
+  }, [roomCode]);
 
   useEffect(() => {
     activeActivityRef.current = activeActivity;
@@ -312,6 +315,17 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         return;
       }
       syncWheelEntries(wheelEntries.filter((_, i) => i !== index));
+    },
+    [wheelEntries, syncWheelEntries]
+  );
+
+  const updateWheelEntry = useCallback(
+    (index: number, newValue: string) => {
+      const val = newValue.trim();
+      if (!val) return;
+      const next = [...wheelEntries];
+      next[index] = val;
+      syncWheelEntries(next);
     },
     [wheelEntries, syncWheelEntries]
   );
@@ -817,15 +831,28 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       const earliest = onlineParticipants[0];
       if (earliest.user_id !== currentUser.id) return;
 
-      const { error } = await supabase
+      // 1. Promote our participant row to 'host'
+      const { error: partError } = await supabase
         .from("room_participants")
         .update({ role: "host" })
         .eq("room_id", roomCode)
         .eq("user_id", currentUser.id);
 
-      if (error) {
-        console.error("Failed to elect host:", error);
+      if (partError) {
+        console.error("Failed to elect participant as host in database:", partError);
+        return;
+      }
+
+      // 2. Update rooms table host_id to match the new host
+      const { error: roomError } = await supabase
+        .from("rooms")
+        .update({ host_id: currentUser.id })
+        .eq("code", roomCode);
+
+      if (roomError) {
+        console.error("Failed to update rooms host_id in database:", roomError);
       } else {
+        setRoomHostId(currentUser.id);
         setParticipants((prev) =>
           prev.map((participant) =>
             participant.user_id === currentUser.id
@@ -916,11 +943,12 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         });
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "rooms", filter: `code=eq.${roomCode}` }, (payload) => {
-        const updated = payload.new as { name?: string; type?: RoomType; is_locked?: boolean; max_participants?: number };
+        const updated = payload.new as { name?: string; type?: RoomType; is_locked?: boolean; max_participants?: number; host_id?: string };
         if (updated.name) setRoomName(updated.name);
         if (updated.type) setRoomType(updated.type);
         if (typeof updated.is_locked === "boolean") setIsLocked(updated.is_locked);
         if (typeof updated.max_participants === "number") setMaxParticipantsLimit(updated.max_participants);
+        if (updated.host_id) setRoomHostId(updated.host_id);
       })
       .on("postgres_changes", { event: "DELETE", schema: "public", table: "rooms", filter: `code=eq.${roomCode}` }, () => {
         // The host's own client already redirected itself in handleCloseRoom;
@@ -971,6 +999,10 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
 
   useEffect(() => {
     if (!authReady) return;
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentUser.id);
+    const supabase = getSupabaseBrowserClient();
+    if (supabase && !isUUID) return;
+
     let isMounted = true;
 
     const loadParticipants = async () => {
@@ -1018,29 +1050,6 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       }
     };
 
-    const determineRole = async (supabase: ReturnType<typeof getSupabaseBrowserClient> | null) => {
-      if (!supabase) return "participant" as const;
-
-      const { data, error } = await supabase
-        .from("room_participants")
-        .select("user_id")
-        .eq("room_id", roomCode)
-        .eq("role", "host")
-        .eq("is_online", true)
-        .limit(1);
-
-      if (error) {
-        console.error("Failed to determine room host:", error);
-        return "participant" as const;
-      }
-
-      if (data && data.length > 0) {
-        return data[0].user_id === currentUser.id ? ("host" as const) : ("participant" as const);
-      }
-
-      return "host" as const;
-    };
-
     const markSelfOffline = () => {
       // With Realtime Presence, database-level offline writes on page unload are obsolete.
       // Connection closure is handled automatically by the server-side presence heartbeat timeout.
@@ -1053,50 +1062,56 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
 
         const { data: existingRow } = await supabase
           .from("room_participants")
-          .select("id")
+          .select("id, role")
           .eq("room_id", roomCode)
           .eq("user_id", currentUser.id)
           .maybeSingle();
 
+        const { data: roomRow } = await supabase
+          .from("rooms")
+          .select("is_locked, max_participants, host_id")
+          .eq("code", roomCode)
+          .maybeSingle();
+
+        if (!roomRow) {
+          if (isMounted) {
+            toast.error("This room does not exist.");
+            router.push("/explore");
+          }
+          return;
+        }
+
+        const isRoomHost = roomRow.host_id === currentUser.id;
+
         // Only new joiners are subject to the lock/capacity check — participants
         // already tracked (e.g. reconnecting) should always be able to rejoin.
         if (!existingRow) {
-          const { data: roomRow } = await supabase
-            .from("rooms")
-            .select("is_locked, max_participants, host_id")
-            .eq("code", roomCode)
-            .maybeSingle();
+          if (roomRow.is_locked && !isRoomHost) {
+            if (isMounted) {
+              toast.error("This room is locked by the host.");
+              router.push("/explore");
+            }
+            return;
+          }
 
-          if (roomRow) {
-            const isRoomHost = roomRow.host_id === currentUser.id || localCreatorId === currentUser.id;
+          if (typeof roomRow.max_participants === "number") {
+            const { count } = await supabase
+              .from("room_participants")
+              .select("id", { count: "exact", head: true })
+              .eq("room_id", roomCode)
+              .eq("is_online", true);
 
-            if (roomRow.is_locked && !isRoomHost) {
+            if ((count ?? 0) >= roomRow.max_participants) {
               if (isMounted) {
-                toast.error("This room is locked by the host.");
+                toast.error("This room is full.");
                 router.push("/explore");
               }
               return;
             }
-
-            if (typeof roomRow.max_participants === "number") {
-              const { count } = await supabase
-                .from("room_participants")
-                .select("id", { count: "exact", head: true })
-                .eq("room_id", roomCode)
-                .eq("is_online", true);
-
-              if ((count ?? 0) >= roomRow.max_participants) {
-                if (isMounted) {
-                  toast.error("This room is full.");
-                  router.push("/explore");
-                }
-                return;
-              }
-            }
           }
         }
 
-        const role = await determineRole(supabase);
+        const role = isRoomHost ? ("host" as const) : ("participant" as const);
         const joined_at = new Date().toISOString();
         let upsertResult = await supabase
           .from("room_participants")
@@ -1142,7 +1157,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         const { data, error } = upsertResult;
 
         if (error) {
-          console.error("Failed to register participant:", error);
+          console.error("Failed to register participant:", error.message, "Details:", error.details, "Code:", error.code, "User ID:", currentUser.id);
           return;
         }
 
@@ -1179,7 +1194,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         if (!supabase) return;
         const { data, error } = await supabase
           .from("rooms")
-          .select("name, type, is_locked, max_participants")
+          .select("name, type, is_locked, max_participants, host_id")
           .eq("code", roomCode)
           .maybeSingle();
         if (error) {
@@ -1190,6 +1205,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           setRoomName(data.name);
           setRoomType(data.type as RoomType);
           setIsLocked(!!data.is_locked);
+          setRoomHostId(data.host_id);
           if (typeof data.max_participants === "number") setMaxParticipantsLimit(data.max_participants);
           if (data.type !== "party" && data.type !== "classroom") {
             setActiveActivity((prev) => prev || { type: data.type, state: null });
@@ -1227,6 +1243,10 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
 
   useEffect(() => {
     if (!authReady) return;
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentUser.id);
+    const supabase = getSupabaseBrowserClient();
+    if (supabase && !isUUID) return;
+
     let isMounted = true;
 
     const loadMessages = async () => {
@@ -1680,6 +1700,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                 onActivityEventRef={onActivityEventRef}
                 addWheelEntry={addWheelEntry}
                 removeWheelEntry={removeWheelEntry}
+                updateWheelEntry={updateWheelEntry}
               />
             )}
 

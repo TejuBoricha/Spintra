@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ interface LuckyWheelActivityProps {
   onActivityEventRef: React.RefObject<((event: ActivityEvent) => void) | null>;
   addWheelEntry: () => void;
   removeWheelEntry: (index: number) => void;
+  updateWheelEntry: (index: number, value: string) => void;
 }
 
 export function LuckyWheelActivity({
@@ -34,7 +36,11 @@ export function LuckyWheelActivity({
   onActivityEventRef,
   addWheelEntry,
   removeWheelEntry,
+  updateWheelEntry,
 }: LuckyWheelActivityProps) {
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingText, setEditingText] = useState("");
+
   return (
     <motion.div
       key="lucky-wheel"
@@ -86,23 +92,65 @@ export function LuckyWheelActivity({
       {isHost && (
         <div className="w-full space-y-3">
           <div className="flex flex-wrap gap-2">
-            {wheelEntries.map((e, i) => (
-              <Badge
-                key={i}
-                className="bg-purple-500/20 text-purple-300 pr-1 gap-1"
-              >
-                {e}
-                <button
-                  type="button"
-                  onClick={() => removeWheelEntry(i)}
-                  disabled={wheelSpinning}
-                  aria-label={`Remove ${e}`}
-                  className="rounded-full hover:bg-white/10 disabled:opacity-50"
+            {wheelEntries.map((e, i) => {
+              const isEditing = editingIndex === i;
+
+              if (isEditing) {
+                return (
+                  <Input
+                    key={i}
+                    value={editingText}
+                    onChange={(evt) => setEditingText(evt.target.value)}
+                    onBlur={() => {
+                      const trimmed = editingText.trim();
+                      if (trimmed && trimmed !== e) {
+                        updateWheelEntry(i, trimmed);
+                      }
+                      setEditingIndex(null);
+                    }}
+                    onKeyDown={(evt) => {
+                      if (evt.key === "Enter") {
+                        const trimmed = editingText.trim();
+                        if (trimmed && trimmed !== e) {
+                          updateWheelEntry(i, trimmed);
+                        }
+                        setEditingIndex(null);
+                      } else if (evt.key === "Escape") {
+                        setEditingIndex(null);
+                      }
+                    }}
+                    autoFocus
+                    maxLength={40}
+                    disabled={wheelSpinning}
+                    className="h-6 py-0 px-2 text-xs w-28 bg-purple-500/10 border-purple-500/40 text-purple-200 rounded-lg shrink-0"
+                  />
+                );
+              }
+
+              return (
+                <Badge
+                  key={i}
+                  className="bg-purple-500/20 text-purple-300 pr-1 gap-1 cursor-pointer select-none"
+                  onDoubleClick={() => {
+                    if (!wheelSpinning) {
+                      setEditingIndex(i);
+                      setEditingText(e);
+                    }
+                  }}
                 >
-                  <X className="w-3 h-3" />
-                </button>
-              </Badge>
-            ))}
+                  <span title="Double click to edit">{e}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeWheelEntry(i)}
+                    disabled={wheelSpinning}
+                    aria-label={`Remove ${e}`}
+                    className="rounded-full hover:bg-white/10 disabled:opacity-50"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              );
+            })}
           </div>
           <div className="flex gap-2">
             <Input
