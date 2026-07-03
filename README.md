@@ -1,21 +1,57 @@
 # Spintra
 
-Party/game-room web app: 11 standalone single-player tools (coin flip, dice,
-lucky wheel, name draw, tournament brackets, truth-or-dare, etc.) plus a
+A party/game-room web app: 14 standalone single-player tools plus a
 Supabase-backed multiplayer room feature (chat, live participants, shared
-activities).
+activities synced in real time).
 
-## Stack
+> **Note:** This Next.js version has breaking changes vs. older docs/training
+> data — see [`AGENTS.md`](AGENTS.md) and `node_modules/next/dist/docs/`
+> before assuming an API works the way you remember. Notably, the routing
+> hook file is `proxy.ts` (Next 16 renamed `middleware.ts`), not `middleware.ts`.
+
+## Table of contents
+
+- [Features](#features)
+- [Tech stack](#tech-stack)
+- [Getting started](#getting-started)
+- [Environment variables](#environment-variables)
+- [Scripts](#scripts)
+- [Project structure](#project-structure)
+- [Testing](#testing)
+- [Known limitations](#known-limitations)
+- [Deployment](#deployment)
+
+## Features
+
+Every tool below works standalone (single-player, at `/tools/<name>`) and as
+a synced multiplayer activity inside a room (`/room/[code]`):
+
+| Game | Description |
+|---|---|
+| Team Maker | Build balanced teams instantly |
+| Lucky Wheel | Physics-based 3D spinning wheel |
+| Name Draw | Random winner picker, with elimination mode |
+| Tournament | Single/double elimination and round-robin brackets |
+| Coin Flip | Flip a coin, settle debates |
+| Dice Roller | Roll custom dice sets |
+| Guess Number | Number guessing game with live hints |
+| Rock Paper Scissors | Classic showdown with synchronized reveals |
+| Truth or Dare | Party question/dare draws |
+| Would You Rather | Vote on impossible choices |
+| Never Have I Ever | Icebreaker confessions |
+| Trivia | Multiple-choice trivia, race to the top score |
+| Bingo | Classic number bingo, call and mark |
+| Word Scramble | Unscramble the word before anyone else |
+
+Two additional room modes bundle several of the above into one room:
+**Party Mode** (all games unlocked) and **Classroom** (teacher-friendly picks/teams).
+
+## Tech stack
 
 - Next.js 16 (App Router) + React 19
 - Supabase (`@supabase/supabase-js`) for multiplayer realtime sync — client-side only, no server/API routes
 - Tailwind CSS 4 + shadcn-style components (`@base-ui/react`, `vaul`)
 - Playwright for e2e smoke testing
-
-> This Next.js version has some breaking changes vs. older docs/training data
-> — see `AGENTS.md` and `node_modules/next/dist/docs/` before assuming an API
-> works the way you remember. Notably, the routing hook file is `proxy.ts`
-> (Next 16 renamed `middleware.ts`), not `middleware.ts`.
 
 ## Getting started
 
@@ -27,12 +63,12 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-### Supabase setup
+## Environment variables
 
-The multiplayer room feature needs a Supabase project. Without one configured,
-the app still runs — rooms fall back to a same-browser-tab demo mode via
-`BroadcastChannel` (see `src/lib/supabase/client.ts`), which does **not**
-sync across different devices/users.
+The multiplayer room feature needs a Supabase project. Without one
+configured, the app still runs — rooms fall back to a same-browser-tab demo
+mode via `BroadcastChannel` (see `src/lib/supabase/client.ts`), which does
+**not** sync across different devices/users.
 
 To enable real multiplayer:
 
@@ -50,6 +86,11 @@ deletes) but cannot cryptographically verify a client's claimed identity.
 Read the comment at the top of that migration file before treating this as a
 fully secure setup; migrating to Supabase Anonymous Auth is the real fix.
 
+| Variable | Required | Description |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | For real multiplayer | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | For real multiplayer | Supabase anon public key |
+
 ## Scripts
 
 | Command | Description |
@@ -61,23 +102,34 @@ fully secure setup; migrating to Supabase Anonymous Auth is the real fix.
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run test:smoke` | Playwright smoke test (room create/join flow) |
 
-## Project layout
+## Project structure
 
-- `src/app/tools/*` — standalone single-player game/utility pages
-- `src/app/room/[code]` — multiplayer room (chat, participants, shared activities)
-- `src/app/create` — room creation flow
-- `src/lib/supabase/client.ts` — browser Supabase client (returns `null` if unconfigured)
-- `src/lib/room-user.ts` — client-side identity (localStorage-based, no auth)
-- `proxy.ts` — redirects `/room?code=X` to `/room/X`
-- `supabase/migrations/` — schema + RLS for the Supabase-backed tables
+```
+src/app/tools/*             standalone single-player game/utility pages
+src/app/room/[code]/        multiplayer room (chat, participants, header)
+src/app/room/[code]/activities/  per-game room UI, one file per game
+src/app/create/             room creation flow
+src/lib/games.ts            single source of truth for the game catalog
+src/lib/supabase/client.ts  browser Supabase client (returns null if unconfigured)
+src/lib/room-user.ts        client-side identity (localStorage-based, no auth)
+proxy.ts                    redirects /room?code=X to /room/X
+supabase/migrations/        schema + RLS for the Supabase-backed tables
+```
+
+## Testing
+
+- `tests/smoke.spec.ts` — the only automated coverage today (Playwright,
+  room create/join flow).
+- `.github/workflows/ci.yml` — runs lint, typecheck, build, and the smoke
+  test on every push.
 
 ## Known limitations
 
-- No test coverage beyond the one smoke spec — see `tests/smoke.spec.ts`.
-- No CI pipeline is configured beyond `.github/workflows/ci.yml` (lint + typecheck + build + smoke test).
-- Multiplayer authorization relies on RLS, not verified user identity (see Supabase setup above).
+- No test coverage beyond the one smoke spec.
+- Multiplayer authorization relies on RLS, not verified user identity (see
+  [Environment variables](#environment-variables) above).
 
-## Deploy
+## Deployment
 
 Any Next.js host works (e.g. [Vercel](https://vercel.com/new)). Set the two
 `NEXT_PUBLIC_SUPABASE_*` environment variables in your hosting provider's
