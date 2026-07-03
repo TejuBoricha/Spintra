@@ -58,8 +58,18 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 }
 
 function generateUUID() {
-  if (typeof window !== "undefined" && window.crypto && window.crypto.randomUUID) {
+  if (typeof window !== "undefined" && window.crypto?.randomUUID) {
     return window.crypto.randomUUID();
+  }
+  // crypto.randomUUID() requires a secure context (HTTPS/localhost); this
+  // fallback uses crypto.getRandomValues() instead of Math.random() for
+  // real entropy, since getRandomValues has broader support than randomUUID.
+  if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
+    const bytes = window.crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
   }
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;

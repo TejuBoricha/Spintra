@@ -122,6 +122,26 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 14: Message ID Generation (Judgment Call, Not Literal Debt Item)
+
+**AI:** Claude Code (Anthropic)
+**Task:** Close the "Message ID Generation" debt item in `TASKS.md`.
+**Files Modified:**
+- `src/app/room/[code]/room-client.tsx` — `generateUUID()`: added a `crypto.getRandomValues()`-based path between the `crypto.randomUUID()` fast path and the `Math.random()` last resort.
+
+**Purpose:**
+- The debt item as literally written proposed migrating to "native database UUID serialization" when browser APIs fail. Investigated first: `msg.id = generateUUID()` is generated client-side specifically so it can be used for the optimistic local render *and* passed explicitly to the `chat_messages` insert (`id: msg.id`) — this is ADR-005's fix for a duplicate-message bug caused by client/DB ID mismatches. If the database generated the ID instead, the client wouldn't know the real ID until the insert round-trip returned, breaking optimistic rendering and reintroducing exactly the bug ADR-005 fixed.
+- Chose not to implement the literal suggestion for this reason. Instead made the actual improvement available without an architecture change: the existing fallback (used only when `crypto.randomUUID()` is unavailable, i.e. non-secure/non-HTTPS contexts) used `Math.random()`, which isn't cryptographically random. Swapped it for `crypto.getRandomValues()`, which has broader support than `randomUUID()` and is real entropy.
+
+**Outcome:**
+- `npm run typecheck` / `npm run lint` / `npm run build`: all pass.
+- Verified the new fallback path directly: ran the exact logic in Node with `crypto.webcrypto`, generated 10 UUIDs, all matched a strict UUIDv4 regex (correct version/variant nibbles).
+- In practice this fallback path is rarely hit at all — `crypto.randomUUID()` has near-universal support in any HTTPS deployment (Vercel and equivalent hosts serve HTTPS by default) since 2021-2022 across all major browsers.
+
+**Risks:** None — the fast path (`crypto.randomUUID()`) is unchanged; only the rarely-hit fallback was upgraded, and it was verified independently before landing.
+
+---
+
 ## [2026-07-04] — Session 13: Mobile Viewport Audit
 
 **AI:** Claude Code (Anthropic)

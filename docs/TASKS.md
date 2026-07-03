@@ -14,7 +14,7 @@ No active task is currently in progress. All refactoring plan steps and trivia q
 
 - `[ ]` **Trivia Database Migration:** Migrate the static [`src/lib/trivia-questions.ts`](file:///c:/Users/tejas/Desktop/Spintra-1/src/lib/trivia-questions.ts) file to a database table to support dynamic admin editing/moderation.
 - `[x]` **Chat Pagination:** Resolved 2026-07-04 (Claude Code) — added a "Load older messages" button using a `created_at` cursor (`.lt()`), 50 messages per page, with scroll-position preservation. Not live-tested (chat requires real Supabase; this sandbox can't reach the live project) — verified via typecheck/lint/build only.
-- `[ ]` **Message ID Generation:** Migrate message ID generation from `generateUUID` helper fallback to native database UUID serialization if browser APIs fail.
+- `[x]` **Message ID Generation:** Resolved 2026-07-04 (Claude Code) as a judgment call, not the literal suggestion — see `CHANGELOG_AI.md` Session 14 for why database-generated UUIDs would regress ADR-005's dedup fix. Instead upgraded the fallback path from `Math.random()` to `crypto.getRandomValues()` for real entropy when `crypto.randomUUID()` is unavailable (non-secure contexts).
 - `[x]` **Mobile Viewport Optimization:** Audited 2026-07-04 (Claude Code). Lucky Wheel (fixed 256px) and Bingo (fixed 44px cells) were already safely within any phone viewport width — no fix needed. Found and fixed a real bug in `tournament-activity.tsx`: match rows joined member names into one unconstrained flex-item span (no `min-w-0`/wrap), which could overflow horizontally with long usernames. Added `min-w-0 break-words` to the span and `shrink-0` to the sibling badge.
 
 ---

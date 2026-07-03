@@ -1,7 +1,7 @@
 # AI_CONTEXT.md — Spintra Project Living Memory
 > The authoritative source of truth for the current state of the project.
 > **Always update this file after every significant milestone.**
-> Last updated: 2026-07-04T02:35 IST
+> Last updated: 2026-07-04T02:45 IST
 
 ---
 
@@ -138,7 +138,7 @@ None identified.
 - Trivia question bank is static file — could be migrated to a database table if dynamic administrative editing is needed.
 - Tournament activity shows bracket as a flat list, not a visual bracket tree
 - ~~No pagination on chat messages~~ — resolved 2026-07-04, see "Recent Session Notes"
-- `generateId()` in `room-client.tsx` (line 47) uses `Math.random()` — could collide for message IDs
+- ~~`generateId()` in `room-client.tsx` uses `Math.random()`~~ — resolved 2026-07-04, see `CHANGELOG_AI.md` Session 14 (upgraded fallback to `crypto.getRandomValues()`; the primary path already used `crypto.randomUUID()`)
 - Several activities have static prompt lists hardcoded (Truth or Dare, WYR, NHIE) — should be database-driven
 
 ---
