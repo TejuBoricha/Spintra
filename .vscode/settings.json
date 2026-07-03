@@ -1,0 +1,13 @@
+{
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "package.json": "package-lock.json, pnpm-lock.yaml, yarn.lock, .npmrc",
+    "next.config.ts": "next-env.d.ts, proxy.ts",
+    "tsconfig.json": "tsconfig.tsbuildinfo",
+    "tailwind.config.*": "postcss.config.*",
+    ".env.example": ".env, .env.*",
+    "README.md": "AGENTS.md, CLAUDE.md",
+    "eslint.config.mjs": "playwright.config.ts, components.json"
+  }
+}
