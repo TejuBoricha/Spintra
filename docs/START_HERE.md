@@ -14,6 +14,17 @@ Two files are worth checking almost regardless of task: `docs/TASKS.md` (what's 
 
 This repo's engineering constitution — decision priorities, quality gates, security rules, refactoring policy — lives in `docs/AI_RULES.md`. Read it once per session if you haven't already; it isn't repeated here.
 
+## Completion Policy
+
+A task is considered complete only when:
+
+- Code is implemented.
+- Verification is completed.
+- Relevant documentation is updated.
+- The Mandatory Change Report has been presented to the user.
+
+Do not stop after writing code. Finish every task with an engineering change report — see `docs/AI_RULES.md` §9 for the exact format and when it's required.
+
 ## Before you end a session
 
 Documentation must reflect reality by the time you stop, not just the code. At minimum:

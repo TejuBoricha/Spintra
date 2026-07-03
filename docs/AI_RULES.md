@@ -83,26 +83,7 @@ If any check fails, do not proceed. Revert or repair the changes immediately.
 ## 6. Documentation Policies
 
 - **Synchronized Reality:** Documentation is a first-class citizen of the codebase. All updates to features or database schemas must be mirrored in their respective documentation files immediately.
-- **Mandatory Change Report:** Every significant refactor, bug fix, or feature update must include a report containing:
-  - **Status:** Current operational state
-  - **Severity:** (Critical / High / Medium / Low / Informational)
-  - **Issue:** Summary of the problem
-  - **Root Cause:** Detailed explanation of why the problem occurred
-  - **Impact:** What parts of the system or users were affected
-  - **Before:** Existing implementation logic
-  - **After:** Upgraded implementation logic
-  - **Affected Components:** List of client components or folders
-  - **Affected APIs:** Mapped connection protocols or realtime topics
-  - **Affected Database:** Migrations or schemas touched
-  - **Files Modified:** List of file paths
-  - **Solution:** Explanation of the code changes applied
-  - **Verification:** Step-by-step commands and check results
-  - **Testing Performed:** Local simulation or E2E tests run
-  - **Performance Impact:** Resource cost or rendering changes
-  - **Risk:** Assessment of potential side effects or regressions
-  - **Rollback Plan:** Steps to restore prior state
-  - **Related ADR:** Reference to decisions log if applicable
-  - **Future Recommendation:** Architectural cleanup or scaling suggestions
+- **Mandatory Change Report:** Every significant refactor, bug fix, or feature update must end with a structured engineering report, displayed directly in the conversation — updating documentation alone is not sufficient. See Section 9 for the mandatory completion gate, the exact report template, and when a report is required vs. optional.
 
 ---
 
@@ -139,3 +120,91 @@ Documentation exists to be used efficiently, not read exhaustively. To keep sess
 - **Prefer summaries before detailed sections.** Where a document has a summary or status section (e.g. `AI_CONTEXT.md`'s completion-status block), read that first and only descend into full detail if the task requires it.
 - **Avoid re-reading unchanged documentation during the same session.** Once a file has been read and nothing has modified it since, treat its content as still valid rather than reloading it.
 - **Keep documentation concise, and archive historical information when appropriate.** Trim or archive detail that no longer informs current decisions rather than letting files grow indefinitely. `CHANGELOG_AI.md` is the deliberate exception — it is append-only by design, since its value is being a complete historical record.
+
+---
+
+## 9. Definition of Done & Mandatory Change Reporting
+
+### Definition of Done (Mandatory Completion Gate)
+
+A task is NOT considered complete until ALL of the following conditions have been satisfied:
+
+1. The requested implementation has been completed.
+2. Relevant verification has been performed.
+3. Relevant documentation has been updated (when applicable).
+4. A Mandatory Change Report has been presented in the conversation.
+5. Any required project documentation has been synchronized.
+
+If any of the above is missing, the task must be treated as incomplete. Never finish a task without satisfying every completion gate.
+
+### Mandatory Change Report
+
+Every significant change MUST end with a structured engineering report, displayed directly in the conversation. Updating documentation alone is NOT sufficient — the report must always be presented to the user, using exactly this structure:
+
+```
+# Status
+Fixed / Improved / Added / Refactored / Optimized / Removed
+
+# Severity
+Critical / High / Medium / Low / Informational
+
+# Issue
+What problem existed?
+
+# Root Cause
+Why did it happen?
+
+# Impact
+What functionality or users were affected?
+
+# Solution
+Exactly what was changed?
+
+# Before
+Describe the previous behaviour.
+
+# After
+Describe the new behaviour.
+
+# Files Modified
+List every modified file.
+
+# Verification
+Explain how the change was verified. Include commands executed if applicable
+(e.g. npm run lint, npm run typecheck, npm run build, tests executed, manual verification).
+
+# Testing Performed
+Describe what was actually tested
+(e.g. functional testing, regression testing, database migration validation,
+API validation, UI validation, offline mode validation).
+
+# Performance Impact
+If applicable, describe any performance improvements or regressions.
+
+# Risk
+Describe any remaining risks or side effects. If there are none, explicitly
+state "No known risks."
+
+# Rollback Plan
+Briefly explain how this change could be reverted if necessary.
+
+# Related Decisions
+Reference any relevant entry in DECISIONS.md if applicable.
+
+# Future Recommendations
+List optional future improvements.
+```
+
+### Reporting Requirements
+
+Mandatory Change Reports are **REQUIRED** for: bug fixes, new features, refactoring, database changes, API changes, UI changes, security improvements, performance optimizations, configuration changes, dependency updates, infrastructure changes, and architecture changes.
+
+Reports are **OPTIONAL** for: documentation-only edits, formatting-only changes, typo corrections, and comment-only updates.
+
+### Engineering Communication
+
+Do not optimize for shorter responses. Prioritize complete engineering communication over response brevity. Assume the recipient is another engineer who must understand what changed, why it changed, how it was verified, what risks remain, and what should happen next. Never simply state "fixed" or "done" — always explain the engineering reasoning behind significant changes.
+
+### Final Rule
+
+Before ending every task, verify that the Mandatory Change Report has been presented. If it has not been presented, continue the response until it has been fully completed. Treat the report as part of the implementation rather than an optional summary.
