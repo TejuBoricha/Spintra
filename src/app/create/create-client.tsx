@@ -144,7 +144,8 @@ export default function CreateRoomClient() {
     setLocalRoomCreator(code, currentUser.id);
     setIsCreating(false);
     toast.success(`Room ${code} created!`);
-  }, [currentUser.id, selectedType, roomName, isPublic, maxParticipants]);
+    router.push(`/room/${code}`);
+  }, [currentUser.id, selectedType, roomName, isPublic, maxParticipants, router]);
 
   // If E2E clicks the server-rendered button, forward that click to this client handler
   useEffect(() => {

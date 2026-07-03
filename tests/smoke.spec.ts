@@ -7,15 +7,9 @@ test('create and join room shows host for creator', async ({ page }) => {
   await page.waitForSelector('[data-testid="create-room-button"]', { timeout: 30000 });
   await page.click('[data-testid="create-room-button"]');
 
-  // Wait for created badge
-  await page.waitForSelector('[data-testid="created-room-badge"]', { timeout: 5000 });
-
-  // Click Join Room
-  await page.click('[data-testid="join-room-button"]');
-
   // Verify URL and host UI. The default room type is Team Maker, and only
   // the host sees the "set up teams" prompt (participants see "Waiting for
   // host..." instead) -- so this doubles as a host-detection check.
-  await expect(page).toHaveURL(/\/room\/[A-Z0-9]+/);
+  await page.waitForURL(/\/room\/[A-Z0-9]+/);
   await expect(page.getByText('Choose how many teams to create')).toBeVisible();
 });

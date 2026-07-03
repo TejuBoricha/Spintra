@@ -22,6 +22,7 @@ import type { User, ChatMessage, RoomParticipant, RoomType, ActivityEvent } from
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getOrCreateRoomUser, getLocalRoomCreatorId } from "@/lib/room-user";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { fireConfetti } from "@/components/celebration";
 import { IdleScreen } from "./activities/idle-screen";
 import { AggregateIdleScreen } from "./activities/aggregate-idle-screen";
 import { ActivityPickerDialog } from "./activities/activity-picker-dialog";
@@ -121,6 +122,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   const [roomType, setRoomType] = useState<RoomType>("party");
   const [roomName, setRoomName] = useState<string>("Game Room");
   const [roomHostId, setRoomHostId] = useState<string | null>(null);
+  const [hasMounted, setHasMounted] = useState(false);
   const [activeActivity, setActiveActivity] = useState<{
     type: string;
     state: unknown;
@@ -179,7 +181,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   const [isCloseRoomDialogOpen, setIsCloseRoomDialogOpen] = useState(false);
   const [isClosingRoom, setIsClosingRoom] = useState(false);
 
-  const isHost = roomHostId ? roomHostId === currentUser.id : localCreatorId === currentUser.id;
+  const isHost = hasMounted && (roomHostId ? roomHostId === currentUser.id : localCreatorId === currentUser.id);
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -196,6 +198,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   // Sync client-only values from localStorage/environment post-mount to prevent hydration mismatches
   useEffect(() => {
     queueMicrotask(() => {
+      setHasMounted(true);
       const supabase = getSupabaseBrowserClient();
       if (!supabase) {
         setIsRealtimeReady(false);
@@ -360,6 +363,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         case "wheel_spin":
           setWheelWinner(event.winner);
           setWheelSpinning(false);
+          fireConfetti();
           break;
         case "wheel_spinning":
           setWheelSpinAngle(1440 + Math.random() * 360);
@@ -370,6 +374,9 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           break;
         case "guess_submit":
           setGuessHistory((prev) => [...prev, { username: event.username, guess: event.guess, hint: event.hint }]);
+          if (event.hint === "correct") {
+            fireConfetti();
+          }
           break;
         case "guess_reset":
           setGuessHistory([]);
@@ -403,6 +410,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           break;
         case "nd_winner":
           setNdWinner(event.winner);
+          fireConfetti();
           break;
         case "trivia_question":
           setTriviaQuestion({ text: event.text, options: event.options, correctIndex: event.correctIndex, num: event.num });
@@ -416,6 +424,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           break;
         case "bingo_win":
           setBingoWinner(event.username);
+          fireConfetti();
           break;
         case "bingo_reset":
           setBingoCalled([]);
@@ -427,6 +436,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           break;
         case "scramble_correct":
           setScrambleWinner(event.username);
+          fireConfetti();
           break;
         case "activity_reset":
           setCoinResult(null);
@@ -862,6 +872,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         );
         toast.success("You are now the host.");
         setNotification("The previous host left, and you have been promoted to host.");
+        fireConfetti();
       }
     },
     [currentUser.id, roomCode]
@@ -1338,35 +1349,44 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
             {/* Messages */}
             <ScrollArea className="flex-1 px-4 py-4 overflow-y-auto">
               <div className="space-y-4">
-                {messages.map((msg) => {
-                  const participant = participants.find((p) => p.user_id === msg.user_id);
-                  const username = msg.user_id === currentUser.id 
-                    ? "You" 
-                    : (participant?.user?.username || msg.user?.username || "Guest");
-                  const initials = username.slice(0, 2).toUpperCase() || "??";
-                  const isMsgHost = participant?.role === "host";
+                <AnimatePresence initial={false}>
+                  {messages.map((msg) => {
+                    const participant = participants.find((p) => p.user_id === msg.user_id);
+                    const username = msg.user_id === currentUser.id 
+                      ? "You" 
+                      : (participant?.user?.username || msg.user?.username || "Guest");
+                    const initials = username.slice(0, 2).toUpperCase() || "??";
+                    const isMsgHost = participant?.role === "host";
 
-                  return (
-                    <div key={msg.id} className="flex gap-3">
-                      <Avatar className="w-8 h-8 shrink-0">
-                        <AvatarFallback className="text-xs bg-gradient-to-br from-purple-500 to-cyan-500 text-white">
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">
-                            {username}
-                          </span>
-                          {isMsgHost && (
-                            <Crown className="w-3 h-3 text-amber-400" />
-                          )}
-                         </div>
-                        <p className="text-sm text-muted-foreground">{renderTextWithEmoji(msg.content)}</p>
-                      </div>
-                    </div>
-                  );
-                })}
+                    return (
+                      <motion.div
+                        key={msg.id}
+                        initial={{ opacity: 0, y: 12, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.96 }}
+                        transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                        className="flex gap-3"
+                      >
+                        <Avatar className="w-8 h-8 shrink-0">
+                          <AvatarFallback className="text-xs bg-gradient-to-br from-purple-500 to-cyan-500 text-white">
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">
+                              {username}
+                            </span>
+                            {isMsgHost && (
+                              <Crown className="w-3 h-3 text-amber-400" />
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">{renderTextWithEmoji(msg.content)}</p>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
                 <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
@@ -1436,52 +1456,58 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           >
             <ScrollArea className="h-full px-4 py-4 overflow-y-auto">
               <div className="space-y-1">
-                {participants.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
-                  >
-                    <div className="relative">
-                      <Avatar className="w-9 h-9">
-                        <AvatarFallback className="text-xs bg-gradient-to-br from-purple-500 to-cyan-500 text-white">
-                          {p.user?.username?.slice(0, 2).toUpperCase() || "??"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div
-                        className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-background ${
-                          p.is_online ? "bg-emerald-400" : "bg-zinc-500"
-                        }`}
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium truncate">
-                          {p.user_id === currentUser.id ? "You" : p.user?.username}
-                        </span>
-                        {p.role === "host" && <Crown className="w-3 h-3 text-amber-400 shrink-0" />}
+                <AnimatePresence initial={false}>
+                  {participants.map((p) => (
+                    <motion.div
+                      key={p.id}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                      className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
+                    >
+                      <div className="relative">
+                        <Avatar className="w-9 h-9">
+                          <AvatarFallback className="text-xs bg-gradient-to-br from-purple-500 to-cyan-500 text-white">
+                            {p.user?.username?.slice(0, 2).toUpperCase() || "??"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div
+                          className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-background ${
+                            p.is_online ? "bg-emerald-400" : "bg-zinc-500"
+                          }`}
+                        />
                       </div>
-                      <span className="text-xs text-muted-foreground capitalize">{p.role}</span>
-                    </div>
-                    {isHost && p.user_id !== currentUser.id && (
-                      <Tooltip>
-                        <TooltipTrigger
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={() => handleKickParticipant(p)}
-                              aria-label={`Remove ${p.user?.username || "participant"} from the room`}
-                            />
-                          }
-                        >
-                          <UserX className="w-3.5 h-3.5" />
-                        </TooltipTrigger>
-                        <TooltipContent>Remove from room</TooltipContent>
-                      </Tooltip>
-                    )}
-                  </div>
-                ))}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium truncate">
+                            {p.user_id === currentUser.id ? "You" : p.user?.username}
+                          </span>
+                          {p.role === "host" && <Crown className="w-3 h-3 text-amber-400 shrink-0" />}
+                        </div>
+                        <span className="text-xs text-muted-foreground capitalize">{p.role}</span>
+                      </div>
+                      {isHost && p.user_id !== currentUser.id && (
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => handleKickParticipant(p)}
+                                aria-label={`Remove ${p.user?.username || "participant"} from the room`}
+                              />
+                            }
+                          >
+                            <UserX className="w-3.5 h-3.5" />
+                          </TooltipTrigger>
+                          <TooltipContent>Remove from room</TooltipContent>
+                        </Tooltip>
+                      )}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             </ScrollArea>
           </motion.div>
