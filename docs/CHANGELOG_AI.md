@@ -122,6 +122,25 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 13: Mobile Viewport Audit
+
+**AI:** Claude Code (Anthropic)
+**Task:** Audit Lucky Wheel, Bingo, and Tournament for mobile/small-screen layout bugs (per the `TASKS.md` debt item).
+**Files Modified:**
+- `src/app/room/[code]/activities/tournament-activity.tsx` — match row span: added `min-w-0 break-words`; sibling `Badge`: added `shrink-0`.
+
+**Purpose:**
+- The debt item bundled three games together, but only one was actually broken. Lucky Wheel uses a fixed `w-64 h-64` (256px) wheel with `max-w-[70px] truncate` on entry labels — safely fits any phone viewport. Bingo uses fixed `w-11 h-11` (44px) cells × 5 columns — total card width ~260px, also safe. Tournament's match rows joined all member names into a single string (`round.members.join(" vs ")`) inside a `flex items-center gap-3` row with no `min-w-0`/wrap — flex items default to `min-width: auto`, so two moderately long usernames could force the row wider than the viewport, causing horizontal overflow on narrow screens.
+- Swept every other room activity for the same `.join(...)`-into-unconstrained-span pattern; none found (team-maker maps members individually; rps shows one username at a time — an existing, uniform, lower-risk pattern used across the whole app, not a localized bug).
+
+**Outcome:**
+- `npm run typecheck` / `npm run lint` / `npm run build`: all pass.
+- Not live-tested at actual mobile viewport widths (would require a live room + a real device/emulator session); the fix is a standard, low-risk Tailwind flexbox correction (`min-w-0` + `break-words` is the conventional fix for this exact overflow class).
+
+**Risks:** None — additive CSS-only change, no logic touched.
+
+---
+
 ## [2026-07-04] — Session 12: Chat Pagination
 
 **AI:** Claude Code (Anthropic)

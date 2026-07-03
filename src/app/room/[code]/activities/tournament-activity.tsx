@@ -40,8 +40,8 @@ export function TournamentActivity() {
         <div className="space-y-3">
           {tmTeams.map((round, i) => (
             <div key={i} className="flex items-center gap-3 glass p-3 rounded-xl">
-              <Badge className="bg-amber-500/20 text-amber-300">Match {i + 1}</Badge>
-              <span className="font-medium">{round.members.join(" vs ")}</span>
+              <Badge className="bg-amber-500/20 text-amber-300 shrink-0">Match {i + 1}</Badge>
+              <span className="font-medium min-w-0 break-words">{round.members.join(" vs ")}</span>
             </div>
           ))}
         </div>
