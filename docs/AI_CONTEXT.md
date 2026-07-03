@@ -137,7 +137,7 @@ None identified.
 ## Backend Status
 
 - **Supabase Project:** Active (remote)
-- **Connection:** `postgresql://postgres.qjxaehxwuqntyqrdmihs:57AFDvzvLn4C9VFO@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres`
+- **Connection:** configured via `.env.local` (`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`) — never record the raw database connection string or password here; treat this file as version-controlled and world-readable.
 - **Auth:** Anonymous sign-ins enabled
 - **Realtime:** Broadcast channel per room (`room_{code}`)
 - **RLS:** Enabled on all tables. Latest policy: `0007_allow_host_update_participants`
