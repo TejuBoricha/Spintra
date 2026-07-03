@@ -10,8 +10,10 @@ import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
 import { toast } from "sonner";
 
+import { playSwipe, playSuccess } from "@/lib/audio";
+
 export function LuckyWheelActivity() {
-  const { isHost, sendActivityEvent, registerEventListener } = useRoomActivity();
+  const { isHost, sendActivityEvent, registerEventListener, soundEnabled } = useRoomActivity();
 
   const [wheelEntries, setWheelEntries] = useState<string[]>(["Option 1", "Option 2", "Option 3"]);
   const [newWheelEntryText, setNewWheelEntryText] = useState("");
@@ -33,11 +35,13 @@ export function LuckyWheelActivity() {
         case "wheel_spinning":
           setWheelSpinAngle(1440 + Math.random() * 360);
           setWheelSpinning(true);
+          playSwipe(soundEnabled);
           break;
         case "wheel_spin": {
           const payload = event as { winner: string };
           setWheelWinner(payload.winner);
           setWheelSpinning(false);
+          playSuccess(soundEnabled);
           break;
         }
         case "activity_reset":
@@ -46,7 +50,7 @@ export function LuckyWheelActivity() {
           break;
       }
     });
-  }, [registerEventListener]);
+  }, [registerEventListener, soundEnabled]);
 
   const syncWheelEntries = (entries: string[]) => {
     setWheelEntries(entries);

@@ -122,6 +122,35 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-03] — Session 10: Dynamic UI Audio Integration & Premium Sound Effects
+**AI:** Antigravity (Google DeepMind)
+**Task:** Expose soundEnabled state in Stable Context, add volume toggle control in the Room Header, and play real-time synthesized audio feedback across modular games.
+**Files Modified/Created:**
+- `src/app/room/[code]/context/room-activity-context.tsx` — Exposed `soundEnabled: boolean` inside room activity Stable Context interface
+- `src/app/room/[code]/room-client.tsx` — Initialized local sound toggle state (saving/loading preferences asynchronously from `localStorage` to avoid Next.js hydration anomalies) and rendered a mute/unmute header trigger button
+- `src/app/room/[code]/activities/coin-flip-activity.tsx` — Triggered `playCoinFlip` and `playTick` audio feedback on flipping events
+- `src/app/room/[code]/activities/dice-activity.tsx` — Triggered `playDiceRoll` and `playTick` audio feedback on rolling actions
+- `src/app/room/[code]/activities/truth-or-dare-activity.tsx` — Triggered `playSwipe` on card draw broadcasts
+- `src/app/room/[code]/activities/would-you-rather-activity.tsx` — Triggered `playSwipe` on new prompts and `playPop` on vote submissions
+- `src/app/room/[code]/activities/never-have-i-ever-activity.tsx` — Triggered `playSwipe` on prompts and `playPop` on confessions
+- `src/app/room/[code]/activities/word-scramble-activity.tsx` — Triggered `playSwipe` on new scrambled words, `playSuccess` on winner selections, and `playFailure` on local incorrect guesses
+- `src/app/room/[code]/activities/lucky-wheel-activity.tsx` — Triggered `playSwipe` on spins and `playSuccess` on target selections
+- `src/app/room/[code]/activities/trivia-activity.tsx` — Triggered `playSwipe` on questions, `playPop` on others' answers, `playSuccess` on correct player answers, and `playFailure` on incorrect player choices
+
+**Purpose:**
+- Provide premium Web Audio API synthesized sound feedback to multiplayer room games to match the single-player tool pages.
+- Deliver cross-client synchronized audio cues on game progression steps.
+- Give participants full local control to mute/unmute room audio feeds.
+
+**Outcome:**
+- Highly responsive sound feedback added across all 8 live activity components.
+- Persistent user mute controls enabled.
+- All quality gates (linting, typechecking, production compile) successfully verified.
+
+**Risks:** None.
+
+---
+
 ## [2026-07-03] — Session 9: Database-Driven Activity Prompts & Fallback System
 **AI:** Antigravity (Google DeepMind)
 **Task:** Refactor prompt viewports to fetch dynamically from database schemas.

@@ -26,8 +26,10 @@ const BACKUP_DARES = [
   "Sing a song for 30 seconds"
 ];
 
+import { playSwipe } from "@/lib/audio";
+
 export function TruthOrDareActivity() {
-  const { isHost, sendActivityEvent, registerEventListener } = useRoomActivity();
+  const { isHost, sendActivityEvent, registerEventListener, soundEnabled } = useRoomActivity();
   const [todPrompt, setTodPrompt] = useState<{ type: string; text: string } | null>(null);
   const [prompts, setPrompts] = useState<{ truths: string[]; dares: string[] }>({
     truths: BACKUP_TRUTHS,
@@ -64,11 +66,12 @@ export function TruthOrDareActivity() {
       if (event.kind === "tod_prompt") {
         const payload = event as { promptType: "truth" | "dare"; text: string };
         setTodPrompt({ type: payload.promptType, text: payload.text });
+        playSwipe(soundEnabled);
       } else if (event.kind === "activity_reset") {
         setTodPrompt(null);
       }
     });
-  }, [registerEventListener]);
+  }, [registerEventListener, soundEnabled]);
 
   return (
     <motion.div

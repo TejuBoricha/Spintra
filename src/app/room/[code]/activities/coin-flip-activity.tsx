@@ -6,8 +6,10 @@ import { Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRoomActivity } from "../context/room-activity-context";
 
+import { playCoinFlip, playTick } from "@/lib/audio";
+
 export function CoinFlipActivity() {
-  const { isHost, sendActivityEvent, registerEventListener } = useRoomActivity();
+  const { isHost, sendActivityEvent, registerEventListener, soundEnabled } = useRoomActivity();
   const [coinResult, setCoinResult] = useState<"Heads" | "Tails" | null>(null);
   const [coinFlipping, setCoinFlipping] = useState(false);
 
@@ -15,16 +17,18 @@ export function CoinFlipActivity() {
     return registerEventListener((event) => {
       if (event.kind === "coin_flipping") {
         setCoinFlipping(true);
+        playCoinFlip(soundEnabled);
       } else if (event.kind === "coin_flip") {
         const payload = event as { result: "Heads" | "Tails" };
         setCoinResult(payload.result);
         setCoinFlipping(false);
+        playTick(soundEnabled);
       } else if (event.kind === "activity_reset") {
         setCoinResult(null);
         setCoinFlipping(false);
       }
     });
-  }, [registerEventListener]);
+  }, [registerEventListener, soundEnabled]);
 
   return (
     <motion.div

@@ -10,8 +10,10 @@ import { useRoomActivity } from "../context/room-activity-context";
 import { TRIVIA_QUESTIONS } from "@/lib/trivia-questions";
 import { shuffleArray } from "@/lib/utils";
 
+import { playSwipe, playPop, playSuccess, playFailure } from "@/lib/audio";
+
 export function TriviaActivity() {
-  const { isHost, currentUser, sendActivityEvent, registerEventListener } = useRoomActivity();
+  const { isHost, currentUser, sendActivityEvent, registerEventListener, soundEnabled } = useRoomActivity();
   const [triviaQuestion, setTriviaQuestion] = useState<{
     text: string;
     options: string[];
@@ -47,18 +49,28 @@ export function TriviaActivity() {
           difficulty: payload.difficulty,
         });
         setTriviaAnswers({});
+        playSwipe(soundEnabled);
       } else if (event.kind === "trivia_answer") {
         const payload = event as { userId: string; username: string; choiceIndex: number; correct: boolean };
         setTriviaAnswers((prev) => ({
           ...prev,
           [payload.userId]: { username: payload.username, choiceIndex: payload.choiceIndex, correct: payload.correct },
         }));
+        if (payload.userId === currentUser.id) {
+          if (payload.correct) {
+            playSuccess(soundEnabled);
+          } else {
+            playFailure(soundEnabled);
+          }
+        } else {
+          playPop(soundEnabled);
+        }
       } else if (event.kind === "activity_reset") {
         setTriviaQuestion(null);
         setTriviaAnswers({});
       }
     });
-  }, [registerEventListener]);
+  }, [registerEventListener, soundEnabled, currentUser.id]);
 
   const filteredQuestions = TRIVIA_QUESTIONS.filter((q) => {
     const categoryMatch = selectedCategory === "All" || q.category === selectedCategory;

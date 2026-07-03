@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
 
+import { playDiceRoll, playTick } from "@/lib/audio";
+
 export function DiceActivity() {
-  const { isHost, sendActivityEvent, registerEventListener } = useRoomActivity();
+  const { isHost, sendActivityEvent, registerEventListener, soundEnabled } = useRoomActivity();
   const [diceResults, setDiceResults] = useState<number[]>([]);
   const [diceRolling, setDiceRolling] = useState(false);
 
@@ -15,16 +17,18 @@ export function DiceActivity() {
     return registerEventListener((event) => {
       if (event.kind === "dice_rolling") {
         setDiceRolling(true);
+        playDiceRoll(soundEnabled);
       } else if (event.kind === "dice_roll") {
         const payload = event as { results: number[] };
         setDiceResults(payload.results);
         setDiceRolling(false);
+        playTick(soundEnabled);
       } else if (event.kind === "activity_reset") {
         setDiceResults([]);
         setDiceRolling(false);
       }
     });
-  }, [registerEventListener]);
+  }, [registerEventListener, soundEnabled]);
 
   return (
     <motion.div

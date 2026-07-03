@@ -18,8 +18,10 @@ const BACKUP_PROMPTS = [
   { a: "Travel to the past", b: "Travel to the future" },
 ];
 
+import { playSwipe, playPop } from "@/lib/audio";
+
 export function WouldYouRatherActivity() {
-  const { isHost, currentUser, sendActivityEvent, registerEventListener } = useRoomActivity();
+  const { isHost, currentUser, sendActivityEvent, registerEventListener, soundEnabled } = useRoomActivity();
   const [wyrPrompt, setWyrPrompt] = useState<{ a: string; b: string } | null>(null);
   const [wyrVotes, setWyrVotes] = useState<Record<string, { username: string; option: "A" | "B" }>>({});
   const [prompts, setPrompts] = useState<{ a: string; b: string }[]>(BACKUP_PROMPTS);
@@ -48,18 +50,20 @@ export function WouldYouRatherActivity() {
         const payload = event as { a: string; b: string };
         setWyrPrompt({ a: payload.a, b: payload.b });
         setWyrVotes({});
+        playSwipe(soundEnabled);
       } else if (event.kind === "wyr_vote") {
         const payload = event as { userId: string; username: string; option: "A" | "B" };
         setWyrVotes((prev) => ({
           ...prev,
           [payload.userId]: { username: payload.username, option: payload.option },
         }));
+        playPop(soundEnabled);
       } else if (event.kind === "activity_reset") {
         setWyrPrompt(null);
         setWyrVotes({});
       }
     });
-  }, [registerEventListener]);
+  }, [registerEventListener, soundEnabled]);
 
   return (
     <motion.div

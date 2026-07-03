@@ -17,8 +17,10 @@ const BACKUP_STATEMENTS = [
   "Never have I ever ghosted someone",
 ];
 
+import { playSwipe, playPop } from "@/lib/audio";
+
 export function NeverHaveIEverActivity() {
-  const { isHost, currentUser, sendActivityEvent, registerEventListener } = useRoomActivity();
+  const { isHost, currentUser, sendActivityEvent, registerEventListener, soundEnabled } = useRoomActivity();
   const [nhiePrompt, setNhiePrompt] = useState<string | null>(null);
   const [nhieConfessions, setNhieConfessions] = useState<Record<string, { username: string; choice: "have" | "never" }>>({});
   const [statements, setStatements] = useState<string[]>(BACKUP_STATEMENTS);
@@ -47,18 +49,20 @@ export function NeverHaveIEverActivity() {
         const payload = event as { text: string };
         setNhiePrompt(payload.text);
         setNhieConfessions({});
+        playSwipe(soundEnabled);
       } else if (event.kind === "nhie_confess") {
         const payload = event as { userId: string; username: string; choice: "have" | "never" };
         setNhieConfessions((prev) => ({
           ...prev,
           [payload.userId]: { username: payload.username, choice: payload.choice },
         }));
+        playPop(soundEnabled);
       } else if (event.kind === "activity_reset") {
         setNhiePrompt(null);
         setNhieConfessions({});
       }
     });
-  }, [registerEventListener]);
+  }, [registerEventListener, soundEnabled]);
 
   return (
     <motion.div

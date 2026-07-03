@@ -24,8 +24,10 @@ function scramble(word: string): string {
   return attempt;
 }
 
+import { playSwipe, playSuccess, playFailure } from "@/lib/audio";
+
 export function WordScrambleActivity() {
-  const { isHost, sendActivityEvent, registerEventListener, currentUser } = useRoomActivity();
+  const { isHost, sendActivityEvent, registerEventListener, currentUser, soundEnabled } = useRoomActivity();
 
   const [scrambleWord, setScrambleWord] = useState<{ scrambled: string; answer: string } | null>(null);
   const [scrambleWinner, setScrambleWinner] = useState<string | null>(null);
@@ -38,11 +40,13 @@ export function WordScrambleActivity() {
           const payload = event as { scrambled: string; answer: string };
           setScrambleWord({ scrambled: payload.scrambled, answer: payload.answer });
           setScrambleWinner(null);
+          playSwipe(soundEnabled);
           break;
         }
         case "scramble_correct": {
           const payload = event as { username: string };
           setScrambleWinner(payload.username);
+          playSuccess(soundEnabled);
           break;
         }
         case "activity_reset":
@@ -51,7 +55,7 @@ export function WordScrambleActivity() {
           break;
       }
     });
-  }, [registerEventListener]);
+  }, [registerEventListener, soundEnabled]);
 
   const newWord = () => {
     const word = WORDS[Math.floor(Math.random() * WORDS.length)];
@@ -64,6 +68,8 @@ export function WordScrambleActivity() {
     if (!scrambleWord || scrambleWinner) return;
     if (guess.trim().toUpperCase() === scrambleWord.answer) {
       sendActivityEvent({ kind: "scramble_correct", username: currentUser.username });
+    } else {
+      playFailure(soundEnabled);
     }
     setGuess("");
   };

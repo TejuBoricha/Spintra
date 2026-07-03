@@ -61,3 +61,7 @@ No active task is currently in progress. All refactoring plan steps and trivia q
   - Refactored Truth or Dare, Would You Rather, and Never Have I Ever viewports to query prompts dynamically.
   - Built automatic cache initialization on Host mount to minimize DB load.
   - Integrated static hardcoded backup lists for offline local BroadcastChannel mode.
+- `[x]` **Phase 8: Dynamic UI Audio Integration**
+  - Exposed `soundEnabled` in the stable context interface.
+  - Initialized local sound toggle state (with `localStorage` caching) and created header Volume Toggle button.
+  - Connected synthesized Web Audio API sound effects (tick, metal flip, low-pitch dice clatter, card swipes, selection pops, success fanfare, failure buzzer) inside all modular multiplayer room activity components.

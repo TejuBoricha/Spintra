@@ -11,6 +11,7 @@ export interface RoomActivityContextType {
   currentUser: User;
   sendActivityEvent: (event: ActivityEvent) => void;
   registerEventListener: (fn: (event: ActivityEvent) => void) => () => void;
+  soundEnabled: boolean;
 }
 
 // DYNAMIC — only participants list

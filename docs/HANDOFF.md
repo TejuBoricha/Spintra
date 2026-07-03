@@ -30,11 +30,12 @@ Spintra is a real-time multiplayer party game and classroom activity platform. U
 - **Duplicate Message Hotfix:** Replaced client-generated alphanumeric IDs with valid UUIDs, passed them explicitly to the database insert statement to unify references, and matched timestamps via raw millisecond comparison (`.getTime()`) to prevent local echo duplication.
 - **Continuous Integration Pipeline:** Configured local verification pipelines (install dependencies, dependency audit scans, strict tsc compilation, lint rules checking, next production build validation, Playwright chromium smoke test suite execution) as a GitHub Actions workflow.
 - **Dynamic Prompt Migration:** Created and seeded the `activity_prompts` database table (migration `0008`) and refactored Truth or Dare, Would You Rather, and Never Have I Ever to fetch prompts dynamically with local fallbacks.
+- **Dynamic UI Audio Integration:** Expose `soundEnabled` state inside Stable Context, implement client volume controls (caching preference to `localStorage`), and connect synchronized synthesized audio feedback loops (coin flips, dice rolling clatters, card draws, button/confession pops, correct chimes, incorrect buzzers) across modular game viewports.
 
 ---
 
 ## 4. Current State
-- **Last Completed Task:** Refactored prompt viewports to fetch dynamically from database schemas.
+- **Last Completed Task:** Dynamic UI Audio Integration & Premium Sound Effects.
 - **Roadmap Remaining Work:**
   1. Add visual scoreboard/leaderboard mapping trivia score tallies.
   2. Implement visual tree rendering for Tournament bracket matchups.

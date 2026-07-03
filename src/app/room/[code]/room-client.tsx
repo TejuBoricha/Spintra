@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Send, Crown, MessageCircle, Lock, Unlock,
   Copy, Check, Smile, UserX, Wifi,
-  Shuffle, RotateCcw, DoorClosed,
+  Shuffle, RotateCcw, DoorClosed, Volume2, VolumeX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -163,6 +163,29 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   const [notification, setNotification] = useState<string | null>(null);
   const [isCloseRoomDialogOpen, setIsCloseRoomDialogOpen] = useState(false);
   const [isClosingRoom, setIsClosingRoom] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = window.localStorage.getItem("spintra-room-sound");
+      if (saved !== null) {
+        setTimeout(() => {
+          setSoundEnabled(saved === "true");
+        }, 0);
+      }
+    }
+  }, []);
+
+  const toggleSound = useCallback(() => {
+    setSoundEnabled((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("spintra-room-sound", String(next));
+      }
+      toast.info(next ? "Sound effects enabled!" : "Sound effects muted!");
+      return next;
+    });
+  }, []);
 
   const isHost = hasMounted && (roomHostId ? roomHostId === currentUser.id : localCreatorId === currentUser.id);
 
@@ -1402,7 +1425,8 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     currentUser,
     sendActivityEvent,
     registerEventListener,
-  }), [roomCode, roomType, isHost, currentUser, sendActivityEvent, registerEventListener]);
+    soundEnabled,
+  }), [roomCode, roomType, isHost, currentUser, sendActivityEvent, registerEventListener, soundEnabled]);
 
   const dynamicContextValue = useMemo(() => ({
     participants,
@@ -1557,6 +1581,22 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                   <Users className="w-4 h-4" />
                 </TooltipTrigger>
                 <TooltipContent>Chat & participants</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={toggleSound}
+                      aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
+                      className="text-muted-foreground hover:text-white"
+                    />
+                  }
+                >
+                  {soundEnabled ? <Volume2 className="w-4 h-4 text-purple-400" /> : <VolumeX className="w-4 h-4" />}
+                </TooltipTrigger>
+                <TooltipContent>{soundEnabled ? "Mute sounds" : "Unmute sounds"}</TooltipContent>
               </Tooltip>
             </div>
           </div>
