@@ -17,14 +17,12 @@ export function GuessNumberActivity() {
     return registerEventListener((event) => {
       switch (event.kind) {
         case "guess_submit": {
-          const payload = event as { username: string; guess: number; hint: string };
-          setGuessHistory((prev) => [...prev, { username: payload.username, guess: payload.guess, hint: payload.hint }]);
+          setGuessHistory((prev) => [...prev, { username: event.username, guess: event.guess, hint: event.hint }]);
           break;
         }
         case "guess_reset": {
-          const payload = event as { secret: number };
           setGuessHistory([]);
-          setGuessSecretNumber(payload.secret);
+          setGuessSecretNumber(event.secret);
           break;
         }
         case "activity_reset":

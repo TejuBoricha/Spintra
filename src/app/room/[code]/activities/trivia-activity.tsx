@@ -32,32 +32,23 @@ export function TriviaActivity() {
   useEffect(() => {
     return registerEventListener((event) => {
       if (event.kind === "trivia_question") {
-        const payload = event as {
-          text: string;
-          options: string[];
-          correctIndex: number;
-          num: number;
-          category: string;
-          difficulty: "easy" | "medium" | "hard";
-        };
         setTriviaQuestion({
-          text: payload.text,
-          options: payload.options,
-          correctIndex: payload.correctIndex,
-          num: payload.num,
-          category: payload.category,
-          difficulty: payload.difficulty,
+          text: event.text,
+          options: event.options,
+          correctIndex: event.correctIndex,
+          num: event.num,
+          category: event.category,
+          difficulty: event.difficulty,
         });
         setTriviaAnswers({});
         playSwipe(soundEnabled);
       } else if (event.kind === "trivia_answer") {
-        const payload = event as { userId: string; username: string; choiceIndex: number; correct: boolean };
         setTriviaAnswers((prev) => ({
           ...prev,
-          [payload.userId]: { username: payload.username, choiceIndex: payload.choiceIndex, correct: payload.correct },
+          [event.userId]: { username: event.username, choiceIndex: event.choiceIndex, correct: event.correct },
         }));
-        if (payload.userId === currentUser.id) {
-          if (payload.correct) {
+        if (event.userId === currentUser.id) {
+          if (event.correct) {
             playSuccess(soundEnabled);
           } else {
             playFailure(soundEnabled);

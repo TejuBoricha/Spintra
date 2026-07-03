@@ -64,8 +64,7 @@ export function TruthOrDareActivity() {
   useEffect(() => {
     return registerEventListener((event) => {
       if (event.kind === "tod_prompt") {
-        const payload = event as { promptType: "truth" | "dare"; text: string };
-        setTodPrompt({ type: payload.promptType, text: payload.text });
+        setTodPrompt({ type: event.promptType, text: event.text });
         playSwipe(soundEnabled);
       } else if (event.kind === "activity_reset") {
         setTodPrompt(null);

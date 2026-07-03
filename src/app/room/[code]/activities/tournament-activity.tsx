@@ -17,8 +17,7 @@ export function TournamentActivity() {
   useEffect(() => {
     return registerEventListener((event) => {
       if (event.kind === "tm_teams") {
-        const payload = event as { teams: { name: string; members: string[] }[] };
-        setTmTeams(payload.teams);
+        setTmTeams(event.teams);
       } else if (event.kind === "activity_reset") {
         setTmTeams([]);
       }

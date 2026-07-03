@@ -122,6 +122,25 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 19: Remove Redundant Event Type Casts (14 Activity Files)
+
+**AI:** Claude Code (Anthropic)
+**Task:** User asked for improvements to the existing codebase without adding new features. Investigated the event-handling code across all activities, since `ARCHITECTURE.md` §8 documents "discriminated unions preferred over string literal checks with type coercion" as a coding standard.
+**Files Modified:** all 14 files in `src/app/room/[code]/activities/` — `bingo-activity.tsx`, `coin-flip-activity.tsx`, `dice-activity.tsx`, `guess-number-activity.tsx`, `lucky-wheel-activity.tsx`, `name-draw-activity.tsx`, `never-have-i-ever-activity.tsx`, `rps-activity.tsx`, `team-maker-activity.tsx`, `tournament-activity.tsx`, `trivia-activity.tsx`, `truth-or-dare-activity.tsx`, `word-scramble-activity.tsx`, `would-you-rather-activity.tsx`.
+
+**Purpose:**
+- `ActivityEvent` in `src/lib/types.ts` is already a real discriminated union on `kind`, and `registerEventListener`'s callback parameter is correctly typed as `ActivityEvent` — so `switch (event.kind) { case "bingo_call": ... }` (or the equivalent `if` chains) already narrows `event` to the exact matching member type automatically, with no cast needed.
+- Every one of the 14 activity files nonetheless did `const payload = event as { number: number }` (or similar) right after the narrowing check — completely redundant, and worse, a type-safety hazard: the inline anonymous shape is a hand-typed duplicate of the real type (e.g. `BingoCallEvent`) that TypeScript won't catch drifting out of sync if the real type changes later. This directly contradicted the documented coding standard while sitting right on top of the correctly-built discriminated union.
+
+**Outcome:**
+- `npm run typecheck` / `npm run lint` / `npm run build`: all pass, confirming TypeScript's narrowing works correctly without the casts.
+- Zero behavior change — these were compile-time-only constructs; the emitted JS accessing `event.number` vs `payload.number` (where `payload = event`) is identical at runtime. No live testing needed for this reason; this is a type-safety-only cleanup.
+- 14 files touched, net -28 lines.
+
+**Risks:** None — purely removing dead/redundant type assertions; verified by the type checker itself, which is the authoritative check for this specific kind of change.
+
+---
+
 ## [2026-07-04] — Session 18: HANDOFF.md Sync (End-of-Session)
 
 **AI:** Claude Code (Anthropic)

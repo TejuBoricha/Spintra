@@ -28,8 +28,7 @@ export function LuckyWheelActivity() {
     return registerEventListener((event) => {
       switch (event.kind) {
         case "wheel_entries": {
-          const payload = event as { entries: string[] };
-          setWheelEntries(payload.entries);
+          setWheelEntries(event.entries);
           break;
         }
         case "wheel_spinning":
@@ -38,8 +37,7 @@ export function LuckyWheelActivity() {
           playSwipe(soundEnabled);
           break;
         case "wheel_spin": {
-          const payload = event as { winner: string };
-          setWheelWinner(payload.winner);
+          setWheelWinner(event.winner);
           setWheelSpinning(false);
           playSuccess(soundEnabled);
           break;

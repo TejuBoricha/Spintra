@@ -16,10 +16,9 @@ export function RpsActivity() {
   useEffect(() => {
     return registerEventListener((event) => {
       if (event.kind === "rps_choice") {
-        const payload = event as { userId: string; username: string; choice: string };
         setRpsChoices((prev) => ({
           ...prev,
-          [payload.userId]: { username: payload.username, choice: payload.choice },
+          [event.userId]: { username: event.username, choice: event.choice },
         }));
       } else if (event.kind === "rps_reset" || event.kind === "activity_reset") {
         setRpsChoices({});

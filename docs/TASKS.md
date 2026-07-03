@@ -12,6 +12,8 @@ No active task is currently in progress. All refactoring plan steps and trivia q
 
 ## 2. Technical Debt Backlog
 
+- `[x]` **Redundant Event Type Casts:** Resolved 2026-07-04 (Claude Code). All 14 room activity files manually re-cast `event as { ... }` inside `switch(event.kind)`/`if (event.kind === ...)` blocks, even though `ActivityEvent` (`types.ts`) is already a proper discriminated union and `registerEventListener` is correctly typed — meaning TypeScript already narrows `event` automatically at each branch. The casts were dead weight and a latent hazard (hand-typed inline shapes duplicating the real types, so they wouldn't get compiler errors if the real types changed). Removed all of them; verified narrowing works via typecheck.
+
 - `[ ]` **Trivia Database Migration:** Migrate the static [`src/lib/trivia-questions.ts`](file:///c:/Users/tejas/Desktop/Spintra-1/src/lib/trivia-questions.ts) file to a database table to support dynamic admin editing/moderation.
 - `[x]` **Chat Pagination:** Resolved 2026-07-04 (Claude Code) — added a "Load older messages" button using a `created_at` cursor (`.lt()`), 50 messages per page, with scroll-position preservation. Not live-tested (chat requires real Supabase; this sandbox can't reach the live project) — verified via typecheck/lint/build only.
 - `[x]` **Message ID Generation:** Resolved 2026-07-04 (Claude Code) as a judgment call, not the literal suggestion — see `CHANGELOG_AI.md` Session 14 for why database-generated UUIDs would regress ADR-005's dedup fix. Instead upgraded the fallback path from `Math.random()` to `crypto.getRandomValues()` for real entropy when `crypto.randomUUID()` is unavailable (non-secure contexts).

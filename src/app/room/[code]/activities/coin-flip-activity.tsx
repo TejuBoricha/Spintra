@@ -19,8 +19,7 @@ export function CoinFlipActivity() {
         setCoinFlipping(true);
         playCoinFlip(soundEnabled);
       } else if (event.kind === "coin_flip") {
-        const payload = event as { result: "Heads" | "Tails" };
-        setCoinResult(payload.result);
+        setCoinResult(event.result);
         setCoinFlipping(false);
         playTick(soundEnabled);
       } else if (event.kind === "activity_reset") {

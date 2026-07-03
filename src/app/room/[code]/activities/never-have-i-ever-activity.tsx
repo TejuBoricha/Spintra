@@ -46,15 +46,13 @@ export function NeverHaveIEverActivity() {
   useEffect(() => {
     return registerEventListener((event) => {
       if (event.kind === "nhie_prompt") {
-        const payload = event as { text: string };
-        setNhiePrompt(payload.text);
+        setNhiePrompt(event.text);
         setNhieConfessions({});
         playSwipe(soundEnabled);
       } else if (event.kind === "nhie_confess") {
-        const payload = event as { userId: string; username: string; choice: "have" | "never" };
         setNhieConfessions((prev) => ({
           ...prev,
-          [payload.userId]: { username: payload.username, choice: payload.choice },
+          [event.userId]: { username: event.username, choice: event.choice },
         }));
         playPop(soundEnabled);
       } else if (event.kind === "activity_reset") {

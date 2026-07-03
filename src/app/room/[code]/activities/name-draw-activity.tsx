@@ -15,8 +15,7 @@ export function NameDrawActivity() {
   useEffect(() => {
     return registerEventListener((event) => {
       if (event.kind === "nd_winner") {
-        const payload = event as { winner: string };
-        setNdWinner(payload.winner);
+        setNdWinner(event.winner);
       } else if (event.kind === "activity_reset") {
         setNdWinner(null);
       }

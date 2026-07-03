@@ -19,8 +19,7 @@ export function DiceActivity() {
         setDiceRolling(true);
         playDiceRoll(soundEnabled);
       } else if (event.kind === "dice_roll") {
-        const payload = event as { results: number[] };
-        setDiceResults(payload.results);
+        setDiceResults(event.results);
         setDiceRolling(false);
         playTick(soundEnabled);
       } else if (event.kind === "activity_reset") {

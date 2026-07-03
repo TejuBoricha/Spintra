@@ -38,15 +38,13 @@ export function WordScrambleActivity() {
     return registerEventListener((event) => {
       switch (event.kind) {
         case "scramble_word": {
-          const payload = event as { scrambled: string; answer: string };
-          setScrambleWord({ scrambled: payload.scrambled, answer: payload.answer });
+          setScrambleWord({ scrambled: event.scrambled, answer: event.answer });
           setScrambleWinner(null);
           playSwipe(soundEnabled);
           break;
         }
         case "scramble_correct": {
-          const payload = event as { username: string };
-          setScrambleWinner(payload.username);
+          setScrambleWinner(event.username);
           playSuccess(soundEnabled);
           break;
         }

@@ -50,13 +50,11 @@ export function BingoActivity() {
     return registerEventListener((event) => {
       switch (event.kind) {
         case "bingo_call": {
-          const payload = event as { number: number };
-          setBingoCalled((prev) => [...prev, payload.number]);
+          setBingoCalled((prev) => [...prev, event.number]);
           break;
         }
         case "bingo_win": {
-          const payload = event as { username: string };
-          setBingoWinner(payload.username);
+          setBingoWinner(event.username);
           break;
         }
         case "bingo_reset":

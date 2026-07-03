@@ -47,15 +47,13 @@ export function WouldYouRatherActivity() {
   useEffect(() => {
     return registerEventListener((event) => {
       if (event.kind === "wyr_prompt") {
-        const payload = event as { a: string; b: string };
-        setWyrPrompt({ a: payload.a, b: payload.b });
+        setWyrPrompt({ a: event.a, b: event.b });
         setWyrVotes({});
         playSwipe(soundEnabled);
       } else if (event.kind === "wyr_vote") {
-        const payload = event as { userId: string; username: string; option: "A" | "B" };
         setWyrVotes((prev) => ({
           ...prev,
-          [payload.userId]: { username: payload.username, option: payload.option },
+          [event.userId]: { username: event.username, option: event.option },
         }));
         playPop(soundEnabled);
       } else if (event.kind === "activity_reset") {
