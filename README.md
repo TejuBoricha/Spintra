@@ -1,5 +1,7 @@
 # Spintra
 
+[![CI](https://github.com/TejuBoricha/Spintra/actions/workflows/ci.yml/badge.svg)](https://github.com/TejuBoricha/Spintra/actions/workflows/ci.yml)
+
 A party/game-room web app: 14 standalone single-player tools plus a
 Supabase-backed multiplayer room feature (chat, live participants, shared
 activities synced in real time).
@@ -20,6 +22,7 @@ activities synced in real time).
 - [Testing](#testing)
 - [Known limitations](#known-limitations)
 - [Deployment](#deployment)
+- [License](#license)
 
 ## Features
 
@@ -123,8 +126,8 @@ supabase/migrations/        schema + RLS for the Supabase-backed tables
 
 - `tests/smoke.spec.ts` — the only automated coverage today (Playwright,
   room create/join flow).
-- `.github/workflows/ci.yml` — runs lint, typecheck, build, and the smoke
-  test on every push.
+- `.github/workflows/ci.yml` — runs a dependency security audit, typecheck,
+  lint, a documentation drift check, build, and the smoke test on every push.
 
 ## Known limitations
 
@@ -137,3 +140,9 @@ supabase/migrations/        schema + RLS for the Supabase-backed tables
 Any Next.js host works (e.g. [Vercel](https://vercel.com/new)). Set the two
 `NEXT_PUBLIC_SUPABASE_*` environment variables in your hosting provider's
 dashboard before deploying.
+
+## License
+
+All rights reserved. This repository is source-available for portfolio and
+reference purposes only — reuse, modification, or redistribution of this
+code is not permitted without the author's permission.
