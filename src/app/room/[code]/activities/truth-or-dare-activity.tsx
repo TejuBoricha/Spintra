@@ -1,20 +1,28 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Emoji } from "@/components/emoji";
-import type { ActivityEvent } from "@/lib/types";
+import { useRoomActivity } from "../context/room-activity-context";
 
-interface TruthOrDareActivityProps {
-  isHost: boolean;
-  todPrompt: { type: string; text: string } | null;
-  sendActivityEvent: (event: ActivityEvent) => void;
-  onActivityEventRef: React.RefObject<((event: ActivityEvent) => void) | null>;
-}
+export function TruthOrDareActivity() {
+  const { isHost, sendActivityEvent, registerEventListener } = useRoomActivity();
+  const [todPrompt, setTodPrompt] = useState<{ type: string; text: string } | null>(null);
 
-export function TruthOrDareActivity({ isHost, todPrompt, sendActivityEvent, onActivityEventRef }: TruthOrDareActivityProps) {
+  useEffect(() => {
+    return registerEventListener((event) => {
+      if (event.kind === "tod_prompt") {
+        const payload = event as { promptType: "truth" | "dare"; text: string };
+        setTodPrompt({ type: payload.promptType, text: payload.text });
+      } else if (event.kind === "activity_reset") {
+        setTodPrompt(null);
+      }
+    });
+  }, [registerEventListener]);
+
   return (
     <motion.div
       key="tod"
@@ -36,8 +44,7 @@ export function TruthOrDareActivity({ isHost, todPrompt, sendActivityEvent, onAc
               key={btn.type}
               onClick={() => {
                 const text = btn.prompts[Math.floor(Math.random() * btn.prompts.length)];
-                sendActivityEvent({ kind: "tod_prompt", promptType: btn.type, text });
-                if (onActivityEventRef.current) onActivityEventRef.current({ kind: "tod_prompt", promptType: btn.type, text });
+                sendActivityEvent({ kind: "tod_prompt", promptType: btn.type as "truth" | "dare", text });
               }}
               className={`flex-1 bg-gradient-to-r ${btn.color} text-white border-0`}
             >

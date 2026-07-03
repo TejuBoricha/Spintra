@@ -5,7 +5,8 @@ import { motion } from "framer-motion";
 import { Grid3x3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Emoji } from "@/components/emoji";
-import type { ActivityEvent, User } from "@/lib/types";
+import { useRoomActivity } from "../context/room-activity-context";
+import { shuffleArray } from "@/lib/utils";
 
 const COLUMN_RANGES: Record<string, [number, number]> = {
   B: [1, 15],
@@ -17,7 +18,7 @@ const COLUMN_RANGES: Record<string, [number, number]> = {
 const COLUMNS = Object.keys(COLUMN_RANGES);
 
 function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
+  return shuffleArray(arr);
 }
 
 function generateCard(): number[][] {
@@ -35,23 +36,41 @@ const LINES: [number, number][][] = [
   [0, 1, 2, 3, 4].map((i) => [i, 4 - i] as [number, number]),
 ];
 
-interface BingoActivityProps {
-  isHost: boolean;
-  currentUser: User;
-  bingoCalled: number[];
-  bingoWinner: string | null;
-  sendActivityEvent: (event: ActivityEvent) => void;
-  onActivityEventRef: React.RefObject<((event: ActivityEvent) => void) | null>;
-}
+export function BingoActivity() {
+  const { isHost, sendActivityEvent, registerEventListener, currentUser } = useRoomActivity();
 
-export function BingoActivity({ isHost, currentUser, bingoCalled, bingoWinner, sendActivityEvent, onActivityEventRef }: BingoActivityProps) {
+  const [bingoCalled, setBingoCalled] = useState<number[]>([]);
+  const [bingoWinner, setBingoWinner] = useState<string | null>(null);
+
   const [card, setCard] = useState<number[][]>(generateCard);
-  // Guard flags only — never read for rendering, so refs (not state) are correct here.
   const hasCalledBingoRef = useRef(false);
-  const prevCalledLenRef = useRef(bingoCalled.length);
+  const prevCalledLenRef = useRef(0);
 
-  // Generate a fresh card when the host starts a new game (called numbers
-  // reset back to empty after previously having some) — not on initial mount.
+  useEffect(() => {
+    return registerEventListener((event) => {
+      switch (event.kind) {
+        case "bingo_call": {
+          const payload = event as { number: number };
+          setBingoCalled((prev) => [...prev, payload.number]);
+          break;
+        }
+        case "bingo_win": {
+          const payload = event as { username: string };
+          setBingoWinner(payload.username);
+          break;
+        }
+        case "bingo_reset":
+          setBingoCalled([]);
+          setBingoWinner(null);
+          break;
+        case "activity_reset":
+          setBingoCalled([]);
+          setBingoWinner(null);
+          break;
+      }
+    });
+  }, [registerEventListener]);
+
   useEffect(() => {
     if (bingoCalled.length === 0 && prevCalledLenRef.current > 0) {
       setCard(generateCard());
@@ -71,9 +90,8 @@ export function BingoActivity({ isHost, currentUser, bingoCalled, bingoWinner, s
     if (gotBingo) {
       hasCalledBingoRef.current = true;
       sendActivityEvent({ kind: "bingo_win", username: currentUser.username });
-      if (onActivityEventRef.current) onActivityEventRef.current({ kind: "bingo_win", username: currentUser.username });
     }
-  }, [bingoCalled, bingoWinner, isMarked, sendActivityEvent, onActivityEventRef, currentUser.username]);
+  }, [bingoCalled, bingoWinner, isMarked, sendActivityEvent, currentUser.username]);
 
   const lastCalled = bingoCalled[bingoCalled.length - 1];
   const columnFor = (n: number) => COLUMNS[Math.floor((n - 1) / 15)];
@@ -136,7 +154,6 @@ export function BingoActivity({ isHost, currentUser, bingoCalled, bingoWinner, s
             if (remaining.length === 0) return;
             const number = remaining[Math.floor(Math.random() * remaining.length)];
             sendActivityEvent({ kind: "bingo_call", number });
-            if (onActivityEventRef.current) onActivityEventRef.current({ kind: "bingo_call", number });
           }}
           className="w-full bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-white border-0"
         >
@@ -147,7 +164,6 @@ export function BingoActivity({ isHost, currentUser, bingoCalled, bingoWinner, s
         <Button
           onClick={() => {
             sendActivityEvent({ kind: "bingo_reset" });
-            if (onActivityEventRef.current) onActivityEventRef.current({ kind: "bingo_reset" });
           }}
           variant="outline"
         >

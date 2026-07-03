@@ -1,22 +1,32 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Swords, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Emoji } from "@/components/emoji";
-import type { ActivityEvent, User } from "@/lib/types";
+import { useRoomActivity } from "../context/room-activity-context";
 
 const RPS_EMOJI = { Rock: "raised_fist", Paper: "raised_hand", Scissors: "victory_hand" } as const;
 
-interface RpsActivityProps {
-  isHost: boolean;
-  rpsChoices: Record<string, { username: string; choice: string }>;
-  currentUser: User;
-  sendActivityEvent: (event: ActivityEvent) => void;
-  onActivityEventRef: React.RefObject<((event: ActivityEvent) => void) | null>;
-}
+export function RpsActivity() {
+  const { isHost, currentUser, sendActivityEvent, registerEventListener } = useRoomActivity();
+  const [rpsChoices, setRpsChoices] = useState<Record<string, { username: string; choice: string }>>({});
 
-export function RpsActivity({ isHost, rpsChoices, currentUser, sendActivityEvent, onActivityEventRef }: RpsActivityProps) {
+  useEffect(() => {
+    return registerEventListener((event) => {
+      if (event.kind === "rps_choice") {
+        const payload = event as { userId: string; username: string; choice: string };
+        setRpsChoices((prev) => ({
+          ...prev,
+          [payload.userId]: { username: payload.username, choice: payload.choice },
+        }));
+      } else if (event.kind === "rps_reset" || event.kind === "activity_reset") {
+        setRpsChoices({});
+      }
+    });
+  }, [registerEventListener]);
+
   return (
     <motion.div
       key="rps"
@@ -37,7 +47,6 @@ export function RpsActivity({ isHost, rpsChoices, currentUser, sendActivityEvent
               whileTap={{ scale: 0.9 }}
               onClick={() => {
                 sendActivityEvent({ kind: "rps_choice", userId: currentUser.id, username: currentUser.username, choice });
-                if (onActivityEventRef.current) onActivityEventRef.current({ kind: "rps_choice", userId: currentUser.id, username: currentUser.username, choice });
               }}
               className="flex flex-col items-center gap-2 p-6 rounded-2xl border-2 border-white/20 hover:border-red-500/50 hover:bg-red-500/10 transition-all"
             >
@@ -72,7 +81,6 @@ export function RpsActivity({ isHost, rpsChoices, currentUser, sendActivityEvent
         <Button
           onClick={() => {
             sendActivityEvent({ kind: "rps_reset" });
-            if (onActivityEventRef.current) onActivityEventRef.current({ kind: "rps_reset" });
           }}
           variant="outline"
           className="border-red-500/30 text-red-400 hover:bg-red-500/10"

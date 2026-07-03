@@ -1,19 +1,31 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Emoji } from "@/components/emoji";
-import type { ActivityEvent } from "@/lib/types";
+import { useRoomActivity } from "../context/room-activity-context";
 
-interface DiceActivityProps {
-  isHost: boolean;
-  diceResults: number[];
-  diceRolling: boolean;
-  sendActivityEvent: (event: ActivityEvent) => void;
-  onActivityEventRef: React.RefObject<((event: ActivityEvent) => void) | null>;
-}
+export function DiceActivity() {
+  const { isHost, sendActivityEvent, registerEventListener } = useRoomActivity();
+  const [diceResults, setDiceResults] = useState<number[]>([]);
+  const [diceRolling, setDiceRolling] = useState(false);
 
-export function DiceActivity({ isHost, diceResults, diceRolling, sendActivityEvent, onActivityEventRef }: DiceActivityProps) {
+  useEffect(() => {
+    return registerEventListener((event) => {
+      if (event.kind === "dice_rolling") {
+        setDiceRolling(true);
+      } else if (event.kind === "dice_roll") {
+        const payload = event as { results: number[] };
+        setDiceResults(payload.results);
+        setDiceRolling(false);
+      } else if (event.kind === "activity_reset") {
+        setDiceResults([]);
+        setDiceRolling(false);
+      }
+    });
+  }, [registerEventListener]);
+
   return (
     <motion.div
       key="dice"
@@ -48,11 +60,9 @@ export function DiceActivity({ isHost, diceResults, diceRolling, sendActivityEve
               disabled={diceRolling}
               onClick={() => {
                 sendActivityEvent({ kind: "dice_rolling" });
-                if (onActivityEventRef.current) onActivityEventRef.current({ kind: "dice_rolling" });
                 setTimeout(() => {
                   const results = Array.from({ length: count }, () => Math.ceil(Math.random() * 6));
                   sendActivityEvent({ kind: "dice_roll", results });
-                  if (onActivityEventRef.current) onActivityEventRef.current({ kind: "dice_roll", results });
                 }, 900);
               }}
               variant="outline"

@@ -1,29 +1,37 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { MessageCircleQuestion, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Emoji } from "@/components/emoji";
-import type { ActivityEvent, User } from "@/lib/types";
+import { useRoomActivity } from "../context/room-activity-context";
 
-interface WouldYouRatherActivityProps {
-  isHost: boolean;
-  wyrPrompt: { a: string; b: string } | null;
-  wyrVotes: Record<string, { username: string; option: "A" | "B" }>;
-  currentUser: User;
-  sendActivityEvent: (event: ActivityEvent) => void;
-  onActivityEventRef: React.RefObject<((event: ActivityEvent) => void) | null>;
-}
+export function WouldYouRatherActivity() {
+  const { isHost, currentUser, sendActivityEvent, registerEventListener } = useRoomActivity();
+  const [wyrPrompt, setWyrPrompt] = useState<{ a: string; b: string } | null>(null);
+  const [wyrVotes, setWyrVotes] = useState<Record<string, { username: string; option: "A" | "B" }>>({});
 
-export function WouldYouRatherActivity({
-  isHost,
-  wyrPrompt,
-  wyrVotes,
-  currentUser,
-  sendActivityEvent,
-  onActivityEventRef,
-}: WouldYouRatherActivityProps) {
+  useEffect(() => {
+    return registerEventListener((event) => {
+      if (event.kind === "wyr_prompt") {
+        const payload = event as { a: string; b: string };
+        setWyrPrompt({ a: payload.a, b: payload.b });
+        setWyrVotes({});
+      } else if (event.kind === "wyr_vote") {
+        const payload = event as { userId: string; username: string; option: "A" | "B" };
+        setWyrVotes((prev) => ({
+          ...prev,
+          [payload.userId]: { username: payload.username, option: payload.option },
+        }));
+      } else if (event.kind === "activity_reset") {
+        setWyrPrompt(null);
+        setWyrVotes({});
+      }
+    });
+  }, [registerEventListener]);
+
   return (
     <motion.div
       key="wyr"
@@ -47,7 +55,6 @@ export function WouldYouRatherActivity({
             ];
             const prompt = prompts[Math.floor(Math.random() * prompts.length)];
             sendActivityEvent({ kind: "wyr_prompt", ...prompt });
-            if (onActivityEventRef.current) onActivityEventRef.current({ kind: "wyr_prompt", ...prompt });
           }}
           className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-0"
         >
@@ -69,7 +76,6 @@ export function WouldYouRatherActivity({
                   onClick={() => {
                     if (myVote) return;
                     sendActivityEvent({ kind: "wyr_vote", userId: currentUser.id, username: currentUser.username, option: opt });
-                    if (onActivityEventRef.current) onActivityEventRef.current({ kind: "wyr_vote", userId: currentUser.id, username: currentUser.username, option: opt });
                   }}
                   className={`p-6 rounded-2xl border-2 text-left transition-all ${
                     myVote === opt

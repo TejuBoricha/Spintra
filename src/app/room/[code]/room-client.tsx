@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, Component, ReactNode, ErrorInfo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -26,20 +26,36 @@ import { fireConfetti } from "@/components/celebration";
 import { IdleScreen } from "./activities/idle-screen";
 import { AggregateIdleScreen } from "./activities/aggregate-idle-screen";
 import { ActivityPickerDialog } from "./activities/activity-picker-dialog";
-import { CoinFlipActivity } from "./activities/coin-flip-activity";
-import { DiceActivity } from "./activities/dice-activity";
-import { LuckyWheelActivity } from "./activities/lucky-wheel-activity";
-import { GuessNumberActivity } from "./activities/guess-number-activity";
-import { TruthOrDareActivity } from "./activities/truth-or-dare-activity";
-import { WouldYouRatherActivity } from "./activities/would-you-rather-activity";
-import { NeverHaveIEverActivity } from "./activities/never-have-i-ever-activity";
-import { RpsActivity } from "./activities/rps-activity";
-import { TeamMakerActivity } from "./activities/team-maker-activity";
-import { NameDrawActivity } from "./activities/name-draw-activity";
-import { TournamentActivity } from "./activities/tournament-activity";
-import { TriviaActivity } from "./activities/trivia-activity";
-import { BingoActivity } from "./activities/bingo-activity";
-import { WordScrambleActivity } from "./activities/word-scramble-activity";
+import { ACTIVITY_REGISTRY } from "./activities/activity-registry";
+import { RoomActivityContext, RoomParticipantsContext } from "./context/room-activity-context";
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  fallback: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Activity Error Boundary caught an error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
 
 function generateId() {
   return Math.random().toString(36).slice(2, 10);
@@ -129,44 +145,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   } | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-  // Sub-game states for real-time synchronization
-  const [coinResult, setCoinResult] = useState<"Heads" | "Tails" | null>(null);
-  const [coinFlipping, setCoinFlipping] = useState(false);
-
-  const [diceResults, setDiceResults] = useState<number[]>([]);
-  const [diceRolling, setDiceRolling] = useState(false);
-
-  const [wheelEntries, setWheelEntries] = useState<string[]>(["Option 1", "Option 2", "Option 3"]);
-  const [newWheelEntryText, setNewWheelEntryText] = useState("");
-  const [wheelWinner, setWheelWinner] = useState<string | null>(null);
-  const [wheelSpinning, setWheelSpinning] = useState(false);
-  const [wheelSpinAngle, setWheelSpinAngle] = useState(1440);
-
-  const [guessHistory, setGuessHistory] = useState<{ username: string; guess: number; hint: string }[]>([]);
-  const [guessSecretNumber, setGuessSecretNumber] = useState(50);
-
-  const [todPrompt, setTodPrompt] = useState<{ type: string; text: string } | null>(null);
-
-  const [wyrPrompt, setWyrPrompt] = useState<{ a: string; b: string } | null>(null);
-  const [wyrVotes, setWyrVotes] = useState<Record<string, { username: string; option: "A" | "B" }>>({});
-
-  const [nhiePrompt, setNhiePrompt] = useState<string | null>(null);
-  const [nhieConfessions, setNhieConfessions] = useState<Record<string, { username: string; choice: "have" | "never" }>>({});
-
-  const [rpsChoices, setRpsChoices] = useState<Record<string, { username: string; choice: string }>>({});
-
-  const [tmTeams, setTmTeams] = useState<{ name: string; members: string[] }[]>([]);
-
-  const [ndWinner, setNdWinner] = useState<string | null>(null);
-
-  const [triviaQuestion, setTriviaQuestion] = useState<{ text: string; options: string[]; correctIndex: number; num: number } | null>(null);
-  const [triviaAnswers, setTriviaAnswers] = useState<Record<string, { username: string; choiceIndex: number; correct: boolean }>>({});
-
-  const [bingoCalled, setBingoCalled] = useState<number[]>([]);
-  const [bingoWinner, setBingoWinner] = useState<string | null>(null);
-
-  const [scrambleWord, setScrambleWord] = useState<{ scrambled: string; answer: string } | null>(null);
-  const [scrambleWinner, setScrambleWinner] = useState<string | null>(null);
+  // Sub-game states are now fully modularised and localized to each activity component.
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
@@ -186,7 +165,16 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const broadcastRef = useRef<BroadcastChannel | null>(null);
-  const onActivityEventRef = useRef<((event: ActivityEvent) => void) | null>(null);
+  const listenersRef = useRef<Set<(event: ActivityEvent) => void>>(new Set());
+  const registerEventListener = useCallback((listener: (event: ActivityEvent) => void) => {
+    listenersRef.current.add(listener);
+    return () => {
+      listenersRef.current.delete(listener);
+    };
+  }, []);
+  const handleActivityEvent = useCallback((payload: ActivityEvent) => {
+    listenersRef.current.forEach((listener) => listener(payload));
+  }, []);
   const supabaseChannelRef = useRef<RealtimeChannel | null>(null);
   const closingRoomRef = useRef(false);
   const activeActivityRef = useRef(activeActivity);
@@ -311,171 +299,13 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     }
   }, [currentUser.id]);
 
-  const syncWheelEntries = useCallback(
-    (entries: string[]) => {
-      setWheelEntries(entries);
-      sendActivityEvent({ kind: "wheel_entries", entries });
-    },
-    [sendActivityEvent]
-  );
 
-  const addWheelEntry = useCallback(() => {
-    const label = newWheelEntryText.trim();
-    if (!label) return;
-    syncWheelEntries([...wheelEntries, label].slice(0, 12));
-    setNewWheelEntryText("");
-  }, [newWheelEntryText, wheelEntries, syncWheelEntries]);
-
-  const removeWheelEntry = useCallback(
-    (index: number) => {
-      if (wheelEntries.length <= 2) {
-        toast.error("The wheel needs at least 2 options.");
-        return;
-      }
-      syncWheelEntries(wheelEntries.filter((_, i) => i !== index));
-    },
-    [wheelEntries, syncWheelEntries]
-  );
-
-  const updateWheelEntry = useCallback(
-    (index: number, newValue: string) => {
-      const val = newValue.trim();
-      if (!val) return;
-      const next = [...wheelEntries];
-      next[index] = val;
-      syncWheelEntries(next);
-    },
-    [wheelEntries, syncWheelEntries]
-  );
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
-  // Wire up the activity event dispatcher for incoming real-time events.
-  // Payload shape varies per activity kind (~20 cases below); typing this as
-  // a full discriminated union is a larger refactor than this pass covers, so
-  // the dynamic field access is scoped to this one handler.
-  useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onActivityEventRef.current = (event: any) => {
-      const { kind } = event;
-      switch (kind) {
-        case "coin_flip":
-          setCoinResult(event.result);
-          setCoinFlipping(false);
-          break;
-        case "coin_flipping":
-          setCoinFlipping(true);
-          break;
-        case "dice_roll":
-          setDiceResults(event.results);
-          setDiceRolling(false);
-          break;
-        case "dice_rolling":
-          setDiceRolling(true);
-          break;
-        case "wheel_spin":
-          setWheelWinner(event.winner);
-          setWheelSpinning(false);
-          fireConfetti();
-          break;
-        case "wheel_spinning":
-          setWheelSpinAngle(1440 + Math.random() * 360);
-          setWheelSpinning(true);
-          break;
-        case "wheel_entries":
-          setWheelEntries(event.entries);
-          break;
-        case "guess_submit":
-          setGuessHistory((prev) => [...prev, { username: event.username, guess: event.guess, hint: event.hint }]);
-          if (event.hint === "correct") {
-            fireConfetti();
-          }
-          break;
-        case "guess_reset":
-          setGuessHistory([]);
-          setGuessSecretNumber(event.secret);
-          break;
-        case "tod_prompt":
-          setTodPrompt({ type: event.promptType, text: event.text });
-          break;
-        case "wyr_prompt":
-          setWyrPrompt({ a: event.a, b: event.b });
-          setWyrVotes({});
-          break;
-        case "wyr_vote":
-          setWyrVotes((prev) => ({ ...prev, [event.userId]: { username: event.username, option: event.option } }));
-          break;
-        case "nhie_prompt":
-          setNhiePrompt(event.text);
-          setNhieConfessions({});
-          break;
-        case "nhie_confess":
-          setNhieConfessions((prev) => ({ ...prev, [event.userId]: { username: event.username, choice: event.choice } }));
-          break;
-        case "rps_choice":
-          setRpsChoices((prev) => ({ ...prev, [event.userId]: { username: event.username, choice: event.choice } }));
-          break;
-        case "rps_reset":
-          setRpsChoices({});
-          break;
-        case "tm_teams":
-          setTmTeams(event.teams);
-          break;
-        case "nd_winner":
-          setNdWinner(event.winner);
-          fireConfetti();
-          break;
-        case "trivia_question":
-          setTriviaQuestion({ text: event.text, options: event.options, correctIndex: event.correctIndex, num: event.num });
-          setTriviaAnswers({});
-          break;
-        case "trivia_answer":
-          setTriviaAnswers((prev) => ({ ...prev, [event.userId]: { username: event.username, choiceIndex: event.choiceIndex, correct: event.correct } }));
-          break;
-        case "bingo_call":
-          setBingoCalled((prev) => [...prev, event.number]);
-          break;
-        case "bingo_win":
-          setBingoWinner(event.username);
-          fireConfetti();
-          break;
-        case "bingo_reset":
-          setBingoCalled([]);
-          setBingoWinner(null);
-          break;
-        case "scramble_word":
-          setScrambleWord({ scrambled: event.scrambled, answer: event.answer });
-          setScrambleWinner(null);
-          break;
-        case "scramble_correct":
-          setScrambleWinner(event.username);
-          fireConfetti();
-          break;
-        case "activity_reset":
-          setCoinResult(null);
-          setDiceResults([]);
-          setWheelWinner(null);
-          setGuessHistory([]);
-          setTodPrompt(null);
-          setWyrPrompt(null);
-          setWyrVotes({});
-          setNhiePrompt(null);
-          setNhieConfessions({});
-          setRpsChoices({});
-          setTmTeams([]);
-          setNdWinner(null);
-          setTriviaQuestion(null);
-          setTriviaAnswers({});
-          setBingoCalled([]);
-          setBingoWinner(null);
-          setScrambleWord(null);
-          setScrambleWinner(null);
-          break;
-      }
-    };
-  }, []);
+
 
   const isLocalOnlyMode = getSupabaseBrowserClient() === null;
   const realtimeStatusLabel = realtimeError
@@ -590,8 +420,8 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           break;
 
         case "ACTIVITY_EVENT":
-          if (payload && onActivityEventRef.current) {
-            onActivityEventRef.current(payload);
+          if (payload) {
+            handleActivityEvent(payload);
           }
           break;
 
@@ -687,7 +517,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       bc.close();
       broadcastRef.current = null;
     };
-  }, [roomCode, currentUser, localCreatorId, router, markMessageUnreadIfHidden, authReady]);
+  }, [roomCode, currentUser, localCreatorId, router, markMessageUnreadIfHidden, authReady, handleActivityEvent]);
 
   const sendMessage = useCallback(async () => {
     if (isLocked && !isHost) {
@@ -1018,8 +848,8 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         }
       })
       .on("broadcast", { event: "activity_event" }, ({ payload }) => {
-        if (payload && onActivityEventRef.current) {
-          onActivityEventRef.current(payload);
+        if (payload) {
+          handleActivityEvent(payload);
         }
       });
 
@@ -1050,7 +880,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       supabase.removeChannel(channel);
       supabaseChannelRef.current = null;
     };
-  }, [roomCode, electHostIfNeeded, currentUser.id, router, markMessageUnreadIfHidden, authReady]);
+  }, [roomCode, electHostIfNeeded, currentUser.id, router, markMessageUnreadIfHidden, authReady, handleActivityEvent]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -1560,6 +1390,23 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     </div>
   );
 
+  const stableContextValue = useMemo(() => ({
+    roomCode,
+    roomType,
+    isHost,
+    currentUser,
+    sendActivityEvent,
+    registerEventListener,
+  }), [roomCode, roomType, isHost, currentUser, sendActivityEvent, registerEventListener]);
+
+  const dynamicContextValue = useMemo(() => ({
+    participants,
+  }), [participants]);
+
+  const ActiveGame = activeActivity?.type
+    ? (ACTIVITY_REGISTRY[activeActivity.type] ?? null)
+    : null;
+
   return (
     <div className="min-h-screen pt-16 flex flex-col md:flex-row">
       {/* Main Content */}
@@ -1581,8 +1428,8 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                   </Badge>
                 )}
               </div>
-              <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-                <span>Room #{roomCode}</span>
+              <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+                <span>Code: <span className="font-mono text-purple-400 select-all font-semibold uppercase">{roomCode}</span></span>
                 <span>·</span>
                 <span>
                   {participants.filter((p) => p.is_online).length}
@@ -1666,7 +1513,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                             size="icon"
                             onClick={() => {
                               sendActivityEvent({ kind: "activity_reset" });
-                              if (onActivityEventRef.current) onActivityEventRef.current({ kind: "activity_reset" });
+                              handleActivityEvent({ kind: "activity_reset" });
                               if (roomType === "party" || roomType === "classroom") {
                                 changeActivity(null);
                               }
@@ -1712,211 +1559,46 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
 
         {/* Game Area */}
         <div className="flex-1 p-4 md:p-6 overflow-y-auto">
-          <AnimatePresence mode="wait">
-            {/* ── Activity Picker (party / classroom hosts) ── */}
-            {isPickerOpen && isHost && (
-              <ActivityPickerDialog
-                key="picker"
-                activeActivityType={activeActivity?.type}
-                onClose={() => setIsPickerOpen(false)}
-                onSelect={(type) => {
-                  changeActivity(type);
-                  setIsPickerOpen(false);
-                }}
-              />
-            )}
+          <RoomActivityContext.Provider value={stableContextValue}>
+            <RoomParticipantsContext.Provider value={dynamicContextValue}>
+            <AnimatePresence mode="wait">
+              {/* ── Activity Picker (party / classroom hosts) ── */}
+              {isPickerOpen && isHost && (
+                <ActivityPickerDialog
+                  key="picker"
+                  activeActivityType={activeActivity?.type}
+                  onClose={() => setIsPickerOpen(false)}
+                  onSelect={(type) => {
+                    changeActivity(type);
+                    setIsPickerOpen(false);
+                  }}
+                />
+              )}
 
-            {/* ── No Activity Selected ── */}
-            {!activeActivity && (
-              <IdleScreen key="idle" isHost={isHost} onChooseActivity={() => setIsPickerOpen(true)} />
-            )}
+              {/* ── No Activity Selected ── */}
+              {!activeActivity && (
+                <IdleScreen key="idle" isHost={isHost} onChooseActivity={() => setIsPickerOpen(true)} />
+              )}
 
-            {/* ── COIN FLIP ── */}
-            {activeActivity?.type === "coin-flip" && (
-              <CoinFlipActivity
-                key="coin-flip"
-                isHost={isHost}
-                coinResult={coinResult}
-                coinFlipping={coinFlipping}
-                sendActivityEvent={sendActivityEvent}
-                onActivityEventRef={onActivityEventRef}
-              />
-            )}
+              {/* ── Active Game from Plugin Registry ── */}
+              {activeActivity && activeActivity.type !== "party" && activeActivity.type !== "classroom" && ActiveGame && (
+                <ErrorBoundary key={activeActivity.type} fallback={
+                  <div className="glass-card p-8 rounded-2xl text-center border border-red-500/20 max-w-md mx-auto mt-8">
+                    <p className="text-xl font-bold text-red-400 mb-2">Something went wrong</p>
+                    <p className="text-sm text-muted-foreground">The activity crashed or failed to load. Try picking a different activity.</p>
+                  </div>
+                }>
+                  <ActiveGame />
+                </ErrorBoundary>
+              )}
 
-            {/* ── DICE ROLLER ── */}
-            {activeActivity?.type === "dice" && (
-              <DiceActivity
-                key="dice"
-                isHost={isHost}
-                diceResults={diceResults}
-                diceRolling={diceRolling}
-                sendActivityEvent={sendActivityEvent}
-                onActivityEventRef={onActivityEventRef}
-              />
-            )}
-
-            {/* ── LUCKY WHEEL ── */}
-            {activeActivity?.type === "lucky-wheel" && (
-              <LuckyWheelActivity
-                key="lucky-wheel"
-                isHost={isHost}
-                wheelEntries={wheelEntries}
-                newWheelEntryText={newWheelEntryText}
-                setNewWheelEntryText={setNewWheelEntryText}
-                wheelWinner={wheelWinner}
-                wheelSpinning={wheelSpinning}
-                wheelSpinAngle={wheelSpinAngle}
-                sendActivityEvent={sendActivityEvent}
-                onActivityEventRef={onActivityEventRef}
-                addWheelEntry={addWheelEntry}
-                removeWheelEntry={removeWheelEntry}
-                updateWheelEntry={updateWheelEntry}
-              />
-            )}
-
-            {/* ── GUESS THE NUMBER ── */}
-            {activeActivity?.type === "guess-number" && (
-              <GuessNumberActivity
-                key="guess-number"
-                isHost={isHost}
-                guessSecretNumber={guessSecretNumber}
-                setGuessSecretNumber={setGuessSecretNumber}
-                guessHistory={guessHistory}
-                currentUser={currentUser}
-                sendActivityEvent={sendActivityEvent}
-                onActivityEventRef={onActivityEventRef}
-              />
-            )}
-
-            {/* ── TRUTH OR DARE ── */}
-            {activeActivity?.type === "truth-or-dare" && (
-              <TruthOrDareActivity
-                key="tod"
-                isHost={isHost}
-                todPrompt={todPrompt}
-                sendActivityEvent={sendActivityEvent}
-                onActivityEventRef={onActivityEventRef}
-              />
-            )}
-
-            {/* ── WOULD YOU RATHER ── */}
-            {activeActivity?.type === "would-you-rather" && (
-              <WouldYouRatherActivity
-                key="wyr"
-                isHost={isHost}
-                wyrPrompt={wyrPrompt}
-                wyrVotes={wyrVotes}
-                currentUser={currentUser}
-                sendActivityEvent={sendActivityEvent}
-                onActivityEventRef={onActivityEventRef}
-              />
-            )}
-
-            {/* ── NEVER HAVE I EVER ── */}
-            {activeActivity?.type === "never-have-i-ever" && (
-              <NeverHaveIEverActivity
-                key="nhie"
-                isHost={isHost}
-                nhiePrompt={nhiePrompt}
-                nhieConfessions={nhieConfessions}
-                currentUser={currentUser}
-                sendActivityEvent={sendActivityEvent}
-                onActivityEventRef={onActivityEventRef}
-              />
-            )}
-
-            {/* ── ROCK PAPER SCISSORS ── */}
-            {activeActivity?.type === "rps" && (
-              <RpsActivity
-                key="rps"
-                isHost={isHost}
-                rpsChoices={rpsChoices}
-                currentUser={currentUser}
-                sendActivityEvent={sendActivityEvent}
-                onActivityEventRef={onActivityEventRef}
-              />
-            )}
-
-            {/* ── TEAM MAKER ── */}
-            {activeActivity?.type === "team-maker" && (
-              <TeamMakerActivity
-                key="team-maker"
-                isHost={isHost}
-                participants={participants}
-                tmTeams={tmTeams}
-                sendActivityEvent={sendActivityEvent}
-                onActivityEventRef={onActivityEventRef}
-              />
-            )}
-
-            {/* ── NAME DRAW ── */}
-            {activeActivity?.type === "name-draw" && (
-              <NameDrawActivity
-                key="name-draw"
-                isHost={isHost}
-                participants={participants}
-                ndWinner={ndWinner}
-                sendActivityEvent={sendActivityEvent}
-                onActivityEventRef={onActivityEventRef}
-              />
-            )}
-
-            {/* ── TOURNAMENT ── */}
-            {activeActivity?.type === "tournament" && (
-              <TournamentActivity
-                key="tournament"
-                isHost={isHost}
-                participants={participants}
-                tmTeams={tmTeams}
-                sendActivityEvent={sendActivityEvent}
-                onActivityEventRef={onActivityEventRef}
-              />
-            )}
-
-            {/* ── TRIVIA ── */}
-            {activeActivity?.type === "trivia" && (
-              <TriviaActivity
-                key="trivia"
-                isHost={isHost}
-                currentUser={currentUser}
-                triviaQuestion={triviaQuestion}
-                triviaAnswers={triviaAnswers}
-                sendActivityEvent={sendActivityEvent}
-                onActivityEventRef={onActivityEventRef}
-              />
-            )}
-
-            {/* ── BINGO ── */}
-            {activeActivity?.type === "bingo" && (
-              <BingoActivity
-                key="bingo"
-                isHost={isHost}
-                currentUser={currentUser}
-                bingoCalled={bingoCalled}
-                bingoWinner={bingoWinner}
-                sendActivityEvent={sendActivityEvent}
-                onActivityEventRef={onActivityEventRef}
-              />
-            )}
-
-            {/* ── WORD SCRAMBLE ── */}
-            {activeActivity?.type === "word-scramble" && (
-              <WordScrambleActivity
-                key="word-scramble"
-                isHost={isHost}
-                currentUser={currentUser}
-                scrambleWord={scrambleWord}
-                scrambleWinner={scrambleWinner}
-                sendActivityEvent={sendActivityEvent}
-                onActivityEventRef={onActivityEventRef}
-              />
-            )}
-
-            {/* ── PARTY / CLASSROOM with no sub-activity ── */}
-            {(activeActivity?.type === "party" || activeActivity?.type === "classroom") && (
-              <AggregateIdleScreen key="aggregate-idle" activityType={activeActivity.type} isHost={isHost} />
-            )}
-          </AnimatePresence>
+              {/* ── PARTY / CLASSROOM with no sub-activity ── */}
+              {(activeActivity?.type === "party" || activeActivity?.type === "classroom") && (
+                <AggregateIdleScreen key="aggregate-idle" activityType={activeActivity.type} isHost={isHost} />
+              )}
+            </AnimatePresence>
+            </RoomParticipantsContext.Provider>
+          </RoomActivityContext.Provider>
         </div>
       </div>
 

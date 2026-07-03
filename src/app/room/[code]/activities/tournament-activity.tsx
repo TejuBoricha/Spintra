@@ -1,21 +1,30 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Swords, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Emoji } from "@/components/emoji";
-import type { ActivityEvent, RoomParticipant } from "@/lib/types";
+import { useRoomActivity, useRoomParticipants } from "../context/room-activity-context";
+import { shuffleArray } from "@/lib/utils";
 
-interface TournamentActivityProps {
-  isHost: boolean;
-  participants: RoomParticipant[];
-  tmTeams: { name: string; members: string[] }[];
-  sendActivityEvent: (event: ActivityEvent) => void;
-  onActivityEventRef: React.RefObject<((event: ActivityEvent) => void) | null>;
-}
+export function TournamentActivity() {
+  const { isHost, sendActivityEvent, registerEventListener } = useRoomActivity();
+  const { participants } = useRoomParticipants();
+  const [tmTeams, setTmTeams] = useState<{ name: string; members: string[] }[]>([]);
 
-export function TournamentActivity({ isHost, participants, tmTeams, sendActivityEvent, onActivityEventRef }: TournamentActivityProps) {
+  useEffect(() => {
+    return registerEventListener((event) => {
+      if (event.kind === "tm_teams") {
+        const payload = event as { teams: { name: string; members: string[] }[] };
+        setTmTeams(payload.teams);
+      } else if (event.kind === "activity_reset") {
+        setTmTeams([]);
+      }
+    });
+  }, [registerEventListener]);
+
   return (
     <motion.div
       key="tournament"
@@ -46,13 +55,12 @@ export function TournamentActivity({ isHost, participants, tmTeams, sendActivity
         <Button
           onClick={() => {
             const names = participants.filter((p) => p.is_online).map((p) => p.user?.username || "Guest");
-            const shuffled = [...names].sort(() => Math.random() - 0.5);
+            const shuffled = shuffleArray(names);
             const matches: { name: string; members: string[] }[] = [];
             for (let i = 0; i < shuffled.length - 1; i += 2) {
               matches.push({ name: `Match ${matches.length + 1}`, members: [shuffled[i], shuffled[i + 1] || "BYE"] });
             }
             sendActivityEvent({ kind: "tm_teams", teams: matches });
-            if (onActivityEventRef.current) onActivityEventRef.current({ kind: "tm_teams", teams: matches });
           }}
           className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white border-0"
         >

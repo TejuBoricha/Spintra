@@ -1,28 +1,36 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Eye, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Emoji } from "@/components/emoji";
-import type { ActivityEvent, User } from "@/lib/types";
+import { useRoomActivity } from "../context/room-activity-context";
 
-interface NeverHaveIEverActivityProps {
-  isHost: boolean;
-  nhiePrompt: string | null;
-  nhieConfessions: Record<string, { username: string; choice: "have" | "never" }>;
-  currentUser: User;
-  sendActivityEvent: (event: ActivityEvent) => void;
-  onActivityEventRef: React.RefObject<((event: ActivityEvent) => void) | null>;
-}
+export function NeverHaveIEverActivity() {
+  const { isHost, currentUser, sendActivityEvent, registerEventListener } = useRoomActivity();
+  const [nhiePrompt, setNhiePrompt] = useState<string | null>(null);
+  const [nhieConfessions, setNhieConfessions] = useState<Record<string, { username: string; choice: "have" | "never" }>>({});
 
-export function NeverHaveIEverActivity({
-  isHost,
-  nhiePrompt,
-  nhieConfessions,
-  currentUser,
-  sendActivityEvent,
-  onActivityEventRef,
-}: NeverHaveIEverActivityProps) {
+  useEffect(() => {
+    return registerEventListener((event) => {
+      if (event.kind === "nhie_prompt") {
+        const payload = event as { text: string };
+        setNhiePrompt(payload.text);
+        setNhieConfessions({});
+      } else if (event.kind === "nhie_confess") {
+        const payload = event as { userId: string; username: string; choice: "have" | "never" };
+        setNhieConfessions((prev) => ({
+          ...prev,
+          [payload.userId]: { username: payload.username, choice: payload.choice },
+        }));
+      } else if (event.kind === "activity_reset") {
+        setNhiePrompt(null);
+        setNhieConfessions({});
+      }
+    });
+  }, [registerEventListener]);
+
   return (
     <motion.div
       key="nhie"
@@ -46,7 +54,6 @@ export function NeverHaveIEverActivity({
             ];
             const text = stmts[Math.floor(Math.random() * stmts.length)];
             sendActivityEvent({ kind: "nhie_prompt", text });
-            if (onActivityEventRef.current) onActivityEventRef.current({ kind: "nhie_prompt", text });
           }}
           className="bg-gradient-to-r from-violet-600 to-purple-600 text-white border-0"
         >
@@ -70,7 +77,6 @@ export function NeverHaveIEverActivity({
                   onClick={() => {
                     if (myChoice) return;
                     sendActivityEvent({ kind: "nhie_confess", userId: currentUser.id, username: currentUser.username, choice });
-                    if (onActivityEventRef.current) onActivityEventRef.current({ kind: "nhie_confess", userId: currentUser.id, username: currentUser.username, choice });
                   }}
                   className={`flex-1 py-6 rounded-2xl border-2 font-bold text-lg transition-all ${
                     myChoice === choice

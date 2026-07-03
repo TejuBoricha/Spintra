@@ -1,19 +1,31 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { ActivityEvent } from "@/lib/types";
+import { useRoomActivity } from "../context/room-activity-context";
 
-interface CoinFlipActivityProps {
-  isHost: boolean;
-  coinResult: "Heads" | "Tails" | null;
-  coinFlipping: boolean;
-  sendActivityEvent: (event: ActivityEvent) => void;
-  onActivityEventRef: React.RefObject<((event: ActivityEvent) => void) | null>;
-}
+export function CoinFlipActivity() {
+  const { isHost, sendActivityEvent, registerEventListener } = useRoomActivity();
+  const [coinResult, setCoinResult] = useState<"Heads" | "Tails" | null>(null);
+  const [coinFlipping, setCoinFlipping] = useState(false);
 
-export function CoinFlipActivity({ isHost, coinResult, coinFlipping, sendActivityEvent, onActivityEventRef }: CoinFlipActivityProps) {
+  useEffect(() => {
+    return registerEventListener((event) => {
+      if (event.kind === "coin_flipping") {
+        setCoinFlipping(true);
+      } else if (event.kind === "coin_flip") {
+        const payload = event as { result: "Heads" | "Tails" };
+        setCoinResult(payload.result);
+        setCoinFlipping(false);
+      } else if (event.kind === "activity_reset") {
+        setCoinResult(null);
+        setCoinFlipping(false);
+      }
+    });
+  }, [registerEventListener]);
+
   return (
     <motion.div
       key="coin-flip"
@@ -52,11 +64,9 @@ export function CoinFlipActivity({ isHost, coinResult, coinFlipping, sendActivit
           disabled={coinFlipping}
           onClick={() => {
             sendActivityEvent({ kind: "coin_flipping" });
-            if (onActivityEventRef.current) onActivityEventRef.current({ kind: "coin_flipping" });
             setTimeout(() => {
               const result = Math.random() < 0.5 ? "Heads" : "Tails";
               sendActivityEvent({ kind: "coin_flip", result });
-              if (onActivityEventRef.current) onActivityEventRef.current({ kind: "coin_flip", result });
             }, 1300);
           }}
           className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-white border-0 w-full"

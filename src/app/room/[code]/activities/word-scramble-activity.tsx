@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Emoji } from "@/components/emoji";
-import type { ActivityEvent, User } from "@/lib/types";
+import { useRoomActivity } from "../context/room-activity-context";
+import { shuffleArray } from "@/lib/utils";
 
 const WORDS = [
   "PUZZLE", "GALAXY", "WIZARD", "CASTLE", "DRAGON", "PLANET", "GUITAR", "FOREST",
@@ -17,36 +18,45 @@ function scramble(word: string): string {
   let letters = word.split("");
   let attempt = letters.join("");
   while (attempt === word) {
-    letters = [...letters].sort(() => Math.random() - 0.5);
+    letters = shuffleArray(letters);
     attempt = letters.join("");
   }
   return attempt;
 }
 
-interface WordScrambleActivityProps {
-  isHost: boolean;
-  currentUser: User;
-  scrambleWord: { scrambled: string; answer: string } | null;
-  scrambleWinner: string | null;
-  sendActivityEvent: (event: ActivityEvent) => void;
-  onActivityEventRef: React.RefObject<((event: ActivityEvent) => void) | null>;
-}
+export function WordScrambleActivity() {
+  const { isHost, sendActivityEvent, registerEventListener, currentUser } = useRoomActivity();
 
-export function WordScrambleActivity({
-  isHost,
-  currentUser,
-  scrambleWord,
-  scrambleWinner,
-  sendActivityEvent,
-  onActivityEventRef,
-}: WordScrambleActivityProps) {
+  const [scrambleWord, setScrambleWord] = useState<{ scrambled: string; answer: string } | null>(null);
+  const [scrambleWinner, setScrambleWinner] = useState<string | null>(null);
   const [guess, setGuess] = useState("");
+
+  useEffect(() => {
+    return registerEventListener((event) => {
+      switch (event.kind) {
+        case "scramble_word": {
+          const payload = event as { scrambled: string; answer: string };
+          setScrambleWord({ scrambled: payload.scrambled, answer: payload.answer });
+          setScrambleWinner(null);
+          break;
+        }
+        case "scramble_correct": {
+          const payload = event as { username: string };
+          setScrambleWinner(payload.username);
+          break;
+        }
+        case "activity_reset":
+          setScrambleWord(null);
+          setScrambleWinner(null);
+          break;
+      }
+    });
+  }, [registerEventListener]);
 
   const newWord = () => {
     const word = WORDS[Math.floor(Math.random() * WORDS.length)];
     const payload = { scrambled: scramble(word), answer: word };
     sendActivityEvent({ kind: "scramble_word", ...payload });
-    if (onActivityEventRef.current) onActivityEventRef.current({ kind: "scramble_word", ...payload });
     setGuess("");
   };
 
@@ -54,7 +64,6 @@ export function WordScrambleActivity({
     if (!scrambleWord || scrambleWinner) return;
     if (guess.trim().toUpperCase() === scrambleWord.answer) {
       sendActivityEvent({ kind: "scramble_correct", username: currentUser.username });
-      if (onActivityEventRef.current) onActivityEventRef.current({ kind: "scramble_correct", username: currentUser.username });
     }
     setGuess("");
   };

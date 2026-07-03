@@ -1,45 +1,80 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Emoji } from "@/components/emoji";
-import type { ActivityEvent } from "@/lib/types";
+import { useRoomActivity } from "../context/room-activity-context";
+import { toast } from "sonner";
 
-interface LuckyWheelActivityProps {
-  isHost: boolean;
-  wheelEntries: string[];
-  newWheelEntryText: string;
-  setNewWheelEntryText: (value: string) => void;
-  wheelWinner: string | null;
-  wheelSpinning: boolean;
-  wheelSpinAngle: number;
-  sendActivityEvent: (event: ActivityEvent) => void;
-  onActivityEventRef: React.RefObject<((event: ActivityEvent) => void) | null>;
-  addWheelEntry: () => void;
-  removeWheelEntry: (index: number) => void;
-  updateWheelEntry: (index: number, value: string) => void;
-}
+export function LuckyWheelActivity() {
+  const { isHost, sendActivityEvent, registerEventListener } = useRoomActivity();
 
-export function LuckyWheelActivity({
-  isHost,
-  wheelEntries,
-  newWheelEntryText,
-  setNewWheelEntryText,
-  wheelWinner,
-  wheelSpinning,
-  wheelSpinAngle,
-  sendActivityEvent,
-  onActivityEventRef,
-  addWheelEntry,
-  removeWheelEntry,
-  updateWheelEntry,
-}: LuckyWheelActivityProps) {
+  const [wheelEntries, setWheelEntries] = useState<string[]>(["Option 1", "Option 2", "Option 3"]);
+  const [newWheelEntryText, setNewWheelEntryText] = useState("");
+  const [wheelWinner, setWheelWinner] = useState<string | null>(null);
+  const [wheelSpinning, setWheelSpinning] = useState(false);
+  const [wheelSpinAngle, setWheelSpinAngle] = useState(1440);
+
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingText, setEditingText] = useState("");
+
+  useEffect(() => {
+    return registerEventListener((event) => {
+      switch (event.kind) {
+        case "wheel_entries": {
+          const payload = event as { entries: string[] };
+          setWheelEntries(payload.entries);
+          break;
+        }
+        case "wheel_spinning":
+          setWheelSpinAngle(1440 + Math.random() * 360);
+          setWheelSpinning(true);
+          break;
+        case "wheel_spin": {
+          const payload = event as { winner: string };
+          setWheelWinner(payload.winner);
+          setWheelSpinning(false);
+          break;
+        }
+        case "activity_reset":
+          setWheelWinner(null);
+          setWheelSpinning(false);
+          break;
+      }
+    });
+  }, [registerEventListener]);
+
+  const syncWheelEntries = (entries: string[]) => {
+    setWheelEntries(entries);
+    sendActivityEvent({ kind: "wheel_entries", entries });
+  };
+
+  const addWheelEntry = () => {
+    const label = newWheelEntryText.trim();
+    if (!label) return;
+    syncWheelEntries([...wheelEntries, label].slice(0, 12));
+    setNewWheelEntryText("");
+  };
+
+  const removeWheelEntry = (index: number) => {
+    if (wheelEntries.length <= 2) {
+      toast.error("The wheel needs at least 2 options.");
+      return;
+    }
+    syncWheelEntries(wheelEntries.filter((_, i) => i !== index));
+  };
+
+  const updateWheelEntry = (index: number, newValue: string) => {
+    const val = newValue.trim();
+    if (!val) return;
+    const next = [...wheelEntries];
+    next[index] = val;
+    syncWheelEntries(next);
+  };
 
   return (
     <motion.div
@@ -49,7 +84,9 @@ export function LuckyWheelActivity({
       exit={{ opacity: 0, y: -20 }}
       className="flex flex-col items-center gap-6 max-w-lg mx-auto pt-8"
     >
-      <h2 className="text-2xl font-bold flex items-center gap-2"><Emoji name="ferris_wheel" size={28} /> Lucky Wheel</h2>
+      <h2 className="text-2xl font-bold flex items-center gap-2">
+        <Emoji name="ferris_wheel" size={28} /> Lucky Wheel
+      </h2>
       <div className="relative w-64 h-64">
         <motion.div
           animate={wheelSpinning ? { rotate: [0, wheelSpinAngle] } : {}}
@@ -63,7 +100,11 @@ export function LuckyWheelActivity({
               <div
                 key={i}
                 className={`absolute inset-0 flex items-center justify-end pr-6 text-xs font-bold text-white bg-gradient-to-r ${colors[i % colors.length]} to-transparent`}
-                style={{ transform: `rotate(${angle}deg)`, transformOrigin: "center", clipPath: `polygon(50% 50%, 100% 0, 100% ${100 / wheelEntries.length * 2}%)` }}
+                style={{
+                  transform: `rotate(${angle}deg)`,
+                  transformOrigin: "center",
+                  clipPath: `polygon(50% 50%, 100% 0, 100% ${100 / wheelEntries.length * 2}%)`,
+                }}
               >
                 <span className="max-w-[70px] truncate">{entry}</span>
               </div>
@@ -174,11 +215,9 @@ export function LuckyWheelActivity({
             disabled={wheelSpinning}
             onClick={() => {
               sendActivityEvent({ kind: "wheel_spinning" });
-              if (onActivityEventRef.current) onActivityEventRef.current({ kind: "wheel_spinning" });
               setTimeout(() => {
                 const winner = wheelEntries[Math.floor(Math.random() * wheelEntries.length)];
                 sendActivityEvent({ kind: "wheel_spin", winner });
-                if (onActivityEventRef.current) onActivityEventRef.current({ kind: "wheel_spin", winner });
               }, 3100);
             }}
             className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white border-0"

@@ -1,20 +1,28 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { HeartHandshake, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Emoji } from "@/components/emoji";
-import type { ActivityEvent, RoomParticipant } from "@/lib/types";
+import { useRoomActivity, useRoomParticipants } from "../context/room-activity-context";
 
-interface NameDrawActivityProps {
-  isHost: boolean;
-  participants: RoomParticipant[];
-  ndWinner: string | null;
-  sendActivityEvent: (event: ActivityEvent) => void;
-  onActivityEventRef: React.RefObject<((event: ActivityEvent) => void) | null>;
-}
+export function NameDrawActivity() {
+  const { isHost, sendActivityEvent, registerEventListener } = useRoomActivity();
+  const { participants } = useRoomParticipants();
+  const [ndWinner, setNdWinner] = useState<string | null>(null);
 
-export function NameDrawActivity({ isHost, participants, ndWinner, sendActivityEvent, onActivityEventRef }: NameDrawActivityProps) {
+  useEffect(() => {
+    return registerEventListener((event) => {
+      if (event.kind === "nd_winner") {
+        const payload = event as { winner: string };
+        setNdWinner(payload.winner);
+      } else if (event.kind === "activity_reset") {
+        setNdWinner(null);
+      }
+    });
+  }, [registerEventListener]);
+
   return (
     <motion.div
       key="name-draw"
@@ -49,7 +57,6 @@ export function NameDrawActivity({ isHost, participants, ndWinner, sendActivityE
             const online = participants.filter((p) => p.is_online);
             const winner = online[Math.floor(Math.random() * online.length)]?.user?.username || "?";
             sendActivityEvent({ kind: "nd_winner", winner });
-            if (onActivityEventRef.current) onActivityEventRef.current({ kind: "nd_winner", winner });
           }}
           className="w-full bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white border-0"
         >

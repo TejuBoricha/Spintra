@@ -1,20 +1,29 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Split } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Emoji } from "@/components/emoji";
-import type { ActivityEvent, RoomParticipant } from "@/lib/types";
+import { useRoomActivity, useRoomParticipants } from "../context/room-activity-context";
+import { shuffleArray } from "@/lib/utils";
 
-interface TeamMakerActivityProps {
-  isHost: boolean;
-  participants: RoomParticipant[];
-  tmTeams: { name: string; members: string[] }[];
-  sendActivityEvent: (event: ActivityEvent) => void;
-  onActivityEventRef: React.RefObject<((event: ActivityEvent) => void) | null>;
-}
+export function TeamMakerActivity() {
+  const { isHost, sendActivityEvent, registerEventListener } = useRoomActivity();
+  const { participants } = useRoomParticipants();
+  const [tmTeams, setTmTeams] = useState<{ name: string; members: string[] }[]>([]);
 
-export function TeamMakerActivity({ isHost, participants, tmTeams, sendActivityEvent, onActivityEventRef }: TeamMakerActivityProps) {
+  useEffect(() => {
+    return registerEventListener((event) => {
+      if (event.kind === "tm_teams") {
+        const payload = event as { teams: { name: string; members: string[] }[] };
+        setTmTeams(payload.teams);
+      } else if (event.kind === "activity_reset") {
+        setTmTeams([]);
+      }
+    });
+  }, [registerEventListener]);
+
   return (
     <motion.div
       key="team-maker"
@@ -35,13 +44,12 @@ export function TeamMakerActivity({ isHost, participants, tmTeams, sendActivityE
               className="border-cyan-500/30 hover:bg-cyan-500/10"
               onClick={() => {
                 const names = participants.filter((p) => p.is_online).map((p) => p.user?.username || "Guest");
-                const shuffled = [...names].sort(() => Math.random() - 0.5);
+                const shuffled = shuffleArray(names);
                 const teams = Array.from({ length: n }, (_, i) => ({
                   name: `Team ${i + 1}`,
                   members: shuffled.filter((_, j) => j % n === i),
                 }));
                 sendActivityEvent({ kind: "tm_teams", teams });
-                if (onActivityEventRef.current) onActivityEventRef.current({ kind: "tm_teams", teams });
               }}
             >
               {n} Teams

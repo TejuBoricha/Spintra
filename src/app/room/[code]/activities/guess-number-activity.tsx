@@ -1,30 +1,39 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Target, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { ActivityEvent, User } from "@/lib/types";
+import { useRoomActivity } from "../context/room-activity-context";
 
-interface GuessNumberActivityProps {
-  isHost: boolean;
-  guessSecretNumber: number;
-  setGuessSecretNumber: (value: number) => void;
-  guessHistory: { username: string; guess: number; hint: string }[];
-  currentUser: User;
-  sendActivityEvent: (event: ActivityEvent) => void;
-  onActivityEventRef: React.RefObject<((event: ActivityEvent) => void) | null>;
-}
+export function GuessNumberActivity() {
+  const { isHost, sendActivityEvent, registerEventListener, currentUser } = useRoomActivity();
 
-export function GuessNumberActivity({
-  isHost,
-  guessSecretNumber,
-  setGuessSecretNumber,
-  guessHistory,
-  currentUser,
-  sendActivityEvent,
-  onActivityEventRef,
-}: GuessNumberActivityProps) {
+  const [guessHistory, setGuessHistory] = useState<{ username: string; guess: number; hint: string }[]>([]);
+  const [guessSecretNumber, setGuessSecretNumber] = useState(50);
+
+  useEffect(() => {
+    return registerEventListener((event) => {
+      switch (event.kind) {
+        case "guess_submit": {
+          const payload = event as { username: string; guess: number; hint: string };
+          setGuessHistory((prev) => [...prev, { username: payload.username, guess: payload.guess, hint: payload.hint }]);
+          break;
+        }
+        case "guess_reset": {
+          const payload = event as { secret: number };
+          setGuessHistory([]);
+          setGuessSecretNumber(payload.secret);
+          break;
+        }
+        case "activity_reset":
+          setGuessHistory([]);
+          break;
+      }
+    });
+  }, [registerEventListener]);
+
   return (
     <motion.div
       key="guess-number"
@@ -58,7 +67,12 @@ export function GuessNumberActivity({
       )}
       <div className="space-y-2 max-h-48 overflow-y-auto">
         {guessHistory.map((g, i) => (
-          <div key={i} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${g.hint === "correct" ? "bg-emerald-500/20 text-emerald-300" : "bg-white/5"}`}>
+          <div
+            key={i}
+            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${
+              g.hint === "correct" ? "bg-emerald-500/20 text-emerald-300" : "bg-white/5"
+            }`}
+          >
             <span className="font-medium">{g.username}</span>
             <span className="ml-auto font-mono">{g.guess}</span>
             <span className={g.hint === "too high" ? "text-red-400" : g.hint === "too low" ? "text-amber-400" : "text-emerald-400"}>
@@ -83,7 +97,6 @@ export function GuessNumberActivity({
                 if (!val || val < 1 || val > 100) return;
                 const hint = val === guessSecretNumber ? "correct" : val > guessSecretNumber ? "too high" : "too low";
                 sendActivityEvent({ kind: "guess_submit", username: currentUser.username, guess: val, hint });
-                if (onActivityEventRef.current) onActivityEventRef.current({ kind: "guess_submit", username: currentUser.username, guess: val, hint });
                 (e.target as HTMLInputElement).value = "";
               }
             }}
@@ -95,7 +108,6 @@ export function GuessNumberActivity({
               if (!val || val < 1 || val > 100) return;
               const hint = val === guessSecretNumber ? "correct" : val > guessSecretNumber ? "too high" : "too low";
               sendActivityEvent({ kind: "guess_submit", username: currentUser.username, guess: val, hint });
-              if (onActivityEventRef.current) onActivityEventRef.current({ kind: "guess_submit", username: currentUser.username, guess: val, hint });
               if (input) input.value = "";
             }}
             className="bg-cyan-600 hover:bg-cyan-500 text-white border-0"

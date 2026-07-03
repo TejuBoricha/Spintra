@@ -7,9 +7,55 @@ export type TournamentType = "single-elimination" | "double-elimination" | "roun
 export type UserRole = "host" | "participant" | "spectator";
 
 // Room activity events carry different fields per game kind (coin flip, dice
-// roll, guess submit, ...) — narrowed with `kind` checks where consumed rather
-// than a full discriminated union, since the payload just crosses the wire as-is.
-export type ActivityEvent = Record<string, unknown> & { kind: string };
+// roll, guess submit, ...) — structured as a discriminated union for strict type safety.
+type CoinFlippingEvent    = { kind: "coin_flipping" };
+type CoinFlipEvent        = { kind: "coin_flip"; result: "Heads" | "Tails" };
+type DiceRollingEvent     = { kind: "dice_rolling" };
+type DiceRollEvent        = { kind: "dice_roll"; results: number[] };
+type TodPromptEvent       = { kind: "tod_prompt"; promptType: "truth" | "dare"; text: string };
+type WyrPromptEvent       = { kind: "wyr_prompt"; a: string; b: string };
+type WyrVoteEvent         = { kind: "wyr_vote"; userId: string; username: string; option: "A" | "B" };
+type NhiePromptEvent      = { kind: "nhie_prompt"; text: string };
+type NhieConfessEvent     = { kind: "nhie_confess"; userId: string; username: string; choice: "have" | "never" };
+type RpsChoiceEvent       = { kind: "rps_choice"; userId: string; username: string; choice: string };
+type RpsResetEvent        = { kind: "rps_reset" };
+type TmTeamsEvent         = { kind: "tm_teams"; teams: { name: string; members: string[] }[] };
+type NdWinnerEvent        = { kind: "nd_winner"; winner: string };
+type TriviaQuestionEvent  = { kind: "trivia_question"; text: string; options: string[]; correctIndex: number; num: number; category: string; difficulty: "easy" | "medium" | "hard" };
+type TriviaAnswerEvent    = { kind: "trivia_answer"; userId: string; username: string; choiceIndex: number; correct: boolean };
+type ActivityResetEvent   = { kind: "activity_reset" };
+// lucky-wheel
+type WheelEntriesEvent  = { kind: "wheel_entries"; entries: string[] };
+type WheelSpinningEvent = { kind: "wheel_spinning" };
+type WheelSpinEvent     = { kind: "wheel_spin"; winner: string };
+
+// guess-number
+type GuessSubmitEvent   = { kind: "guess_submit"; username: string; guess: number; hint: string };
+type GuessResetEvent    = { kind: "guess_reset"; secret: number };
+
+// bingo
+type BingoCallEvent     = { kind: "bingo_call"; number: number };
+type BingoWinEvent      = { kind: "bingo_win"; username: string };
+type BingoResetEvent    = { kind: "bingo_reset" };
+
+// word-scramble
+type ScrambleWordEvent  = { kind: "scramble_word"; scrambled: string; answer: string };
+type ScrambleCorrectEvent = { kind: "scramble_correct"; username: string };
+
+export type ActivityEvent =
+  | CoinFlippingEvent | CoinFlipEvent
+  | DiceRollingEvent  | DiceRollEvent
+  | TodPromptEvent
+  | WyrPromptEvent    | WyrVoteEvent
+  | NhiePromptEvent   | NhieConfessEvent
+  | RpsChoiceEvent    | RpsResetEvent
+  | TmTeamsEvent      | NdWinnerEvent
+  | TriviaQuestionEvent | TriviaAnswerEvent
+  | WheelEntriesEvent | WheelSpinningEvent | WheelSpinEvent
+  | GuessSubmitEvent | GuessResetEvent
+  | BingoCallEvent | BingoWinEvent | BingoResetEvent
+  | ScrambleWordEvent | ScrambleCorrectEvent
+  | ActivityResetEvent;
 
 export type UserRank = "rookie" | "explorer" | "challenger" | "master" | "legend";
 
