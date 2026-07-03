@@ -454,6 +454,67 @@ function MatchCard({
   );
 }
 
+/** Helper to advance winners within the losers bracket, handling recursive BYE auto-completion */
+function advanceInLosersBracket(
+  lb: BracketMatch[][],
+  roundIdx: number,
+  position: number,
+  winner: string
+) {
+  const isEvenRound = roundIdx % 2 === 0;
+  const nextRoundIdx = roundIdx + 1;
+  if (nextRoundIdx < lb.length) {
+    if (isEvenRound) {
+      lb[nextRoundIdx] = lb[nextRoundIdx].map((m) =>
+        m.position === position
+          ? {
+              ...m,
+              player1: winner,
+              status: m.player1 && m.player2 && m.status === "pending" ? ("in-progress" as const) : m.status,
+            }
+          : m
+      );
+    } else {
+      const nextPos = Math.floor(position / 2);
+      const slot = position % 2 === 0 ? "player1" : "player2";
+      lb[nextRoundIdx] = lb[nextRoundIdx].map((m) =>
+        m.position === nextPos
+          ? {
+              ...m,
+              [slot]: winner,
+              status: m.player1 && m.player2 && m.status === "pending" ? ("in-progress" as const) : m.status,
+            }
+          : m
+      );
+    }
+
+    // Check if the next match target is now fully populated and has a BYE
+    const targetPos = isEvenRound ? position : Math.floor(position / 2);
+    const updatedNextMatch = lb[nextRoundIdx].find((m) => m.position === targetPos);
+    if (
+      updatedNextMatch &&
+      updatedNextMatch.player1 &&
+      updatedNextMatch.player2 &&
+      (updatedNextMatch.player1 === "BYE" || updatedNextMatch.player2 === "BYE")
+    ) {
+      const nonBye = updatedNextMatch.player1 === "BYE" ? updatedNextMatch.player2 : updatedNextMatch.player1;
+      lb[nextRoundIdx] = lb[nextRoundIdx].map((m) =>
+        m.position === targetPos
+          ? {
+              ...m,
+              score1: m.player1 === "BYE" ? 0 : 1,
+              score2: m.player1 === "BYE" ? 1 : 0,
+              winner: nonBye,
+              status: "completed" as const,
+            }
+          : m
+      );
+      // Recursively advance
+      advanceInLosersBracket(lb, nextRoundIdx, targetPos, nonBye);
+    }
+  }
+}
+
 // ──── Main Component ────
 export default function TournamentPage() {
   const [textInput, setTextInput] = useState("");
@@ -628,7 +689,7 @@ export default function TournamentPage() {
           // against each other; later-round losers join the winner advancing
           // through the losers bracket at the same position (see
           // generateDoubleElimination for the round-shape this relies on).
-          if (loser && loser !== "BYE" && updatedLosersBracket) {
+          if (loser && updatedLosersBracket) {
             const rw = roundIdx + 1;
             const lb = updatedLosersBracket.map((round) => round.map((m) => ({ ...m })));
             const targetRound = rw === 1 ? 0 : 2 * rw - 3;
@@ -637,14 +698,28 @@ export default function TournamentPage() {
 
             if (lb[targetRound]?.[targetPos]) {
               lb[targetRound][targetPos] = { ...lb[targetRound][targetPos], [slot]: loser };
-            }
-            lb.forEach((round) => {
-              round.forEach((m, i) => {
-                if (m.player1 && m.player2 && m.status === "pending") {
-                  round[i] = { ...m, status: "in-progress" };
+
+              // Check if the target match is now fully populated and has a BYE
+              const m = lb[targetRound][targetPos];
+              if (m.player1 && m.player2 && (m.player1 === "BYE" || m.player2 === "BYE")) {
+                const nonBye = m.player1 === "BYE" ? m.player2 : m.player1;
+                lb[targetRound][targetPos] = {
+                  ...m,
+                  score1: m.player1 === "BYE" ? 0 : 1,
+                  score2: m.player1 === "BYE" ? 1 : 0,
+                  winner: nonBye,
+                  status: "completed" as const,
+                };
+                // Advance the winner recursively
+                advanceInLosersBracket(lb, targetRound, targetPos, nonBye);
+              } else {
+                // Set status if in-progress
+                const m2 = lb[targetRound][targetPos];
+                if (m2.player1 && m2.player2 && m2.status === "pending") {
+                  lb[targetRound][targetPos] = { ...m2, status: "in-progress" };
                 }
-              });
-            });
+              }
+            }
             updatedLosersBracket = lb;
           }
         } else {
@@ -652,34 +727,11 @@ export default function TournamentPage() {
           // losers bracket. Even rounds preserve position (paired against a
           // fresh drop-in from the winners bracket); odd rounds halve
           // position like a normal single-elimination advance.
-          const isEvenRound = roundIdx % 2 === 0;
-          const nextRoundIdx = roundIdx + 1;
-          if (nextRoundIdx < updatedBracket.length) {
-            if (isEvenRound) {
-              updatedBracket[nextRoundIdx] = updatedBracket[nextRoundIdx].map((m) =>
-                m.position === position
-                  ? {
-                      ...m,
-                      player1: winner,
-                      status: m.player1 && m.player2 && m.status === "pending" ? ("in-progress" as const) : m.status,
-                    }
-                  : m
-              );
-            } else {
-              const nextPos = Math.floor(position / 2);
-              const slot = position % 2 === 0 ? "player1" : "player2";
-              updatedBracket[nextRoundIdx] = updatedBracket[nextRoundIdx].map((m) =>
-                m.position === nextPos
-                  ? {
-                      ...m,
-                      [slot]: winner,
-                      status: m.player1 && m.player2 && m.status === "pending" ? ("in-progress" as const) : m.status,
-                    }
-                  : m
-              );
-            }
+          if (updatedLosersBracket) {
+            const lb = updatedLosersBracket.map((round) => round.map((m) => ({ ...m })));
+            advanceInLosersBracket(lb, roundIdx, position, winner);
+            updatedLosersBracket = lb;
           }
-          updatedLosersBracket = updatedBracket;
         }
 
         const winnersFinal =
