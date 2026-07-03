@@ -122,6 +122,26 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 15: ER Diagram + Corrected Phantom `users` Table
+
+**AI:** Claude Code (Anthropic)
+**Task:** Add the Mermaid ER diagram requested in `ENGINEERING_GOVERNANCE_REVIEW.md` and `TASKS.md`.
+**Files Modified:**
+- `docs/ARCHITECTURE.md` — added §12 (Mermaid ER diagram) generated directly from all 8 migration files; fixed the folder-structure listing, which was missing `0008_create_activity_prompts.sql`.
+- `docs/AI_CONTEXT.md` — corrected the "Database Status > Tables" list, which claimed a `users` table (username/avatar_url/xp/rank) that does not exist anywhere in the schema; those columns are actually on `room_participants` directly. Also corrected the "Primary key for rooms" note: `id` (uuid) is the literal PK, but `code` is what every foreign key and query actually targets.
+- `docs/ENGINEERING_GOVERNANCE_REVIEW.md` — closed its own "ER Diagram" backlog item, which had inherited the same incorrect `users`-table assumption.
+
+**Purpose:**
+- Before drawing a diagram, verified the actual schema by running `grep "create table" supabase/migrations/*.sql` directly rather than trusting `AI_CONTEXT.md`'s existing table list — which is exactly how the phantom `users` table was caught. Only 4 tables actually exist: `rooms`, `room_participants`, `chat_messages`, `activity_prompts`.
+
+**Outcome:**
+- Documentation-only change, no source files touched, so the compilation/lint/build gates don't apply here.
+- ER diagram documents the two real foreign keys (`room_participants.room_id` / `chat_messages.room_id` → `rooms.code`, NOT `rooms.id`), the `replica identity full` requirement for realtime DELETE events, and the client-generated chat message ID pattern from ADR-005.
+
+**Risks:** None — documentation only.
+
+---
+
 ## [2026-07-04] — Session 14: Message ID Generation (Judgment Call, Not Literal Debt Item)
 
 **AI:** Claude Code (Anthropic)

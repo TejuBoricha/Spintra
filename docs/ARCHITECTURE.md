@@ -1,7 +1,7 @@
 # ARCHITECTURE.md — Spintra System Architecture
 > This document explains **why** the project is built the way it is, not just what exists.
 > Update this document whenever a new pattern, folder, or architectural decision is introduced.
-> Last updated: 2026-07-03
+> Last updated: 2026-07-04
 
 ---
 
@@ -105,7 +105,8 @@ spintra/
 │       ├── 0004_add_foreign_keys_and_composite_indexes.sql
 │       ├── 0005_enable_anonymous_auth_rls.sql
 │       ├── 0006_allow_host_promotion_update.sql
-│       └── 0007_allow_host_update_participants.sql   ← Latest migration
+│       ├── 0007_allow_host_update_participants.sql
+│       └── 0008_create_activity_prompts.sql          ← Latest migration
 ├── tests/                          ← Playwright E2E tests
 └── public/                         ← Static assets
 ```
@@ -343,3 +344,62 @@ Fisher-Yates unbiased shuffle. Use this everywhere a random shuffle is needed. N
 
 ### `fireConfetti()` in celebration.tsx
 Call this on any game win. It uses `canvas-confetti` with a burst configuration. No parameters needed.
+
+---
+
+## 12. Database ER Diagram
+
+Generated directly from the 8 migration files in `supabase/migrations/` (not from `AI_CONTEXT.md`'s prior "Database Status" table, which incorrectly listed a `users` table that does not exist — corrected 2026-07-04).
+
+```mermaid
+erDiagram
+    ROOMS ||--o{ ROOM_PARTICIPANTS : "code = room_id (FK, on delete cascade)"
+    ROOMS ||--o{ CHAT_MESSAGES : "code = room_id (FK, on delete cascade)"
+
+    ROOMS {
+        uuid id PK "gen_random_uuid()"
+        text code UK "6-char room code; the real FK target for children"
+        text name
+        text type "RoomType slug, e.g. bingo/trivia/party"
+        text host_id "self-reported, matched against auth.uid() by RLS"
+        boolean is_public
+        boolean is_locked
+        integer max_participants
+        jsonb settings
+        timestamptz created_at
+    }
+
+    ROOM_PARTICIPANTS {
+        uuid id PK
+        text room_id FK "references rooms.code"
+        text user_id "matched against auth.uid() by RLS"
+        text role "host / participant / spectator"
+        boolean is_online
+        timestamptz joined_at
+        text username
+        text avatar_url
+        integer xp
+        text rank "rookie, etc."
+    }
+
+    CHAT_MESSAGES {
+        uuid id PK "client-generated (crypto.randomUUID), passed to insert as-is (ADR-005)"
+        text room_id FK "references rooms.code"
+        text user_id
+        text content "max 500 chars (CHECK constraint)"
+        timestamptz created_at
+    }
+
+    ACTIVITY_PROMPTS {
+        uuid id PK
+        text activity_type "truth-or-dare / would-you-rather / never-have-i-ever"
+        text category "truth / dare, null for the other two types"
+        jsonb prompt_data "shape varies per activity_type"
+        timestamptz created_at
+    }
+```
+
+**Notes:**
+- `ACTIVITY_PROMPTS` has no foreign key to `rooms` — it's a global, room-independent lookup table read by any client (see `activity_prompts_select_all` RLS policy).
+- `rooms.id` is the literal primary key, but every foreign key and every client-side query filters on `rooms.code` instead (a 6-character human-shareable string) — `id` mostly goes unused outside its role as the PK.
+- `room_participants` and `chat_messages` both have `replica identity full` set (migration 0001/0002) so that Postgres logical replication — which Supabase Realtime reads from — includes the full old row on UPDATE/DELETE, not just PK columns. Without this, realtime DELETE events for a kicked participant or a closed room would be silently dropped for subscribers filtering on non-PK columns like `room_id`/`code`.

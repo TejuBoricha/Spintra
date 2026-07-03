@@ -52,5 +52,5 @@ The Spintra documentation system exhibits a mature, structured approach to repos
 ---
 
 ## 4. Documentation Backlog & Technical Debt
-- **ER Diagram:** Need to generate a visual Mermaid ER diagram representing `rooms`, `room_participants`, `chat_messages`, and `users` tables inside [`docs/ARCHITECTURE.md`](file:///c:/Users/tejas/Desktop/Spintra-1/docs/ARCHITECTURE.md).
+- ~~**ER Diagram:**~~ Resolved 2026-07-04 — added to `ARCHITECTURE.md` §12. Also corrected this review's own premise: there is no `users` table (checked all migrations directly); the real tables are `rooms`, `room_participants`, `chat_messages`, `activity_prompts`.
 - **Playwright Test Matrix:** Document how mock user profiles and realtime connections are verified inside Playwright smoke test scripts.

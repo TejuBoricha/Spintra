@@ -1,7 +1,7 @@
 # AI_CONTEXT.md — Spintra Project Living Memory
 > The authoritative source of truth for the current state of the project.
 > **Always update this file after every significant milestone.**
-> Last updated: 2026-07-04T02:45 IST
+> Last updated: 2026-07-04T02:55 IST
 
 ---
 
@@ -160,11 +160,13 @@ None identified.
 | Table | Purpose |
 |---|---|
 | `rooms` | Room metadata (code, name, type, host_id, is_locked, max_participants) |
-| `room_participants` | Per-user room membership (user_id, role, is_online, joined_at) |
+| `room_participants` | Per-user room membership (user_id, role, is_online, joined_at, username, avatar_url, xp, rank) |
 | `chat_messages` | Room chat (user_id, content, created_at) |
-| `users` | User profiles (username, avatar_url, xp, rank) |
+| `activity_prompts` | Global prompt bank for Truth or Dare / Would You Rather / Never Have I Ever (migration 0008) |
 
-**Primary key for rooms:** `code` (6-char string, NOT UUID)
+**Correction (2026-07-04):** there is no separate `users` table — checked all 8 migration files directly (`grep "create table" supabase/migrations/`), only `rooms`, `room_participants`, `chat_messages`, and `activity_prompts` exist. `username`/`avatar_url`/`xp`/`rank` live directly on `room_participants`, not a separate table. Full ER diagram: see `ARCHITECTURE.md` §12.
+
+**Primary key for rooms:** `id` (uuid) — but `code` (6-char string, unique) is what `room_participants.room_id` / `chat_messages.room_id` actually foreign-key against (migration 0004), not `id`.
 **Auth ID type:** UUID returned as text from `auth.uid()::text`
 
 ---

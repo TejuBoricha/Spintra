@@ -19,6 +19,8 @@ No active task is currently in progress. All refactoring plan steps and trivia q
 
 ---
 
+- `[x]` **ER Diagram:** Added 2026-07-04 (Claude Code) — see `ARCHITECTURE.md` §12. Generated directly from the 8 migration files, not from `AI_CONTEXT.md`'s prior (incorrect) table list, which claimed a `users` table that doesn't exist; corrected that too.
+
 ## 3. Future Roadmap Backlog
 
 - `[ ]` **Visual Scoreboard:** Build a persistent real-time leaderboard component displaying user ranks during and after trivia activities.
