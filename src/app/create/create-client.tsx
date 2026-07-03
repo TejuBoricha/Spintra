@@ -33,8 +33,47 @@ export default function CreateRoomClient() {
   const searchParams = useSearchParams();
   const preselected = searchParams?.get("type") as RoomType | null;
 
-  const [currentUser] = useState(getOrCreateRoomUser);
+  const [currentUser, setCurrentUser] = useState(getOrCreateRoomUser);
   const [selectedType, setSelectedType] = useState<RoomType>(preselected || "team-maker");
+
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
+
+    const signIn = async () => {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        let sessionUser = sessionData.session?.user;
+
+        if (!sessionUser) {
+          const { data, error } = await supabase.auth.signInAnonymously();
+          if (error) throw error;
+          sessionUser = data?.user || undefined;
+        }
+
+        if (sessionUser) {
+          setCurrentUser((prev) => {
+            if (prev.id === sessionUser.id) return prev;
+            const updated = { ...prev, id: sessionUser.id };
+            if (typeof window !== "undefined") {
+              window.localStorage.setItem("spintra-room-user", JSON.stringify(updated));
+            }
+            return updated;
+          });
+        }
+      } catch (err) {
+        console.error("Failed to initialize Supabase anonymous session:", err);
+        const errMsg = (err as { message?: string })?.message || "";
+        if (errMsg.includes("Anonymous sign-ins are disabled")) {
+          toast.error(
+            "Anonymous sign-ins are disabled in your Supabase project. Please enable 'Allow Anonymous Sign-ins' in your Supabase Dashboard (Settings -> Authentication)."
+          );
+        }
+      }
+    };
+
+    signIn();
+  }, []);
   const [roomName, setRoomName] = useState("");
   const [isPublic, setIsPublic] = useState(false);
   const [maxParticipants, setMaxParticipants] = useState(10);

@@ -66,7 +66,52 @@ const MAX_MESSAGE_LENGTH = 500;
 
 export default function RoomClient({ code: roomCode }: { code: string }) {
   const router = useRouter();
-  const [currentUser] = useState<User>(getOrCreateRoomUser);
+  const [currentUser, setCurrentUser] = useState<User>(getOrCreateRoomUser);
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      queueMicrotask(() => setAuthReady(true));
+      return;
+    }
+
+    const signIn = async () => {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        let sessionUser = sessionData.session?.user;
+
+        if (!sessionUser) {
+          const { data, error } = await supabase.auth.signInAnonymously();
+          if (error) throw error;
+          sessionUser = data?.user || undefined;
+        }
+
+        if (sessionUser) {
+          setCurrentUser((prev) => {
+            if (prev.id === sessionUser.id) return prev;
+            const updated = { ...prev, id: sessionUser.id };
+            if (typeof window !== "undefined") {
+              window.localStorage.setItem("spintra-room-user", JSON.stringify(updated));
+            }
+            return updated;
+          });
+        }
+      } catch (err) {
+        console.error("Failed to initialize Supabase anonymous session:", err);
+        const errMsg = (err as { message?: string })?.message || "";
+        if (errMsg.includes("Anonymous sign-ins are disabled")) {
+          toast.error(
+            "Anonymous sign-ins are disabled in your Supabase project. Please enable 'Allow Anonymous Sign-ins' in your Supabase Dashboard (Settings -> Authentication)."
+          );
+        }
+      } finally {
+        setAuthReady(true);
+      }
+    };
+
+    signIn();
+  }, []);
   const [maxParticipantsLimit, setMaxParticipantsLimit] = useState<number | null>(null);
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
   const [localCreatorId] = useState<string | null>(() => {
@@ -407,6 +452,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
 
   // Local tab sync fallback via BroadcastChannel when Supabase is not configured
   useEffect(() => {
+    if (!authReady) return;
     const supabase = getSupabaseBrowserClient();
     if (supabase) return;
 
@@ -593,7 +639,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       bc.close();
       broadcastRef.current = null;
     };
-  }, [roomCode, currentUser, localCreatorId, router, markMessageUnreadIfHidden]);
+  }, [roomCode, currentUser, localCreatorId, router, markMessageUnreadIfHidden, authReady]);
 
   const sendMessage = useCallback(async () => {
     if (isLocked && !isHost) {
@@ -795,6 +841,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   );
 
   useEffect(() => {
+    if (!authReady) return;
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       return;
@@ -802,6 +849,20 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
 
     const channel = supabase
       .channel(`room:${roomCode}`)
+      .on("presence", { event: "sync" }, () => {
+        const state = channel.presenceState();
+        const onlineIds = new Set(
+          Object.values(state)
+            .flat()
+            .map((p) => (p as unknown as { user_id: string }).user_id)
+        );
+        setParticipants((prev) =>
+          prev.map((participant) => ({
+            ...participant,
+            is_online: onlineIds.has(participant.user_id),
+          }))
+        );
+      })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages", filter: `room_id=eq.${roomCode}` }, (payload) => {
         const incoming = payload.new as ChatMessage;
         setMessages((prev) => {
@@ -838,13 +899,17 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         });
       })
       .on("postgres_changes", { event: "DELETE", schema: "public", table: "room_participants", filter: `room_id=eq.${roomCode}` }, (payload) => {
-        const removed = payload.old as RoomParticipant;
-        if (removed.user_id === currentUser.id) {
-          toast.error("You were removed from the room by the host.");
-          router.push("/explore");
-          return;
-        }
+        const removed = payload.old as { id: string; user_id?: string };
         setParticipants((prev) => {
+          const selfParticipant = prev.find((p) => p.user_id === currentUser.id);
+          const isSelf = (selfParticipant && selfParticipant.id === removed.id) || (removed.user_id === currentUser.id);
+          if (isSelf) {
+            setTimeout(() => {
+              toast.error("You were removed from the room by the host.");
+              router.push("/explore");
+            }, 0);
+            return prev;
+          }
           const next = prev.filter((participant) => participant.id !== removed.id);
           electHostIfNeeded(supabase, next);
           return next;
@@ -882,6 +947,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         setIsRealtimeReady(true);
         setRealtimeError(null);
         setNotification(null);
+        channel.track({ user_id: currentUser.id });
         // If we are host, broadcast current active activity to anyone else
         if (isHostRef.current && activeActivityRef.current) {
           channel.send({
@@ -901,9 +967,10 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       supabase.removeChannel(channel);
       supabaseChannelRef.current = null;
     };
-  }, [roomCode, electHostIfNeeded, currentUser.id, router, markMessageUnreadIfHidden]);
+  }, [roomCode, electHostIfNeeded, currentUser.id, router, markMessageUnreadIfHidden, authReady]);
 
   useEffect(() => {
+    if (!authReady) return;
     let isMounted = true;
 
     const loadParticipants = async () => {
@@ -975,9 +1042,8 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     };
 
     const markSelfOffline = () => {
-      const supabase = getSupabaseBrowserClient();
-      if (!supabase) return;
-      supabase.from("room_participants").update({ is_online: false }).eq("room_id", roomCode).eq("user_id", currentUser.id);
+      // With Realtime Presence, database-level offline writes on page unload are obsolete.
+      // Connection closure is handled automatically by the server-side presence heartbeat timeout.
     };
 
     const trackSelf = async () => {
@@ -1032,7 +1098,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
 
         const role = await determineRole(supabase);
         const joined_at = new Date().toISOString();
-        const { data, error } = await supabase
+        let upsertResult = await supabase
           .from("room_participants")
           .upsert(
             {
@@ -1049,6 +1115,31 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
             { onConflict: "room_id,user_id" }
           )
           .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
+
+        // Graceful fallback: if another user was elected host in a concurrent request,
+        // retry registration as a regular participant.
+        if (upsertResult.error && upsertResult.error.message?.includes("already has an online host")) {
+          console.warn("Host election conflict detected. Retrying registration as regular participant.");
+          upsertResult = await supabase
+            .from("room_participants")
+            .upsert(
+              {
+                room_id: roomCode,
+                user_id: currentUser.id,
+                role: "participant",
+                is_online: true,
+                joined_at,
+                username: currentUser.username,
+                avatar_url: currentUser.avatar_url,
+                xp: currentUser.xp,
+                rank: currentUser.rank,
+              },
+              { onConflict: "room_id,user_id" }
+            )
+            .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
+        }
+
+        const { data, error } = upsertResult;
 
         if (error) {
           console.error("Failed to register participant:", error);
@@ -1132,9 +1223,10 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     return () => {
       isMounted = false;
     };
-  }, [roomCode, currentUser, electHostIfNeeded, localCreatorId, router]);
+  }, [roomCode, currentUser, electHostIfNeeded, localCreatorId, router, authReady]);
 
   useEffect(() => {
+    if (!authReady) return;
     let isMounted = true;
 
     const loadMessages = async () => {
@@ -1146,7 +1238,8 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           .from("chat_messages")
           .select("id, room_id, user_id, content, created_at")
           .eq("room_id", roomCode)
-          .order("created_at", { ascending: true });
+          .order("created_at", { ascending: false })
+          .limit(100);
 
         if (error) {
           console.error("Failed to load chat messages:", error);
@@ -1155,19 +1248,19 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         }
 
         if (isMounted && data) {
-          setMessages(
-            data.map((item) => ({
-              ...item,
-              user: {
-                id: item.user_id,
-                username: item.user_id === currentUser.id ? "You" : "Guest",
-                avatar_url: "",
-                xp: 0,
-                rank: "rookie",
-                created_at: item.created_at,
-              },
-            }))
-          );
+          const formattedMessages = data.map((item) => ({
+            ...item,
+            user: {
+              id: item.user_id,
+              username: item.user_id === currentUser.id ? "You" : "Guest",
+              avatar_url: "",
+              xp: 0,
+              rank: "rookie" as const,
+              created_at: item.created_at,
+            },
+          }));
+          formattedMessages.reverse();
+          setMessages(formattedMessages);
         }
       } catch (cause) {
         console.error("Message load failed:", cause);
@@ -1179,7 +1272,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     return () => {
       isMounted = false;
     };
-  }, [roomCode, currentUser.id]);
+  }, [roomCode, currentUser.id, authReady]);
 
   const sidebarContent = (
     <div className="flex-1 flex flex-col h-full bg-background/50 backdrop-blur-sm overflow-hidden">

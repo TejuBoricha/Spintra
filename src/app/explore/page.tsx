@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Search, TrendingUp, Clock, Heart, Sparkles, Users, Radar, LayoutGrid, History } from "lucide-react";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Emoji, type EmojiName } from "@/components/emoji";
 import type { RoomType } from "@/lib/types";
 import { GAMES } from "@/lib/games";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const trendingRooms = [
   { id: "1", code: "X7F82K", name: "Friday Game Night", type: "party" as RoomType, participants: 12, host: "GameMaster42", hearts: 234 },
@@ -32,8 +33,75 @@ const categories = ["All", "Trending", "New", "Popular", "Teams", "Party", "Clas
 export default function ExplorePage() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
+  const [rooms, setRooms] = useState<typeof trendingRooms>(trendingRooms);
 
-  const filteredRooms = trendingRooms.filter((room) => {
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
+
+    let isMounted = true;
+
+    const fetchRooms = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("rooms")
+          .select(`
+            id,
+            code,
+            name,
+            type,
+            max_participants,
+            created_at,
+            room_participants (
+              username,
+              role,
+              is_online
+            )
+          `)
+          .eq("is_public", true)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        if (isMounted && data) {
+          const dbRooms = data.map((room) => {
+            const participants = (room.room_participants as unknown as {
+              username: string | null;
+              role: string;
+              is_online: boolean;
+            }[]) || [];
+            const onlineCount = participants.filter((p) => p.is_online).length;
+            const hostUser = participants.find((p) => p.role === "host" && p.is_online)?.username ||
+                             participants.find((p) => p.role === "host")?.username ||
+                             "Guest";
+            return {
+              id: room.id,
+              code: room.code,
+              name: room.name,
+              type: room.type as RoomType,
+              participants: onlineCount,
+              host: hostUser,
+              hearts: Math.floor(Math.random() * 200) + 15, // Dynamic visual hearts
+            };
+          });
+
+          if (dbRooms.length > 0) {
+            setRooms(dbRooms);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load public rooms from Supabase:", err);
+      }
+    };
+
+    fetchRooms();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const filteredRooms = rooms.filter((room) => {
     // Search check
     const query = search.toLowerCase().trim();
     if (query) {
