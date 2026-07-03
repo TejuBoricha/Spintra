@@ -29,14 +29,18 @@
 
 ```
 spintra/
-├── AI_HANDOFF.md                    ← Portable session handoff (resume doc)
 ├── docs/
-│   ├── AI_CONTEXT.md               ← Living project memory (update every session)
-│   ├── AI_RULES.md                 ← Mandatory rules for every AI assistant
+│   ├── START_HERE.md               ← Onboarding entry point — read this first
+│   ├── INDEX.md                    ← Task-oriented doc routing guide
+│   ├── AI_RULES.md                 ← Mandatory engineering constitution for every AI assistant
+│   ├── AI_CONTEXT.md               ← Current project state only (update every session)
+│   ├── HANDOFF.md                  ← Session continuity (last/current/next task, blockers)
+│   ├── TASKS.md                    ← Backlog: High/Medium/Low priority, in progress, completed
 │   ├── ARCHITECTURE.md             ← This file
-│   ├── CHANGELOG_AI.md             ← AI work log (append only)
-│   ├── PRODUCTION_AUDIT_REPORT.md  ← Earlier audit (do not modify)
-│   └── PRODUCTION_AUDIT_REPORT_V2.md
+│   ├── DECISIONS.md                ← Architecture Decision Records (ADRs)
+│   ├── CHANGELOG_AI.md             ← Full chronological AI work log (append only)
+│   ├── ENGINEERING_GOVERNANCE_REVIEW.md     ← Point-in-time audit, dated 2026-07-03 (historical)
+│   └── ENGINEERING_GOVERNANCE_REVIEW_V2.md  ← Current point-in-time audit, dated 2026-07-04
 ├── src/
 │   ├── app/
 │   │   ├── globals.css             ← Global styles + glass/glass-card utilities
@@ -48,28 +52,16 @@ spintra/
 │   │   │   ├── page.tsx            ← Room list page
 │   │   │   └── [code]/
 │   │   │       ├── page.tsx        ← Server component; passes `code` prop
-│   │   │       ├── room-client.tsx ← Main client orchestrator (target of current refactor)
+│   │   │       ├── room-client.tsx ← Main client orchestrator (shell only — owns no game state)
 │   │   │       ├── context/
 │   │   │       │   └── room-activity-context.tsx  ← Shared context for activities
 │   │   │       └── activities/
-│   │   │           ├── activity-registry.ts       ← [TO CREATE] Plugin registry
+│   │   │           ├── activity-registry.ts       ← Plugin registry (game slug → dynamic import)
 │   │   │           ├── activity-picker-dialog.tsx ← Host UI to switch games
 │   │   │           ├── idle-screen.tsx            ← No-game state (single-game rooms)
 │   │   │           ├── aggregate-idle-screen.tsx  ← No-game state (party rooms)
-│   │   │           ├── lucky-wheel-activity.tsx   ← MIGRATED: zero-prop, context-driven
-│   │   │           ├── bingo-activity.tsx         ← MIGRATED: zero-prop, context-driven
-│   │   │           ├── guess-number-activity.tsx  ← MIGRATED: zero-prop, context-driven
-│   │   │           ├── word-scramble-activity.tsx ← MIGRATED: zero-prop, context-driven
-│   │   │           ├── coin-flip-activity.tsx     ← LEGACY: to be migrated (Step 3)
-│   │   │           ├── dice-activity.tsx          ← LEGACY: to be migrated (Step 3)
-│   │   │           ├── truth-or-dare-activity.tsx ← LEGACY: to be migrated (Step 3)
-│   │   │           ├── would-you-rather-activity.tsx  ← LEGACY (Step 3)
-│   │   │           ├── never-have-i-ever-activity.tsx ← LEGACY (Step 3)
-│   │   │           ├── rps-activity.tsx           ← LEGACY (Step 3)
-│   │   │           ├── team-maker-activity.tsx    ← LEGACY (Step 3) + needs shuffleArray fix
-│   │   │           ├── tournament-activity.tsx    ← LEGACY (Step 3) + needs shuffleArray fix
-│   │   │           ├── name-draw-activity.tsx     ← LEGACY (Step 3)
-│   │   │           └── trivia-activity.tsx        ← LEGACY (Step 3)
+│   │   │           └── *-activity.tsx (×14)       ← One file per game, all migrated to the
+│   │   │                                             zero-prop context-driven pattern (§3)
 │   │   └── tools/
 │   │       ├── bingo/              ← Standalone (non-room) tool page
 │   │       ├── coin-flip/
@@ -126,9 +118,9 @@ spintra/
 - Owns the chat state and rendering
 - Owns the participant list
 - Owns room metadata (name, type, locked state)
-- **Does NOT own game state** (in the target architecture — currently owns legacy game state that is being removed)
+- **Does NOT own game state** — each activity owns its own local `useState`; migration to this pattern is complete for all 14 games
 
-### Activity Isolation Pattern (the target architecture)
+### Activity Isolation Pattern
 
 Each activity is a **self-contained plugin** following this contract:
 ```
@@ -143,7 +135,7 @@ Each activity is a **self-contained plugin** following this contract:
 9. Handles "activity_reset" event to clear its state
 ```
 
-### Context Architecture (target — after Step 2)
+### Context Architecture
 
 ```
 RoomActivityContext (STABLE — never re-renders subscribers)
@@ -151,6 +143,7 @@ RoomActivityContext (STABLE — never re-renders subscribers)
 ├── roomType: RoomType
 ├── isHost: boolean
 ├── currentUser: User
+├── soundEnabled: boolean
 ├── sendActivityEvent: (event: ActivityEvent) => void
 └── registerEventListener: (fn) => () => void
 
@@ -219,6 +212,27 @@ useEffect(() => registerEventListener((event) => {
 - Hosts can update room metadata for their own rooms
 - All inserts verified against `auth.uid()`
 
+### Migrations Applied
+| # | File | Purpose |
+|---|---|---|
+| 0001 | `init_schema_and_rls` | Base schema (`rooms`, `room_participants`, `chat_messages`) + initial RLS |
+| 0002 | `room_close_cascade` | Cascade-delete participants/messages when a room closes |
+| 0003 | `disable_rls_for_realtime_delete` | Disabled RLS on `rooms`/`room_participants` to fix two realtime-delete bugs (see file header) |
+| 0004 | `add_foreign_keys_and_composite_indexes` | Real FK constraints (`room_id` → `rooms.code`, cascade), composite indexes for chat/participant queries |
+| 0005 | `enable_anonymous_auth_rls` | Re-enabled RLS, scoped to `auth.uid()` now that anonymous auth exists |
+| 0006 | `allow_host_promotion_update` | Lets a participant self-promote to host if the current host is offline/left |
+| 0007 | `allow_host_update_participants` | Lets the host update other participants' rows (e.g. marking a crashed client offline) |
+| 0008 | `create_activity_prompts` | Creates + seeds `activity_prompts` (Truth or Dare / Would You Rather / Never Have I Ever) |
+
+**Current status:** all 8 applied; RLS enabled on all 4 tables; latest policy is `0007_allow_host_update_participants`.
+
+### APIs / Integration Points
+No custom REST or GraphQL API exists — every client talks directly to Supabase (or, unconfigured, the `BroadcastChannel` Web API). The full set of integration points:
+- **Supabase Realtime — broadcast channel** (`room_{code}`): activity events (game state) and activity-type switching
+- **Supabase Realtime — presence channel**: participant online/offline tracking
+- **Supabase DB** (`@supabase/supabase-js`): `rooms`, `room_participants`, `chat_messages`, `activity_prompts` — see §12 for the full ER diagram
+- **`BroadcastChannel`** (Web API): same-browser-tab fallback for all of the above when Supabase env vars are absent
+
 ---
 
 ## 5. Authentication Flow
@@ -231,8 +245,11 @@ useEffect(() => registerEventListener((event) => {
       - If no session → supabase.auth.signInAnonymously()
    b. If NOT configured → null returned → BroadcastChannel fallback mode
 3. currentUser state updated with Supabase user ID
-4. User row created in `users` table if new
-5. Room participant row created in `room_participants`
+4. Room participant row created/updated in `room_participants` — this single
+   row carries both membership (role, is_online, joined_at) and profile
+   fields (username, avatar_url, xp, rank). There is no separate `users`
+   table (see §12 ER Diagram) — profile data is per-room-membership, not
+   global across rooms.
 ```
 
 ### Local Dev Without Supabase
@@ -248,8 +265,7 @@ The app functions fully without Supabase using the `BroadcastChannel` Web API. A
 | Participants | `room-client.tsx` `useState` | Realtime subscription |
 | Chat messages | `room-client.tsx` `useState` | Realtime subscription + optimistic echo |
 | Active game type | `room-client.tsx` `useState` | Broadcast channel (host pushes to all) |
-| Game-specific state | **Each activity** `useState` (target) | Local, reset on `activity_reset` |
-| Game-specific state | `room-client.tsx` `useState` (legacy) | Being removed in Steps 3–4 |
+| Game-specific state | **Each activity's own** `useState` | Local, reset on `activity_reset` — `room-client.tsx` holds none of it |
 
 ### No Zustand in Rooms (By Design)
 Zustand is installed but not used for room state. The Pub/Sub + local state pattern is sufficient and avoids coupling activities to a global store. If game state ever needs to persist across activity switches, Zustand would be the appropriate next step.
@@ -269,6 +285,9 @@ Used for incremental migration of the monolithic `room-client.tsx`. Build new in
 
 ### 4. Stable Context Separation
 Two contexts: stable (never changes) + dynamic (participants). Prevents cascade re-renders when participants join/leave. Recommended by the React team for high-frequency update scenarios.
+
+### 5. Error Isolation
+`room-client.tsx` defines a class-based `ErrorBoundary` (React requires class components for `componentDidCatch`) that wraps the active game, keyed by `activeActivity.type` — the same key the `ACTIVITY_REGISTRY` render uses. If any single activity throws during render, only that activity's viewport is replaced with a fallback; the room shell (chat, participants, header) keeps working. This is why a crashing game can never take down the whole room.
 
 ---
 

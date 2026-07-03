@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: 22
           cache: 'npm'
 
       - name: Install Dependencies
@@ -31,6 +31,9 @@ jobs:
 
       - name: Static Analysis Linting
         run: npm run lint
+
+      - name: Documentation Drift Check
+        run: npm run docs:check
 
       - name: Cache Playwright Browsers
         id: playwright-cache

@@ -4,6 +4,8 @@
 **Date:** 2026-07-03
 **Workspace:** TejuBoricha/Spintra
 
+> **Point-in-time snapshot — not a living document.** This review reflects the state of the repository as of the date above. It is not part of the daily workflow and should not be patched reactively as individual findings get resolved. When a new governance review is performed, add it as a new dated section (or a new file, e.g. `ENGINEERING_GOVERNANCE_REVIEW_V2.md`) rather than editing this one. If this review becomes stale in the meantime, record that fact as a `TASKS.md` backlog item (see "Engineering Governance Review Re-run" under Low Priority) instead of editing this file.
+
 ---
 
 ## 1. Executive Summary

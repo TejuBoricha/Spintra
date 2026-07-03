@@ -122,6 +122,83 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 22: Resolved All 3 Remaining Documentation Risks
+
+**AI:** Claude Code (Anthropic)
+**Task:** User asked to "fix" the 3 risks flagged at the end of Session 21's Documentation Refactoring Report: stale governance review, un-backfilled ADR alternatives, and no automated drift enforcement.
+**Files Modified:**
+- `docs/DECISIONS.md` — backfilled "Alternatives Considered" into all 6 existing ADRs. ADR-001 and ADR-006 promote an alternative already stated in the original text; ADR-002/003/004/005 reconstruct one from the "prior approach" each decision replaced, explicitly labeled `*(reconstructed, not contemporaneously recorded)*`. ADR-005's entry also cross-references `CHANGELOG_AI.md` Session 14, where the same alternative (DB-generated message IDs) was independently re-evaluated and re-rejected for the same reason.
+- `scripts/check-docs-drift.mjs` (NEW) — verifies `docs/*.md`'s real file listing and `supabase/migrations/*.sql`'s real files against `ARCHITECTURE.md` §2's folder diagram and §4's Migrations Applied table; exits non-zero on any mismatch in either direction (undocumented real file, or documented-but-nonexistent file).
+- `package.json` — added `"docs:check": "node scripts/check-docs-drift.mjs"`.
+- `.github/workflows/ci.yml` — added a "Documentation Drift Check" step running `npm run docs:check`. **Also fixed an unrelated live regression found while editing this file:** `node-version` had silently reverted from `22` back to `20.x` — commit `15c4860` (dated *after* the original Node 22 fix in `5120e3c`) fully rewrote this file for an unrelated reason and reintroduced the old value without anyone noticing. Reverted back to `22`.
+- `docs/ARCHITECTURE.md` — updated §2's folder listing to include the new `ENGINEERING_GOVERNANCE_REVIEW_V2.md` file (caught by the new drift script itself, on its first real run after being wired in — see Outcome).
+- `docs/ENGINEERING_GOVERNANCE_REVIEW_V2.md` (NEW) — a fresh governance review superseding V1 for currency, per the point-in-time versioning policy established in Session 21 (V1 left unedited as historical record). Rates overall governance 9.5/10 (up from 9.2), documents the newly-implemented drift check, and flags the CI Node-version regression as a concrete example of a new risk category: silent config regressions from uncoordinated sessions overwriting each other's narrow fixes.
+- `docs/INDEX.md` — updated the governance-review references (both the routing table and the file-reference table) to point at V2 as current, V1 as historical.
+- `docs/TASKS.md` — checked off "Engineering Governance Review Re-run" (now done); added a new Low Priority item to extend the drift script's coverage (context shape, session-number pointer validation) per V2's own recommendation.
+
+**Purpose:**
+- Close out the 3 risks honestly flagged at the end of the prior session's report, per the user's explicit request, rather than leaving them as unaddressed "future work" prose.
+
+**Outcome:**
+- `npm run typecheck` / `npm run lint` / `npm run build` / `npm run docs:check`: all pass.
+- The drift script was validated to actually detect drift, not just pass trivially: manually created a phantom `docs/` file and confirmed the script caught it and exited 1, then removed the test file. It also caught a real omission live during this session (the new `ENGINEERING_GOVERNANCE_REVIEW_V2.md` file, before `ARCHITECTURE.md` was updated to mention it) — direct proof the safeguard works, not just that it was written to look like it does.
+- The CI Node-version regression was discovered as a side effect of this work, not the original goal — a reminder that reading a file closely for one reason often surfaces unrelated drift, which is itself an argument for the drift-check habit generalizing beyond just today's two checks.
+
+**Risks:**
+- The drift script covers 2 drift vectors (doc file listing, migrations table) out of several possible ones (e.g. context shape vs. real TypeScript interface, cross-doc session-number pointers) — flagged as a new `TASKS.md` item rather than solved today.
+- 4 of 6 backfilled ADR alternatives are reconstructed/inferred, not contemporaneous — clearly labeled, but a lower-confidence historical record than if they'd been written at decision time.
+
+---
+
+## [2026-07-04] — Session 21: Full Documentation System Refactor
+
+**AI:** Claude Code (Anthropic)
+**Task:** User requested a full onboarding review of the documentation system, followed by explicit implementation of the findings: give every doc in `docs/` a single, non-overlapping responsibility without losing any historical information (relocate, don't delete).
+**Files Modified:**
+- `docs/ARCHITECTURE.md` — fixed a live bug (Authentication Flow §5 still referenced a nonexistent `users` table); rewrote the stale mid-refactor folder structure (activities were marked `[TO CREATE]`/`LEGACY: to be migrated (Step 3)` though the migration completed in Session 6; `docs/` listing was missing 6 real files and listed 2 deleted ones; root falsely listed `AI_HANDOFF.md`, which never existed); removed "target architecture"/"legacy" language from §3/§6 now that the migration is complete; added the previously-undocumented `soundEnabled` field to the `RoomActivityContext` shape (verified against the actual source file); added a new Design Pattern #5 "Error Isolation" documenting the `ErrorBoundary` (previously mentioned only in `HANDOFF.md`/`CHANGELOG_AI.md`, never explained in `ARCHITECTURE.md` itself); added a consolidated "Migrations Applied" table (§4) and "APIs / Integration Points" list (§4), both relocated from the old `AI_CONTEXT.md`.
+- `docs/AI_CONTEXT.md` — fully rewritten to exactly 7 current-state-only fields (Current Milestone, Overall Progress, Current Objective, Current Focus, Known Issues, Current Assumptions, Next Recommended Task) plus a "See Also" pointer section. Removed: Features Completed / Bugs Fixed / DB Migrations checklist / Modularisation bullets / Recent Architectural Changes / Recent Session Notes (all pure duplicates of this file's own history — every fact already exists in `CHANGELOG_AI.md`); Frontend Status / Database Status / APIs Implemented (pure duplicates of `ARCHITECTURE.md` §1/§12, the latter less accurate than the ARCHITECTURE.md version); Remaining Roadmap (duplicate of `TASKS.md`, except 2 items that existed *only* here — relocated, not dropped, see below); Exact Point Where Development Stopped / Next Task to Perform (duplicates `HANDOFF.md`'s job); Technical Debt (duplicates `TASKS.md`'s Technical Debt Backlog, except 1 item that existed *only* here — relocated, see below).
+- `docs/HANDOFF.md` — fully rewritten to exactly 4 fields (Last Completed Task, Current Task, Current Blockers, Next Recommended Task). Removed Project Overview / Current Architecture & Conventions (pure duplicates of `ARCHITECTURE.md`) and Current Progress / Roadmap Remaining Work (pure duplicates of `CHANGELOG_AI.md` and `TASKS.md` respectively — every bullet already exists in one of those two).
+- `docs/TASKS.md` — restructured into High/Medium/Low Priority + In Progress + Completed. Before trimming `AI_CONTEXT.md`, rescued 3 items that existed *only* there and nowhere else: "Room Share Link / QR Code" and "Investigate Zustand for Game State" (both now in this file), and "Static prompt lists hardcoded" (previously only in `ENGINEERING_GOVERNANCE_REVIEW.md`, now tracked here too since this is the actual backlog document). Added a new "Engineering Governance Review Re-run" item per the new policy below. Completed section trimmed to title + date + `CHANGELOG_AI.md` session pointer only — all narrative detail removed since it's already fully present in `CHANGELOG_AI.md`.
+- `docs/INDEX.md` — rebuilt with a task-oriented routing table ("If I am performing X task, which documents should I read?") as the primary section; the original file-level reference table kept as a secondary section below it.
+- `docs/DECISIONS.md` — added a Format section specifying the ADR template for future entries (Context / Decision / Alternatives Considered / Consequences / Follow-up Actions). The 6 existing ADRs were not rewritten, per instruction — they predate the template and lack the new "Alternatives Considered" field.
+- `docs/ENGINEERING_GOVERNANCE_REVIEW.md` — added a header note establishing it as a point-in-time snapshot that should not be patched reactively; future reviews should be new dated sections/files, and staleness should be tracked in `TASKS.md` instead (which now has exactly that entry).
+- `docs/CHANGELOG_AI.md` — this entry, plus the previously-missing Session 20 entry (added earlier in this same session) documenting the `AI_RULES.md` Definition of Done and `START_HERE.md` Completion Policy work, which had been reported via Mandatory Change Reports in-conversation but never synced to this file.
+
+**Purpose:**
+- The review that preceded this task found 8 concrete issues: `AI_CONTEXT.md` badly out of scope (historical/architecture/roadmap duplication), `HANDOFF.md` grown far beyond session-continuity, `TASKS.md`'s Completed section duplicating the changelog with no priority tiers, a **live** phantom-`users`-table bug still present in `ARCHITECTURE.md` despite being fixed elsewhere, a stale mid-refactor folder structure diagram, `INDEX.md` being file-indexed rather than task-indexed, `DECISIONS.md`'s ADR template missing "alternatives considered," and `ENGINEERING_GOVERNANCE_REVIEW.md` being patched reactively despite its own "not part of daily workflow" spec.
+- The user's explicit constraint was "do NOT lose historical information — relocate instead of delete," which required verifying, for every piece of content removed from `AI_CONTEXT.md`/`HANDOFF.md`/`TASKS.md`, that the same fact already existed (or was freshly relocated) elsewhere before deleting it.
+
+**Outcome:**
+- Documentation-only change; no source files touched, so compilation/lint/build gates don't apply.
+- Final validation performed: grepped every `docs/*.md` cross-reference (`ARCHITECTURE.md §N`, `AI_RULES.md §N`, file paths) to confirm none broke; confirmed `ARCHITECTURE.md`'s top-level section numbers (1–12) were undisturbed by the additions; confirmed no dangling reference to a section name removed from `AI_CONTEXT.md`/`HANDOFF.md` exists elsewhere (the only matches were `CHANGELOG_AI.md`'s own historical entries correctly describing past states in past tense); verified the actual `docs/` folder listing and root directory against the filesystem directly (`ls`) rather than trusting the existing diagram, which is exactly how the `AI_HANDOFF.md`-that-never-existed and the 2-already-deleted `PRODUCTION_AUDIT_REPORT*.md` entries were caught.
+- Every document now has exactly one responsibility with no unnecessary duplication remaining between them (some deliberate, spec-required overlap remains between `AI_CONTEXT.md`'s and `HANDOFF.md`'s "Next Recommended Task" fields, since both are explicitly required by the user's own spec and the two docs are meant to be read together per `INDEX.md`'s "Resume work" routing row).
+
+**Risks:**
+- `ENGINEERING_GOVERNANCE_REVIEW.md`'s actual findings/ratings (9.2/10, dated 2026-07-03) are now confirmed stale given this refactor and several bug fixes since, but were deliberately left unedited per its own new point-in-time policy — flagged instead via the new `TASKS.md` backlog item. Treat that rating as historical, not current, until a fresh review is run.
+- The 6 existing ADRs in `DECISIONS.md` lack "Alternatives Considered" and were not backfilled — acceptable per instruction, but means historical rationale for those 6 decisions is incomplete if ever needed.
+- No automated check enforces "no duplication" or "diagram matches repository" going forward — this refactor was a manual, one-time correction. A lightweight periodic drift check (e.g. a script diffing `ARCHITECTURE.md`'s folder listing against the real `docs/`/`supabase/migrations/` contents) would catch this class of staleness earlier next time; not implemented today, out of scope.
+
+---
+
+## [2026-07-04] — Session 20: AI_RULES.md Definition of Done + START_HERE.md Completion Policy
+
+**AI:** Claude Code (Anthropic)
+**Task:** Two explicit user requests, landed together: (1) add a "Definition of Done" / Mandatory Change Report section to `AI_RULES.md`, (2) add a "Completion Policy" section to `START_HERE.md`.
+**Files Modified:**
+- `docs/AI_RULES.md` — added new §9 "Definition of Done & Mandatory Change Reporting": a 5-point completion gate tying "task complete" to a report being presented in-conversation, the exact report template (`# Status`/`# Severity`/.../`# Future Recommendations`), required-vs-optional reporting scope, and an "engineering communication" rule favoring completeness over brevity. Replaced the old 18-field report list embedded in §6 with a one-line pointer to §9 to avoid two competing templates in one document. Sections 1–8 otherwise untouched.
+- `docs/START_HERE.md` — added a "Completion Policy" section stating the 4 completion conditions and pointing to `AI_RULES.md` §9 for the full template rather than duplicating it.
+
+**Purpose:**
+- Formalize a binding, structured end-of-task reporting requirement so no session (this AI or another) can silently stop after writing code without documenting what changed, why, how it was verified, and what risk remains.
+
+**Outcome:**
+- Documentation-only change; no source files touched.
+- Both changes landed in a single commit (`dba53ad`) since `docs/START_HERE.md` was already staged before the `AI_RULES.md` commit was made — not a deliberate merge, just how the staging happened to land.
+
+**Risks:** None.
+
+---
+
 ## [2026-07-04] — Session 19: Remove Redundant Event Type Casts (14 Activity Files)
 
 **AI:** Claude Code (Anthropic)
