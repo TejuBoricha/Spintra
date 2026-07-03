@@ -6,11 +6,6 @@ A party/game-room web app: 14 standalone single-player tools plus a
 Supabase-backed multiplayer room feature (chat, live participants, shared
 activities synced in real time).
 
-> **Note:** This Next.js version has breaking changes vs. older docs/training
-> data — see [`AGENTS.md`](AGENTS.md) and `node_modules/next/dist/docs/`
-> before assuming an API works the way you remember. Notably, the routing
-> hook file is `proxy.ts` (Next 16 renamed `middleware.ts`), not `middleware.ts`.
-
 ## Table of contents
 
 - [Features](#features)
@@ -19,6 +14,7 @@ activities synced in real time).
 - [Environment variables](#environment-variables)
 - [Scripts](#scripts)
 - [Project structure](#project-structure)
+- [Development notes](#development-notes)
 - [Testing](#testing)
 - [Known limitations](#known-limitations)
 - [Deployment](#deployment)
@@ -121,6 +117,13 @@ src/lib/room-user.ts        client-side identity (localStorage-based, no auth)
 proxy.ts                    redirects /room?code=X to /room/X
 supabase/migrations/        schema + RLS for the Supabase-backed tables
 ```
+
+## Development notes
+
+> This Next.js version has breaking changes vs. older docs/training
+> data — see [`AGENTS.md`](AGENTS.md) and `node_modules/next/dist/docs/`
+> before assuming an API works the way you remember. Notably, the routing
+> hook file is `proxy.ts` (Next 16 renamed `middleware.ts`), not `middleware.ts`.
 
 ## Testing
 
