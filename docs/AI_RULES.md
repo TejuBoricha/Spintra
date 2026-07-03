@@ -125,3 +125,17 @@ To ensure a seamless transition between different AI sessions and models, follow
    - Append a new chronological changelog log entry.
    - Write a portable handoff summary detailing the exact stopping point and next immediate tasks.
 3. **No Stale Memory:** Ensure all reasoning, assumptions, or database state constraints are fully written down so the next AI can start working immediately.
+
+---
+
+## 8. Context Optimization
+
+Documentation exists to be used efficiently, not read exhaustively. To keep sessions fast and avoid burning context on irrelevant material:
+
+- **Read only the documentation required for the current task.** Most tasks only touch a handful of files in `docs/` — reading the rest wastes context without adding value.
+- **Never load all documentation by default.** Reading every file "just in case" at the start of a session is not the expected workflow.
+- **Use `docs/START_HERE.md` first.** It is the entry point for every session and explains this workflow.
+- **Use `docs/INDEX.md` to determine which documents are needed.** It lists every document with a one-line description of what it covers and when to read it — use it to select only the relevant files.
+- **Prefer summaries before detailed sections.** Where a document has a summary or status section (e.g. `AI_CONTEXT.md`'s completion-status block), read that first and only descend into full detail if the task requires it.
+- **Avoid re-reading unchanged documentation during the same session.** Once a file has been read and nothing has modified it since, treat its content as still valid rather than reloading it.
+- **Keep documentation concise, and archive historical information when appropriate.** Trim or archive detail that no longer informs current decisions rather than letting files grow indefinitely. `CHANGELOG_AI.md` is the deliberate exception — it is append-only by design, since its value is being a complete historical record.

@@ -122,6 +122,23 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 17: AI_RULES.md — New "Context Optimization" Section
+
+**AI:** Claude Code (Anthropic)
+**Task:** Add a "Context Optimization" section to `AI_RULES.md` per explicit user request.
+**Files Modified:**
+- `docs/AI_RULES.md` — appended new §8 "Context Optimization" (selective reading over exhaustive reading; use `START_HERE.md`/`INDEX.md`; prefer summaries; don't re-read unchanged docs mid-session; keep docs concise/archived, with `CHANGELOG_AI.md` as the explicit append-only exception). Sections 1–7 left untouched, appended as a new final section rather than renumbering, per the user's "do not modify other sections unless necessary" instruction.
+
+**Purpose:**
+- Formalizes, as a binding rule rather than a one-off file, the selective-reading philosophy introduced in Session 16's `docs/START_HERE.md`/`docs/INDEX.md`.
+
+**Outcome:**
+- Documentation-only change; no source files touched.
+
+**Risks:** None.
+
+---
+
 ## [2026-07-04] — Session 16: New docs/START_HERE.md + docs/INDEX.md, Removed Conflicting Root Entry Point
 
 **AI:** Claude Code (Anthropic)
