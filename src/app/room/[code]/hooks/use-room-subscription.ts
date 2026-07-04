@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { fireConfetti } from "@/components/celebration";
+import { banUserFromRoom } from "@/lib/room-bans";
 import type { User, ChatMessage, RoomParticipant, RoomType, ActivityEvent } from "@/lib/types";
 
 interface UseRoomSubscriptionProps {
@@ -249,6 +250,7 @@ export function useRoomSubscription({
           return;
         }
       } else {
+        banUserFromRoom(roomCode, participant.user_id);
         postLocalMessage("KICKED", participant.user_id);
       }
 
@@ -995,5 +997,6 @@ export function useRoomSubscription({
     handleCloseRoom,
     realtimeStatusLabel,
     realtimeStatusClass,
+    isLocalOnlyMode,
   };
 }

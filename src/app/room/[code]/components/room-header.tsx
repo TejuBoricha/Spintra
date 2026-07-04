@@ -25,6 +25,7 @@ interface RoomHeaderProps {
   roomName: string;
   realtimeStatusClass: string;
   realtimeStatusLabel: string;
+  isLocalOnlyMode: boolean;
   isLocked: boolean;
   roomCode: string;
   onlineCount: number;
@@ -49,6 +50,7 @@ export function RoomHeader({
   roomName,
   realtimeStatusClass,
   realtimeStatusLabel,
+  isLocalOnlyMode,
   isLocked,
   roomCode,
   onlineCount,
@@ -302,6 +304,13 @@ export function RoomHeader({
                     <X className="w-5 h-5" />
                   </button>
                 </div>
+
+                {isLocalOnlyMode && (
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200 text-left">
+                    This room only works on this device — whoever scans this code needs to be using this
+                    same browser. It won&apos;t connect anyone joining from a different phone or computer.
+                  </div>
+                )}
 
                 <div className="flex flex-col items-center justify-center space-y-4 py-2">
                   <div className="p-3 bg-white rounded-2xl shadow-xl">

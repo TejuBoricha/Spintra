@@ -130,12 +130,13 @@ export default function CreateRoomClient() {
       } catch (error) {
         console.error("Failed to persist room to Supabase:", error);
         const errMsg = (error as { message?: string })?.message || "";
-        if (errMsg.toLowerCase().includes("rate limit exceeded")) {
-          toast.error(errMsg);
-          setIsCreating(false);
-          return;
-        }
-        toast.warning("Room created locally, but couldn't sync to the server — realtime sync may not work for other devices.");
+        toast.error(
+          errMsg.toLowerCase().includes("rate limit exceeded")
+            ? errMsg
+            : "Couldn't create the room. Please check your connection and try again."
+        );
+        setIsCreating(false);
+        return;
       }
     }
 
@@ -204,7 +205,7 @@ export default function CreateRoomClient() {
               className={`text-left p-4 rounded-xl border transition-all duration-200 ${
                 selectedType === rt.type
                   ? "glass-card border-purple-500/50 bg-purple-500/10 shadow-lg shadow-purple-500/10"
-                  : "glass-card border-white/5 hover:border-white/10"
+                  : "glass-card border-border hover:border-foreground/20"
               }`}
             >
               <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${rt.color} flex items-center justify-center mb-2`}>
@@ -255,7 +256,7 @@ export default function CreateRoomClient() {
               />
             </div>
 
-            <div className="pt-4 border-t border-white/5">
+            <div className="pt-4 border-t border-border">
               <Label className="text-xs text-muted-foreground uppercase tracking-wider">
                 Selected Game
               </Label>
@@ -303,14 +304,14 @@ export default function CreateRoomClient() {
               >
                 <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                   <p data-testid="created-room-badge" className="text-sm font-medium text-emerald-400 mb-1">Room Created!</p>
-                  <p className="text-2xl font-bold tracking-wider text-white">{createdRoom.code}</p>
+                  <p className="text-2xl font-bold tracking-wider text-foreground">{createdRoom.code}</p>
                 </div>
 
                 <Button
                   onClick={copyToClipboard}
                   data-testid="copy-link-button"
                   variant="outline"
-                  className="w-full border-white/10"
+                  className="w-full border-border"
                 >
                   {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
                   {copied ? "Copied!" : "Copy Link"}

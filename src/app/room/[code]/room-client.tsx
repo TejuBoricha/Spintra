@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, Component, ReactNode } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Component, ReactNode } from "react";
 import { toast } from "sonner";
 import { AnimatePresence } from "framer-motion";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import type { User, ChatMessage } from "@/lib/types";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getOrCreateRoomUser, getLocalRoomCreatorId } from "@/lib/room-user";
+import { isUserBannedFromRoom } from "@/lib/room-bans";
 import { isDuplicateMessage } from "@/lib/utils";
 import { IdleScreen } from "./activities/idle-screen";
 import { AggregateIdleScreen } from "./activities/aggregate-idle-screen";
@@ -53,7 +54,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   const [currentUser, setCurrentUser] = useState<User>(getOrCreateRoomUser);
   const [authReady, setAuthReady] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
-  const [accessError, setAccessError] = useState<"full" | "locked" | "not_found" | null>(null);
+  const [accessError, setAccessError] = useState<"full" | "locked" | "not_found" | "banned" | null>(null);
   const router = useRouter();
 
   // Client anonymous auth setup (runs only on mount)
@@ -103,7 +104,12 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     if (!authReady) return;
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
-      queueMicrotask(() => setCheckingAccess(false));
+      queueMicrotask(() => {
+        if (isUserBannedFromRoom(roomCode, currentUser.id)) {
+          setAccessError("banned");
+        }
+        setCheckingAccess(false);
+      });
       return;
     }
 
@@ -133,7 +139,23 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           return;
         }
 
-        // 3. Check if user is already a participant (reconnection / page refresh)
+        // 3. Check if the user has been banned from this room
+        const { data: ban } = await supabase
+          .from("room_bans")
+          .select("id")
+          .eq("room_id", roomCode)
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
+
+        if (ban) {
+          if (isMounted) {
+            setAccessError("banned");
+            setCheckingAccess(false);
+          }
+          return;
+        }
+
+        // 4. Check if user is already a participant (reconnection / page refresh)
         const { data: existingPart } = await supabase
           .from("room_participants")
           .select("id")
@@ -218,6 +240,11 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         desc: "This room has reached its maximum participant limit. Try joining later.",
         emoji: "person_gesturing_no" as EmojiName,
       },
+      banned: {
+        title: "You've Been Removed",
+        desc: "The host removed you from this room and you can't rejoin it.",
+        emoji: "broom" as EmojiName,
+      },
     }[accessError];
 
     return (
@@ -290,6 +317,19 @@ function RoomUIInner({
   const [showParticipants, setShowParticipants] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+
+  // Mirrored in refs so addIncomingMessage (below) can read the latest sidebar
+  // state without depending on it directly — depending on it directly used to
+  // give the callback a new identity on every sidebar toggle, which tore down
+  // and rebuilt the entire realtime channel (missing events during the gap).
+  const showParticipantsRef = useRef(showParticipants);
+  const isMobileSidebarOpenRef = useRef(isMobileSidebarOpen);
+  useEffect(() => {
+    showParticipantsRef.current = showParticipants;
+  }, [showParticipants]);
+  useEffect(() => {
+    isMobileSidebarOpenRef.current = isMobileSidebarOpen;
+  }, [isMobileSidebarOpen]);
   const [isCloseRoomDialogOpen, setIsCloseRoomDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -339,12 +379,12 @@ function RoomUIInner({
         });
         if (incoming.user_id !== localUser.id) {
           // If sidebar is showing participants OR mobile drawer is closed, trigger unread badge
-          if (showParticipants || !isMobileSidebarOpen) {
+          if (showParticipantsRef.current || !isMobileSidebarOpenRef.current) {
             setHasUnreadMessages(true);
           }
         }
       },
-      [localUser.id, showParticipants, isMobileSidebarOpen, setMessages, setHasUnreadMessages]
+      [localUser.id, setMessages, setHasUnreadMessages]
     ),
   });
 
@@ -367,6 +407,7 @@ function RoomUIInner({
     handleCloseRoom,
     realtimeStatusLabel,
     realtimeStatusClass,
+    isLocalOnlyMode,
     realtimeError,
     notification,
   } = subscription;
@@ -404,7 +445,11 @@ function RoomUIInner({
     try {
       await navigator.clipboard.writeText(`${window.location.origin}/room/${roomCode}`);
       setCopied(true);
-      toast.success("Room link copied!");
+      if (isLocalOnlyMode) {
+        toast.warning("Link copied — but this room only works on this device, so it won't work for anyone else.");
+      } else {
+        toast.success("Room link copied!");
+      }
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       console.error("Failed to copy room link:", error);
@@ -483,6 +528,7 @@ function RoomUIInner({
           roomName={roomName}
           realtimeStatusClass={realtimeStatusClass}
           realtimeStatusLabel={realtimeStatusLabel}
+          isLocalOnlyMode={isLocalOnlyMode}
           isLocked={isLocked}
           roomCode={roomCode}
           onlineCount={participants.filter((p) => p.is_online).length}
