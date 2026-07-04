@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { MessageReportsPanel } from "./message-reports-panel";
 import type { RoomType } from "@/lib/types";
 
 interface RoomHeaderProps {
@@ -162,6 +163,7 @@ export function RoomHeader({
           </Tooltip>
           {isHost && (
             <>
+              <MessageReportsPanel roomCode={roomCode} />
               <Tooltip>
                 <TooltipTrigger
                   render={

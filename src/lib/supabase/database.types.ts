@@ -218,6 +218,7 @@ export interface Database {
           reported_user_id: string
           reporter_id: string
           reason: string | null
+          reviewed: boolean
           created_at: string
         }
         Insert: {
@@ -227,6 +228,7 @@ export interface Database {
           reported_user_id: string
           reporter_id: string
           reason?: string | null
+          reviewed?: boolean
           created_at?: string
         }
         Update: {
@@ -236,6 +238,7 @@ export interface Database {
           reported_user_id?: string
           reporter_id?: string
           reason?: string | null
+          reviewed?: boolean
           created_at?: string
         }
         Relationships: [
