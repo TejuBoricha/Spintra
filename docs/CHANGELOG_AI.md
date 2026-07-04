@@ -122,6 +122,30 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 31: Rate Limiting on Room Creation & Chat Messages
+
+**AI:** Claude Code (Anthropic)
+**Task:** Implement the second item of the High Priority "pre-launch hardening" tier: DB-level rate limiting on room creation and chat message sending.
+**Files Modified/Created:**
+- `supabase/migrations/0011_rate_limiting.sql` (NEW) — before-insert triggers on `rooms` (8 rooms / 10 min per `host_id`) and `chat_messages` (20 messages / 10 sec per `user_id`), plus supporting composite indexes (`rooms_host_id_created_at_idx`, `chat_messages_user_id_created_at_idx`). Mirrors migration `0009`'s `check_room_limit_before_join` trigger pattern exactly (security definer, count + `raise exception`).
+- `src/app/create/create-client.tsx` — `handleCreate`'s catch block now detects a rate-limit rejection (`error.message` containing "rate limit exceeded") and hard-stops with an error toast, instead of falling through to the existing "create locally, sync failed" degraded-mode path (which would have silently pushed the user into a room that was never persisted).
+- `src/app/room/[code]/hooks/use-room-chat.ts` — `sendMessage`'s catch block now rolls back the optimistically-added chat message and restores the typed text on any insert failure (previously there was no rollback at all, leaving a "phantom message" visible only to the sender), and shows the specific rate-limit message when applicable.
+- `docs/TASKS.md`, `docs/ARCHITECTURE.md` (migrations table + RLS summary), `docs/AI_CONTEXT.md`, `docs/HANDOFF.md` — synced
+
+**Purpose:**
+- No throttling existed on room or message creation; the RLS policies only verify `auth.uid()` ownership, not volume, leaving the app open to anonymous-session spam once public.
+
+**Outcome:**
+- `npm run verify` (typecheck, lint, docs-drift) passes cleanly.
+- **The migration has NOT been applied to the live Supabase project.** No Supabase CLI session (`supabase login`/`link`) or Docker was available in this environment to push or integration-test it. The SQL was hand-verified against migration `0009`'s proven pattern but was not executed against a real Postgres instance. The user must apply it via the Supabase Dashboard SQL Editor or `supabase db push` before it takes effect.
+
+**Risks:**
+- Threshold values (8 rooms/10 min, 20 messages/10 sec) are a judgment call, not empirically tuned — may need adjustment based on real usage patterns after launch.
+
+**Addendum (same day):** The user applied `0011_rate_limiting.sql` to the live Supabase project via the Dashboard SQL Editor and confirmed "Success. No rows returned" — rate limiting is now active in production.
+
+---
+
 ## [2026-07-04] — Session 30: Legal Basics (Terms of Service, Privacy Policy, Cookie Consent)
 
 **AI:** Claude Code (Anthropic)

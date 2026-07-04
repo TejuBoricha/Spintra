@@ -129,6 +129,12 @@ export default function CreateRoomClient() {
         if (error) throw error;
       } catch (error) {
         console.error("Failed to persist room to Supabase:", error);
+        const errMsg = (error as { message?: string })?.message || "";
+        if (errMsg.toLowerCase().includes("rate limit exceeded")) {
+          toast.error(errMsg);
+          setIsCreating(false);
+          return;
+        }
         toast.warning("Room created locally, but couldn't sync to the server — realtime sync may not work for other devices.");
       }
     }

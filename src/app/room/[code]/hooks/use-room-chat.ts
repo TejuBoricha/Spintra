@@ -194,16 +194,24 @@ export function useRoomChat({
     }
 
     try {
-      await supabase.from("chat_messages").insert({
+      const { error } = await supabase.from("chat_messages").insert({
         id: msg.id,
         room_id: roomCode,
         user_id: currentUser.id,
         content: msg.content,
         created_at: msg.created_at,
       });
+      if (error) throw error;
     } catch (error) {
       console.error("Chat insert failed:", error);
-      toast.error("Unable to send message. Please try again.");
+      setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+      setNewMessage(trimmed);
+      const errMsg = (error as { message?: string })?.message || "";
+      toast.error(
+        errMsg.toLowerCase().includes("rate limit exceeded")
+          ? errMsg
+          : "Unable to send message. Please try again."
+      );
     }
   }, [newMessage, currentUser, roomCode, isHost, isLocked, postLocalMessage, setMessages]);
 
