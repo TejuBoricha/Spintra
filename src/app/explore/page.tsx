@@ -386,7 +386,7 @@ export default function ExplorePage() {
                 placeholder="Search rooms, templates..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 h-12 bg-white/5 border-white/10 rounded-2xl"
+                className="pl-10 h-12 bg-muted/50 border-border rounded-2xl"
               />
             </div>
 
@@ -399,7 +399,7 @@ export default function ExplorePage() {
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
                 onKeyDown={(e) => e.key === "Enter" && handleJoinRoom(joinCode)}
                 placeholder="JOIN BY CODE (EX: 89PB5T)"
-                className="flex-1 px-4 h-12 bg-white/5 border border-white/10 rounded-2xl text-center text-sm font-mono font-bold uppercase tracking-wider text-purple-300 focus:outline-none focus:border-cyan-500/50"
+                className="flex-1 px-4 h-12 bg-muted/50 border border-border rounded-2xl text-center text-sm font-mono font-bold uppercase tracking-wider text-purple-300 focus:outline-none focus:border-cyan-500/50"
               />
               <Button
                 onClick={() => handleJoinRoom(joinCode)}
@@ -421,7 +421,7 @@ export default function ExplorePage() {
               className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${
                 activeCategory === cat
                   ? "bg-purple-600 text-white shadow-lg shadow-purple-500/25"
-                  : "glass-card hover:border-white/15 text-muted-foreground hover:text-white"
+                  : "glass-card hover:border-border text-muted-foreground hover:text-foreground"
               }`}
             >
               {cat}
@@ -433,7 +433,7 @@ export default function ExplorePage() {
         <section>
           <div className="flex items-center gap-2 mb-6">
             <TrendingUp className="w-5 h-5 text-purple-400" />
-            <h2 className="text-2xl font-black text-white">Live Trending Rooms</h2>
+            <h2 className="text-2xl font-black text-foreground">Live Trending Rooms</h2>
             <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/25 ml-2 font-mono uppercase text-[10px] tracking-widest animate-pulse">
               Live Feed
             </Badge>
@@ -445,21 +445,21 @@ export default function ExplorePage() {
               {[...Array(6)].map((_, i) => (
                 <div
                   key={i}
-                  className="glass-card p-5 border border-white/5 rounded-3xl space-y-4 animate-pulse bg-white/[0.01]"
+                  className="glass-card p-5 border border-border rounded-3xl space-y-4 animate-pulse bg-muted/30"
                 >
                   <div className="flex justify-between items-start">
                     <div className="space-y-2 flex-1">
-                      <div className="h-4 bg-white/5 rounded-md w-3/4" />
-                      <div className="h-3 bg-white/5 rounded-md w-1/3" />
+                      <div className="h-4 bg-muted rounded-md w-3/4" />
+                      <div className="h-3 bg-muted rounded-md w-1/3" />
                     </div>
-                    <div className="h-5 bg-white/5 rounded-full w-16" />
+                    <div className="h-5 bg-muted rounded-full w-16" />
                   </div>
                   <div className="flex justify-between items-center pt-2">
                     <div className="flex gap-3 w-1/2">
-                      <div className="h-3 bg-white/5 rounded w-8" />
-                      <div className="h-3 bg-white/5 rounded w-8" />
+                      <div className="h-3 bg-muted rounded w-8" />
+                      <div className="h-3 bg-muted rounded w-8" />
                     </div>
-                    <div className="h-3 bg-white/5 rounded w-16" />
+                    <div className="h-3 bg-muted rounded w-16" />
                   </div>
                 </div>
               ))}
@@ -469,13 +469,13 @@ export default function ExplorePage() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="glass-card p-12 text-center border border-white/10 rounded-3xl flex flex-col items-center justify-center gap-6 max-w-lg mx-auto"
+              className="glass-card p-12 text-center border border-border rounded-3xl flex flex-col items-center justify-center gap-6 max-w-lg mx-auto"
             >
               <div className="w-16 h-16 rounded-full bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
                 <Radar className="w-8 h-8 text-purple-400 animate-pulse" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-lg font-bold text-white">No Public Rooms Active</h3>
+                <h3 className="text-lg font-bold text-foreground">No Public Rooms Active</h3>
                 <p className="text-sm text-muted-foreground max-w-sm">
                   There are no live public rooms matching this filter. Be the first to create one and invite the community!
                 </p>
@@ -501,14 +501,14 @@ export default function ExplorePage() {
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div>
-                          <h3 className="font-bold text-white group-hover:text-purple-400 transition-colors line-clamp-1">
+                          <h3 className="font-bold text-foreground group-hover:text-purple-400 transition-colors line-clamp-1">
                             {room.name}
                           </h3>
                           <p className="text-xs font-mono text-purple-400/80 uppercase font-semibold tracking-wider mt-0.5">
                             CODE: {room.code}
                           </p>
                         </div>
-                        <Badge variant="secondary" className="capitalize text-[10px] tracking-wider font-semibold bg-white/5 border-white/10 text-muted-foreground">
+                        <Badge variant="secondary" className="capitalize text-[10px] tracking-wider font-semibold bg-muted border-border text-muted-foreground">
                           {room.type.replace("-", " ")}
                         </Badge>
                       </div>
@@ -536,7 +536,7 @@ export default function ExplorePage() {
         <section>
           <div className="flex items-center gap-2 mb-6">
             <Sparkles className="w-5 h-5 text-amber-400" />
-            <h2 className="text-2xl font-black text-white">Featured Templates</h2>
+            <h2 className="text-2xl font-black text-foreground">Featured Templates</h2>
           </div>
           {filteredTemplates.length === 0 ? (
             <div className="glass-card p-12 text-center text-muted-foreground text-sm flex flex-col items-center gap-3 rounded-3xl">
@@ -558,7 +558,7 @@ export default function ExplorePage() {
                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform shadow-lg shadow-purple-500/10">
                         <Icon className="w-6 h-6 text-white" />
                       </div>
-                      <h3 className="font-bold text-white text-sm group-hover:text-purple-300 transition-colors">
+                      <h3 className="font-bold text-foreground text-sm group-hover:text-purple-300 transition-colors">
                         {t.label}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-1">{t.users} active uses</p>
@@ -574,7 +574,7 @@ export default function ExplorePage() {
         <section>
           <div className="flex items-center gap-2 mb-6">
             <Clock className="w-5 h-5 text-purple-400" />
-            <h2 className="text-2xl font-black text-white">Recent Activity</h2>
+            <h2 className="text-2xl font-black text-foreground">Recent Activity</h2>
           </div>
           {filteredActivities.length === 0 ? (
             <div className="glass-card p-8 text-center text-muted-foreground text-sm flex flex-col items-center gap-3 rounded-3xl">
@@ -589,11 +589,11 @@ export default function ExplorePage() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.04 }}
-                    className="glass-card p-4 flex items-center gap-4 rounded-2xl hover:border-purple-500/30 transition-all cursor-pointer bg-white/[0.01]"
+                    className="glass-card p-4 flex items-center gap-4 rounded-2xl hover:border-purple-500/30 transition-all cursor-pointer bg-muted/30"
                   >
                     <Emoji name={activity.emoji} size={28} />
                     <div className="flex-1 text-sm">
-                      <span className="font-bold text-white">@{activity.user}</span>{" "}
+                      <span className="font-bold text-foreground">@{activity.user}</span>{" "}
                       <span className="text-muted-foreground">{activity.action}</span>{" "}
                       <span className="font-bold text-purple-300">{activity.item}</span>
                     </div>

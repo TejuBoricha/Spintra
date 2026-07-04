@@ -89,7 +89,7 @@ export function NeverHaveIEverActivity() {
       {nhiePrompt ? (
         <>
           <div className="w-full text-center px-8 py-10 rounded-3xl border border-violet-500/30 bg-gradient-to-br from-violet-500/5 to-fuchsia-500/5 shadow-lg shadow-violet-500/5 leading-relaxed">
-            <p className="text-xl font-bold text-white leading-normal">{nhiePrompt}</p>
+            <p className="text-xl font-bold text-foreground leading-normal">{nhiePrompt}</p>
           </div>
           <div className="flex gap-4 w-full pt-2">
             {(["have", "never"] as const).map((choice) => {
@@ -104,7 +104,7 @@ export function NeverHaveIEverActivity() {
                         myChoice === choice
                           ? "border-rose-500 bg-rose-500/10 shadow-rose-500/10"
                           : myChoice
-                          ? "border-white/5 opacity-40"
+                          ? "border-border opacity-40"
                           : "border-rose-500/20 hover:border-rose-500/50 hover:bg-rose-500/[0.03]",
                       text: "text-rose-400",
                     }
@@ -114,7 +114,7 @@ export function NeverHaveIEverActivity() {
                         myChoice === choice
                           ? "border-emerald-500 bg-emerald-500/10 shadow-emerald-500/10"
                           : myChoice
-                          ? "border-white/5 opacity-40"
+                          ? "border-border opacity-40"
                           : "border-emerald-500/20 hover:border-emerald-500/50 hover:bg-emerald-500/[0.03]",
                       text: "text-emerald-400",
                     };
@@ -170,7 +170,7 @@ export function NeverHaveIEverActivity() {
           </div>
         </>
       ) : (
-        <div className="glass-card p-12 rounded-3xl text-center w-full border border-white/10 shadow-xl">
+        <div className="glass-card p-12 rounded-3xl text-center w-full border border-border shadow-xl">
           <p className="mb-4 flex justify-center">
             <Emoji name="see_no_evil_monkey" size={48} />
           </p>

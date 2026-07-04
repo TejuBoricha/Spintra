@@ -60,7 +60,7 @@ export function RpsActivity() {
                     choice,
                   });
                 }}
-                className={`flex flex-col items-center gap-3 p-6 w-28 rounded-2xl border border-white/10 ${config.border} shadow-lg hover:shadow-2xl transition-all duration-300 bg-white/[0.02]`}
+                className={`flex flex-col items-center gap-3 p-6 w-28 rounded-2xl border border-border ${config.border} shadow-lg hover:shadow-2xl transition-all duration-300 bg-muted/30`}
               >
                 <Emoji name={RPS_EMOJI[choice]} size={44} pop />
                 <span className={`text-sm font-semibold ${config.text}`}>{choice}</span>
@@ -69,7 +69,7 @@ export function RpsActivity() {
           })}
         </div>
       ) : (
-        <div className="glass-card p-6 rounded-2xl text-center w-full max-w-xs border border-white/10 shadow-xl bg-gradient-to-br from-white/[0.01] to-white/[0.03]">
+        <div className="glass-card p-6 rounded-2xl text-center w-full max-w-xs border border-border shadow-xl bg-gradient-to-br from-white/[0.01] to-white/[0.03]">
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Your pick</p>
           <div className="flex flex-col items-center gap-2">
             <Emoji
@@ -77,7 +77,7 @@ export function RpsActivity() {
               size={56}
               pop
             />
-            <span className="text-xl font-bold text-white mt-1">
+            <span className="text-xl font-bold text-foreground mt-1">
               {rpsChoices[currentUser.id].choice}
             </span>
           </div>
@@ -88,7 +88,7 @@ export function RpsActivity() {
         {Object.values(rpsChoices).map((r, i) => (
           <div
             key={i}
-            className="flex items-center gap-3 px-4 py-3 bg-white/[0.02] border border-white/5 rounded-xl shadow-sm"
+            className="flex items-center gap-3 px-4 py-3 bg-muted/30 border border-border rounded-xl shadow-sm"
           >
             <span className="font-semibold text-sm text-muted-foreground">{r.username}</span>
             <span className="text-[10px] text-purple-400/80 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/10">

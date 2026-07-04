@@ -36,7 +36,7 @@ export function TeamMakerActivity() {
       </h2>
 
       {isHost && (
-        <div className="flex gap-3 flex-wrap justify-center bg-white/[0.02] border border-white/5 p-3 rounded-2xl w-full">
+        <div className="flex gap-3 flex-wrap justify-center bg-muted/30 border border-border p-3 rounded-2xl w-full">
           <span className="text-xs font-semibold text-muted-foreground self-center mr-2">
             Create:
           </span>
@@ -80,7 +80,7 @@ export function TeamMakerActivity() {
                 transition={{ duration: 0.3, delay: i * 0.05 }}
                 className={`p-5 rounded-3xl border shadow-lg ${colors[i % colors.length]}`}
               >
-                <p className="font-extrabold mb-3 text-base text-white tracking-wide border-b border-white/10 pb-1.5">
+                <p className="font-extrabold mb-3 text-base text-foreground tracking-wide border-b border-border pb-1.5">
                   {team.name}
                 </p>
                 <div className="space-y-2">
@@ -102,7 +102,7 @@ export function TeamMakerActivity() {
           })}
         </div>
       ) : (
-        <div className="glass-card p-12 rounded-3xl text-center w-full border border-white/10 shadow-xl">
+        <div className="glass-card p-12 rounded-3xl text-center w-full border border-border shadow-xl">
           <p className="mb-4 flex justify-center">
             <Emoji name="busts_in_silhouette" size={48} />
           </p>

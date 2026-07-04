@@ -139,7 +139,7 @@ export default function HomePage() {
           >
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-muted-foreground">Multiplayer platform for</span>
-            <span className="text-white font-medium">Decisions. Games. Teams.</span>
+            <span className="text-foreground font-medium">Decisions. Games. Teams.</span>
           </motion.div>
 
           {/* Main Headline */}
@@ -187,7 +187,7 @@ export default function HomePage() {
               <Button
                 variant="outline"
                 size="lg"
-                className="text-lg px-8 py-6 glass border-white/10 hover:border-white/20"
+                className="text-lg px-8 py-6 glass border-border hover:border-foreground/20"
               >
                 Explore Games
               </Button>
@@ -199,7 +199,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7, duration: 0.6 }}
-            className="max-w-md mx-auto mt-12 p-6 glass-card border border-white/10 rounded-3xl space-y-4"
+            className="max-w-md mx-auto mt-12 p-6 glass-card border border-border rounded-3xl space-y-4"
           >
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest text-left">
               Have a Room Code?
@@ -242,9 +242,9 @@ export default function HomePage() {
               </div>
               <span>10,000+ active rooms</span>
             </div>
-            <div className="hidden sm:block w-px h-4 bg-white/10" />
+            <div className="hidden sm:block w-px h-4 bg-border" />
             <span className="hidden sm:inline">No download required</span>
-            <div className="hidden sm:block w-px h-4 bg-white/10" />
+            <div className="hidden sm:block w-px h-4 bg-border" />
             <span className="hidden sm:inline">Free to start</span>
           </motion.div>
 
@@ -258,16 +258,16 @@ export default function HomePage() {
             <motion.div
               animate={{ y: [0, 8, 0] }}
               transition={{ repeat: Infinity, duration: 2 }}
-              className="w-6 h-10 rounded-full border-2 border-white/20 flex items-start justify-center p-1"
+              className="w-6 h-10 rounded-full border-2 border-border flex items-start justify-center p-1"
             >
-              <motion.div className="w-1.5 h-3 rounded-full bg-white/50" />
+              <motion.div className="w-1.5 h-3 rounded-full bg-muted-foreground/50" />
             </motion.div>
           </motion.div>
         </motion.div>
       </section>
 
       {/* Perks Bar */}
-      <section className="relative z-10 py-12 border-y border-white/5 bg-black/20 backdrop-blur-sm">
+      <section className="relative z-10 py-12 border-y border-border bg-black/20 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {perks.map((perk, i) => (
@@ -351,7 +351,7 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-white/5 py-12 px-4">
+      <footer className="relative z-10 border-t border-border py-12 px-4">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded overflow-hidden flex-shrink-0">

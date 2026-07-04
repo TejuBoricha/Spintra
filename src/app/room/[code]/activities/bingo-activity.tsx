@@ -130,7 +130,7 @@ export function BingoActivity() {
       )}
 
       {/* Bingo card layout matching standalone premium grid style */}
-      <div className="glass-card p-5 rounded-3xl border border-white/10 shadow-2xl bg-gradient-to-br from-white/[0.01] to-white/[0.03]">
+      <div className="glass-card p-5 rounded-3xl border border-border shadow-2xl bg-gradient-to-br from-white/[0.01] to-white/[0.03]">
         <div className="grid grid-cols-5 gap-2 mb-2">
           {COLUMNS.map((col) => (
             <div
@@ -147,7 +147,7 @@ export function BingoActivity() {
               const marked = isMarked(col, row);
               const isFree = col === 2 && row === 2;
 
-              let styleClass = "border-white/10 text-muted-foreground bg-white/[0.02]";
+              let styleClass = "border-border text-muted-foreground bg-muted/30";
               if (marked) {
                 styleClass = isFree
                   ? "bg-amber-500/20 border-amber-500 text-amber-200 shadow-amber-500/10"

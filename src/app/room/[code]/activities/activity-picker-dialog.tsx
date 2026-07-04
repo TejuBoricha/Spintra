@@ -42,7 +42,7 @@ export function ActivityPickerDialog({ activeActivityType, onClose, onSelect }: 
                 className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all text-sm font-medium hover:border-purple-500/50 hover:bg-purple-500/10 ${
                   activeActivityType === g.type
                     ? "border-purple-500 bg-purple-500/20 text-purple-300"
-                    : "border-white/10 text-muted-foreground"
+                    : "border-border text-muted-foreground"
                 }`}
               >
                 <Icon className="w-6 h-6" />

@@ -51,7 +51,7 @@ export function NameDrawActivity() {
           </p>
         </motion.div>
       ) : (
-        <div className="glass-card p-12 rounded-3xl text-center border border-white/10 w-full shadow-xl">
+        <div className="glass-card p-12 rounded-3xl text-center border border-border w-full shadow-xl">
           <p className="mb-4 flex justify-center">
             <Emoji name="admission_tickets" size={48} />
           </p>

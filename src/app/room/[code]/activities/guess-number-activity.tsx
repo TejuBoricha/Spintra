@@ -79,7 +79,7 @@ export function GuessNumberActivity() {
           const isCorrect = g.hint === "correct";
           const itemStyle = isCorrect
             ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-            : "border-white/5 bg-white/[0.01]";
+            : "border-border bg-muted/30";
 
           return (
             <motion.div
@@ -89,7 +89,7 @@ export function GuessNumberActivity() {
               className={`flex items-center gap-4 px-4 py-3 rounded-xl border text-sm shadow-sm transition-all duration-300 ${itemStyle}`}
             >
               <span className="font-bold">{g.username}</span>
-              <span className="text-xs text-muted-foreground bg-white/5 px-2 py-0.5 rounded-full border border-white/5">
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border">
                 Guessed
               </span>
               <span className="font-mono font-bold text-base">{g.guess}</span>
@@ -115,7 +115,7 @@ export function GuessNumberActivity() {
           );
         })}
         {guessHistory.length === 0 && (
-          <div className="text-center py-8 glass-card rounded-2xl border border-white/5">
+          <div className="text-center py-8 glass-card rounded-2xl border border-border">
             <p className="mb-2 flex justify-center">
               <Emoji name="thinking_face" size={32} />
             </p>

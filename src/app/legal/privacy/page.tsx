@@ -109,7 +109,7 @@ export default function PrivacyPolicyPage() {
             </p>
           </section>
 
-          <p className="text-sm text-muted-foreground pt-4 border-t border-white/5">
+          <p className="text-sm text-muted-foreground pt-4 border-t border-border">
             See also our <Link href="/legal/terms" className="underline hover:text-foreground">Terms of Service</Link>.
           </p>
         </div>

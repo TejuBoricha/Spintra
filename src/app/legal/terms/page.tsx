@@ -120,7 +120,7 @@ export default function TermsOfServicePage() {
             </p>
           </section>
 
-          <p className="text-sm text-muted-foreground pt-4 border-t border-white/5">
+          <p className="text-sm text-muted-foreground pt-4 border-t border-border">
             See also our <Link href="/legal/privacy" className="underline hover:text-foreground">Privacy Policy</Link>.
           </p>
         </div>
