@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useSyncExternalStore, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
 import { useTheme } from "@/components/theme-provider";
 import Link from "next/link";
 import Image from "next/image";
@@ -292,66 +293,69 @@ export function Navbar() {
         )}
       </AnimatePresence>
 
-      {/* Join Room Dialog Overlay */}
-      <AnimatePresence>
-        {isJoinOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsJoinOpen(false)}
-              className="absolute inset-0 bg-[#07050e]/60 backdrop-blur-md"
-            />
+      {/* Join Room Dialog Overlay - Rendered in Portal at document.body */}
+      {mounted && typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {isJoinOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsJoinOpen(false)}
+                className="absolute inset-0 bg-[#07050e]/60 backdrop-blur-md"
+              />
 
-            {/* Modal Box */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="glass-card max-w-sm w-full p-6 rounded-3xl border border-white/10 shadow-2xl relative z-10 text-center space-y-6 bg-background/95"
-            >
-              <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Gamepad2 className="w-5 h-5 text-purple-400" />
-                  Join Room
-                </h3>
-                <button
-                  onClick={() => setIsJoinOpen(false)}
-                  className="text-muted-foreground hover:text-white transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <p className="text-xs text-muted-foreground text-left uppercase tracking-wider font-semibold">
-                  Enter 6-Character Room Code:
-                </p>
-                <input
-                  type="text"
-                  maxLength={6}
-                  value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-                  onKeyDown={(e) => e.key === "Enter" && handleJoinRoomSubmit()}
-                  placeholder="EX: 89PB5T"
-                  className="w-full h-12 bg-white/5 border border-white/10 rounded-2xl text-center text-2xl font-mono text-purple-300 font-bold focus:outline-none focus:border-cyan-500/50 uppercase tracking-widest"
-                  autoFocus
-                />
-              </div>
-
-              <Button
-                disabled={joinCode.length !== 6 || joining}
-                onClick={handleJoinRoomSubmit}
-                className="w-full h-11 bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white rounded-xl font-bold shadow-lg shadow-purple-500/10 disabled:opacity-50"
+              {/* Modal Box */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="bg-[#f8f8fc] dark:bg-[#0c0c14] border border-black/10 dark:border-white/10 shadow-2xl relative z-10 text-center space-y-6 rounded-3xl max-w-sm w-full p-6 text-foreground"
               >
-                {joining ? "Verifying..." : "Join Game"}
-              </Button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                <div className="flex justify-between items-center border-b border-black/5 dark:border-white/5 pb-3">
+                  <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                    <Gamepad2 className="w-5 h-5 text-purple-400" />
+                    Join Room
+                  </h3>
+                  <button
+                    onClick={() => setIsJoinOpen(false)}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <p className="text-xs text-muted-foreground text-left uppercase tracking-wider font-semibold">
+                    Enter 6-Character Room Code:
+                  </p>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                    onKeyDown={(e) => e.key === "Enter" && handleJoinRoomSubmit()}
+                    placeholder="EX: 89PB5T"
+                    className="w-full h-12 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl text-center text-2xl font-mono text-purple-600 dark:text-purple-300 font-bold focus:outline-none focus:border-cyan-500/50 uppercase tracking-widest"
+                    autoFocus
+                  />
+                </div>
+
+                <Button
+                  disabled={joinCode.length !== 6 || joining}
+                  onClick={handleJoinRoomSubmit}
+                  className="w-full h-11 bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white rounded-xl font-bold shadow-lg shadow-purple-500/10 disabled:opacity-50"
+                >
+                  {joining ? "Verifying..." : "Join Game"}
+                </Button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </nav>
   );
 }
