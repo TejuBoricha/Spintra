@@ -181,6 +181,76 @@ export interface Database {
         }
         Relationships: []
       }
+      room_bans: {
+        Row: {
+          id: string
+          room_id: string
+          user_id: string
+          banned_by: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          room_id: string
+          user_id: string
+          banned_by: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          room_id?: string
+          user_id?: string
+          banned_by?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_room_bans_room"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["code"]
+          }
+        ]
+      }
+      message_reports: {
+        Row: {
+          id: string
+          message_id: string
+          room_id: string
+          reported_user_id: string
+          reporter_id: string
+          reason: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          message_id: string
+          room_id: string
+          reported_user_id: string
+          reporter_id: string
+          reason?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          message_id?: string
+          room_id?: string
+          reported_user_id?: string
+          reporter_id?: string
+          reason?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_message_reports_room"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["code"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never

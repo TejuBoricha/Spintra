@@ -4,13 +4,13 @@
 > DB schema live in `ARCHITECTURE.md`. Session-to-session handoff lives in `HANDOFF.md`. Backlog
 > and roadmap live in `TASKS.md`. Do not duplicate those here — link to them instead.
 > Always update this file after every significant milestone.
-> Last updated: 2026-07-04T12:10 IST
+> Last updated: 2026-07-04T14:30 IST
 
 ---
 
 ## Current Milestone
 
-Migrated all static activity content (Trivia questions and Word Scramble word banks) to dynamic, database-driven Supabase schemas with full offline BroadcastChannel fallbacks (Session 28).
+Working through the "pre-launch hardening" tier: Legal Basics (Session 30), Rate Limiting (Session 31), and Abuse & Moderation Controls (Session 32, migration `0012_moderation_controls.sql`) are done. Only Production Error Monitoring remains.
 
 ---
 
@@ -28,7 +28,9 @@ All room joining flows, discovery pages, profile state sync optimizations, datab
 
 ## Current Focus
 
-No area of the codebase is under active work right now. The user intends to publish the site live on the public internet once ready, so `TASKS.md`'s new High Priority "pre-launch hardening" tier (abuse/moderation controls, rate limiting, legal basics, error monitoring) takes precedence over the Medium Priority engagement features (visual scoreboard, tournament bracket UI, XP system, room settings panel).
+Working through `TASKS.md`'s High Priority "pre-launch hardening" tier one item at a time. Legal Basics (Session 30), Rate Limiting (Session 31), and Abuse & Moderation Controls (Session 32) are done — all migrations (`0011`, `0012`) are applied to the live Supabase project and verified end-to-end against production. Only Production Error Monitoring remains, ahead of the Medium Priority engagement features (visual scoreboard, tournament bracket UI, XP system, room settings panel).
+
+**Workflow change for future sessions:** the Supabase CLI is now linked to the live project (`qjxaehxwuqntyqrdmihs`) — `supabase/config.toml` was created via `supabase init`, the user ran `supabase login` once, and the AI ran `supabase link` + `supabase db push` directly. Future migrations no longer need manual copy-paste into the Supabase Dashboard SQL Editor; run `npx supabase db push --linked --yes` after adding a new migration file. Note: the remote migration-history table was out of sync with reality before this (many migrations 0001-0011 were originally applied by hand) — this was fixed once via `supabase migration repair --status applied <versions> --linked`. Future migrations pushed through the CLI going forward will stay in sync automatically.
 
 ---
 
@@ -51,7 +53,7 @@ Load-bearing assumptions a new session should be aware of before making changes:
 
 ## Next Recommended Task
 
-No task is queued. If picking up unprompted work, consult `TASKS.md` and start from the top of the new High Priority "pre-launch hardening" tier — the site is planned for a public launch, so abuse controls, rate limiting, legal basics, and error monitoring outrank the Medium Priority engagement features.
+Production Error Monitoring (`docs/TASKS.md` High Priority tier, item 4 — the last one) — wire up error tracking/alerting (e.g. Sentry). Legal Basics, Rate Limiting, and Abuse & Moderation Controls (items 1–3) are complete.
 
 ---
 

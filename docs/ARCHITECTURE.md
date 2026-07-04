@@ -49,6 +49,9 @@ spintra/
 │   │   ├── page.tsx                ← Home page
 │   │   ├── create/                 ← Room creation flow
 │   │   ├── explore/                ← Room discovery
+│   │   ├── legal/
+│   │   │   ├── terms/page.tsx      ← Terms of Service (static RSC)
+│   │   │   └── privacy/page.tsx    ← Privacy Policy (static RSC)
 │   │   ├── room/
 │   │   │   ├── page.tsx            ← Room list page
 │   │   │   └── [code]/
@@ -94,6 +97,8 @@ spintra/
 │       ├── types.ts                ← Shared TypeScript types (RoomType, ActivityEvent, User, etc.)
 │       ├── utils.ts                ← cn(), shuffleArray<T>()
 │       ├── room-user.ts            ← getOrCreateRoomUser(), getLocalRoomCreatorId()
+│       ├── blocked-users.ts        ← localStorage-based per-viewer message block/mute
+│       ├── chat-filter.ts          ← Basic profanity/spam content filter (client-side)
 │       ├── audio.ts                ← Sound effects
 │       └── supabase/
 │           └── client.ts           ← getSupabaseBrowserClient() — returns null if no .env.local
@@ -117,8 +122,11 @@ spintra/
 ## 3. Frontend Architecture
 
 ### Page Types
-- **Static pages** (RSC by default): `/`, `/explore`, `/create`, all `/tools/*` — these are server-rendered
+- **Static pages** (RSC by default): `/`, `/explore`, `/create`, `/legal/terms`, `/legal/privacy`, all `/tools/*` — these are server-rendered
 - **Dynamic page** (fully client): `/room/[code]` — everything is client-side due to Supabase Realtime WebSocket
+
+### Cookie/Consent Banner
+`src/components/cookie-consent-banner.tsx` is a client component mounted globally inside `Providers` (`src/components/providers.tsx`), so it appears on every route. It shows once (gated on the `spintra-cookie-consent` localStorage key, following the `spintra-` key prefix convention in `room-user.ts`) and links to `/legal/privacy`. Uses the `queueMicrotask(() => setState(...))` pattern from `room-client.tsx`'s `hasMounted` effect to satisfy the `react-hooks/set-state-in-effect` lint rule.
 
 ### The Room Client Pattern
 
@@ -223,6 +231,9 @@ useEffect(() => registerEventListener((event) => {
 - Hosts can update any participant row in their room (migration 0007)
 - Hosts can update room metadata for their own rooms
 - All inserts verified against `auth.uid()`
+- Room creation and chat messages are additionally rate-limited by before-insert triggers keyed on `auth.uid()` (migration 0011) — 8 rooms / 10 min, 20 messages / 10 sec
+- Kicking a participant (host-only) also records a `room_bans` row; a before-insert trigger on `room_participants` rejects any rejoin attempt from a banned `user_id` (migration 0012)
+- Any participant can flag a chat message via `message_reports` (insert-only — no select policy; reviewed by the project owner directly via the Supabase SQL editor, since there's no admin backend)
 
 ### Migrations Applied
 | # | File | Purpose |
@@ -237,8 +248,10 @@ useEffect(() => registerEventListener((event) => {
 | 0008 | `create_activity_prompts` | Creates + seeds `activity_prompts` (Truth or Dare / Would You Rather / Never Have I Ever) |
 | 0009 | `backend_and_db_improvements` | Security definer membership helper, hardened RLS policies, check limits trigger, and cleanup function |
 | 0010 | `create_trivia_and_scramble_prompts` | Creates `trivia_questions` table, seeds trivia questions, and seeds Word Scramble words |
+| 0011 | `rate_limiting` | Before-insert triggers capping room creation (8 / 10 min per `host_id`) and chat messages (20 / 10 sec per `user_id`); supporting composite indexes |
+| 0012 | `moderation_controls` | `room_bans` table + before-insert trigger blocking a banned `user_id` from rejoining a room (kick now also bans); `message_reports` table (insert-only, no select policy — reviewed via Supabase SQL editor) |
 
-**Current status:** all 10 applied; RLS enabled on all 5 tables; latest policy is `0009_backend_and_db_improvements`.
+**Current status:** all 12 applied; RLS enabled on all 7 tables; latest policy is `0012_moderation_controls`; latest migration is `0012_moderation_controls`.
 
 ### APIs / Integration Points
 No custom REST or GraphQL API exists — every client talks directly to Supabase (or, unconfigured, the `BroadcastChannel` Web API). The full set of integration points:
@@ -361,6 +374,9 @@ npm run ci         # verify + build + test:smoke — mirrors the CI pipeline loc
 
 Not documented in this session. The project uses Supabase hosted (remote). Frontend deployment target is unknown — likely Vercel (Next.js default) based on project structure.
 
+### Supabase CLI (linked, as of 2026-07-04)
+`supabase/config.toml` exists and the project is linked to the live Supabase project (ref `qjxaehxwuqntyqrdmihs`) via `supabase link`. New migrations can be pushed directly with `npx supabase db push --linked --yes` instead of manually pasting SQL into the Dashboard SQL Editor. Requires a one-time `supabase login` (browser OAuth) per machine — not something an AI assistant can do headlessly.
+
 ---
 
 ## 11. Important Implementation Details
@@ -386,12 +402,14 @@ Call this on any game win. It uses `canvas-confetti` with a burst configuration.
 
 ## 12. Database ER Diagram
 
-Generated directly from the 9 migration files in `supabase/migrations/` (not from `AI_CONTEXT.md`'s prior "Database Status" table, which incorrectly listed a `users` table that does not exist — corrected 2026-07-04).
+Generated directly from the 12 migration files in `supabase/migrations/` (not from `AI_CONTEXT.md`'s prior "Database Status" table, which incorrectly listed a `users` table that does not exist — corrected 2026-07-04).
 
 ```mermaid
 erDiagram
     ROOMS ||--o{ ROOM_PARTICIPANTS : "code = room_id (FK, on delete cascade)"
     ROOMS ||--o{ CHAT_MESSAGES : "code = room_id (FK, on delete cascade)"
+    ROOMS ||--o{ ROOM_BANS : "code = room_id (FK, on delete cascade)"
+    ROOMS ||--o{ MESSAGE_REPORTS : "code = room_id (FK, on delete cascade)"
 
     ROOMS {
         uuid id PK "gen_random_uuid()"
@@ -444,9 +462,29 @@ erDiagram
         text difficulty "easy / medium / hard"
         timestamptz created_at
     }
+
+    ROOM_BANS {
+        uuid id PK
+        text room_id FK "references rooms.code"
+        text user_id "the banned user"
+        text banned_by "host user_id, matched against auth.uid() by RLS"
+        timestamptz created_at
+    }
+
+    MESSAGE_REPORTS {
+        uuid id PK
+        uuid message_id "chat_messages.id (no FK — see notes)"
+        text room_id FK "references rooms.code"
+        text reported_user_id
+        text reporter_id "matched against auth.uid() by RLS"
+        text reason "nullable"
+        timestamptz created_at
+    }
 ```
 
 **Notes:**
 - `ACTIVITY_PROMPTS` and `TRIVIA_QUESTIONS` have no foreign keys to `rooms` — they are global, room-independent lookup tables read by any client (see RLS select policies).
+- `MESSAGE_REPORTS.message_id` has no FK to `chat_messages.id` — the app has no message-delete feature, so a message can only disappear via room cascade-delete, which already cleans up `message_reports` via the `room_id` FK. A second FK would be redundant.
+- `ROOM_BANS` and `MESSAGE_REPORTS` have no `select` RLS policy — clients can only insert. Bans are checked internally by a `security definer` trigger; reports are reviewed by the project owner directly via the Supabase SQL editor (there is no admin backend).
 - `rooms.id` is the literal primary key, but every foreign key and every client-side query filters on `rooms.code` instead (a 6-character human-shareable string) — `id` mostly goes unused outside its role as the PK.
 - `room_participants` and `chat_messages` both have `replica identity full` set (migration 0001/0002) so that Postgres logical replication — which Supabase Realtime reads from — includes the full old row on UPDATE/DELETE, not just PK columns. Without this, realtime DELETE events for a kicked participant or a closed room would be silently dropped for subscribers filtering on non-PK columns like `room_id`/`code`.

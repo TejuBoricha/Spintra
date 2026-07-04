@@ -231,6 +231,18 @@ export function useRoomSubscription({
             .delete()
             .eq("room_id", roomCode)
             .eq("user_id", participant.user_id);
+
+          // Best-effort: prevents the kicked user from immediately rejoining.
+          // Kick itself has already succeeded above, so a failure here doesn't
+          // block the primary action — just logged for visibility.
+          const { error: banError } = await supabase.from("room_bans").insert({
+            room_id: roomCode,
+            user_id: participant.user_id,
+            banned_by: currentUser.id,
+          });
+          if (banError) {
+            console.error("Failed to record room ban:", banError);
+          }
         } catch (error) {
           console.error("Failed to remove participant:", error);
           toast.error("Unable to remove participant.");
@@ -438,7 +450,12 @@ export function useRoomSubscription({
         if (error) {
           console.error("Failed to register participant in DB:", error.message);
           if (isMounted) {
-            toast.error(error.message.includes("limit") ? "This room has reached its participant limit." : "Unable to join room.");
+            const message = error.message.includes("banned")
+              ? "You have been banned from this room by the host."
+              : error.message.includes("limit")
+              ? "This room has reached its participant limit."
+              : "Unable to join room.";
+            toast.error(message);
             router.push("/explore");
           }
           return;

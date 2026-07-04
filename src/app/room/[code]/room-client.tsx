@@ -393,6 +393,7 @@ function RoomUIInner({
     showEmojis,
     setShowEmojis,
     sendMessage,
+    reportMessage,
     loadOlderMessages,
     chatScrollContainerRef,
     messagesEndRef,
@@ -467,6 +468,7 @@ function RoomUIInner({
       setShowEmojis={setShowEmojis}
       isHost={isHost}
       handleKickParticipant={handleKickParticipant}
+      reportMessage={reportMessage}
       chatScrollContainerRef={chatScrollContainerRef}
       messagesEndRef={messagesEndRef}
       onUpdateUsername={handleUpdateUsername}

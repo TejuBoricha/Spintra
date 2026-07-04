@@ -1,6 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
-import { MessageCircle, Users as UsersIcon, Crown, Smile, Send, UserX, Pencil, Check, X } from "lucide-react";
+import { MessageCircle, Users as UsersIcon, Crown, Smile, Send, UserX, Pencil, Check, X, Flag, Ban } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Emoji, renderTextWithEmoji, EMOJI_UNICODE } from "@/components/emoji";
+import { getBlockedUsers, toggleBlockedUser } from "@/lib/blocked-users";
 import type { User, ChatMessage, RoomParticipant } from "@/lib/types";
 
 const REACTION_NAMES = [
@@ -41,6 +42,7 @@ interface RoomSidebarProps {
   setShowEmojis: (show: boolean) => void;
   isHost: boolean;
   handleKickParticipant: (p: RoomParticipant) => Promise<void>;
+  reportMessage: (message: ChatMessage) => Promise<void>;
   chatScrollContainerRef: React.RefObject<HTMLDivElement | null>;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   onUpdateUsername: (newName: string) => Promise<void>;
@@ -64,12 +66,24 @@ export function RoomSidebar({
   setShowEmojis,
   isHost,
   handleKickParticipant,
+  reportMessage,
   chatScrollContainerRef,
   messagesEndRef,
   onUpdateUsername,
 }: RoomSidebarProps) {
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [editValue, setEditValue] = useState("");
+  const [blockedUsers, setBlockedUsers] = useState<string[]>([]);
+
+  useEffect(() => {
+    queueMicrotask(() => setBlockedUsers(getBlockedUsers()));
+  }, []);
+
+  const handleToggleBlock = useCallback((userId: string) => {
+    setBlockedUsers(toggleBlockedUser(userId));
+  }, []);
+
+  const visibleMessages = messages.filter((m) => !blockedUsers.includes(m.user_id));
 
   const handleSaveUsername = useCallback(async () => {
     const trimmed = editValue.trim();
@@ -154,12 +168,12 @@ export function RoomSidebar({
                     </div>
                   )}
                   <AnimatePresence initial={false}>
-                    {messages.map((msg) => {
+                    {visibleMessages.map((msg) => {
                       const participant = participants.find((p) => p.user_id === msg.user_id);
-                      const username =
-                        msg.user_id === currentUser.id
-                          ? "You"
-                          : participant?.user?.username || msg.user?.username || "Guest";
+                      const isOwnMessage = msg.user_id === currentUser.id;
+                      const username = isOwnMessage
+                        ? "You"
+                        : participant?.user?.username || msg.user?.username || "Guest";
                       const initials = username.slice(0, 2).toUpperCase() || "??";
                       const isMsgHost = participant?.role === "host";
 
@@ -170,17 +184,33 @@ export function RoomSidebar({
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.96 }}
                           transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                          className="flex gap-3"
+                          className="flex gap-3 group"
                         >
                           <Avatar className="w-8 h-8 shrink-0">
                             <AvatarFallback className="text-xs bg-gradient-to-br from-purple-500 to-cyan-500 text-white">
                               {initials}
                             </AvatarFallback>
                           </Avatar>
-                          <div>
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium">{username}</span>
                               {isMsgHost && <Crown className="w-3 h-3 text-amber-400" />}
+                              {!isOwnMessage && (
+                                <Tooltip>
+                                  <TooltipTrigger
+                                    render={
+                                      <button
+                                        onClick={() => reportMessage(msg)}
+                                        className="ml-auto opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 transition-opacity"
+                                        aria-label="Report message"
+                                      />
+                                    }
+                                  >
+                                    <Flag className="w-3 h-3" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>Report message</TooltipContent>
+                                </Tooltip>
+                              )}
                             </div>
                             <p className="text-sm text-muted-foreground">
                               {renderTextWithEmoji(msg.content)}
@@ -359,25 +389,49 @@ export function RoomSidebar({
                           </span>
                         </div>
                       )}
-                      {isHost && p.user_id !== currentUser.id && (
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => handleKickParticipant(p)}
-                                aria-label={`Remove ${
-                                  p.user?.username || "participant"
-                                } from the room`}
-                              />
-                            }
-                          >
-                            <UserX className="w-3.5 h-3.5" />
-                          </TooltipTrigger>
-                          <TooltipContent>Remove from room</TooltipContent>
-                        </Tooltip>
+                      {p.user_id !== currentUser.id && (
+                        <div className="flex items-center gap-1">
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={`h-7 w-7 ${blockedUsers.includes(p.user_id) ? "text-red-400" : ""}`}
+                                  onClick={() => handleToggleBlock(p.user_id)}
+                                  aria-label={`${
+                                    blockedUsers.includes(p.user_id) ? "Unblock" : "Block"
+                                  } ${p.user?.username || "participant"}`}
+                                />
+                              }
+                            >
+                              <Ban className="w-3.5 h-3.5" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {blockedUsers.includes(p.user_id) ? "Unblock (unhide messages)" : "Block (hide messages)"}
+                            </TooltipContent>
+                          </Tooltip>
+                          {isHost && (
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => handleKickParticipant(p)}
+                                    aria-label={`Remove ${
+                                      p.user?.username || "participant"
+                                    } from the room`}
+                                  />
+                                }
+                              >
+                                <UserX className="w-3.5 h-3.5" />
+                              </TooltipTrigger>
+                              <TooltipContent>Remove from room</TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
                       )}
                     </motion.div>
                   ))}

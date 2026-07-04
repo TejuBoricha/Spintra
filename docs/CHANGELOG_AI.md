@@ -122,6 +122,39 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 32: Abuse & Moderation Controls (Ban-on-Kick, Report, Block, Chat Filter)
+
+**AI:** Claude Code (Anthropic)
+**Task:** Implement the third item of the High Priority "pre-launch hardening" tier: abuse and moderation controls.
+**Correction made during investigation:** `TASKS.md`'s original wording ("a host has no way to remove a bad actor") was wrong — kick already existed (`room-sidebar.tsx`'s `UserX` button, `handleKickParticipant` in `use-room-subscription.ts`). The real gap: a kicked user could immediately rejoin the same room. Scoped this task around the actual gap, not the stale description.
+**Files Modified/Created:**
+- `supabase/migrations/0012_moderation_controls.sql` (NEW) — `room_bans` table + `before insert on room_participants` trigger (`check_room_ban_before_join`, mirrors `0009`/`0011`'s pattern) rejecting a rejoin from a banned `user_id`; `message_reports` table, insert-only (no select policy — reviewed via Supabase SQL editor, consistent with no admin backend).
+- `src/lib/blocked-users.ts` (NEW) — `localStorage`-based per-viewer block/mute list (`spintra-blocked-users` key), no DB involved.
+- `src/lib/chat-filter.ts` (NEW) — `getChatContentViolation()`: basic profanity/slur blocklist + repeated-character spam heuristic (`(.)\1{6,}`).
+- `src/lib/supabase/database.types.ts` — added `room_bans` and `message_reports` table types (required for typecheck against the hand-maintained Supabase types mirror).
+- `src/app/room/[code]/hooks/use-room-subscription.ts` — `handleKickParticipant` now also inserts a `room_bans` row (best-effort, doesn't block the kick on failure); join-flow (`trackSelf`) error handling now detects a ban rejection and shows a specific toast.
+- `src/app/room/[code]/hooks/use-room-chat.ts` — `sendMessage` now runs `getChatContentViolation()` before sending; added `reportMessage()` (inserts into `message_reports`, one report per message per reporter, tracked via a ref to avoid duplicates).
+- `src/app/room/[code]/components/room-sidebar.tsx` — added a Report (flag icon) button on each non-own chat message; added a Block/Unblock button on each non-self participant (available to everyone, not just the host, distinct from the host-only Remove button); messages from blocked users are filtered out of the rendered list.
+- `src/app/room/[code]/room-client.tsx` — threads `reportMessage` from the chat hook through to `RoomSidebar`.
+- `docs/TASKS.md`, `docs/ARCHITECTURE.md` (migrations table, ER diagram, RLS summary, folder structure), `docs/AI_CONTEXT.md`, `docs/HANDOFF.md` — synced.
+
+**Purpose:**
+- Closes the rejoin gap on kick, and adds the report/block/filter tools the backlog named — none of which existed before this session.
+
+**Outcome:**
+- `npm run verify` (typecheck, lint, docs-drift) passes cleanly.
+- Verified end-to-end against the real UI with a headless Playwright script driving two isolated browser contexts (host + guest): profanity ("you are a fucking idiot") and spam ("aaaaaaaaaaaaaaaa") both correctly rejected client-side before send; a normal message sends fine; the host's Report button click completes without crashing; Block hides the guest's messages from the host's view, Unblock restores them; Kick still succeeds and the guest is redirected to `/explore`.
+- **Bug found and fixed during this testing**: the profanity regex was `\b(word)\b` (leading and trailing word boundary), which meant inflected forms like "fucking" never matched, since there's no boundary between "fuck" and "ing". Fixed to `\b(word)` (leading boundary only) so common inflections are caught too.
+- **The migration has NOT been applied to the live Supabase project** (confirmed via the test run: both the `room_bans` insert and the `message_reports` insert returned `PGRST205 — Could not find the table`, logged and handled gracefully — kick still succeeded, reporting showed a clear error toast). Same manual step needed as `0011`.
+
+**Risks:**
+- The profanity blocklist is a basic, easily-bypassed first pass (no leetspeak/spacing detection) — a known, documented limitation, not a claim of robust moderation.
+- Bans are permanent-until-manually-cleared (no un-ban UI yet — would require a direct SQL delete from `room_bans`). Considered building temporary bans / an un-ban UI but deferred as unnecessary v1 complexity.
+
+**Addendum (same day) — CLI linked, migration applied live:** The user asked whether Docker could be installed to let the AI self-apply migrations. Explained that Docker only enables local testing, not pushing to the live project — that needs Supabase CLI auth, which Docker doesn't provide. Instead: user ran `supabase login` once (one-time browser OAuth); the AI ran `supabase init` (created `supabase/config.toml` + `supabase/.gitignore`), `supabase link --project-ref qjxaehxwuqntyqrdmihs`, discovered the remote migration-history table only recognized `0004-0007` as applied (everything else, `0001-0003`/`0008-0011`, was originally applied by hand via the SQL Editor across earlier sessions and never recorded), repaired that history with `supabase migration repair --status applied 0001 0002 0003 0008 0009 0010 0011 --linked` (metadata-only, no SQL executed), then pushed `0012` with `supabase db push --linked --yes`. Re-verified live with a headless Playwright script driving the real production database: message reporting succeeds, kick succeeds, and rejoining after a kick is now correctly blocked with "You have been banned from this room by the host." **Going forward, future migrations can be pushed directly via `supabase db push --linked --yes` — no more manual SQL Editor paste needed.**
+
+---
+
 ## [2026-07-04] — Session 31: Rate Limiting on Room Creation & Chat Messages
 
 **AI:** Claude Code (Anthropic)

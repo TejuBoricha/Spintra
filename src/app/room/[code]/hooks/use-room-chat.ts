@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { generateUUID } from "@/lib/utils";
+import { getChatContentViolation } from "@/lib/chat-filter";
 import type { ChatMessage, User } from "@/lib/types";
 
 interface UseRoomChatProps {
@@ -175,6 +176,12 @@ export function useRoomChat({
       return;
     }
 
+    const violation = getChatContentViolation(trimmed);
+    if (violation) {
+      toast.error(violation);
+      return;
+    }
+
     const msg: ChatMessage = {
       id: generateUUID(),
       room_id: roomCode,
@@ -215,6 +222,40 @@ export function useRoomChat({
     }
   }, [newMessage, currentUser, roomCode, isHost, isLocked, postLocalMessage, setMessages]);
 
+  const reportedMessageIdsRef = useRef<Set<string>>(new Set());
+
+  const reportMessage = useCallback(
+    async (message: ChatMessage) => {
+      if (message.user_id === currentUser.id) return;
+      if (reportedMessageIdsRef.current.has(message.id)) {
+        toast.info("You've already reported this message.");
+        return;
+      }
+
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) {
+        toast.error("Reporting isn't available in offline demo mode.");
+        return;
+      }
+
+      try {
+        const { error } = await supabase.from("message_reports").insert({
+          message_id: message.id,
+          room_id: roomCode,
+          reported_user_id: message.user_id,
+          reporter_id: currentUser.id,
+        });
+        if (error) throw error;
+        reportedMessageIdsRef.current.add(message.id);
+        toast.success("Reported. Thanks for flagging this.");
+      } catch (error) {
+        console.error("Failed to report message:", error);
+        toast.error("Unable to report message. Please try again.");
+      }
+    },
+    [currentUser, roomCode]
+  );
+
   return {
     messages,
     setMessages,
@@ -227,6 +268,7 @@ export function useRoomChat({
     hasUnreadMessages,
     setHasUnreadMessages,
     sendMessage,
+    reportMessage,
     loadOlderMessages,
     chatScrollContainerRef,
     messagesEndRef,
