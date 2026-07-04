@@ -40,7 +40,8 @@ spintra/
 │   ├── DECISIONS.md                ← Architecture Decision Records (ADRs)
 │   ├── CHANGELOG_AI.md             ← Full chronological AI work log (append only)
 │   ├── ENGINEERING_GOVERNANCE_REVIEW.md     ← Point-in-time audit, dated 2026-07-03 (historical)
-│   └── ENGINEERING_GOVERNANCE_REVIEW_V2.md  ← Current point-in-time audit, dated 2026-07-04
+│   ├── ENGINEERING_GOVERNANCE_REVIEW_V2.md  ← Current point-in-time audit, dated 2026-07-04
+│   └── ZUSTAND_INVESTIGATION.md    ← Zustand vs. Context state investigation report
 ├── src/
 │   ├── app/
 │   │   ├── globals.css             ← Global styles + glass/glass-card utilities

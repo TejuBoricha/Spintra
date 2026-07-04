@@ -24,7 +24,7 @@ None currently. No open bugs or security issues.
 
 - `[x]` **Trivia Database Migration:** Migrate the static [`src/lib/trivia-questions.ts`](file:///c:/Users/tejas/Desktop/Spintra-1/src/lib/trivia-questions.ts) file to a database table to support dynamic admin editing/moderation. Intentionally deferred — see `ENGINEERING_GOVERNANCE_REVIEW.md` §3 for the reasoning (hardcoded lists stay lightweight and support the offline `BroadcastChannel` fallback with zero DB setup).
 - `[x]` **Static Prompt Lists → Database-Driven:** Truth or Dare / Would You Rather / Never Have I Ever already have a dynamic path via `activity_prompts` (migration `0008`), but Word Scramble's word bank is still a hardcoded array. Same deferral reasoning as above applies.
-- `[ ]` **Investigate Zustand for Game State:** Zustand is installed (`ARCHITECTURE.md` §1) but unused. Worth investigating only if game state ever needs to persist across activity switches — not currently needed (see `ARCHITECTURE.md` §6 "No Zustand in Rooms").
+- `[x]` **Investigate Zustand for Game State:** Zustand is installed (`ARCHITECTURE.md` §1) but unused. Worth investigating only if game state ever needs to persist across activity switches — not currently needed (see `ARCHITECTURE.md` §6 "No Zustand in Rooms"). See [ZUSTAND_INVESTIGATION.md](file:///c:/Users/tejas/Desktop/Spintra-1/docs/ZUSTAND_INVESTIGATION.md).
 - `[x]` **Engineering Governance Review Re-run:** Done 2026-07-04 — see `ENGINEERING_GOVERNANCE_REVIEW_V2.md` (new dated file, per the versioning policy; V1 left unedited as historical record).
 - `[x]` **Extend `scripts/check-docs-drift.mjs` coverage:** Done 2026-07-04 — extended to verify React context shapes, docs/INDEX.md file alignment, file and relative link validations, and package.json scripts coverage. See engineering report.
 
@@ -42,6 +42,7 @@ Title, completion date, and a pointer to the full implementation detail in `CHAN
 
 | Title | Completed | CHANGELOG_AI.md Session |
 |---|---|---|
+| Zustand State Management Investigation | 2026-07-04 | Session 28 |
 | Database-Driven Trivia & Word Scramble Migration | 2026-07-04 | Session 28 |
 | Room Share Link / QR Code | 2026-07-04 | Session 27 |
 | Explore Page Live Feed, Join Codes, Portal Modals, Profile Editor, and Race Fixes | 2026-07-04 | Session 27 |

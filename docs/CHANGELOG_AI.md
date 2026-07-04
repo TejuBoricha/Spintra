@@ -122,16 +122,19 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
-## [2026-07-04] — Session 28: Database-Driven Activity Prompts & Trivia Questions Migration
+## [2026-07-04] — Session 28: Database Prompts Migration, Zustand Report & PIIA Workflow Enhancements
 **AI:** Antigravity (Google DeepMind)
-**Task:** Migrate all remaining static activity prompts and trivia question lists from the client codebase to public database tables in Supabase, maintaining full local sandbox fallbacks.
+**Task:** Migrate static prompts/trivia questions to dynamic DB schemas, write a Zustand state persistence investigation report, and enhance the Pre-Implementation Impact Assessment (PIIA) rules.
 **Files Modified/Created:**
 - `supabase/migrations/0010_create_trivia_and_scramble_prompts.sql` (NEW) — Supabase schema migration defining `trivia_questions` and extending `activity_prompts` check constraint, seeding all 37 Canonical questions and 12 Scramble words.
 - `src/lib/supabase/database.types.ts` — Updated the TypeScript interface definitions to incorporate the new `trivia_questions` table schema.
 - `src/app/room/[code]/activities/trivia-activity.tsx` — Refactored to fetch dynamic trivia questions from Supabase with safe type-casting and offline fallback.
 - `src/app/room/[code]/activities/word-scramble-activity.tsx` — Refactored to fetch dynamic scramble words from Supabase with offline fallback.
-- `docs/ARCHITECTURE.md` — Added migration `0010` and mapped the new `TRIVIA_QUESTIONS` schema inside the database ER mermaid diagram.
-- `docs/TASKS.md` — Checked off the database-migration tasks under low priority backlog.
+- `docs/ZUSTAND_INVESTIGATION.md` (NEW) — Zustand state persistence investigation report comparing React Context vs. Zustand store slices.
+- `docs/INDEX.md` — Added `ZUSTAND_INVESTIGATION.md` reference to index table.
+- `docs/ARCHITECTURE.md` — Added migration `0010`, registered `ZUSTAND_INVESTIGATION.md` in folder structure, and mapped the new `TRIVIA_QUESTIONS` schema inside the database ER mermaid diagram.
+- `docs/TASKS.md` — Checked off the database-migration and Zustand investigation tasks.
+- `AGENTS.md`, `docs/START_HERE.md`, `docs/AI_RULES.md` — Integrated the refined Pre-Implementation Impact Assessment (PIIA) guidelines incorporating risk classifications, blast radius checklists, and architectural thinking questions.
 - `docs/AI_CONTEXT.md` — Updated milestone logs.
 - `docs/HANDOFF.md` — Updated handoff pointer.
 

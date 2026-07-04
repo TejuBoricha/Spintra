@@ -223,21 +223,55 @@ Before ending every task, verify that the Mandatory Change Report has been prese
 
 ---
 
-## 10. Pre-Implementation Impact Assessment
+## 10. Pre-Implementation Impact Assessment (PIIA)
 
 Before modifying any files for any non-trivial feature, bug fix, refactor, database change, API change, infrastructure change, or architectural change, you must perform a concise Pre-Implementation Impact Assessment.
 
-The assessment must be presented in the user-facing initialization and include:
-- **Objective**: What is being changed?
-- **Why**: Why is this change required?
-- **Affected Areas**: Which modules, components, pages, services, APIs, database tables, hooks, contexts, utilities, or infrastructure are affected?
-- **Dependency Analysis**: What depends on this, and what does this depend on?
-- **Blast Radius (Mandatory)**: What could this change accidentally break? Which features could be affected? What modules are tightly coupled? What regression testing is required? Performance, security, accessibility, SEO, scalability, UX, and deployment risks.
-- **Risk Assessment**: Potential regressions, edge cases, backward compatibility concerns, failure scenarios.
-- **Architecture Alignment**: Does this follow current architecture? Can patterns be reused? Does it add complexity? Is an ADR needed?
-- **Alternative Approaches**: Reasonable alternatives and why the preferred one was chosen.
-- **Implementation Plan**: High-level steps before coding.
-- **Validation Plan**: How the implementation will be verified (typecheck, lint, build, tests, manual, UI, DB, performance, security).
-- **Documentation Impact**: Which docs will require updates (AI_CONTEXT.md, HANDOFF.md, TASKS.md, CHANGELOG_AI.md, ARCHITECTURE.md, DECISIONS.md).
+The assessment must be presented in the user-facing initialization and follow this structure:
 
-This assessment should remain concise (5–15 bullet points total). If the task is straightforward and unambiguous, immediately proceed to implementation in the same response. Only pause for feedback if there is conflicting requirements, architectural uncertainty, or unacceptable risk.
+### 1. Risk Level
+Classify the task as one of the following:
+- **Low Risk**: Documentation, comments, formatting, minor styling, typos, or variable renames.
+- **Medium Risk**: Localized bug fixes, component enhancements, UI behaviour changes, or small refactors.
+- **High Risk**: New features, multi-module changes, database changes, API changes, authentication, state management, infrastructure, performance, security, architecture, or cross-cutting refactors.
+
+*The depth of the PIIA should automatically scale according to this risk level (e.g., highly abbreviated for Low Risk, standard concise for Medium, thorough for High Risk).*
+
+### 2. Objective & Why
+- What is being changed, and why is this change required?
+
+### 3. Affected Areas & Dependency Analysis
+- Which modules, components, pages, services, APIs, database tables, hooks, contexts, utilities, or infrastructure are affected?
+- What existing systems depend on this functionality, and what does this functionality depend on?
+
+### 4. Blast Radius (Mandatory)
+Always determine the potential impact before implementation:
+- What existing functionality could be affected or accidentally broken?
+- Which modules or services are tightly coupled?
+- Which user journeys require regression testing?
+- Could this impact: **Performance**, **Security**, **Accessibility**, **SEO**, **Build pipeline**, **CI/CD**, **Database**, **APIs**, **State management**, or **User experience**?
+- Does this introduce deployment or migration risks?
+
+### 5. Risk Assessment
+- Potential regressions, edge cases, backward compatibility concerns, and failure scenarios.
+
+### 6. Architecture Alignment
+- Can an existing pattern or abstraction be reused?
+- Is this introducing unnecessary complexity? Is there a simpler implementation?
+- Should this become an Architecture Decision Record (ADR)?
+
+### 7. Alternative Approaches & Implementation Plan
+- Alternatives evaluated and why the preferred one was chosen.
+- High-level implementation steps before writing code.
+
+### 8. Validation Plan & Documentation Impact
+- How the implementation will be verified (typecheck, lint, build, tests, manual, UI, DB, performance, security).
+- Which docs will require updates (AI_CONTEXT.md, HANDOFF.md, TASKS.md, CHANGELOG_AI.md, ARCHITECTURE.md, DECISIONS.md).
+
+---
+
+### PIIA Engineering Principle
+
+The purpose of the PIIA is to think before coding, not to slow development. It should remain concise (typically 5–15 bullet points total).
+- If the task is clear and unambiguous, **immediately continue with implementation in the same response** after presenting the assessment.
+- **Only stop and ask for clarification** if the assessment identifies ambiguity, conflicting requirements, architectural uncertainty, or unacceptable risk.

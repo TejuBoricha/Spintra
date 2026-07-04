@@ -15,7 +15,7 @@ Workflow:
 
 2. **Pre-Implementation Impact Assessment**
    - For every non-trivial feature, bug fix, refactor, database change, API change, infrastructure change, or architectural change, perform a concise impact assessment before modifying any files.
-   - The assessment must include: Objective, Why, Affected Areas, Dependency Analysis, Blast Radius (Mandatory), Risk Assessment, Architecture Alignment, Alternative Approaches, Implementation Plan, Validation Plan, and Documentation Impact.
+   - The assessment must include: Risk Level (Low/Medium/High), Objective, Why, Affected Areas, Dependency Analysis, Blast Radius (Mandatory), Risk Assessment, Architecture Alignment, Alternative Approaches, Implementation Plan, Validation Plan, and Documentation Impact.
    - Keep it concise (typically 5–15 bullet points).
 
 3. **User-Facing Initialization**
