@@ -251,8 +251,12 @@ useEffect(() => registerEventListener((event) => {
 | 0011 | `rate_limiting` | Before-insert triggers capping room creation (8 / 10 min per `host_id`) and chat messages (20 / 10 sec per `user_id`); supporting composite indexes |
 | 0012 | `moderation_controls` | `room_bans` table + before-insert trigger blocking a banned `user_id` from rejoining a room (kick now also bans); `message_reports` table (insert-only, no select policy — reviewed via Supabase SQL editor) |
 | 0013 | `room_bans_self_select` | Adds a self-scoped select policy to `room_bans` (`user_id = auth.uid()::text`) so a client can check whether *it* is banned before the room UI mounts, instead of only finding out via the before-insert trigger's error after the fact |
+| 0014 | `tighten_rls_column_restrictions` | BEFORE UPDATE triggers restricting the `rooms` host-promotion escape hatch (0006) and the `room_participants` host-update policy (0007) to only the single column each was meant for |
+| 0015 | `enforce_room_lock_at_db_level` | Before-insert triggers on `room_participants` and `chat_messages` blocking new joins/messages from anyone but the host while `rooms.is_locked` — previously client-side only |
+| 0016 | `add_missing_constraints_and_index` | `rooms.max_participants > 0` check, `message_reports.message_id` FK to `chat_messages`, `trivia_questions.correct_index` bounds check, index on `activity_prompts.activity_type` |
+| 0017 | `drop_unused_rooms_settings_column` | Drops `rooms.settings` (always `{}`, never read anywhere) |
 
-**Current status:** all 13 applied; RLS enabled on all 7 tables; latest policy is `0013_room_bans_self_select`; latest migration is `0013_room_bans_self_select`.
+**Current status:** all 17 applied; RLS enabled on all 7 tables; latest policy is `0016_add_missing_constraints_and_index`; latest migration is `0017_drop_unused_rooms_settings_column`. Note: 0008 and 0010 were re-applied in Session 37 after discovering their tracked "applied" status didn't match reality (see `CHANGELOG_AI.md` Session 37/38) — the migration numbering itself didn't change, only their actual execution against the live database.
 
 ### APIs / Integration Points
 No custom REST or GraphQL API exists — every client talks directly to Supabase (or, unconfigured, the `BroadcastChannel` Web API). The full set of integration points:
