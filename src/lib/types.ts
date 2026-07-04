@@ -26,7 +26,7 @@ type TriviaAnswerEvent    = { kind: "trivia_answer"; userId: string; username: s
 type ActivityResetEvent   = { kind: "activity_reset" };
 // lucky-wheel
 type WheelEntriesEvent  = { kind: "wheel_entries"; entries: string[] };
-type WheelSpinningEvent = { kind: "wheel_spinning" };
+type WheelSpinningEvent = { kind: "wheel_spinning"; winner?: string };
 type WheelSpinEvent     = { kind: "wheel_spin"; winner: string };
 
 // guess-number

@@ -107,6 +107,15 @@ export function useRoomSubscription({
       const earliest = onlineParticipants[0];
       if (earliest.user_id !== currentUser.id) return;
 
+      // Verify the room still exists to prevent host promotion if the room is being closed/deleted
+      const { data: roomExists } = await supabase
+        .from("rooms")
+        .select("id")
+        .eq("code", roomCode)
+        .maybeSingle();
+
+      if (!roomExists) return;
+
       // Promote our participant row to 'host'
       const { error: partError } = await supabase
         .from("room_participants")
@@ -176,7 +185,8 @@ export function useRoomSubscription({
         });
       }
     }
-  }, [postLocalMessage]);
+    handleActivityEvent(event);
+  }, [postLocalMessage, handleActivityEvent]);
 
   // Lock Room Handler
   const toggleLock = useCallback(() => {
@@ -745,8 +755,22 @@ export function useRoomSubscription({
               (selfParticipant && selfParticipant.id === removed.id) ||
               removed.user_id === currentUser.id;
             if (isSelf) {
-              setTimeout(() => {
-                toast.error("You were removed from the room by the host.", { id: "kicked-toast" });
+              setTimeout(async () => {
+                const supabaseClient = getSupabaseBrowserClient();
+                let roomExists = false;
+                if (supabaseClient) {
+                  const { data } = await supabaseClient
+                    .from("rooms")
+                    .select("id")
+                    .eq("code", roomCode)
+                    .maybeSingle();
+                  roomExists = !!data;
+                }
+                if (roomExists) {
+                  toast.error("You were removed from the room by the host.", { id: "kicked-toast" });
+                } else {
+                  toast.error("The host closed this room.", { id: "room-closed-toast" });
+                }
                 router.push("/explore");
               }, 0);
               return prev;

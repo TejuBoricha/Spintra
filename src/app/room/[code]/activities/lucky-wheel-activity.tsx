@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useRef, useCallback } from "react";
+
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,8 +9,40 @@ import { Input } from "@/components/ui/input";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
 import { toast } from "sonner";
-
 import { playSwipe, playSuccess } from "@/lib/audio";
+
+// ── Helpers copied from standalone tool for UI alignment ──
+function getContrastText(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.5 ? "#111" : "#fff";
+}
+
+function adjustBrightness(hex: string, percent: number): string {
+  const num = parseInt(hex.replace("#", ""), 16);
+  const amt = Math.round(2.55 * percent);
+  const R = (num >> 16) + amt;
+  const G = ((num >> 8) & 0x00ff) + amt;
+  const B = (num & 0x0000ff) + amt;
+  return (
+    "#" +
+    (
+      0x1000000 +
+      (R < 255 ? (R < 0 ? 0 : R) : 255) * 0x10000 +
+      (G < 255 ? (G < 0 ? 0 : G) : 255) * 0x100 +
+      (B < 255 ? (B < 0 ? 0 : B) : 255)
+    )
+      .toString(16)
+      .slice(1)
+  );
+}
+
+const PALETTE = [
+  "#8b5cf6", "#06b6d4", "#f59e0b", "#10b981", "#ef4444",
+  "#ec4899", "#6366f1", "#14b8a6", "#f97316", "#84cc16",
+];
 
 export function LuckyWheelActivity() {
   const { isHost, sendActivityEvent, registerEventListener, soundEnabled } = useRoomActivity();
@@ -19,36 +51,244 @@ export function LuckyWheelActivity() {
   const [newWheelEntryText, setNewWheelEntryText] = useState("");
   const [wheelWinner, setWheelWinner] = useState<string | null>(null);
   const [wheelSpinning, setWheelSpinning] = useState(false);
-  const [wheelSpinAngle, setWheelSpinAngle] = useState(1440);
 
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingText, setEditingText] = useState("");
 
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rotationAngleRef = useRef(0);
+  const animationFrameIdRef = useRef<number | null>(null);
+  const spinStartTimeRef = useRef<number>(0);
+  const targetRotationRef = useRef<number>(0);
+
+  // ── Draw Wheel function matching Standalone Tool UI ──
+  const drawWheel = useCallback((rotation: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    const w = rect.width;
+    const h = rect.height;
+    const cx = w / 2;
+    const cy = h / 2;
+    const radius = Math.min(cx, cy) - 20;
+
+    ctx.clearRect(0, 0, w, h);
+
+    if (wheelEntries.length === 0) return;
+
+    // Draw slices
+    let startAngle = rotation - Math.PI / 2;
+    const sliceAngle = (2 * Math.PI) / wheelEntries.length;
+
+    wheelEntries.forEach((entry, i) => {
+      const endAngle = startAngle + sliceAngle;
+      const baseColor = PALETTE[i % PALETTE.length];
+
+      const grad = ctx.createLinearGradient(
+        cx,
+        cy,
+        cx + Math.cos(startAngle + sliceAngle / 2) * radius,
+        cy + Math.sin(startAngle + sliceAngle / 2) * radius
+      );
+      grad.addColorStop(0, adjustBrightness(baseColor, -40));
+      grad.addColorStop(0.5, baseColor);
+      grad.addColorStop(1, adjustBrightness(baseColor, 12));
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, radius, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Label drawing
+      const midAngle = startAngle + sliceAngle / 2;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(midAngle);
+
+      const cleanAngle = ((midAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+      const shouldFlip = cleanAngle > Math.PI / 2 && cleanAngle < (3 * Math.PI) / 2;
+
+      ctx.fillStyle = getContrastText(baseColor);
+      const maxWidthAtMid = radius * 0.6 * Math.sin(sliceAngle / 2) * 2;
+      const fontSize = Math.max(10, Math.min(14, maxWidthAtMid * 0.85));
+      ctx.font = `bold ${fontSize}px sans-serif`;
+      ctx.textBaseline = "middle";
+
+      const label = entry.length > 12 ? entry.slice(0, 10) + "…" : entry;
+
+      if (shouldFlip) {
+        ctx.rotate(Math.PI);
+        ctx.textAlign = "left";
+        ctx.fillText(label, -radius * 0.82, 0);
+      } else {
+        ctx.textAlign = "right";
+        ctx.fillText(label, radius * 0.82, 0);
+      }
+      ctx.restore();
+
+      startAngle = endAngle;
+    });
+
+    // Outer Rim Border
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + 4, 0, Math.PI * 2);
+    ctx.strokeStyle = "#12121a";
+    ctx.lineWidth = 8;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + 4, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(255,255,255,0.06)";
+    ctx.lineWidth = 6;
+    ctx.stroke();
+
+    // LED Chase Bulbs
+    const totalLights = 16;
+    const chaseSpeed = wheelSpinning ? rotation * 6 : Date.now() / 250;
+    const activeLightIndex = Math.floor(chaseSpeed % totalLights);
+
+    for (let i = 0; i < totalLights; i++) {
+      const angle = (i / totalLights) * Math.PI * 2;
+      const lx = cx + Math.cos(angle) * (radius + 4);
+      const ly = cy + Math.sin(angle) * (radius + 4);
+
+      ctx.beginPath();
+      ctx.arc(lx, ly, 2.5, 0, Math.PI * 2);
+      const diff = (i - activeLightIndex + totalLights) % totalLights;
+
+      ctx.save();
+      if (diff === 0) {
+        ctx.fillStyle = "#ffffff";
+        ctx.shadowColor = "#06b6d4";
+        ctx.shadowBlur = 8;
+      } else if (diff === 1 || diff === 2) {
+        ctx.fillStyle = "#06b6d4";
+        ctx.shadowColor = "#06b6d4";
+        ctx.shadowBlur = 4;
+      } else {
+        ctx.fillStyle = "#2a2a3c";
+      }
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Metallic center cap
+    const centerRadius = radius * 0.16;
+    const chromeGrad = ctx.createLinearGradient(
+      cx - centerRadius,
+      cy - centerRadius,
+      cx + centerRadius,
+      cy + centerRadius
+    );
+    chromeGrad.addColorStop(0, "#ffffff");
+    chromeGrad.addColorStop(0.2, "#d1d5db");
+    chromeGrad.addColorStop(0.45, "#4b5563");
+    chromeGrad.addColorStop(0.7, "#f3f4f6");
+    chromeGrad.addColorStop(1, "#1f2937");
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, centerRadius, 0, Math.PI * 2);
+    ctx.fillStyle = chromeGrad;
+    ctx.fill();
+
+    const innerRadius = centerRadius - 3;
+    const innerGrad = ctx.createRadialGradient(cx - 1, cy - 1, 0, cx, cy, innerRadius);
+    innerGrad.addColorStop(0, "#374151");
+    innerGrad.addColorStop(0.8, "#111827");
+    innerGrad.addColorStop(1, "#030712");
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, innerRadius, 0, Math.PI * 2);
+    ctx.fillStyle = innerGrad;
+    ctx.fill();
+  }, [wheelEntries, wheelSpinning]);
+
+  // Initial draw & resize listeners
+  useEffect(() => {
+    drawWheel(rotationAngleRef.current);
+  }, [drawWheel]);
+
+  // ── Network event subscription ──
   useEffect(() => {
     return registerEventListener((event) => {
       switch (event.kind) {
-        case "wheel_entries": {
+        case "wheel_entries":
           setWheelEntries(event.entries);
           break;
-        }
-        case "wheel_spinning":
-          setWheelSpinAngle(1440 + Math.random() * 360);
-          setWheelSpinning(true);
-          playSwipe(soundEnabled);
-          break;
-        case "wheel_spin": {
-          setWheelWinner(event.winner);
-          setWheelSpinning(false);
-          playSuccess(soundEnabled);
+        case "wheel_spinning": {
+          if (event.winner) {
+            setWheelWinner(null);
+            setWheelSpinning(true);
+            playSwipe(soundEnabled);
+
+            const winnerIndex = wheelEntries.indexOf(event.winner);
+            const sliceAngle = (2 * Math.PI) / wheelEntries.length;
+            
+            // Deterministic calculation to stop exactly on the winning segment at 12 o'clock position
+            const offsetAngle = 1.5 * Math.PI - (winnerIndex + 0.5) * sliceAngle;
+            targetRotationRef.current = 6 * Math.PI + offsetAngle;
+            spinStartTimeRef.current = Date.now();
+
+            const animateSpin = () => {
+              const elapsed = Date.now() - spinStartTimeRef.current;
+              const duration = 3000; // 3 seconds spin duration
+              const t = Math.min(1, elapsed / duration);
+              
+              // Cubic ease out curve
+              const easeOutCubic = 1 - Math.pow(1 - t, 3);
+              const angle = easeOutCubic * targetRotationRef.current;
+              rotationAngleRef.current = angle;
+              
+              drawWheel(angle);
+
+              if (t < 1) {
+                animationFrameIdRef.current = requestAnimationFrame(animateSpin);
+              } else {
+                setWheelWinner(event.winner ?? null);
+                setWheelSpinning(false);
+                playSuccess(soundEnabled);
+              }
+            };
+
+            if (animationFrameIdRef.current) {
+              cancelAnimationFrame(animationFrameIdRef.current);
+            }
+            animationFrameIdRef.current = requestAnimationFrame(animateSpin);
+          }
           break;
         }
         case "activity_reset":
           setWheelWinner(null);
           setWheelSpinning(false);
+          rotationAngleRef.current = 0;
+          drawWheel(0);
           break;
       }
     });
-  }, [registerEventListener, soundEnabled]);
+  }, [registerEventListener, soundEnabled, wheelEntries, drawWheel]);
+
+  // Cleanup anim loop
+  useEffect(() => {
+    return () => {
+      if (animationFrameIdRef.current) {
+        cancelAnimationFrame(animationFrameIdRef.current);
+      }
+    };
+  }, []);
 
   const syncWheelEntries = (entries: string[]) => {
     setWheelEntries(entries);
@@ -79,59 +319,32 @@ export function LuckyWheelActivity() {
   };
 
   return (
-    <motion.div
-      key="lucky-wheel"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="flex flex-col items-center gap-6 max-w-lg mx-auto pt-8"
-    >
+    <div className="flex flex-col items-center gap-6 max-w-lg mx-auto pt-4">
       <h2 className="text-2xl font-bold flex items-center gap-2">
         <Emoji name="ferris_wheel" size={28} /> Lucky Wheel
       </h2>
+
+      {/* Render High-Fidelity Canvas Wheel matching standalone UI */}
       <div className="relative w-64 h-64">
-        <motion.div
-          animate={wheelSpinning ? { rotate: [0, wheelSpinAngle] } : {}}
-          transition={{ duration: 3, ease: "easeOut" }}
-          className="w-full h-full rounded-full border-4 border-purple-500/50 overflow-hidden"
-        >
-          {wheelEntries.map((entry, i) => {
-            const angle = (360 / wheelEntries.length) * i;
-            const colors = ["from-purple-500", "from-cyan-500", "from-amber-500", "from-pink-500", "from-emerald-500", "from-indigo-500"];
-            return (
-              <div
-                key={i}
-                className={`absolute inset-0 flex items-center justify-end pr-6 text-xs font-bold text-white bg-gradient-to-r ${colors[i % colors.length]} to-transparent`}
-                style={{
-                  transform: `rotate(${angle}deg)`,
-                  transformOrigin: "center",
-                  clipPath: `polygon(50% 50%, 100% 0, 100% ${100 / wheelEntries.length * 2}%)`,
-                }}
-              >
-                <span className="max-w-[70px] truncate">{entry}</span>
-              </div>
-            );
-          })}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-12 h-12 rounded-full bg-background border-2 border-purple-500/50 flex items-center justify-center">
-              <Emoji name="ferris_wheel" size={28} animated={!wheelSpinning} />
-            </div>
-          </div>
-        </motion.div>
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 text-2xl">▼</div>
+        <canvas
+          ref={canvasRef}
+          className="w-full h-full"
+          style={{ maxWidth: 256, maxHeight: 256 }}
+        />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 text-2xl drop-shadow-md select-none pointer-events-none">
+          ▼
+        </div>
       </div>
+
       {wheelWinner && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center p-4 glass-card rounded-xl"
-        >
+        <div className="text-center p-4 glass-card rounded-xl">
           <p className="text-sm text-muted-foreground mb-1">Winner!</p>
           <p className="text-2xl font-bold text-purple-400 flex items-center justify-center gap-2">
             {wheelWinner} <Emoji name="party_popper" size={28} pop />
           </p>
-        </motion.div>
+        </div>
       )}
+
       {isHost && (
         <div className="w-full space-y-3">
           <div className="flex flex-wrap gap-2">
@@ -219,11 +432,8 @@ export function LuckyWheelActivity() {
           <Button
             disabled={wheelSpinning}
             onClick={() => {
-              sendActivityEvent({ kind: "wheel_spinning" });
-              setTimeout(() => {
-                const winner = wheelEntries[Math.floor(Math.random() * wheelEntries.length)];
-                sendActivityEvent({ kind: "wheel_spin", winner });
-              }, 3100);
+              const winner = wheelEntries[Math.floor(Math.random() * wheelEntries.length)];
+              sendActivityEvent({ kind: "wheel_spinning", winner });
             }}
             className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white border-0"
           >
@@ -231,6 +441,6 @@ export function LuckyWheelActivity() {
           </Button>
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }
