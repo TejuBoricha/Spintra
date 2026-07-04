@@ -4,19 +4,19 @@
 > DB schema live in `ARCHITECTURE.md`. Session-to-session handoff lives in `HANDOFF.md`. Backlog
 > and roadmap live in `TASKS.md`. Do not duplicate those here — link to them instead.
 > Always update this file after every significant milestone.
-> Last updated: 2026-07-04T15:15 IST
+> Last updated: 2026-07-04T17:00 IST
 
 ---
 
 ## Current Milestone
 
-Working through the "pre-launch hardening" tier: Legal Basics (Session 30), Rate Limiting (Session 31), and Abuse & Moderation Controls (Session 32, migration `0012_moderation_controls.sql`) are done. Only Production Error Monitoring remains. Also fixed a genuine double-elimination tournament bracket bug (Session 33) found while investigating a CI failure. **Sessions 30–33 are fully implemented and verified but not yet committed** — reviewed clean, pending a commit-strategy decision from the user.
+Pre-launch hardening tier: Legal Basics (30), Rate Limiting (31), Abuse & Moderation Controls (32) are done and live. Only Production Error Monitoring remains. Sessions 30–33 were committed as 4 scoped commits and pushed. That push's CI run then surfaced a second, wholly pre-existing bug (unrelated to Sessions 30–33): rooms created without Supabase configured never auto-activated their game — fixed in Session 34.
 
 ---
 
 ## Overall Progress
 
-All planned modularisation (14/14 activities), invite and QR sharing systems, realtime discovery feeds, client profile synchronizations, database-driven activity prompt migrations, security hardening, CI/dependency automation, and documentation-workflow work is complete. Build/lint/typecheck are clean, and a previously-undetected double-elimination tournament bug has been fixed (Session 33). No other known regressions.
+All planned modularisation (14/14 activities), invite and QR sharing systems, realtime discovery feeds, client profile synchronizations, database-driven activity prompt migrations, security hardening, CI/dependency automation, and documentation-workflow work is complete. Build/lint/typecheck are clean. Two previously-undetected bugs were found and fixed via CI investigation: the double-elimination tournament bracket (Session 33) and demo-mode room activation (Session 34). No other known regressions.
 
 ---
 
@@ -53,7 +53,7 @@ Load-bearing assumptions a new session should be aware of before making changes:
 
 ## Next Recommended Task
 
-Production Error Monitoring (`docs/TASKS.md` High Priority tier, item 4 — the last one) — wire up error tracking/alerting (e.g. Sentry). Legal Basics, Rate Limiting, and Abuse & Moderation Controls (items 1–3) are complete.
+Commit and push Session 34's fix, confirm the CI run goes green, then move to Production Error Monitoring (`docs/TASKS.md` High Priority tier, item 4 — the last one) — wire up error tracking/alerting (e.g. Sentry). Legal Basics, Rate Limiting, and Abuse & Moderation Controls (items 1–3) are complete.
 
 ---
 

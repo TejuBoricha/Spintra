@@ -492,7 +492,24 @@ export function useRoomSubscription({
     const loadRoomDetails = async () => {
       try {
         const supabaseClient = getSupabaseBrowserClient();
-        if (!supabaseClient) return;
+        if (!supabaseClient) {
+          // Demo mode: no DB to query — fall back to what create-client.tsx
+          // wrote to localStorage at creation time (spintra-room-type-{code},
+          // spintra-room-name-{code}), since nothing else populates
+          // activeActivity in this mode and the room would otherwise be
+          // stuck on the idle "choose an activity" screen forever.
+          if (!isMounted) return;
+          const storedType = window.localStorage.getItem(`spintra-room-type-${roomCode}`) as RoomType | null;
+          const storedName = window.localStorage.getItem(`spintra-room-name-${roomCode}`);
+          if (storedName) setRoomName(storedName);
+          if (storedType) {
+            setRoomType(storedType);
+            if (storedType !== "party" && storedType !== "classroom") {
+              setActiveActivity((prev) => prev || { type: storedType, state: null });
+            }
+          }
+          return;
+        }
         const { data, error } = await supabaseClient
           .from("rooms")
           .select("name, type, is_locked, max_participants, host_id")

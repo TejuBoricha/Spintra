@@ -122,6 +122,27 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 34: Demo-Mode Room Activity Never Auto-Activated
+
+**AI:** Claude Code (Anthropic)
+**Task:** After pushing Sessions 30–33, the user asked to check the resulting CI run. It failed again — this time on `tests/smoke.spec.ts`, not the tournament test. Investigated rather than assuming the previous fix was incomplete.
+**Investigation path:**
+- Confirmed via the GitHub API (`check-runs` + `annotations` endpoints — full log download requires admin rights even on a public repo, so this was the practical ceiling) that `typecheck`/`lint`/`docs:check`/`build` all passed; only "Execute Playwright E2E Smoke Tests" failed.
+- Reproduced by matching CI's actual conditions exactly rather than my own local setup: moved `.env.local` aside (CI has never had Supabase secrets configured — nothing in `ci.yml` sets `NEXT_PUBLIC_SUPABASE_*`) and ran with `CI=true` (this flips Playwright's `reuseExistingServer` to `false`, forcing a fresh `next build && next start`, matching the workflow's `webServer` config exactly).
+- This reproduced the failure locally: `smoke.spec.ts` failed, `tournament-double-elimination.spec.ts` passed.
+- **Checked whether this was a regression from Sessions 30–33 or pre-existing**: checked out the original `700dfcc` commit (before any of my changes) and ran the identical no-Supabase reproduction — both tests failed there too. This confirmed the tournament bug (Session 33) was real and now fixed, but a *second*, wholly unrelated, pre-existing bug in the room/activity initialization path has apparently never been caught by CI before (local development always had `.env.local` present, masking it).
+**Root cause found:** `loadRoomDetails` in `src/app/room/[code]/hooks/use-room-subscription.ts` returned immediately when Supabase isn't configured (`if (!supabaseClient) return;`), so `activeActivity` was never set from the room's type in demo/`BroadcastChannel` mode — the room was stuck on the idle "choose an activity" screen instead of the game it was created for. Confirmed via a Playwright script dumping `localStorage`: `create-client.tsx` already writes `spintra-room-type-{code}` and `spintra-room-name-{code}` specifically for this purpose, but nothing ever read them back.
+**Files Modified:**
+- `src/app/room/[code]/hooks/use-room-subscription.ts` — `loadRoomDetails`'s demo-mode branch now reads `spintra-room-type-{code}`/`spintra-room-name-{code}` from `localStorage` and sets `roomName`/`roomType`/`activeActivity` accordingly, mirroring the Supabase-backed path's logic (skips auto-activation for `party`/`classroom` room types, same as the DB path).
+
+**Outcome:**
+- Reproduced both under no-Supabase (`CI=true`, `.env.local` removed) and with Supabase configured: both smoke tests pass in both modes now.
+- `npm run typecheck`, `npm run lint`, `npm run build` all clean under both conditions.
+
+**Risks:** None identified — purely additive fallback logic; the Supabase-backed path is untouched.
+
+---
+
 ## [2026-07-04] — Session 33: Double-Elimination Tournament Bracket Fix
 
 **AI:** Claude Code (Anthropic)

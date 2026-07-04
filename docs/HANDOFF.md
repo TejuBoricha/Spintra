@@ -6,25 +6,17 @@ Portable session-continuity note for any AI assistant (Antigravity, Claude Code,
 
 ## Last Completed Task
 
-Completed Session 32: implemented Abuse & Moderation Controls via migration `supabase/migrations/0012_moderation_controls.sql` plus four client-side pieces:
-- **Ban-on-kick**: kicking a participant (host-only feature that already existed) now also inserts a `room_bans` row; a before-insert trigger on `room_participants` rejects any rejoin attempt from a banned `user_id`. Closes a real gap found while investigating: kicked users could previously just walk right back in.
-- **Message reporting**: any participant can flag a message via `message_reports` (insert-only, no select policy — reviewed manually via the Supabase SQL editor since there's no admin backend).
-- **Client-side block/mute**: `src/lib/blocked-users.ts`, `localStorage`-based, available to everyone (not just the host) — hides a blocked user's messages from your own view only.
-- **Chat content filter**: `src/lib/chat-filter.ts` — basic profanity/slur blocklist + repeated-character spam heuristic, checked before send.
+Sessions 30–33 (Legal Basics, Rate Limiting, Abuse & Moderation Controls, Tournament Bracket Fix) were committed as 4 scoped commits and pushed to `origin/main`. The user then asked to check the resulting CI run — it failed again, this time on `tests/smoke.spec.ts` (not the already-fixed tournament test). Session 34 root-caused and fixed this:
 
-Verified end-to-end with a headless Playwright script (two isolated browser contexts, host + guest) driving the real UI: profanity/spam correctly rejected client-side, block/unblock correctly hides/restores messages, kick still succeeds and redirects the kicked user. Found and fixed one real bug during this testing: the profanity regex used `\b(word)\b`, so inflections like "fucking" never matched (trailing boundary requirement) — fixed to `\b(word)` (leading boundary only). `npm run verify` passes.
+**Session 34: Demo-Mode Room Activity Never Auto-Activated.** Reproduced CI's actual conditions exactly (moved `.env.local` aside — CI has never had Supabase secrets configured — and ran with `CI=true`, which matches the workflow's fresh `next build && next start`). Confirmed this is a wholly separate, **pre-existing** bug unrelated to Sessions 30–33: checked out the original `700dfcc` commit and reproduced the identical failure there too. Root cause: `loadRoomDetails` in `use-room-subscription.ts` returned immediately when Supabase isn't configured, so `activeActivity` was never set from the room's type in demo/`BroadcastChannel` mode — `create-client.tsx` already wrote `spintra-room-type-{code}`/`spintra-room-name-{code}` to `localStorage` specifically for this, but nothing read it back. Fixed by adding the localStorage fallback read. Verified passing in both modes (with and without Supabase configured).
 
-**Update:** migration `0012` has been applied to the live Supabase project — but not via manual dashboard paste this time. The user ran `supabase login` once; the AI then ran `supabase init` (created `supabase/config.toml`), `supabase link --project-ref qjxaehxwuqntyqrdmihs`, repaired the out-of-sync remote migration history (`supabase migration repair --status applied 0001 0002 0003 0008 0009 0010 0011 --linked`, since those were originally applied by hand and never recorded), and pushed `0012` with `supabase db push --linked --yes`. Re-verified live with Playwright against the real production DB: report succeeds, kick succeeds, and rejoining after a kick is now correctly blocked with "You have been banned from this room by the host."
-
-**Going forward:** the CLI is linked. Future migrations can be pushed directly with `npx supabase db push --linked --yes` — no more manual SQL Editor paste needed.
-
-**Session 33 (same day):** the user shared a screenshot of a failed GitHub Actions CI run for commit `700dfcc` and asked what it was. Investigated by reproducing the exact pushed commit (stashed all other uncommitted work, ran the CI steps in order, restored the stash after). Ruled out two false positives (local CRLF conversion of `ARCHITECTURE.md`; a stale `.next/dev` type-cache reference) before finding the real cause: `tests/tournament-double-elimination.spec.ts` was failing because of a genuine bug in `src/app/tools/tournament/page.tsx` — completing a losers-bracket match discarded its own "completed" update before advancing the winner, so the bracket could never finish. Fixed and verified (test now passes in 4.4s, was timing out at 9.5s before). See `CHANGELOG_AI.md` Session 33 for the full trace. **This fix is currently still uncommitted, alongside the whole Session 30–32 pre-launch hardening bundle** — all reviewed clean, pending the user's decision on commit strategy.
+**Going forward:** the Supabase CLI is linked (`supabase/config.toml`, project ref `qjxaehxwuqntyqrdmihs`) — future migrations can be pushed directly with `npx supabase db push --linked --yes`, no manual SQL Editor paste needed. GitHub API log downloads require admin rights even on this public repo — use the `check-runs`/`annotations` endpoints for failure summaries, and reproduce locally (matching `.env.local` absence + `CI=true`) rather than fighting for raw logs.
 
 ---
 
 ## Current Task
 
-None in progress. All four pre-launch hardening items except Production Error Monitoring are done and live; the tournament bracket bug is also fixed. All of Sessions 30–33's work is verified but **not yet committed** — reviewed diff-by-diff (see CHANGELOG Session 33) with nothing outstanding.
+Session 34's fix is complete and verified locally but not yet committed/pushed — that's the immediate next step.
 **Reminder carried forward:** the legal pages (`/legal/terms`, `/legal/privacy`) ship with bracketed placeholders (company/entity name, jurisdiction, support/privacy emails) that need real values — and ideally legal review — before actual public launch.
 
 ---
