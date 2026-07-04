@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
-
 import { playDiceRoll, playTick } from "@/lib/audio";
 
 export function DiceActivity() {
@@ -35,28 +34,40 @@ export function DiceActivity() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="flex flex-col items-center gap-6 max-w-md mx-auto pt-8"
+      className="flex flex-col items-center gap-8 max-w-md mx-auto pt-8"
     >
-      <h2 className="text-2xl font-bold flex items-center gap-2"><Emoji name="game_die" size={28} /> Dice Roller</h2>
-      <div className="flex flex-wrap gap-4 justify-center">
+      <h2 className="text-2xl font-bold flex items-center gap-2">
+        <Emoji name="game_die" size={28} /> Dice Roller
+      </h2>
+
+      {/* Dice Grid aligned with standalone tool design */}
+      <div className="flex flex-wrap gap-6 justify-center py-4">
         {(diceResults.length > 0 ? diceResults : [0]).map((val, i) => (
           <motion.div
             key={i}
-            animate={diceRolling ? { rotate: [0, 180, 360], scale: [1, 1.3, 1] } : {}}
-            transition={{ duration: 0.8, delay: i * 0.1 }}
-            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-4xl font-black text-white shadow-xl border border-purple-500/50"
+            animate={diceRolling ? { rotate: [0, 180, 360], scale: [1, 1.25, 1], y: [0, -20, 0] } : {}}
+            transition={{ duration: 0.8, delay: i * 0.08, ease: "easeInOut" }}
+            className={`w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-5xl font-black text-white shadow-2xl border border-purple-400/40 select-none ${
+              val === 0 ? "opacity-40" : "shadow-purple-500/25"
+            }`}
           >
-            {val === 0 ? "?" : ["⚀","⚁","⚂","⚃","⚄","⚅"][val - 1]}
+            {val === 0 ? "?" : ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"][val - 1]}
           </motion.div>
         ))}
       </div>
+
       {diceResults.length > 1 && (
-        <p className="text-lg font-semibold text-purple-300">
+        <motion.p
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-xl font-bold text-purple-300 bg-purple-500/10 px-4 py-1.5 rounded-full border border-purple-500/20"
+        >
           Total: {diceResults.reduce((a, b) => a + b, 0)}
-        </p>
+        </motion.p>
       )}
+
       {isHost && (
-        <div className="flex gap-3 flex-wrap justify-center">
+        <div className="flex gap-3 flex-wrap justify-center w-full">
           {[1, 2, 4].map((count) => (
             <Button
               key={count}
@@ -69,14 +80,14 @@ export function DiceActivity() {
                 }, 900);
               }}
               variant="outline"
-              className="border-purple-500/50 hover:bg-purple-500/20"
+              className="h-10 px-5 text-sm font-semibold border-purple-500/30 hover:bg-purple-500/10 text-purple-200 rounded-full transition-all"
             >
               Roll {count}d6
             </Button>
           ))}
         </div>
       )}
-      {!isHost && diceResults.length === 0 && (
+      {!isHost && diceResults.length === 0 && !diceRolling && (
         <p className="text-muted-foreground text-sm">Waiting for host to roll…</p>
       )}
     </motion.div>

@@ -319,17 +319,17 @@ export function LuckyWheelActivity() {
   };
 
   return (
-    <div className="flex flex-col items-center gap-6 max-w-lg mx-auto pt-4">
+    <div className="flex flex-col items-center gap-6 max-w-xl mx-auto pt-4">
       <h2 className="text-2xl font-bold flex items-center gap-2">
         <Emoji name="ferris_wheel" size={28} /> Lucky Wheel
       </h2>
 
       {/* Render High-Fidelity Canvas Wheel matching standalone UI */}
-      <div className="relative w-64 h-64">
+      <div className="relative w-80 h-80 sm:w-96 sm:h-96">
         <canvas
           ref={canvasRef}
           className="w-full h-full"
-          style={{ maxWidth: 256, maxHeight: 256 }}
+          style={{ maxWidth: 384, maxHeight: 384 }}
         />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 text-2xl drop-shadow-md select-none pointer-events-none">
           ▼

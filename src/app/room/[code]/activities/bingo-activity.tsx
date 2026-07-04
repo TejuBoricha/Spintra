@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Grid3x3 } from "lucide-react";
+import { Grid3x3, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
@@ -100,76 +100,106 @@ export function BingoActivity() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="flex flex-col items-center gap-6 max-w-md mx-auto pt-8"
+      className="flex flex-col items-center gap-6 max-w-xl mx-auto pt-8 w-full"
     >
       <h2 className="text-2xl font-bold flex items-center gap-2">
-        <Grid3x3 className="w-6 h-6 text-teal-400" /> Bingo
+        <Grid3x3 className="w-6 h-6 text-cyan-400" /> Bingo
       </h2>
       {bingoWinner && (
-        <motion.p
+        <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="text-2xl font-bold text-teal-400 flex items-center justify-center gap-2"
+          className="text-center p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl w-full max-w-xs"
         >
-          {bingoWinner} <Emoji name="party_popper" size={28} pop /> Bingo!
-        </motion.p>
+          <p className="text-sm text-emerald-300 font-semibold uppercase tracking-wider mb-1">Bingo Winner!</p>
+          <p className="text-2xl font-black text-emerald-400 flex items-center justify-center gap-2">
+            {bingoWinner} <Emoji name="party_popper" size={26} pop />
+          </p>
+        </motion.div>
       )}
       {lastCalled && !bingoWinner && (
-        <motion.p key={lastCalled} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="text-xl font-bold text-teal-400">
-          {columnFor(lastCalled)}-{lastCalled}
-        </motion.p>
+        <motion.div
+          key={lastCalled}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-20 h-20 rounded-full flex flex-col items-center justify-center bg-gradient-to-br from-cyan-500 to-blue-600 border border-cyan-400/40 shadow-xl shadow-cyan-500/10 text-white select-none"
+        >
+          <span className="text-[10px] uppercase font-bold tracking-widest leading-none text-cyan-200/80 mb-0.5">Called</span>
+          <span className="text-2xl font-black">{columnFor(lastCalled)}-{lastCalled}</span>
+        </motion.div>
       )}
-      <div className="glass-card p-3">
-        <div className="grid grid-cols-5 gap-1 mb-1">
+
+      {/* Bingo card layout matching standalone premium grid style */}
+      <div className="glass-card p-5 rounded-3xl border border-white/10 shadow-2xl bg-gradient-to-br from-white/[0.01] to-white/[0.03]">
+        <div className="grid grid-cols-5 gap-2 mb-2">
           {COLUMNS.map((col) => (
-            <div key={col} className="w-11 h-7 flex items-center justify-center font-black text-teal-400 text-sm">{col}</div>
+            <div
+              key={col}
+              className="w-12 h-8 flex items-center justify-center font-black text-cyan-400 text-base tracking-wider uppercase select-none"
+            >
+              {col}
+            </div>
           ))}
         </div>
         {[0, 1, 2, 3, 4].map((row) => (
-          <div key={row} className="grid grid-cols-5 gap-1">
+          <div key={row} className="grid grid-cols-5 gap-2">
             {COLUMNS.map((_, col) => {
               const marked = isMarked(col, row);
               const isFree = col === 2 && row === 2;
+
+              let styleClass = "border-white/10 text-muted-foreground bg-white/[0.02]";
+              if (marked) {
+                styleClass = isFree
+                  ? "bg-amber-500/20 border-amber-500 text-amber-200 shadow-amber-500/10"
+                  : "bg-cyan-500/20 border-cyan-500 text-cyan-200 shadow-cyan-500/10";
+              }
+
               return (
                 <div
                   key={col}
-                  className={`w-11 h-11 flex items-center justify-center rounded-lg text-xs font-semibold border transition-colors ${
-                    marked ? "bg-teal-500/30 border-teal-500 text-teal-200" : "border-white/10 text-muted-foreground"
-                  }`}
+                  className={`w-12 h-12 flex items-center justify-center rounded-xl text-sm font-bold border transition-all duration-300 select-none ${styleClass}`}
                 >
-                  {isFree ? <Emoji name="trophy" size={16} animated={false} /> : card[col][row]}
+                  {isFree ? (
+                    <Emoji name="trophy" size={20} animated={false} />
+                  ) : (
+                    card[col][row]
+                  )}
                 </div>
               );
             })}
           </div>
         ))}
       </div>
-      {isHost && !bingoWinner && (
-        <Button
-          disabled={bingoCalled.length >= 75}
-          onClick={() => {
-            const remaining = Array.from({ length: 75 }, (_, i) => i + 1).filter((n) => !bingoCalled.includes(n));
-            if (remaining.length === 0) return;
-            const number = remaining[Math.floor(Math.random() * remaining.length)];
-            sendActivityEvent({ kind: "bingo_call", number });
-          }}
-          className="w-full bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-white border-0"
-        >
-          Call Next Number
-        </Button>
-      )}
-      {isHost && bingoWinner && (
-        <Button
-          onClick={() => {
-            sendActivityEvent({ kind: "bingo_reset" });
-          }}
-          variant="outline"
-        >
-          New Game
-        </Button>
-      )}
-      {!isHost && bingoCalled.length === 0 && (
-        <p className="text-muted-foreground text-sm">Waiting for host to call the first number…</p>
+
+      {isHost && (
+        <div className="flex gap-4 w-full justify-center">
+          <Button
+            disabled={bingoCalled.length >= 75 || !!bingoWinner}
+            onClick={() => {
+              const remaining = Array.from({ length: 75 }, (_, i) => i + 1).filter(
+                (n) => !bingoCalled.includes(n)
+              );
+              if (remaining.length === 0) return;
+              const number = remaining[Math.floor(Math.random() * remaining.length)];
+              sendActivityEvent({ kind: "bingo_call", number });
+            }}
+            className="h-11 px-6 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white border-0 rounded-full font-bold shadow-lg shadow-cyan-500/10"
+          >
+            Call Next Number
+          </Button>
+
+          {bingoCalled.length > 0 && (
+            <Button
+              onClick={() => {
+                sendActivityEvent({ kind: "bingo_reset" });
+              }}
+              variant="outline"
+              className="h-11 px-5 border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10 rounded-full transition-all"
+            >
+              <RotateCcw className="w-4 h-4 mr-2" /> Reset
+            </Button>
+          )}
+        </div>
       )}
     </motion.div>
   );

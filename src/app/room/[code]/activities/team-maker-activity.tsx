@@ -29,20 +29,26 @@ export function TeamMakerActivity() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="flex flex-col gap-6 max-w-lg mx-auto pt-8"
+      className="flex flex-col gap-8 max-w-xl mx-auto pt-8 w-full"
     >
       <h2 className="text-2xl font-bold flex items-center gap-2">
         <Split className="w-6 h-6 text-cyan-400" /> Team Maker
       </h2>
+
       {isHost && (
-        <div className="flex gap-3 flex-wrap">
+        <div className="flex gap-3 flex-wrap justify-center bg-white/[0.02] border border-white/5 p-3 rounded-2xl w-full">
+          <span className="text-xs font-semibold text-muted-foreground self-center mr-2">
+            Create:
+          </span>
           {[2, 3, 4].map((n) => (
             <Button
               key={n}
               variant="outline"
-              className="border-cyan-500/30 hover:bg-cyan-500/10"
+              className="h-10 px-5 text-sm font-semibold border-cyan-500/30 hover:bg-cyan-500/10 text-cyan-300 rounded-full transition-all"
               onClick={() => {
-                const names = participants.filter((p) => p.is_online).map((p) => p.user?.username || "Guest");
+                const names = participants
+                  .filter((p) => p.is_online)
+                  .map((p) => p.user?.username || "Guest");
                 const shuffled = shuffleArray(names);
                 const teams = Array.from({ length: n }, (_, i) => ({
                   name: `Team ${i + 1}`,
@@ -56,24 +62,53 @@ export function TeamMakerActivity() {
           ))}
         </div>
       )}
+
       {tmTeams.length > 0 ? (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
           {tmTeams.map((team, i) => {
-            const colors = ["border-purple-500/50 bg-purple-500/10","border-cyan-500/50 bg-cyan-500/10","border-amber-500/50 bg-amber-500/10","border-emerald-500/50 bg-emerald-500/10"];
+            const colors = [
+              "border-purple-500/40 bg-gradient-to-br from-purple-500/5 to-indigo-500/5 shadow-purple-500/5",
+              "border-cyan-500/40 bg-gradient-to-br from-cyan-500/5 to-blue-500/5 shadow-cyan-500/5",
+              "border-amber-500/40 bg-gradient-to-br from-amber-500/5 to-orange-500/5 shadow-amber-500/5",
+              "border-emerald-500/40 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 shadow-emerald-500/5",
+            ];
             return (
-              <div key={i} className={`p-4 rounded-2xl border-2 ${colors[i % colors.length]}`}>
-                <p className="font-bold mb-2 text-sm">{team.name}</p>
-                {team.members.map((m, j) => (
-                  <p key={j} className="text-sm text-muted-foreground">{m}</p>
-                ))}
-              </div>
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: i * 0.05 }}
+                className={`p-5 rounded-3xl border shadow-lg ${colors[i % colors.length]}`}
+              >
+                <p className="font-extrabold mb-3 text-base text-white tracking-wide border-b border-white/10 pb-1.5">
+                  {team.name}
+                </p>
+                <div className="space-y-2">
+                  {team.members.map((m, j) => (
+                    <p
+                      key={j}
+                      className="text-sm font-semibold text-muted-foreground flex items-center gap-2"
+                    >
+                      <Emoji name="busts_in_silhouette" size={14} animated={false} />
+                      <span className="text-neutral-200">{m}</span>
+                    </p>
+                  ))}
+                  {team.members.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic">No members</p>
+                  )}
+                </div>
+              </motion.div>
             );
           })}
         </div>
       ) : (
-        <div className="glass-card p-8 rounded-2xl text-center border border-white/10">
-          <p className="mb-3 flex justify-center"><Emoji name="busts_in_silhouette" size={48} /></p>
-          <p className="text-muted-foreground">{isHost ? "Choose how many teams to create" : "Waiting for host to create teams…"}</p>
+        <div className="glass-card p-12 rounded-3xl text-center w-full border border-white/10 shadow-xl">
+          <p className="mb-4 flex justify-center">
+            <Emoji name="busts_in_silhouette" size={48} />
+          </p>
+          <p className="text-muted-foreground font-medium">
+            {isHost ? "Choose how many teams to create" : "Waiting for host to create teams…"}
+          </p>
         </div>
       )}
     </motion.div>

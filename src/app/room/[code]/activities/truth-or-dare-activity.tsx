@@ -9,13 +9,14 @@ import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
 
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { playSwipe } from "@/lib/audio";
 
 const BACKUP_TRUTHS = [
   "What's your biggest fear?",
   "What's the most embarrassing thing you've done?",
   "What's a secret you've never told anyone?",
   "Who was your first crush?",
-  "What's the worst lie you've told?"
+  "What's the worst lie you've told?",
 ];
 
 const BACKUP_DARES = [
@@ -23,10 +24,23 @@ const BACKUP_DARES = [
   "Speak in an accent for the next 3 minutes",
   "Text your crush right now",
   "Do 10 jumping jacks",
-  "Sing a song for 30 seconds"
+  "Sing a song for 30 seconds",
 ];
 
-import { playSwipe } from "@/lib/audio";
+const TOD_BUTTONS = [
+  {
+    type: "truth",
+    label: "Truth",
+    color: "from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500",
+    emoji: "thinking_face",
+  },
+  {
+    type: "dare",
+    label: "Dare",
+    color: "from-pink-500 to-rose-600 hover:from-pink-400 hover:to-rose-500",
+    emoji: "fire",
+  },
+] as const;
 
 export function TruthOrDareActivity() {
   const { isHost, sendActivityEvent, registerEventListener, soundEnabled } = useRoomActivity();
@@ -78,28 +92,32 @@ export function TruthOrDareActivity() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="flex flex-col items-center gap-8 max-w-md mx-auto pt-8"
+      className="flex flex-col items-center gap-8 max-w-xl mx-auto pt-8"
     >
       <h2 className="text-2xl font-bold flex items-center gap-2">
-        <ShieldAlert className="w-6 h-6 text-pink-400" /> Truth or Dare
+        <ShieldAlert className="w-6 h-6 text-pink-500" /> Truth or Dare
       </h2>
       {isHost && (
-        <div className="flex gap-3 w-full">
-          {[
-            { type: "truth", label: "Draw Truth", color: "from-cyan-600 to-blue-600", list: prompts.truths },
-            { type: "dare", label: "Draw Dare", color: "from-pink-600 to-red-600", list: prompts.dares },
-          ].map((btn) => (
-            <Button
-              key={btn.type}
-              onClick={() => {
-                const text = btn.list[Math.floor(Math.random() * btn.list.length)];
-                sendActivityEvent({ kind: "tod_prompt", promptType: btn.type as "truth" | "dare", text });
-              }}
-              className={`flex-1 bg-gradient-to-r ${btn.color} text-white border-0`}
-            >
-              {btn.label}
-            </Button>
-          ))}
+        <div className="flex gap-4 w-full">
+          {TOD_BUTTONS.map((btn) => {
+            const list = btn.type === "truth" ? prompts.truths : prompts.dares;
+            return (
+              <Button
+                key={btn.type}
+                onClick={() => {
+                  const text = list[Math.floor(Math.random() * list.length)];
+                  sendActivityEvent({
+                    kind: "tod_prompt",
+                    promptType: btn.type,
+                    text,
+                  });
+                }}
+                className={`flex-1 h-12 bg-gradient-to-r ${btn.color} text-white border-0 rounded-full font-bold shadow-lg`}
+              >
+                <Emoji name={btn.emoji} size={18} className="mr-2" /> Draw {btn.label}
+              </Button>
+            );
+          })}
         </div>
       )}
       {todPrompt ? (
@@ -107,21 +125,40 @@ export function TruthOrDareActivity() {
           key={todPrompt.text}
           initial={{ opacity: 0, scale: 0.9, rotateX: -20 }}
           animate={{ opacity: 1, scale: 1, rotateX: 0 }}
-          className={`glass-card p-8 rounded-2xl text-center w-full border-2 ${todPrompt.type === "truth" ? "border-cyan-500/50" : "border-pink-500/50"}`}
+          transition={{ type: "spring", stiffness: 100, damping: 12 }}
+          className={`w-full text-center px-8 py-10 rounded-3xl border-2 shadow-2xl leading-relaxed ${
+            todPrompt.type === "truth"
+              ? "bg-gradient-to-br from-cyan-500/5 to-blue-500/5 border-cyan-500/40 text-cyan-100 shadow-cyan-500/10"
+              : "bg-gradient-to-br from-pink-500/5 to-rose-500/5 border-pink-500/40 text-pink-100 shadow-pink-500/10"
+          }`}
         >
-          <Badge className={`mb-4 gap-1 ${todPrompt.type === "truth" ? "bg-cyan-500/20 text-cyan-300" : "bg-pink-500/20 text-pink-300"}`}>
+          <Badge
+            className={`mb-4 text-xs font-semibold px-4 py-1 gap-1.5 uppercase tracking-wider ${
+              todPrompt.type === "truth"
+                ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/20"
+                : "bg-pink-500/15 text-pink-300 border border-pink-500/20"
+            }`}
+          >
             {todPrompt.type === "truth" ? (
-              <>Truth <Emoji name="thinking_face" size={18} /></>
+              <>
+                Truth <Emoji name="thinking_face" size={16} />
+              </>
             ) : (
-              <>Dare <Emoji name="fire" size={18} /></>
+              <>
+                Dare <Emoji name="fire" size={16} />
+              </>
             )}
           </Badge>
-          <p className="text-xl font-semibold">{todPrompt.text}</p>
+          <p className="text-xl font-bold leading-normal text-white">{todPrompt.text}</p>
         </motion.div>
       ) : (
-        <div className="glass-card p-8 rounded-2xl text-center w-full border border-white/10">
-          <p className="mb-3 flex justify-center"><Emoji name="performing_arts" size={48} /></p>
-          <p className="text-muted-foreground">{isHost ? "Choose Truth or Dare above" : "Waiting for host to draw a card…"}</p>
+        <div className="glass-card p-12 rounded-3xl text-center w-full border border-white/10 shadow-xl">
+          <p className="mb-4 flex justify-center">
+            <Emoji name="performing_arts" size={48} />
+          </p>
+          <p className="text-muted-foreground font-medium">
+            {isHost ? "Choose Truth or Dare above" : "Waiting for host to draw a card…"}
+          </p>
         </div>
       )}
     </motion.div>

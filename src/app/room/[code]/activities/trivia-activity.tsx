@@ -158,7 +158,7 @@ export function TriviaActivity() {
           <Button
             disabled={filteredQuestions.length === 0}
             onClick={drawNextQuestion}
-            className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-white border-0"
+            className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-white border-0 rounded-full h-11 shadow-lg shadow-yellow-500/10"
           >
             Start Trivia
           </Button>
@@ -186,19 +186,29 @@ export function TriviaActivity() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
             {triviaQuestion.options.map((opt, i) => {
               const isPicked = myAnswer?.choiceIndex === i;
+              const hasAnswered = !!myAnswer;
+              const isCorrectOption = i === triviaQuestion.correctIndex;
+
+              let btnStyle = "border-white/10 hover:border-yellow-500/50 hover:bg-yellow-500/10";
+              if (hasAnswered) {
+                if (isCorrectOption) {
+                  btnStyle = "border-emerald-500 bg-emerald-500/15 text-emerald-300 shadow-emerald-500/10 font-bold";
+                } else if (isPicked) {
+                  btnStyle = "border-rose-500 bg-rose-500/15 text-rose-300 shadow-rose-500/10 font-bold";
+                } else {
+                  btnStyle = "border-white/5 opacity-40";
+                }
+              }
+
               return (
                 <button
                   key={i}
-                  disabled={!!myAnswer}
+                  disabled={hasAnswered}
                   onClick={() => {
                     const correct = i === triviaQuestion.correctIndex;
                     sendActivityEvent({ kind: "trivia_answer", userId: currentUser.id, username: currentUser.username, choiceIndex: i, correct });
                   }}
-                  className={`p-4 rounded-xl border-2 text-left font-medium transition-all disabled:cursor-default ${
-                    isPicked
-                      ? "border-yellow-500 bg-yellow-500/20 text-yellow-300"
-                      : "border-white/10 hover:border-yellow-500/50 hover:bg-yellow-500/10 disabled:hover:border-white/10 disabled:hover:bg-transparent"
-                  }`}
+                  className={`p-4 rounded-xl border text-left font-semibold transition-all duration-200 disabled:cursor-default ${btnStyle}`}
                 >
                   {opt}
                 </button>
@@ -217,7 +227,7 @@ export function TriviaActivity() {
             <div className="w-full flex flex-col gap-2 mt-4">
               <Button
                 onClick={drawNextQuestion}
-                className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-white border-0 w-full"
+                className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-white border-0 w-full rounded-full h-11 shadow-lg shadow-yellow-500/10"
               >
                 <Shuffle className="w-4 h-4 mr-2" /> Next Question
               </Button>
