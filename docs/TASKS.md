@@ -6,7 +6,12 @@ This document tracks all active, remaining, and completed tasks for the Spintra 
 
 ## High Priority
 
-None currently. No open bugs or security issues.
+Pre-launch hardening — required before publishing the site publicly on the open internet. None of the Medium Priority items below are launch-blocking; these are.
+
+- `[ ]` **Abuse & Moderation Controls:** Add a report/block/kick path for disruptive users within a room, plus basic chat profanity/spam filtering. Currently a host has no way to remove a bad actor from their own room.
+- `[ ]` **Rate Limiting on Room/Message Creation:** Prevent anonymous-session spam (mass room creation, message flooding) at the Supabase/API layer — no throttling exists today.
+- `[ ]` **Legal Basics:** Add a Terms of Service, Privacy Policy, and cookie/consent notice covering the anonymous Supabase auth sessions and any stored data. Required before onboarding real public users.
+- `[ ]` **Production Error Monitoring:** Wire up error tracking/alerting (e.g. Sentry) so failures and abuse patterns are visible once real strangers — not just known testers — are using the site.
 
 ---
 

@@ -24,7 +24,10 @@ None.
 
 ## Next Recommended Task
 
-Pick up the remaining Medium Priority backlog items in `docs/TASKS.md`:
-1. **Visual Scoreboard**: persistent real-time leaderboard showing ranks inside rooms.
-2. **Tournament Bracket Tree UI**: bracket tree layout for brackets instead of flat match logs.
-3. **XP/Leveling**: dynamic XP engine updates.
+The user confirmed intent to publish Spintra live on the public internet once ready, so `docs/TASKS.md` now has a High Priority "Pre-launch hardening" tier ahead of the Medium Priority engagement features:
+1. **Abuse & Moderation Controls**: report/block/kick path, chat spam/profanity filtering.
+2. **Rate Limiting**: throttle anonymous room/message creation.
+3. **Legal Basics**: Terms of Service, Privacy Policy, cookie/consent notice.
+4. **Production Error Monitoring**: Sentry or equivalent, wired up before real public traffic.
+
+Medium Priority (Visual Scoreboard, Tournament Bracket Tree UI, XP/Leveling, Room Settings Panel) remains queued behind it.

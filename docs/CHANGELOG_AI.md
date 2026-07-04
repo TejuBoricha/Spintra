@@ -122,6 +122,25 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 29: Pre-Launch Hardening Backlog Tier
+
+**AI:** Claude Code (Anthropic)
+**Task:** Add a High Priority "pre-launch hardening" tier to the backlog after the user confirmed intent to publish Spintra live on the public internet once ready. No code changes.
+**Files Modified:**
+- `docs/TASKS.md` — added High Priority tier: Abuse & Moderation Controls, Rate Limiting on Room/Message Creation, Legal Basics (ToS/Privacy/consent), Production Error Monitoring
+- `docs/AI_CONTEXT.md` — updated Current Focus and Next Recommended Task to point at the new tier ahead of the Medium Priority engagement features
+- `docs/HANDOFF.md` — updated Next Recommended Task to the same effect
+
+**Purpose:**
+- The existing Medium Priority backlog (visual scoreboard, tournament bracket UI, XP/leveling, room settings panel) is all engagement polish. None of it addresses the risks of exposing the site to real public traffic, given documented assumptions (no verified identity, no moderation tooling, no legal pages, no error monitoring).
+
+**Outcome:**
+- `TASKS.md` now has a High Priority tier ranked above Medium Priority, so the next session starts on launch-blocking work rather than feature polish.
+
+**Risks:** None — documentation/planning only, no code touched.
+
+---
+
 ## [2026-07-04] — Session 28: Database Prompts Migration, Zustand Report & PIIA Workflow Enhancements
 **AI:** Antigravity (Google DeepMind)
 **Task:** Migrate static prompts/trivia questions to dynamic DB schemas, write a Zustand state persistence investigation report, and enhance the Pre-Implementation Impact Assessment (PIIA) rules.

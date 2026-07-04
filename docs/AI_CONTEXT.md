@@ -4,7 +4,7 @@
 > DB schema live in `ARCHITECTURE.md`. Session-to-session handoff lives in `HANDOFF.md`. Backlog
 > and roadmap live in `TASKS.md`. Do not duplicate those here — link to them instead.
 > Always update this file after every significant milestone.
-> Last updated: 2026-07-04T11:35 IST
+> Last updated: 2026-07-04T12:10 IST
 
 ---
 
@@ -28,7 +28,7 @@ All room joining flows, discovery pages, profile state sync optimizations, datab
 
 ## Current Focus
 
-No area of the codebase is under active work right now. If resuming unprompted, `TASKS.md`'s Medium Priority tier (visual scoreboard, tournament bracket UI, XP system, room settings panel, share link/QR) is the natural next focus area.
+No area of the codebase is under active work right now. The user intends to publish the site live on the public internet once ready, so `TASKS.md`'s new High Priority "pre-launch hardening" tier (abuse/moderation controls, rate limiting, legal basics, error monitoring) takes precedence over the Medium Priority engagement features (visual scoreboard, tournament bracket UI, XP system, room settings panel).
 
 ---
 
@@ -51,7 +51,7 @@ Load-bearing assumptions a new session should be aware of before making changes:
 
 ## Next Recommended Task
 
-No task is queued. If picking up unprompted work, consult `TASKS.md` and start from the top of Medium Priority (nothing is currently High Priority or In Progress).
+No task is queued. If picking up unprompted work, consult `TASKS.md` and start from the top of the new High Priority "pre-launch hardening" tier — the site is planned for a public launch, so abuse controls, rate limiting, legal basics, and error monitoring outrank the Medium Priority engagement features.
 
 ---
 
