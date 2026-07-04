@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { ArrowRight, Sparkles, Zap, Globe, MessageCircle, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getOrCreateRoomUser } from "@/lib/room-user";
 import dynamic from "next/dynamic";
 const HeroThreeScene = dynamic(() => import("@/components/landing/hero-scene").then((m) => m.HeroThreeScene), {
   ssr: false,
@@ -35,6 +36,7 @@ const perks = [
 
 export default function HomePage() {
   const router = useRouter();
+  const [currentUser] = useState(getOrCreateRoomUser);
   const [homeCode, setHomeCode] = useState("");
   const [homeJoining, setHomeJoining] = useState(false);
 
@@ -47,7 +49,7 @@ export default function HomePage() {
       if (supabase) {
         const { data: room, error: roomError } = await supabase
           .from("rooms")
-          .select("is_locked, max_participants")
+          .select("is_locked, max_participants, host_id")
           .eq("code", homeCode)
           .maybeSingle();
 
@@ -57,21 +59,36 @@ export default function HomePage() {
           return;
         }
 
-        if (room.is_locked) {
-          toast.error("This room is locked by the host.");
-          setHomeJoining(false);
-          return;
-        }
+        const isRoomHost = room.host_id === currentUser.id;
 
-        const { data: parts } = await supabase
+        // Check if user is already a participant of this room (for reconnects)
+        const { data: existingPart } = await supabase
           .from("room_participants")
           .select("id")
-          .eq("room_id", homeCode);
+          .eq("room_id", homeCode)
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
 
-        if (parts && parts.length >= room.max_participants) {
-          toast.error("This room is full.");
-          setHomeJoining(false);
-          return;
+        const isRegistered = !!existingPart;
+
+        // If the user is NEITHER the host NOR already registered, check restrictions
+        if (!isRoomHost && !isRegistered) {
+          if (room.is_locked) {
+            toast.error("This room is locked by the host.");
+            setHomeJoining(false);
+            return;
+          }
+
+          const { data: parts } = await supabase
+            .from("room_participants")
+            .select("id")
+            .eq("room_id", homeCode);
+
+          if (parts && parts.length >= room.max_participants) {
+            toast.error("This room is full.");
+            setHomeJoining(false);
+            return;
+          }
         }
       }
 
@@ -83,7 +100,7 @@ export default function HomePage() {
     } finally {
       setHomeJoining(false);
     }
-  }, [homeCode, router]);
+  }, [homeCode, router, currentUser.id]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
@@ -195,7 +212,7 @@ export default function HomePage() {
                 onChange={(e) => setHomeCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
                 onKeyDown={(e) => e.key === "Enter" && handleHomeJoin()}
                 placeholder="ENTER CODE"
-                className="flex-1 px-4 h-12 bg-white/5 border border-white/10 rounded-2xl text-center text-lg font-mono font-bold uppercase tracking-widest text-purple-300 focus:outline-none focus:border-cyan-500/50"
+                className="flex-1 px-4 h-12 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl text-center text-lg font-mono font-bold uppercase tracking-widest text-purple-600 dark:text-purple-300 focus:outline-none focus:border-cyan-500/50"
               />
               <Button
                 onClick={handleHomeJoin}

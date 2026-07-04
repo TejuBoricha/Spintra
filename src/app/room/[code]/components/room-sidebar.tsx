@@ -90,7 +90,7 @@ export function RoomSidebar({
   return (
     <div className="flex-1 flex flex-col h-full bg-background/50 backdrop-blur-sm overflow-hidden">
       {/* Tabs */}
-      <div className="flex border-b border-white/5 shrink-0">
+      <div className="flex border-b border-border shrink-0">
         <button
           onClick={() => {
             setShowParticipants(false);
@@ -98,7 +98,7 @@ export function RoomSidebar({
           }}
           className={`relative flex-1 py-3 text-sm font-medium transition-colors ${
             !showParticipants
-              ? "text-white border-b-2 border-purple-500"
+              ? "text-foreground font-semibold border-b-2 border-purple-500"
               : "text-muted-foreground"
           }`}
         >
@@ -118,7 +118,7 @@ export function RoomSidebar({
           onClick={() => setShowParticipants(true)}
           className={`flex-1 py-3 text-sm font-medium transition-colors ${
             showParticipants
-              ? "text-white border-b-2 border-purple-500"
+              ? "text-foreground font-semibold border-b-2 border-purple-500"
               : "text-muted-foreground"
           }`}
         >
@@ -202,7 +202,7 @@ export function RoomSidebar({
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
-                  className="px-4 py-2 border-t border-white/5 flex gap-1 shrink-0"
+                  className="px-4 py-2 border-t border-border flex gap-1 shrink-0"
                 >
                   {REACTION_NAMES.map((name) => (
                     <button
@@ -211,7 +211,7 @@ export function RoomSidebar({
                         setNewMessage(newMessage + EMOJI_UNICODE[name]);
                         setShowEmojis(false);
                       }}
-                      className="w-8 h-8 flex items-center justify-center hover:bg-white/5 rounded-lg transition-colors"
+                      className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded-lg transition-colors"
                     >
                       <Emoji name={name} size={22} />
                     </button>
@@ -221,7 +221,7 @@ export function RoomSidebar({
             </AnimatePresence>
 
             {/* Input */}
-            <div className="p-4 border-t border-white/5 shrink-0">
+            <div className="p-4 border-t border-border shrink-0">
               <div className="flex gap-2">
                 <Input
                   placeholder="Type a message..."
@@ -282,7 +282,7 @@ export function RoomSidebar({
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ type: "spring", stiffness: 450, damping: 32 }}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-all ${
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted transition-all ${
                         p.is_online ? "" : "opacity-55"
                       }`}
                     >
@@ -306,7 +306,7 @@ export function RoomSidebar({
                               value={editValue}
                               onChange={(e) => setEditValue(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))}
                               maxLength={15}
-                              className="text-xs bg-white/5 border border-white/10 rounded px-1.5 py-0.5 font-medium text-white focus:outline-none focus:border-purple-500/50 w-24"
+                              className="text-xs bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded px-1.5 py-0.5 font-medium text-foreground focus:outline-none focus:border-purple-500/50 w-24"
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") handleSaveUsername();
                                 if (e.key === "Escape") setIsEditingUsername(false);
@@ -323,7 +323,7 @@ export function RoomSidebar({
                         ) : (
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium truncate flex items-center gap-1.5 text-white">
+                              <span className="text-sm font-medium truncate flex items-center gap-1.5 text-foreground">
                                 You
                                 <span className="text-xs text-muted-foreground/80 font-normal">
                                   ({p.user?.username})
@@ -333,7 +333,7 @@ export function RoomSidebar({
                                     setEditValue(p.user?.username || "");
                                     setIsEditingUsername(true);
                                   }}
-                                  className="text-muted-foreground hover:text-white transition-colors p-0.5"
+                                  className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
                                   aria-label="Edit username"
                                 >
                                   <Pencil className="w-3 h-3" />
