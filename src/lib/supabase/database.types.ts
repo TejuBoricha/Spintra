@@ -151,6 +151,36 @@ export interface Database {
         }
         Relationships: []
       }
+      trivia_questions: {
+        Row: {
+          id: string
+          text: string
+          options: Json
+          correct_index: number
+          category: string
+          difficulty: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          text: string
+          options: Json
+          correct_index: number
+          category: string
+          difficulty: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          text?: string
+          options?: Json
+          correct_index?: number
+          category?: string
+          difficulty?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -235,8 +235,9 @@ useEffect(() => registerEventListener((event) => {
 | 0007 | `allow_host_update_participants` | Lets the host update other participants' rows (e.g. marking a crashed client offline) |
 | 0008 | `create_activity_prompts` | Creates + seeds `activity_prompts` (Truth or Dare / Would You Rather / Never Have I Ever) |
 | 0009 | `backend_and_db_improvements` | Security definer membership helper, hardened RLS policies, check limits trigger, and cleanup function |
+| 0010 | `create_trivia_and_scramble_prompts` | Creates `trivia_questions` table, seeds trivia questions, and seeds Word Scramble words |
 
-**Current status:** all 9 applied; RLS enabled on all 4 tables; latest policy is `0009_backend_and_db_improvements`.
+**Current status:** all 10 applied; RLS enabled on all 5 tables; latest policy is `0009_backend_and_db_improvements`.
 
 ### APIs / Integration Points
 No custom REST or GraphQL API exists — every client talks directly to Supabase (or, unconfigured, the `BroadcastChannel` Web API). The full set of integration points:
@@ -427,14 +428,24 @@ erDiagram
 
     ACTIVITY_PROMPTS {
         uuid id PK
-        text activity_type "truth-or-dare / would-you-rather / never-have-i-ever"
-        text category "truth / dare, null for the other two types"
+        text activity_type "truth-or-dare / would-you-rather / never-have-i-ever / word-scramble"
+        text category "truth / dare, null for others"
         jsonb prompt_data "shape varies per activity_type"
+        timestamptz created_at
+    }
+
+    TRIVIA_QUESTIONS {
+        uuid id PK
+        text text
+        jsonb options "array of strings"
+        integer correct_index
+        text category "Science, Geography, History, Pop Culture, Sports"
+        text difficulty "easy / medium / hard"
         timestamptz created_at
     }
 ```
 
 **Notes:**
-- `ACTIVITY_PROMPTS` has no foreign key to `rooms` — it's a global, room-independent lookup table read by any client (see `activity_prompts_select_all` RLS policy).
+- `ACTIVITY_PROMPTS` and `TRIVIA_QUESTIONS` have no foreign keys to `rooms` — they are global, room-independent lookup tables read by any client (see RLS select policies).
 - `rooms.id` is the literal primary key, but every foreign key and every client-side query filters on `rooms.code` instead (a 6-character human-shareable string) — `id` mostly goes unused outside its role as the PK.
 - `room_participants` and `chat_messages` both have `replica identity full` set (migration 0001/0002) so that Postgres logical replication — which Supabase Realtime reads from — includes the full old row on UPDATE/DELETE, not just PK columns. Without this, realtime DELETE events for a kicked participant or a closed room would be silently dropped for subscribers filtering on non-PK columns like `room_id`/`code`.

@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
-import { TRIVIA_QUESTIONS } from "@/lib/trivia-questions";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { TRIVIA_QUESTIONS, type TriviaQuestion } from "@/lib/trivia-questions";
 import { shuffleArray } from "@/lib/utils";
 
 import { playSwipe, playPop, playSuccess, playFailure } from "@/lib/audio";
@@ -28,6 +29,32 @@ export function TriviaActivity() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("All");
   const [remainingIndices, setRemainingIndices] = useState<number[]>([]);
+  const [questions, setQuestions] = useState<TriviaQuestion[]>([...TRIVIA_QUESTIONS]);
+
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    if (supabase && isHost) {
+      supabase
+        .from("trivia_questions")
+        .select("*")
+        .then(({ data, error }) => {
+          if (data && !error && data.length > 0) {
+            const fetched = data.map((q) => ({
+              text: q.text,
+              options: Array.isArray(q.options)
+                ? (q.options as string[])
+                : typeof q.options === "string"
+                ? JSON.parse(q.options)
+                : [],
+              correctIndex: q.correct_index,
+              category: q.category,
+              difficulty: q.difficulty,
+            })) as TriviaQuestion[];
+            setQuestions(fetched);
+          }
+        });
+    }
+  }, [isHost]);
 
   useEffect(() => {
     return registerEventListener((event) => {
@@ -63,7 +90,7 @@ export function TriviaActivity() {
     });
   }, [registerEventListener, soundEnabled, currentUser.id]);
 
-  const filteredQuestions = TRIVIA_QUESTIONS.filter((q) => {
+  const filteredQuestions = questions.filter((q) => {
     const categoryMatch = selectedCategory === "All" || q.category === selectedCategory;
     const difficultyMatch = selectedDifficulty === "All" || q.difficulty === selectedDifficulty;
     return categoryMatch && difficultyMatch;

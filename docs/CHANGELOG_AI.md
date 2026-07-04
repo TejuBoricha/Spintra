@@ -122,6 +122,31 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 28: Database-Driven Activity Prompts & Trivia Questions Migration
+**AI:** Antigravity (Google DeepMind)
+**Task:** Migrate all remaining static activity prompts and trivia question lists from the client codebase to public database tables in Supabase, maintaining full local sandbox fallbacks.
+**Files Modified/Created:**
+- `supabase/migrations/0010_create_trivia_and_scramble_prompts.sql` (NEW) — Supabase schema migration defining `trivia_questions` and extending `activity_prompts` check constraint, seeding all 37 Canonical questions and 12 Scramble words.
+- `src/lib/supabase/database.types.ts` — Updated the TypeScript interface definitions to incorporate the new `trivia_questions` table schema.
+- `src/app/room/[code]/activities/trivia-activity.tsx` — Refactored to fetch dynamic trivia questions from Supabase with safe type-casting and offline fallback.
+- `src/app/room/[code]/activities/word-scramble-activity.tsx` — Refactored to fetch dynamic scramble words from Supabase with offline fallback.
+- `docs/ARCHITECTURE.md` — Added migration `0010` and mapped the new `TRIVIA_QUESTIONS` schema inside the database ER mermaid diagram.
+- `docs/TASKS.md` — Checked off the database-migration tasks under low priority backlog.
+- `docs/AI_CONTEXT.md` — Updated milestone logs.
+- `docs/HANDOFF.md` — Updated handoff pointer.
+
+**Purpose:**
+- Transition the hardcoded prompt lists and trivia questions to centralized PostgreSQL database tables, allowing real-time edits, extensions, and content moderation.
+- Keep standard static lists as offline fallbacks so the multi-tab BroadcastChannel local sandbox continues to work without database connection details.
+
+**Outcome:**
+- Loaded word scramble banks and trivia lists dynamically from database tables.
+- Passed typechecks, linter gates, and automated documentation file/drift verification scripts successfully.
+
+**Risks:** No known risks.
+
+---
+
 ## [2026-07-04] — Session 27: Explore Realtime Feeds, Custom Join Modals, Portal Views, Profile Sync & Database Race Fixes
 **AI:** Antigravity (Google DeepMind)
 **Task:** Redesign and implement the complete custom room joining flows, build a live Supabase Explore room & activity feed, build an inline sidebar profile editor, refactor overlays to mount via React Portals, resolve database concurrent insert and host promotion election race condition conflicts, and codify the strict AI development workflow.

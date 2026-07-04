@@ -25,6 +25,7 @@ function scramble(word: string): string {
   return attempt;
 }
 
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { playSwipe, playSuccess, playFailure } from "@/lib/audio";
 
 export function WordScrambleActivity() {
@@ -33,6 +34,23 @@ export function WordScrambleActivity() {
   const [scrambleWord, setScrambleWord] = useState<{ scrambled: string; answer: string } | null>(null);
   const [scrambleWinner, setScrambleWinner] = useState<string | null>(null);
   const [guess, setGuess] = useState("");
+  const [words, setWords] = useState<string[]>([...WORDS]);
+
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    if (supabase && isHost) {
+      supabase
+        .from("activity_prompts")
+        .select("*")
+        .eq("activity_type", "word-scramble")
+        .then(({ data, error }) => {
+          if (data && !error && data.length > 0) {
+            const fetched = data.map((p) => (p.prompt_data as { word: string }).word.toUpperCase());
+            setWords(fetched);
+          }
+        });
+    }
+  }, [isHost]);
 
   useEffect(() => {
     return registerEventListener((event) => {
@@ -57,7 +75,7 @@ export function WordScrambleActivity() {
   }, [registerEventListener, soundEnabled]);
 
   const newWord = () => {
-    const word = WORDS[Math.floor(Math.random() * WORDS.length)];
+    const word = words[Math.floor(Math.random() * words.length)];
     const payload = { scrambled: scramble(word), answer: word };
     sendActivityEvent({ kind: "scramble_word", ...payload });
     setGuess("");
