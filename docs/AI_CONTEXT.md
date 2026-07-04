@@ -4,13 +4,13 @@
 > DB schema live in `ARCHITECTURE.md`. Session-to-session handoff lives in `HANDOFF.md`. Backlog
 > and roadmap live in `TASKS.md`. Do not duplicate those here — link to them instead.
 > Always update this file after every significant milestone.
-> Last updated: 2026-07-04T17:00 IST
+> Last updated: 2026-07-04T18:30 IST
 
 ---
 
 ## Current Milestone
 
-Pre-launch hardening tier: Legal Basics (30), Rate Limiting (31), Abuse & Moderation Controls (32) are done and live. Only Production Error Monitoring remains. Sessions 30–33 were committed as 4 scoped commits and pushed. That push's CI run then surfaced a second, wholly pre-existing bug (unrelated to Sessions 30–33): rooms created without Supabase configured never auto-activated their game — fixed in Session 34.
+Pre-launch hardening tier: Legal Basics (30), Rate Limiting (31), Abuse & Moderation Controls (32) are done and live. Only Production Error Monitoring remains. Sessions 30–33 were committed as 4 scoped commits and pushed. That push's CI run then surfaced a second, wholly pre-existing bug (unrelated to Sessions 30–33): rooms created without Supabase configured never auto-activated their game — fixed in Session 34. Session 35 triaged the repo's 5 open Dependabot PRs: merged 4 safe GitHub Actions bumps, and applied 15 of 16 bundled npm updates directly to `main` while holding back `eslint ^10` (upstream-incompatible with `eslint-config-next`).
 
 ---
 
@@ -36,7 +36,7 @@ Working through `TASKS.md`'s High Priority "pre-launch hardening" tier one item 
 
 ## Known Issues
 
-None identified.
+- **`eslint` intentionally pinned at `^9`.** Dependabot will keep proposing `^10`; do not accept until `eslint-config-next`'s bundled `eslint-plugin-react` ships ESLint 10 support upstream. Confirmed (Session 35) that upgrading crashes `npm run lint` with `TypeError: contextOrFilename.getFilename is not a function` — a removed ESLint 10 API that plugin still calls internally. Verify by installing the bump in a scratch worktree and running `npm run lint` directly, not just by trusting a green CI badge on an unrelated branch.
 
 ---
 

@@ -122,6 +122,29 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 35: Dependabot PR Review & Triage
+
+**AI:** Claude Code (Anthropic)
+**Task:** User asked to review and merge the repo's 5 open pull requests. All 5 were Dependabot-authored (not user work): 4 GitHub Actions version bumps (`checkout` 4→7, `setup-node` 4→6, `cache` 4→6, `upload-artifact` 4→7) plus one bundled PR with 16 npm package updates.
+**Investigation path:**
+- All 5 PRs initially showed a failing `validate` (CI) check. Confirmed via `git merge-base --is-ancestor` that their base commit was 27 commits behind `main` — a staleness artifact, not a real regression, since `main`'s own latest CI run was green.
+- Posted `@dependabot rebase` comments on all 5 PRs via the GitHub API (using the credential already stored by `git credential fill` for `github.com` — the same one used for `git push` all session) to refresh them against current `main`, then polled `check-runs` until each resolved.
+- The 4 Actions-only bumps came back fully green after rebasing and were squash-merged via the API (`PUT /pulls/{n}/merge`).
+- The 16-package bundle (`#16`) still failed lint after rebasing. Checked out the PR branch into a separate `git worktree` (kept `main`'s working tree undisturbed), ran `npm install` and `npm run lint` directly: ESLint crashed with `TypeError: contextOrFilename.getFilename is not a function` inside `eslint-plugin-react` (bundled inside `eslint-config-next`), which still calls a context method ESLint 10 removed.
+- Diffed `package.json` and isolated the single breaking change: `eslint: ^9 → ^10`. `typescript: ^5 → ^6` and the other 14 bumps were unaffected (typecheck had already passed in CI even under `typescript ^6`).
+
+**Files Modified:**
+- `package.json`, `package-lock.json` — applied all 15 safe updates from PR #16 directly to `main` (Next.js 16.2.9→16.2.10, React 19.2.4→19.2.7, `@supabase/supabase-js`, `@tanstack/react-query`, `framer-motion`, `lucide-react`, `three`/`@types/three`, `shadcn`, `@types/node` ^20→^26, `typescript` ^5→^6, `eslint-config-next` 16.2.9→16.2.10). Held `eslint` at `^9`.
+
+**Purpose:** Get the routine, safe dependency maintenance merged without blindly accepting an upstream-incompatible major bump that would have broken `npm run lint` (and therefore CI) on `main`.
+
+**Outcome:**
+- Merged: PR #6, #5, #4, #3 (GitHub Actions bumps) — squash-merged into `main`.
+- PR #16 closed as superseded (commented with the root-cause explanation) after manually applying its safe subset as commit `b429a16`, verified locally end-to-end before pushing: `npm run verify` (typecheck + lint + docs:check), `npm run build`, and `CI=true npx playwright test tests/smoke.spec.ts` — all green.
+- The `eslint ^9 → ^10` bump remains outstanding, blocked upstream on `eslint-config-next`/`eslint-plugin-react` shipping ESLint 10 support. Dependabot will re-propose it once compatible.
+
+**Risks:** None identified — all merged changes verified against the full local `verify`/`build`/E2E pipeline before pushing, matching exactly what CI runs.
+
 ## [2026-07-04] — Session 34: Demo-Mode Room Activity Never Auto-Activated
 
 **AI:** Claude Code (Anthropic)

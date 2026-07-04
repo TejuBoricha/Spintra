@@ -47,6 +47,7 @@ Title, completion date, and a pointer to the full implementation detail in `CHAN
 
 | Title | Completed | CHANGELOG_AI.md Session |
 |---|---|---|
+| Dependabot PR Review & Triage (4 Actions bumps merged, 15/16 npm bumps applied, eslint 10 held back) | 2026-07-04 | Session 35 |
 | Demo-Mode Room Activity Never Auto-Activated Fix | 2026-07-04 | Session 34 |
 | Double-Elimination Tournament Bracket Fix (losers-bracket matches never completed) | 2026-07-04 | Session 33 |
 | Abuse & Moderation Controls (ban-on-kick, report, block, chat filter) | 2026-07-04 | Session 32 |
