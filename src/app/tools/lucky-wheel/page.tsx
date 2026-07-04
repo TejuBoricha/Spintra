@@ -141,6 +141,8 @@ export default function LuckyWheelPage() {
   const [winner, setWinner] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [newEntryLabel, setNewEntryLabel] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -537,6 +539,10 @@ export default function LuckyWheelPage() {
     setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, color } : e)));
   }, []);
 
+  const updateEntryLabel = useCallback((id: string, label: string) => {
+    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, label } : e)));
+  }, []);
+
   const applyTemplate = useCallback((tpl: (typeof TEMPLATES)[0]) => {
     setEntries(tpl.entries.map((e) => ({ ...e, id: uid() })));
     setWinner(null);
@@ -695,7 +701,48 @@ export default function LuckyWheelPage() {
                       </div>
 
                       {/* Label */}
-                      <span className="flex-1 text-sm truncate">{entry.label}</span>
+                      {editingId === entry.id ? (
+                        <input
+                          type="text"
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value)}
+                          onBlur={() => {
+                            const trimmed = editingText.trim();
+                            if (trimmed && trimmed !== entry.label) {
+                              updateEntryLabel(entry.id, trimmed);
+                            }
+                            setEditingId(null);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              const trimmed = editingText.trim();
+                              if (trimmed && trimmed !== entry.label) {
+                                updateEntryLabel(entry.id, trimmed);
+                              }
+                              setEditingId(null);
+                            } else if (e.key === "Escape") {
+                              setEditingId(null);
+                            }
+                          }}
+                          autoFocus
+                          maxLength={40}
+                          disabled={spinning}
+                          className="flex-1 h-6 px-1.5 text-xs bg-purple-500/10 border border-purple-500/40 text-purple-200 rounded-lg shrink-0 outline-none"
+                        />
+                      ) : (
+                        <span
+                          onClick={() => {
+                            if (!spinning) {
+                              setEditingId(entry.id);
+                              setEditingText(entry.label);
+                            }
+                          }}
+                          title="Click to edit"
+                          className="flex-1 text-sm truncate cursor-pointer hover:text-purple-300 transition-colors"
+                        >
+                          {entry.label}
+                        </span>
+                      )}
 
                       {/* Weight slider */}
                       <div className="hidden group-hover/entry:flex items-center gap-1.5 w-20">

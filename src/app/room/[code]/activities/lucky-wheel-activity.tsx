@@ -174,17 +174,20 @@ export function LuckyWheelActivity() {
                 <Badge
                   key={i}
                   className="bg-purple-500/20 text-purple-300 pr-1 gap-1 cursor-pointer select-none"
-                  onDoubleClick={() => {
+                  onClick={() => {
                     if (!wheelSpinning) {
                       setEditingIndex(i);
                       setEditingText(e);
                     }
                   }}
                 >
-                  <span title="Double click to edit">{e}</span>
+                  <span title="Click to edit">{e}</span>
                   <button
                     type="button"
-                    onClick={() => removeWheelEntry(i)}
+                    onClick={(evt) => {
+                      evt.stopPropagation();
+                      removeWheelEntry(i);
+                    }}
                     disabled={wheelSpinning}
                     aria-label={`Remove ${e}`}
                     className="rounded-full hover:bg-white/10 disabled:opacity-50"
