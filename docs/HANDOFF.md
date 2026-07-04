@@ -16,7 +16,7 @@ Sessions 30–33 (Legal Basics, Rate Limiting, Abuse & Moderation Controls, Tour
 
 ## Current Task
 
-Session 34's fix is complete and verified locally but not yet committed/pushed — that's the immediate next step.
+None in progress. Session 34's fix was committed (`c0f1798`) and pushed to `origin/main`; the resulting CI run was polled via the GitHub API and confirmed green (`conclusion: success`). Working tree is clean, local `main` matches `origin/main` exactly.
 **Reminder carried forward:** the legal pages (`/legal/terms`, `/legal/privacy`) ship with bracketed placeholders (company/entity name, jurisdiction, support/privacy emails) that need real values — and ideally legal review — before actual public launch.
 
 ---
