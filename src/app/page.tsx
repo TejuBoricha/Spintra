@@ -6,7 +6,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Sparkles, Zap, Globe, MessageCircle, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { HeroThreeScene } from "@/components/landing/hero-scene";
+import dynamic from "next/dynamic";
+const HeroThreeScene = dynamic(() => import("@/components/landing/hero-scene").then((m) => m.HeroThreeScene), {
+  ssr: false,
+});
 import { FeatureCard } from "@/components/landing/feature-card";
 import { AuroraBackground } from "@/components/landing/aurora-bg";
 import { GAMES } from "@/lib/games";

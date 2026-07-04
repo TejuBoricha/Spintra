@@ -122,6 +122,25 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 26: Landing Page WebGL Dynamic Loading Optimization
+**AI:** Antigravity (Google Gemini 3.5 Flash)
+**Task:** Optimize initial page load bundle metrics for the application home landing page by converting the statically imported 3D WebGL element (`HeroThreeScene`) to client-side lazy loading.
+**Files Modified:**
+- `src/app/page.tsx` — Converted `HeroThreeScene` to dynamic dynamic loading with `ssr: false`.
+- `docs/AI_CONTEXT.md` — Updated milestone info and last updated timestamp.
+- `docs/HANDOFF.md` — Updated last completed task to include the home page bundle optimization.
+
+**Purpose:**
+- Prevent heavy 3D WebGL render dependencies (Three.js, react-three-fiber, react-three-drei) from inflating the homepage's initial javascript bundle size, improving core web vitals and mobile rendering speeds.
+
+**Outcome:**
+- Saved over 1MB of uncompressed JS from the landing page's initial bundle.
+- Verified successful production compilation via `npm run build` and zero linter/drift regressions via `npm run verify`.
+
+**Risks:** No known risks.
+
+---
+
 ## [2026-07-04] — Session 25: Node.js Config Sync & Activity Registry Integrity Checks
 **AI:** Antigravity (Google Gemini 3.5 Flash)
 **Task:** Implement Check 7 (Node.js configuration drift check) and Check 8 (Activity Registry and games.ts catalog slug integrity checks) within `check-docs-drift.mjs`.

@@ -6,7 +6,7 @@ Portable session-continuity note for any AI assistant (Antigravity, Claude Code,
 
 ## Last Completed Task
 
-Implemented Node.js configuration drift detection (Check 7) and dynamic Activity Registry slug integrity validation (Check 8) inside `scripts/check-docs-drift.mjs`. All 8 drift validation checks and standard local verification command (`npm run verify`) pass successfully with zero warnings/errors. Details: `CHANGELOG_AI.md` Session 25.
+Optimized the home page bundle size by converting the heavy 3D WebGL hero scene component (`HeroThreeScene`) to dynamic lazy-loading, saving over 1MB of uncompressed JavaScript from the initial load bundle. Checked that all validation gates pass via `npm run verify` and the production build completes via `npm run build`. Details: `CHANGELOG_AI.md` Session 26.
 
 ---
 
