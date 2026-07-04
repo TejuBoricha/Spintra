@@ -747,23 +747,25 @@ export function useRoomSubscription({
             is_online: onlineIds.has(participant.user_id),
           }));
 
-          if (isHostRef.current) {
-            const supabaseClient = getSupabaseBrowserClient();
-            if (supabaseClient) {
-              const crashed = prev.filter(
-                (p) => p.is_online && !onlineIds.has(p.user_id) && p.user_id !== currentUser.id
-              );
-              if (crashed.length > 0) {
-                supabaseClient
-                  .from("room_participants")
-                  .update({ is_online: false })
-                  .in(
-                    "user_id",
-                    crashed.map((p) => p.user_id)
-                  )
-                  .eq("room_id", roomCode)
-                  .then();
-              }
+          // Any connected participant (not just the host) reconciles stale
+          // is_online rows against live presence — otherwise a crashed
+          // host's own row could never be corrected by anyone (nobody else
+          // is permitted to touch it), permanently blocking host succession.
+          const supabaseClient = getSupabaseBrowserClient();
+          if (supabaseClient) {
+            const crashed = prev.filter(
+              (p) => p.is_online && !onlineIds.has(p.user_id) && p.user_id !== currentUser.id
+            );
+            if (crashed.length > 0) {
+              supabaseClient
+                .from("room_participants")
+                .update({ is_online: false })
+                .in(
+                  "user_id",
+                  crashed.map((p) => p.user_id)
+                )
+                .eq("room_id", roomCode)
+                .then();
             }
           }
 
