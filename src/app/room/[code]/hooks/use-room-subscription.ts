@@ -376,10 +376,12 @@ export function useRoomSubscription({
             .eq("id", existingParticipant.id)
             .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
         } else {
-          // New join: perform insert (triggers db-level max limit check)
+          // New join: perform upsert (triggers db-level max limit check on insert)
+          // Using upsert handles the race condition gracefully where another call
+          // already inserted the row before this one finished.
           upsertResult = await supabaseClient
             .from("room_participants")
-            .insert({
+            .upsert({
               room_id: roomCode,
               user_id: currentUser.id,
               role,
@@ -389,7 +391,7 @@ export function useRoomSubscription({
               avatar_url: currentUser.avatar_url,
               xp: currentUser.xp,
               rank: currentUser.rank,
-            })
+            }, { onConflict: "room_id,user_id" })
             .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
         }
 
@@ -412,7 +414,7 @@ export function useRoomSubscription({
           } else {
             upsertResult = await supabaseClient
               .from("room_participants")
-              .insert({
+              .upsert({
                 room_id: roomCode,
                 user_id: currentUser.id,
                 role: "participant",
@@ -422,7 +424,7 @@ export function useRoomSubscription({
                 avatar_url: currentUser.avatar_url,
                 xp: currentUser.xp,
                 rank: currentUser.rank,
-              })
+              }, { onConflict: "room_id,user_id" })
               .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
           }
         }

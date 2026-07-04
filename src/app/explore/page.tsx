@@ -35,6 +35,16 @@ interface ExploreRoom {
   hearts: number;
 }
 
+interface RecentActivity {
+  user: string;
+  action: string;
+  item: string;
+  time: string;
+  emoji: EmojiName;
+  type: RoomType;
+  code: string;
+}
+
 const featuredTemplates = GAMES.map((game) => ({
   label: game.label,
   type: game.type,
@@ -45,11 +55,24 @@ const featuredTemplates = GAMES.map((game) => ({
 
 const categories = ["All", "Trending", "New", "Popular", "Teams", "Party", "Classroom"];
 
+function getRelativeTimeString(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "Just now";
+  if (minutes === 1) return "1 min ago";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours === 1) return "1 hour ago";
+  if (hours < 24) return `${hours} hours ago`;
+  return new Date(dateStr).toLocaleDateString();
+}
+
 export default function ExplorePage() {
   const router = useRouter();
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
   const [rooms, setRooms] = useState<ExploreRoom[]>([]);
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Join Widget State
@@ -115,6 +138,65 @@ export default function ExplorePage() {
         });
         setRooms(dbRooms);
       }
+
+      // Fetch 5 most recently created rooms for dynamic Recent Activity feed
+      const { data: activityData } = await supabase
+        .from("rooms")
+        .select(`
+          id,
+          code,
+          name,
+          type,
+          created_at,
+          room_participants (
+            username,
+            role
+          )
+        `)
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (activityData) {
+        const mapped = activityData.map((r) => {
+          const participants = (r.room_participants as unknown as {
+            username: string | null;
+            role: string;
+          }[] | null) || [];
+          const hostObj = participants.find((p) => p.role === "host");
+          const hostName = hostObj?.username || "Guest";
+          const game = GAMES.find((g) => g.type === r.type);
+          const gameLabel = game?.label || "Game";
+
+          const emojiMap: Record<string, EmojiName> = {
+            "lucky-wheel": "ferris_wheel",
+            "coin-flip": "coin",
+            "dice": "game_die",
+            "rps": "scissors",
+            "would-you-rather": "thinking_face",
+            "never-have-i-ever": "see_no_evil_monkey",
+            "truth-or-dare": "performing_arts",
+            "word-scramble": "books",
+            "guess-number": "question_mark",
+            "trivia": "trophy",
+            "bingo": "bullseye",
+            "team-maker": "busts_in_silhouette",
+            "tournament": "sports_medal",
+            "name-draw": "admission_tickets",
+          };
+          const emoji = emojiMap[r.type] || "thinking_face";
+
+          return {
+            user: hostName,
+            action: "created the",
+            item: `${r.name} (${gameLabel})`,
+            time: getRelativeTimeString(r.created_at),
+            emoji,
+            type: r.type as RoomType,
+            code: r.code,
+          };
+        });
+        setRecentActivities(mapped);
+      }
     } catch (err) {
       console.error("Failed to load public rooms from Supabase:", err);
     } finally {
@@ -154,8 +236,8 @@ export default function ExplorePage() {
   }, [fetchRooms]);
 
   // Submit join room action code
-  const handleJoinSubmit = useCallback(async () => {
-    if (joinCode.length !== 6) return;
+  const handleJoinRoom = useCallback(async (code: string) => {
+    if (!code || code.length !== 6) return;
     setJoining(true);
 
     try {
@@ -164,7 +246,7 @@ export default function ExplorePage() {
         const { data: room, error: roomError } = await supabase
           .from("rooms")
           .select("is_locked, max_participants")
-          .eq("code", joinCode)
+          .eq("code", code)
           .maybeSingle();
 
         if (roomError || !room) {
@@ -182,7 +264,7 @@ export default function ExplorePage() {
         const { data: parts } = await supabase
           .from("room_participants")
           .select("id")
-          .eq("room_id", joinCode);
+          .eq("room_id", code);
 
         if (parts && parts.length >= room.max_participants) {
           toast.error("This room is full.");
@@ -192,14 +274,14 @@ export default function ExplorePage() {
       }
 
       toast.success("Joining room...");
-      router.push(`/room/${joinCode}`);
+      router.push(`/room/${code}`);
     } catch (err) {
       console.error("Failed to join room from explore page:", err);
       toast.error("Unable to join room. Please try again.");
     } finally {
       setJoining(false);
     }
-  }, [joinCode, router]);
+  }, [router]);
 
   const filteredRooms = rooms.filter((room) => {
     // Search check
@@ -241,14 +323,6 @@ export default function ExplorePage() {
     if (activeCategory === "Classroom") return ["name-draw", "guess-number"].includes(t.type);
     return true;
   });
-
-  const recentActivities: { action: string; item: string; user: string; time: string; emoji: EmojiName; type: string }[] = [
-    { action: "created a", item: "Team Room", user: "Alex", time: "2 min ago", emoji: "busts_in_silhouette", type: "team-maker" },
-    { action: "spun the", item: "Giveaway Wheel", user: "Sarah", time: "5 min ago", emoji: "ferris_wheel", type: "lucky-wheel" },
-    { action: "won the", item: "Fortune Wheel", user: "Mike", time: "8 min ago", emoji: "trophy", type: "lucky-wheel" },
-    { action: "ran a", item: "Tournament Bracket", user: "Jordan", time: "12 min ago", emoji: "sports_medal", type: "tournament" },
-    { action: "drew a winner in", item: "Name Draw", user: "Emma", time: "15 min ago", emoji: "bullseye", type: "name-draw" },
-  ];
 
   const filteredActivities = recentActivities.filter((act) => {
     const query = search.toLowerCase().trim();
@@ -306,12 +380,12 @@ export default function ExplorePage() {
                 maxLength={6}
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-                onKeyDown={(e) => e.key === "Enter" && handleJoinSubmit()}
+                onKeyDown={(e) => e.key === "Enter" && handleJoinRoom(joinCode)}
                 placeholder="JOIN BY CODE (EX: 89PB5T)"
                 className="flex-1 px-4 h-12 bg-white/5 border border-white/10 rounded-2xl text-center text-sm font-mono font-bold uppercase tracking-wider text-purple-300 focus:outline-none focus:border-cyan-500/50"
               />
               <Button
-                onClick={handleJoinSubmit}
+                onClick={() => handleJoinRoom(joinCode)}
                 disabled={joinCode.length !== 6 || joining}
                 className="h-12 px-5 bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white rounded-2xl font-bold shadow-lg disabled:opacity-50"
               >
@@ -400,7 +474,7 @@ export default function ExplorePage() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <AnimatePresence>
                 {filteredRooms.map((room, i) => (
-                  <Link key={room.id} href={`/room/${room.code}`}>
+                  <div key={room.id} onClick={() => handleJoinRoom(room.code)}>
                     <motion.div
                       initial={{ opacity: 0, y: 15 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -434,7 +508,7 @@ export default function ExplorePage() {
                         <span className="font-medium">by @{room.host}</span>
                       </div>
                     </motion.div>
-                  </Link>
+                  </div>
                 ))}
               </AnimatePresence>
             </div>
@@ -493,21 +567,22 @@ export default function ExplorePage() {
           ) : (
             <div className="space-y-3">
               {filteredActivities.map((activity, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.04 }}
-                  className="glass-card p-4 flex items-center gap-4 rounded-2xl"
-                >
-                  <Emoji name={activity.emoji} size={28} />
-                  <div className="flex-1 text-sm">
-                    <span className="font-bold text-white">{activity.user}</span>{" "}
-                    <span className="text-muted-foreground">{activity.action}</span>{" "}
-                    <span className="font-bold text-purple-300">{activity.item}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{activity.time}</span>
-                </motion.div>
+                <div key={i} onClick={() => handleJoinRoom(activity.code)} className="block">
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    className="glass-card p-4 flex items-center gap-4 rounded-2xl hover:border-purple-500/30 transition-all cursor-pointer bg-white/[0.01]"
+                  >
+                    <Emoji name={activity.emoji} size={28} />
+                    <div className="flex-1 text-sm">
+                      <span className="font-bold text-white">@{activity.user}</span>{" "}
+                      <span className="text-muted-foreground">{activity.action}</span>{" "}
+                      <span className="font-bold text-purple-300">{activity.item}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground font-semibold">{activity.time}</span>
+                  </motion.div>
+                </div>
               ))}
             </div>
           )}
