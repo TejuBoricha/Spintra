@@ -4,13 +4,13 @@
 > DB schema live in `ARCHITECTURE.md`. Session-to-session handoff lives in `HANDOFF.md`. Backlog
 > and roadmap live in `TASKS.md`. Do not duplicate those here — link to them instead.
 > Always update this file after every significant milestone.
-> Last updated: 2026-07-04T18:30 IST
+> Last updated: 2026-07-04T19:15 IST
 
 ---
 
 ## Current Milestone
 
-Pre-launch hardening tier: Legal Basics (30), Rate Limiting (31), Abuse & Moderation Controls (32) are done and live. Only Production Error Monitoring remains. Sessions 30–33 were committed as 4 scoped commits and pushed. That push's CI run then surfaced a second, wholly pre-existing bug (unrelated to Sessions 30–33): rooms created without Supabase configured never auto-activated their game — fixed in Session 34. Session 35 triaged the repo's 5 open Dependabot PRs: merged 4 safe GitHub Actions bumps, and applied 15 of 16 bundled npm updates directly to `main` while holding back `eslint ^10` (upstream-incompatible with `eslint-config-next`).
+Pre-launch hardening tier: Legal Basics (30, placeholders filled 36), Rate Limiting (31), Abuse & Moderation Controls (32) are done and live. Production Error Monitoring is explicitly deferred by the user's own choice (told them it's a visibility gap, not a launch blocker; they chose to skip it for now) — not an oversight, don't pick it up unprompted. Sessions 30–33 were committed as 4 scoped commits and pushed. That push's CI run then surfaced a second, wholly pre-existing bug (unrelated to Sessions 30–33): rooms created without Supabase configured never auto-activated their game — fixed in Session 34. Session 35 triaged the repo's 5 open Dependabot PRs: merged 4 safe GitHub Actions bumps, and applied 15 of 16 bundled npm updates directly to `main` while holding back `eslint ^10` (upstream-incompatible with `eslint-config-next`). Session 36 filled in the legal pages' real operator/jurisdiction/contact info.
 
 ---
 
@@ -53,7 +53,7 @@ Load-bearing assumptions a new session should be aware of before making changes:
 
 ## Next Recommended Task
 
-Commit and push Session 34's fix, confirm the CI run goes green, then move to Production Error Monitoring (`docs/TASKS.md` High Priority tier, item 4 — the last one) — wire up error tracking/alerting (e.g. Sentry). Legal Basics, Rate Limiting, and Abuse & Moderation Controls (items 1–3) are complete.
+All High Priority pre-launch hardening items the user asked to be launch-blocking are complete (Legal Basics, Rate Limiting, Abuse & Moderation Controls — including the legal placeholder follow-up in Session 36). Production Error Monitoring remains unimplemented by the user's explicit choice to defer it, not oversight — do not start it unprompted. Open next steps: Medium Priority features (Visual Scoreboard, Tournament Bracket Tree UI, XP/Leveling, Room Settings Panel), or applying the previously-agreed "safety net only" branch protection on `main` (user said to leave it for now) — otherwise wait for the user's direction.
 
 ---
 

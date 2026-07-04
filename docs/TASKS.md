@@ -10,7 +10,7 @@ Pre-launch hardening — required before publishing the site publicly on the ope
 
 - `[x]` **Abuse & Moderation Controls:** Implemented via migration `0012_moderation_controls.sql` + client changes, applied to the live Supabase project 2026-07-04 and verified end-to-end against production (report, kick, and ban-on-rejoin all confirmed working live). **Correction:** host-only kick already existed before this session (the original wording above was wrong) — the real gap closed here is that a kicked user could immediately rejoin. Delivered: (1) ban-on-kick (`room_bans` table + before-insert trigger blocks rejoin), (2) message reporting (`message_reports` table, insert-only, reviewed via Supabase SQL editor — no admin UI), (3) client-side per-viewer block/mute (`localStorage`, everyone can use it, not just the host), (4) basic chat profanity/spam filter (`src/lib/chat-filter.ts`).
 - `[x]` **Rate Limiting on Room/Message Creation:** Prevent anonymous-session spam (mass room creation, message flooding) at the Supabase/API layer. Implemented as DB-level before-insert triggers (migration `0011_rate_limiting.sql`), applied to the live Supabase project 2026-07-04.
-- `[x]` **Legal Basics:** Add a Terms of Service, Privacy Policy, and cookie/consent notice covering the anonymous Supabase auth sessions and any stored data. Required before onboarding real public users. **Note:** ships with bracketed placeholders (`[Your Company / Legal Entity Name]`, `[Your Jurisdiction]`, `[support@yourdomain.com]`, `[privacy@yourdomain.com]`) that must be filled in — and ideally reviewed by counsel — before real public launch.
+- `[x]` **Legal Basics:** Add a Terms of Service, Privacy Policy, and cookie/consent notice covering the anonymous Supabase auth sessions and any stored data. Required before onboarding real public users. Placeholders filled in 2026-07-04 (Session 36): operator is Tejas Gogara, jurisdiction is India, contact is `tejasboricha225@gmail.com` for both support and privacy inquiries. Not reviewed by counsel — acceptable for a solo/hobby project at this scale, worth revisiting if the site starts handling payments or scales significantly.
 - `[ ]` **Production Error Monitoring:** Wire up error tracking/alerting (e.g. Sentry) so failures and abuse patterns are visible once real strangers — not just known testers — are using the site.
 
 ---
@@ -47,6 +47,7 @@ Title, completion date, and a pointer to the full implementation detail in `CHAN
 
 | Title | Completed | CHANGELOG_AI.md Session |
 |---|---|---|
+| Legal Page Placeholders Filled In (entity, jurisdiction, contact) | 2026-07-04 | Session 36 |
 | Dependabot PR Review & Triage (4 Actions bumps merged, 15/16 npm bumps applied, eslint 10 held back) | 2026-07-04 | Session 35 |
 | Demo-Mode Room Activity Never Auto-Activated Fix | 2026-07-04 | Session 34 |
 | Double-Elimination Tournament Bracket Fix (losers-bracket matches never completed) | 2026-07-04 | Session 33 |

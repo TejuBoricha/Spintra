@@ -122,6 +122,20 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 36: Legal Page Placeholders Filled In
+
+**AI:** Claude Code (Anthropic)
+**Task:** The Terms of Service and Privacy Policy pages (Session 30) shipped with bracketed placeholders for the operating entity, jurisdiction, and contact email — flagged repeatedly since as an outstanding gap before real public launch. User provided the real values.
+**Files Modified:**
+- `src/app/legal/terms/page.tsx` — entity → "Tejas Gogara", jurisdiction → "India", contact email → `tejasboricha225@gmail.com`.
+- `src/app/legal/privacy/page.tsx` — same entity, and both the data-access-request contact and general contact → `tejasboricha225@gmail.com`.
+
+**Purpose:** Close the last flagged gap in the "Legal Basics" pre-launch item. Confirmed with the user that a sole individual (not a registered company) is a legally valid operator for a Terms of Service/Privacy Policy at this scale — formalizing into an LLC or similar is a "when it matters" decision (revenue, real legal risk), not a launch prerequisite.
+**Note:** the user's initial privacy-contact email had a likely typo (`@hmail.com`); flagged it and confirmed the intended address (`@gmail.com`, same as the support email) before using it, rather than shipping an unreachable contact address.
+
+**Outcome:** No placeholders remain in either legal page (verified via `grep -n '\[.*\]'` returning no matches). `typecheck` and `lint` pass. Committed as `e5910a1` and pushed to `origin/main`.
+**Risks:** None — text-only change, not reviewed by legal counsel (acceptable for a solo/hobby-scale project; worth a real review if the site starts handling payments or scales up significantly).
+
 ## [2026-07-04] — Session 35: Dependabot PR Review & Triage
 
 **AI:** Claude Code (Anthropic)
