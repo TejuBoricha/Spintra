@@ -259,7 +259,9 @@ export function RoomSidebar({
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ type: "spring", stiffness: 450, damping: 32 }}
-                      className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-all ${
+                        p.is_online ? "" : "opacity-55"
+                      }`}
                     >
                       <div className="relative">
                         <Avatar className="w-9 h-9">
@@ -280,7 +282,9 @@ export function RoomSidebar({
                           </span>
                           {p.role === "host" && <Crown className="w-3 h-3 text-amber-400 shrink-0" />}
                         </div>
-                        <span className="text-xs text-muted-foreground capitalize">{p.role}</span>
+                        <span className="text-xs text-muted-foreground capitalize">
+                          {p.role} {!p.is_online && " • Offline"}
+                        </span>
                       </div>
                       {isHost && p.user_id !== currentUser.id && (
                         <Tooltip>

@@ -189,31 +189,30 @@ export function useRoomSubscription({
   }, [postLocalMessage, handleActivityEvent]);
 
   // Lock Room Handler
-  const toggleLock = useCallback(() => {
-    setIsLocked((prev) => {
-      const nextValue = !prev;
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(`spintra-room-lock-${roomCode}`, nextValue.toString());
-        postLocalMessage("LOCK_CHANGE", nextValue);
-      }
+  const toggleLock = useCallback(async () => {
+    const nextValue = !isLocked;
+    setIsLocked(nextValue);
 
-      const supabase = getSupabaseBrowserClient();
-      if (supabase) {
-        supabase
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(`spintra-room-lock-${roomCode}`, nextValue.toString());
+      postLocalMessage("LOCK_CHANGE", nextValue);
+    }
+
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) {
+      try {
+        const { error } = await supabase
           .from("rooms")
           .update({ is_locked: nextValue })
-          .eq("code", roomCode)
-          .then(({ error }) => {
-            if (error) {
-              console.error("Failed to update room lock state in DB:", error);
-            }
-          });
+          .eq("code", roomCode);
+        if (error) throw error;
+      } catch (error) {
+        console.error("Failed to update room lock state in DB:", error);
       }
+    }
 
-      toast.success(nextValue ? "Room locked" : "Room unlocked");
-      return nextValue;
-    });
-  }, [roomCode, postLocalMessage]);
+    toast.success(nextValue ? "Room locked" : "Room unlocked");
+  }, [roomCode, isLocked, postLocalMessage]);
 
   // Kick Participant Handler
   const handleKickParticipant = useCallback(

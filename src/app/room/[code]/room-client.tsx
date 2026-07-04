@@ -206,17 +206,17 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       not_found: {
         title: "Room Not Found",
         desc: "The room you are trying to join does not exist or has been closed by the host.",
-        emoji: "mag" as EmojiName,
+        emoji: "question_mark" as EmojiName,
       },
       locked: {
         title: "Room is Locked",
         desc: "The host has locked this room. No new participants can join at this time.",
-        emoji: "lock" as EmojiName,
+        emoji: "shushing_face" as EmojiName,
       },
       full: {
         title: "Room is Full",
         desc: "This room has reached its maximum participant limit. Try joining later.",
-        emoji: "no_entry_sign" as EmojiName,
+        emoji: "person_gesturing_no" as EmojiName,
       },
     }[accessError];
 
