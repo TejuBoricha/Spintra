@@ -4,19 +4,19 @@
 > DB schema live in `ARCHITECTURE.md`. Session-to-session handoff lives in `HANDOFF.md`. Backlog
 > and roadmap live in `TASKS.md`. Do not duplicate those here — link to them instead.
 > Always update this file after every significant milestone.
-> Last updated: 2026-07-04T14:30 IST
+> Last updated: 2026-07-04T15:15 IST
 
 ---
 
 ## Current Milestone
 
-Working through the "pre-launch hardening" tier: Legal Basics (Session 30), Rate Limiting (Session 31), and Abuse & Moderation Controls (Session 32, migration `0012_moderation_controls.sql`) are done. Only Production Error Monitoring remains.
+Working through the "pre-launch hardening" tier: Legal Basics (Session 30), Rate Limiting (Session 31), and Abuse & Moderation Controls (Session 32, migration `0012_moderation_controls.sql`) are done. Only Production Error Monitoring remains. Also fixed a genuine double-elimination tournament bracket bug (Session 33) found while investigating a CI failure. **Sessions 30–33 are fully implemented and verified but not yet committed** — reviewed clean, pending a commit-strategy decision from the user.
 
 ---
 
 ## Overall Progress
 
-All planned modularisation (14/14 activities), invite and QR sharing systems, realtime discovery feeds, client profile synchronizations, database-driven activity prompt migrations, security hardening, CI/dependency automation, and documentation-workflow work is complete. Build/lint/typecheck are clean. No known regressions.
+All planned modularisation (14/14 activities), invite and QR sharing systems, realtime discovery feeds, client profile synchronizations, database-driven activity prompt migrations, security hardening, CI/dependency automation, and documentation-workflow work is complete. Build/lint/typecheck are clean, and a previously-undetected double-elimination tournament bug has been fixed (Session 33). No other known regressions.
 
 ---
 

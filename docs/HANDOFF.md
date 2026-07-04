@@ -18,11 +18,13 @@ Verified end-to-end with a headless Playwright script (two isolated browser cont
 
 **Going forward:** the CLI is linked. Future migrations can be pushed directly with `npx supabase db push --linked --yes` — no more manual SQL Editor paste needed.
 
+**Session 33 (same day):** the user shared a screenshot of a failed GitHub Actions CI run for commit `700dfcc` and asked what it was. Investigated by reproducing the exact pushed commit (stashed all other uncommitted work, ran the CI steps in order, restored the stash after). Ruled out two false positives (local CRLF conversion of `ARCHITECTURE.md`; a stale `.next/dev` type-cache reference) before finding the real cause: `tests/tournament-double-elimination.spec.ts` was failing because of a genuine bug in `src/app/tools/tournament/page.tsx` — completing a losers-bracket match discarded its own "completed" update before advancing the winner, so the bracket could never finish. Fixed and verified (test now passes in 4.4s, was timing out at 9.5s before). See `CHANGELOG_AI.md` Session 33 for the full trace. **This fix is currently still uncommitted, alongside the whole Session 30–32 pre-launch hardening bundle** — all reviewed clean, pending the user's decision on commit strategy.
+
 ---
 
 ## Current Task
 
-None in progress. All four pre-launch hardening items except Production Error Monitoring are done and live (see below).
+None in progress. All four pre-launch hardening items except Production Error Monitoring are done and live; the tournament bracket bug is also fixed. All of Sessions 30–33's work is verified but **not yet committed** — reviewed diff-by-diff (see CHANGELOG Session 33) with nothing outstanding.
 **Reminder carried forward:** the legal pages (`/legal/terms`, `/legal/privacy`) ship with bracketed placeholders (company/entity name, jurisdiction, support/privacy emails) that need real values — and ideally legal review — before actual public launch.
 
 ---

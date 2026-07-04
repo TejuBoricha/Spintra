@@ -47,6 +47,7 @@ Title, completion date, and a pointer to the full implementation detail in `CHAN
 
 | Title | Completed | CHANGELOG_AI.md Session |
 |---|---|---|
+| Double-Elimination Tournament Bracket Fix (losers-bracket matches never completed) | 2026-07-04 | Session 33 |
 | Abuse & Moderation Controls (ban-on-kick, report, block, chat filter) | 2026-07-04 | Session 32 |
 | Rate Limiting on Room Creation & Chat Messages | 2026-07-04 | Session 31 |
 | Pre-Launch Legal Basics (Terms, Privacy, Cookie Notice) | 2026-07-04 | Session 30 |

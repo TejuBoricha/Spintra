@@ -727,11 +727,14 @@ export default function TournamentPage() {
           // losers bracket. Even rounds preserve position (paired against a
           // fresh drop-in from the winners bracket); odd rounds halve
           // position like a normal single-elimination advance.
-          if (updatedLosersBracket) {
-            const lb = updatedLosersBracket.map((round) => round.map((m) => ({ ...m })));
-            advanceInLosersBracket(lb, roundIdx, position, winner);
-            updatedLosersBracket = lb;
-          }
+          // Must build on `updatedBracket` (= the losers bracket with this
+          // match already marked completed above), not a fresh copy of the
+          // stale pre-update `tournament.losersBracket` — otherwise the
+          // just-played match's own completed status is discarded and it
+          // stays playable forever, even though its winner still advances.
+          const lb = updatedBracket.map((round) => round.map((m) => ({ ...m })));
+          advanceInLosersBracket(lb, roundIdx, position, winner);
+          updatedLosersBracket = lb;
         }
 
         const winnersFinal =

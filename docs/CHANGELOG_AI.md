@@ -122,6 +122,28 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 33: Double-Elimination Tournament Bracket Fix
+
+**AI:** Claude Code (Anthropic)
+**Task:** The user shared a screenshot of a failed GitHub Actions CI run for the previously-pushed docs commit (`700dfcc`) and asked what it was. Investigated rather than guessing.
+**Investigation path (two false positives before the real cause):**
+1. `docs:check` appeared to fail locally ("Could not find the folder structure code block in ARCHITECTURE.md §2") — traced to Windows `core.autocrlf=true` converting the file to CRLF on local checkout; the actual committed git blob is LF-only and matches the checker's regex fine. Confirmed by reading the raw blob via `git show HEAD:docs/ARCHITECTURE.md` in Node and testing the regex directly against those bytes (passed).
+2. A stale `.next/dev/types/validator.ts` (left over from earlier `npm run dev` sessions testing the now-stashed `/legal/*` pages) caused a false typecheck error referencing routes that don't exist in the pushed commit. Cleared with `rm -rf .next`.
+3. The real failure: `tests/tournament-double-elimination.spec.ts` timed out waiting for "Tournament Champion" to appear.
+**Root cause found:** In `src/app/tools/tournament/page.tsx`'s `handleScoreSave`, completing a match *inside the losers bracket* computed `updatedBracket` (correctly marking that match `completed`) but then discarded it — rebuilding `lb` from the stale, pre-update `tournament.losersBracket` before calling `advanceInLosersBracket`. Net effect: the winner correctly advanced to the next round, but the just-played match itself never got marked `completed`, so it stayed "playable" forever and the bracket could never finish. Winners-bracket matches were unaffected (separate code path in the same function), which is why it wasn't obvious from casual play-testing.
+**Files Modified:**
+- `src/app/tools/tournament/page.tsx` — the losers-bracket branch of `handleScoreSave` now builds `lb` from `updatedBracket` (which already has the just-played match marked completed) instead of a fresh copy of stale `tournament.losersBracket`.
+- `docs/TASKS.md`, `docs/CHANGELOG_AI.md` — this entry.
+
+**Outcome:**
+- Reproduced the exact CI failure locally by stashing all other uncommitted work and testing against the precise commit that was pushed (`git stash push -u`, ran the CI steps in order, `git stash pop` afterward — confirmed clean restoration).
+- Wrote a debug Playwright script that played through the bracket round-by-round, dumping every match's `data-match-status`/`data-match-ready` attributes after each play — this is what surfaced the exact "losers-bracket match never transitions to completed" symptom.
+- After the fix: `npm run test:smoke` — both tests pass, including the previously-failing one (now resolves in 4.4s vs. the prior 9.5s timeout). `npm run typecheck` and `npm run build` also clean.
+
+**Risks:** None identified — this is a targeted fix to a proven, reproduced bug, verified by the same E2E test that caught it.
+
+---
+
 ## [2026-07-04] — Session 32: Abuse & Moderation Controls (Ban-on-Kick, Report, Block, Chat Filter)
 
 **AI:** Claude Code (Anthropic)
