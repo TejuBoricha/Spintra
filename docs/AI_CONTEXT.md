@@ -4,13 +4,13 @@
 > DB schema live in `ARCHITECTURE.md`. Session-to-session handoff lives in `HANDOFF.md`. Backlog
 > and roadmap live in `TASKS.md`. Do not duplicate those here — link to them instead.
 > Always update this file after every significant milestone.
-> Last updated: 2026-07-04T19:15 IST
+> Last updated: 2026-07-05T01:15 IST
 
 ---
 
 ## Current Milestone
 
-Pre-launch hardening tier: Legal Basics (30, placeholders filled 36), Rate Limiting (31), Abuse & Moderation Controls (32) are done and live. Production Error Monitoring is explicitly deferred by the user's own choice (told them it's a visibility gap, not a launch blocker; they chose to skip it for now) — not an oversight, don't pick it up unprompted. Sessions 30–33 were committed as 4 scoped commits and pushed. That push's CI run then surfaced a second, wholly pre-existing bug (unrelated to Sessions 30–33): rooms created without Supabase configured never auto-activated their game — fixed in Session 34. Session 35 triaged the repo's 5 open Dependabot PRs: merged 4 safe GitHub Actions bumps, and applied 15 of 16 bundled npm updates directly to `main` while holding back `eslint ^10` (upstream-incompatible with `eslint-config-next`). Session 36 filled in the legal pages' real operator/jurisdiction/contact info.
+Pre-launch hardening tier: Legal Basics (30, placeholders filled 36), Rate Limiting (31), Abuse & Moderation Controls (32) are done and live. Production Error Monitoring is explicitly deferred by the user's own choice (told them it's a visibility gap, not a launch blocker; they chose to skip it for now) — not an oversight, don't pick it up unprompted. Sessions 30–33 were committed as 4 scoped commits and pushed. That push's CI run then surfaced a second, wholly pre-existing bug (unrelated to Sessions 30–33): rooms created without Supabase configured never auto-activated their game — fixed in Session 34. Session 35 triaged the repo's 5 open Dependabot PRs: merged 4 safe GitHub Actions bumps, and applied 15 of 16 bundled npm updates directly to `main` while holding back `eslint ^10` (upstream-incompatible with `eslint-config-next`). Session 36 filled in the legal pages' real operator/jurisdiction/contact info. **Session 37: full Product Readiness Audit** (33 findings across functional/integration/DB-security/state-management/UX passes) followed by fixing the 1 Critical + 6 High findings — most notably, the multiplayer Tournament room activity could never actually finish a tournament (fixed by extracting a shared `src/lib/tournament-engine.ts` used by both the standalone tool and the new room activity). Full findings list lives in `TASKS.md`; 11 Medium + 15 Low findings remain queued there.
 
 ---
 
@@ -37,6 +37,8 @@ Working through `TASKS.md`'s High Priority "pre-launch hardening" tier one item 
 ## Known Issues
 
 - **`eslint` intentionally pinned at `^9`.** Dependabot will keep proposing `^10`; do not accept until `eslint-config-next`'s bundled `eslint-plugin-react` ships ESLint 10 support upstream. Confirmed (Session 35) that upgrading crashes `npm run lint` with `TypeError: contextOrFilename.getFilename is not a function` — a removed ESLint 10 API that plugin still calls internally. Verify by installing the bump in a scratch worktree and running `npm run lint` directly, not just by trusting a green CI badge on an unrelated branch.
+- **Rate limiting and bans (migrations 0011/0012) are bypassable by rotating the anonymous session.** Both key on `auth.uid()`; since every user is an anonymous, unverified session, clearing browser storage (or an incognito window) resets both instantly. This is an accepted architectural trade-off (frictionless onboarding was a deliberate choice, see migration `0001`'s header), not a bug in the trigger logic — but treat it as "slows down casual abuse," not a real defense against a motivated abuser. Found and explicitly documented in the Session 37 audit; previously an implicit assumption, not written down anywhere.
+- **Local CRLF reproduction of CI is unreliable — use `git show`, not clone/checkout.** This machine's global `core.autocrlf=true` smudges LF→CRLF on *any* operation that materializes files on disk (`git clone`, `git archive`, `git checkout-index`), not just the primary working tree — so a "fresh clone to /tmp" still doesn't show what a real Linux CI checkout sees. The only reliable way to inspect true blob content is `git show HEAD:<path>` (or `git cat-file`), which bypasses the smudge filter entirely. Learned the hard way in Session 37 when a genuine `docs:check` failure (a missing migration in `ARCHITECTURE.md`'s table) was initially misdiagnosed as the usual CRLF false positive.
 
 ---
 
@@ -53,7 +55,7 @@ Load-bearing assumptions a new session should be aware of before making changes:
 
 ## Next Recommended Task
 
-All High Priority pre-launch hardening items the user asked to be launch-blocking are complete (Legal Basics, Rate Limiting, Abuse & Moderation Controls — including the legal placeholder follow-up in Session 36). Production Error Monitoring remains unimplemented by the user's explicit choice to defer it, not oversight — do not start it unprompted. Open next steps: Medium Priority features (Visual Scoreboard, Tournament Bracket Tree UI, XP/Leveling, Room Settings Panel), or applying the previously-agreed "safety net only" branch protection on `main` (user said to leave it for now) — otherwise wait for the user's direction.
+All High Priority pre-launch hardening items the user asked to be launch-blocking are complete (Legal Basics, Rate Limiting, Abuse & Moderation Controls — including the legal placeholder follow-up in Session 36), plus the Session 37 audit's 1 Critical + 6 High findings. Production Error Monitoring remains unimplemented by the user's explicit choice to defer it, not oversight — do not start it unprompted. Open next steps: the 11 Medium + 15 Low findings from the Session 37 audit (see `TASKS.md`), Medium Priority features (Visual Scoreboard, XP/Leveling, Room Settings Panel — Tournament Bracket Tree UI is now substantially done), or applying the previously-agreed "safety net only" branch protection on `main` (user said to leave it for now) — otherwise wait for the user's direction.
 
 ---
 
