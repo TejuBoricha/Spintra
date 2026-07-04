@@ -255,8 +255,10 @@ useEffect(() => registerEventListener((event) => {
 | 0015 | `enforce_room_lock_at_db_level` | Before-insert triggers on `room_participants` and `chat_messages` blocking new joins/messages from anyone but the host while `rooms.is_locked` — previously client-side only |
 | 0016 | `add_missing_constraints_and_index` | `rooms.max_participants > 0` check, `message_reports.message_id` FK to `chat_messages`, `trivia_questions.correct_index` bounds check, index on `activity_prompts.activity_type` |
 | 0017 | `drop_unused_rooms_settings_column` | Drops `rooms.settings` (always `{}`, never read anywhere) |
+| 0018 | `message_reports_host_visibility` | Adds `reviewed` flag + a select/update policy scoped to the room's host (column-restricted to `reviewed` only, via trigger) so reports are actually visible in the app |
+| 0019 | `presence_reconciliation_any_participant` | Lets any participant flip another's `is_online` true→false (never true, never other columns) — previously only the host could, which meant a crashed host's own stale row could never be corrected by anyone, permanently blocking host succession |
 
-**Current status:** all 17 applied; RLS enabled on all 7 tables; latest policy is `0016_add_missing_constraints_and_index`; latest migration is `0017_drop_unused_rooms_settings_column`. Note: 0008 and 0010 were re-applied in Session 37 after discovering their tracked "applied" status didn't match reality (see `CHANGELOG_AI.md` Session 37/38) — the migration numbering itself didn't change, only their actual execution against the live database.
+**Current status:** all 19 applied; RLS enabled on all 7 tables; latest policy is `0019_presence_reconciliation_any_participant`; latest migration is `0019_presence_reconciliation_any_participant`. Note: 0008 and 0010 were re-applied in Session 37 after discovering their tracked "applied" status didn't match reality (see `CHANGELOG_AI.md` Session 37) — the migration numbering itself didn't change, only their actual execution against the live database.
 
 ### APIs / Integration Points
 No custom REST or GraphQL API exists — every client talks directly to Supabase (or, unconfigured, the `BroadcastChannel` Web API). The full set of integration points:
