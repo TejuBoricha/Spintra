@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Wifi,
   Lock,
@@ -10,6 +12,8 @@ import {
   Users,
   Volume2,
   VolumeX,
+  QrCode,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -63,6 +67,9 @@ export function RoomHeader({
   soundEnabled,
   toggleSound,
 }: RoomHeaderProps) {
+  const [isQrOpen, setIsQrOpen] = useState(false);
+  const roomUrl = typeof window !== "undefined" ? window.location.href : "";
+
   return (
     <div className="glass border-b border-white/5 px-6 py-4">
       <div className="flex items-center justify-between">
@@ -129,6 +136,21 @@ export function RoomHeader({
               {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
             </TooltipTrigger>
             <TooltipContent>{copied ? "Link copied!" : "Copy room link"}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsQrOpen(true)}
+                  aria-label="Show room QR Code"
+                />
+              }
+            >
+              <QrCode className="w-4 h-4 text-purple-400" />
+            </TooltipTrigger>
+            <TooltipContent>Show room QR Code</TooltipContent>
           </Tooltip>
           {isHost && (
             <>
@@ -240,6 +262,70 @@ export function RoomHeader({
           </Tooltip>
         </div>
       </div>
+
+      {/* QR Code Dialog Overlay */}
+      <AnimatePresence>
+        {isQrOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsQrOpen(false)}
+              className="absolute inset-0 bg-[#07050e]/60 backdrop-blur-md"
+            />
+
+            {/* Modal Box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="glass-card max-w-sm w-full p-6 rounded-3xl border border-white/10 shadow-2xl relative z-10 text-center space-y-6 bg-background/95"
+            >
+              <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <QrCode className="w-5 h-5 text-purple-400" />
+                  Room QR Code
+                </h3>
+                <button
+                  onClick={() => setIsQrOpen(false)}
+                  className="text-muted-foreground hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex flex-col items-center justify-center space-y-4 py-2">
+                <div className="p-3 bg-white rounded-2xl shadow-xl">
+                  {/* Generate QR code using a high speed, reliable standard API */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(roomUrl)}&color=07050e&margin=10`}
+                    alt="Room QR Code"
+                    width={200}
+                    height={200}
+                    className="rounded-lg object-contain"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-white">Scan to join the room</p>
+                  <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
+                    Room Code: {roomCode}
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                onClick={() => setIsQrOpen(false)}
+                className="w-full h-11 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold border border-white/10"
+              >
+                Close
+              </Button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

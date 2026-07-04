@@ -261,6 +261,30 @@ function RoomUIInner({
 }) {
   const [hasMounted, setHasMounted] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [localUser, setLocalUser] = useState<User>(currentUser);
+
+  const handleUpdateUsername = useCallback(async (newName: string) => {
+    setLocalUser((prev) => {
+      const next = { ...prev, username: newName };
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("spintra-room-user", JSON.stringify(next));
+      }
+      return next;
+    });
+
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) {
+      try {
+        await supabase
+          .from("room_participants")
+          .update({ username: newName })
+          .eq("room_id", roomCode)
+          .eq("user_id", localUser.id);
+      } catch (err) {
+        console.error("Failed to sync updated username to database:", err);
+      }
+    }
+  }, [roomCode, localUser.id]);
 
   // Sidebar, picker, dialog and navigation states
   const [showParticipants, setShowParticipants] = useState(false);
@@ -302,7 +326,7 @@ function RoomUIInner({
   // 1. Subscription hook: Holds participants, settings and syncs database changes
   const subscription = useRoomSubscription({
     roomCode,
-    currentUser,
+    currentUser: localUser,
     localCreatorId,
     authReady,
     addIncomingMessage: useCallback(
@@ -313,14 +337,14 @@ function RoomUIInner({
           }
           return [...prev, incoming];
         });
-        if (incoming.user_id !== currentUser.id) {
+        if (incoming.user_id !== localUser.id) {
           // If sidebar is showing participants OR mobile drawer is closed, trigger unread badge
           if (showParticipants || !isMobileSidebarOpen) {
             setHasUnreadMessages(true);
           }
         }
       },
-      [currentUser.id, showParticipants, isMobileSidebarOpen, setMessages, setHasUnreadMessages]
+      [localUser.id, showParticipants, isMobileSidebarOpen, setMessages, setHasUnreadMessages]
     ),
   });
 
@@ -350,7 +374,7 @@ function RoomUIInner({
   // 2. Chat hook: Handles message listing, input, pagination and emojis
   const chat = useRoomChat({
     roomCode,
-    currentUser,
+    currentUser: localUser,
     isHost,
     isLocked,
     authReady,
@@ -393,7 +417,7 @@ function RoomUIInner({
       roomCode,
       roomType,
       isHost,
-      currentUser,
+      currentUser: localUser,
       sendActivityEvent,
       registerEventListener,
       soundEnabled,
@@ -402,7 +426,7 @@ function RoomUIInner({
       roomCode,
       roomType,
       isHost,
-      currentUser,
+      localUser,
       sendActivityEvent,
       registerEventListener,
       soundEnabled,
@@ -432,7 +456,7 @@ function RoomUIInner({
       setHasUnreadMessages={setHasUnreadMessages}
       participants={participants}
       messages={messages}
-      currentUser={currentUser}
+      currentUser={localUser}
       hasMoreMessages={hasMoreMessages}
       loadingOlderMessages={loadingOlderMessages}
       loadOlderMessages={loadOlderMessages}
@@ -445,6 +469,7 @@ function RoomUIInner({
       handleKickParticipant={handleKickParticipant}
       chatScrollContainerRef={chatScrollContainerRef}
       messagesEndRef={messagesEndRef}
+      onUpdateUsername={handleUpdateUsername}
     />
   );
 

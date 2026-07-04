@@ -1,4 +1,6 @@
-import { MessageCircle, Users as UsersIcon, Crown, Smile, Send, UserX } from "lucide-react";
+import { useState, useCallback } from "react";
+import { toast } from "sonner";
+import { MessageCircle, Users as UsersIcon, Crown, Smile, Send, UserX, Pencil, Check, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +43,7 @@ interface RoomSidebarProps {
   handleKickParticipant: (p: RoomParticipant) => Promise<void>;
   chatScrollContainerRef: React.RefObject<HTMLDivElement | null>;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
+  onUpdateUsername: (newName: string) => Promise<void>;
 }
 
 export function RoomSidebar({
@@ -63,7 +66,27 @@ export function RoomSidebar({
   handleKickParticipant,
   chatScrollContainerRef,
   messagesEndRef,
+  onUpdateUsername,
 }: RoomSidebarProps) {
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [editValue, setEditValue] = useState("");
+
+  const handleSaveUsername = useCallback(async () => {
+    const trimmed = editValue.trim();
+    if (!trimmed || trimmed === currentUser.username) {
+      setIsEditingUsername(false);
+      return;
+    }
+    try {
+      await onUpdateUsername(trimmed);
+      toast.success("Username updated!");
+    } catch (err) {
+      console.error("Failed to update username:", err);
+      toast.error("Failed to update username");
+    } finally {
+      setIsEditingUsername(false);
+    }
+  }, [editValue, currentUser.username, onUpdateUsername]);
   return (
     <div className="flex-1 flex flex-col h-full bg-background/50 backdrop-blur-sm overflow-hidden">
       {/* Tabs */}
@@ -275,17 +298,67 @@ export function RoomSidebar({
                           }`}
                         />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium truncate">
-                            {p.user_id === currentUser.id ? "You" : p.user?.username}
+                      {p.user_id === currentUser.id ? (
+                        isEditingUsername ? (
+                          <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))}
+                              maxLength={15}
+                              className="text-xs bg-white/5 border border-white/10 rounded px-1.5 py-0.5 font-medium text-white focus:outline-none focus:border-purple-500/50 w-24"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleSaveUsername();
+                                if (e.key === "Escape") setIsEditingUsername(false);
+                              }}
+                              autoFocus
+                            />
+                            <button onClick={handleSaveUsername} className="text-emerald-400 hover:text-emerald-300">
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => setIsEditingUsername(false)} className="text-red-400 hover:text-red-300">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium truncate flex items-center gap-1.5 text-white">
+                                You
+                                <span className="text-xs text-muted-foreground/80 font-normal">
+                                  ({p.user?.username})
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    setEditValue(p.user?.username || "");
+                                    setIsEditingUsername(true);
+                                  }}
+                                  className="text-muted-foreground hover:text-white transition-colors p-0.5"
+                                  aria-label="Edit username"
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </button>
+                              </span>
+                              {p.role === "host" && <Crown className="w-3 h-3 text-amber-400 shrink-0" />}
+                            </div>
+                            <span className="text-xs text-muted-foreground capitalize">
+                              {p.role} {!p.is_online && " • Offline"}
+                            </span>
+                          </div>
+                        )
+                      ) : (
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium truncate">
+                              {p.user?.username}
+                            </span>
+                            {p.role === "host" && <Crown className="w-3 h-3 text-amber-400 shrink-0" />}
+                          </div>
+                          <span className="text-xs text-muted-foreground capitalize">
+                            {p.role} {!p.is_online && " • Offline"}
                           </span>
-                          {p.role === "host" && <Crown className="w-3 h-3 text-amber-400 shrink-0" />}
                         </div>
-                        <span className="text-xs text-muted-foreground capitalize">
-                          {p.role} {!p.is_online && " • Offline"}
-                        </span>
-                      </div>
+                      )}
                       {isHost && p.user_id !== currentUser.id && (
                         <Tooltip>
                           <TooltipTrigger

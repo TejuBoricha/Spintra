@@ -1,9 +1,12 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState, useCallback } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { ArrowRight, Sparkles, Zap, Globe, MessageCircle, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
@@ -31,6 +34,57 @@ const perks = [
 ];
 
 export default function HomePage() {
+  const router = useRouter();
+  const [homeCode, setHomeCode] = useState("");
+  const [homeJoining, setHomeJoining] = useState(false);
+
+  const handleHomeJoin = useCallback(async () => {
+    if (homeCode.length !== 6) return;
+    setHomeJoining(true);
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+      if (supabase) {
+        const { data: room, error: roomError } = await supabase
+          .from("rooms")
+          .select("is_locked, max_participants")
+          .eq("code", homeCode)
+          .maybeSingle();
+
+        if (roomError || !room) {
+          toast.error("Room code not found. Please double check.");
+          setHomeJoining(false);
+          return;
+        }
+
+        if (room.is_locked) {
+          toast.error("This room is locked by the host.");
+          setHomeJoining(false);
+          return;
+        }
+
+        const { data: parts } = await supabase
+          .from("room_participants")
+          .select("id")
+          .eq("room_id", homeCode);
+
+        if (parts && parts.length >= room.max_participants) {
+          toast.error("This room is full.");
+          setHomeJoining(false);
+          return;
+        }
+      }
+
+      toast.success("Joining room...");
+      router.push(`/room/${homeCode}`);
+    } catch (err) {
+      console.error("Failed to join room from homepage:", err);
+      toast.error("Unable to join room. Please try again.");
+    } finally {
+      setHomeJoining(false);
+    }
+  }, [homeCode, router]);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -121,6 +175,36 @@ export default function HomePage() {
                 Explore Games
               </Button>
             </Link>
+          </motion.div>
+
+          {/* Join Room Code Input Widget */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7, duration: 0.6 }}
+            className="max-w-md mx-auto mt-12 p-6 glass-card border border-white/10 rounded-3xl space-y-4"
+          >
+            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest text-left">
+              Have a Room Code?
+            </h3>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                maxLength={6}
+                value={homeCode}
+                onChange={(e) => setHomeCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                onKeyDown={(e) => e.key === "Enter" && handleHomeJoin()}
+                placeholder="ENTER CODE"
+                className="flex-1 px-4 h-12 bg-white/5 border border-white/10 rounded-2xl text-center text-lg font-mono font-bold uppercase tracking-widest text-purple-300 focus:outline-none focus:border-cyan-500/50"
+              />
+              <Button
+                onClick={handleHomeJoin}
+                disabled={homeCode.length !== 6 || homeJoining}
+                className="h-12 px-6 bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white rounded-2xl font-bold shadow-lg shadow-purple-500/10 disabled:opacity-50"
+              >
+                {homeJoining ? "Verifying..." : "Join"}
+              </Button>
+            </div>
           </motion.div>
 
           {/* Social proof */}

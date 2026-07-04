@@ -1,24 +1,39 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { Search, TrendingUp, Clock, Heart, Sparkles, Users, Radar, LayoutGrid, History } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import {
+  Search,
+  TrendingUp,
+  Clock,
+  Heart,
+  Sparkles,
+  Users,
+  Radar,
+  LayoutGrid,
+  History,
+  Plus,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Emoji, type EmojiName } from "@/components/emoji";
 import type { RoomType } from "@/lib/types";
 import { GAMES } from "@/lib/games";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-const trendingRooms = [
-  { id: "1", code: "X7F82K", name: "Friday Game Night", type: "party" as RoomType, participants: 12, host: "GameMaster42", hearts: 234 },
-  { id: "2", code: "A3BC12", name: "CS2 Team Draft", type: "team-maker" as RoomType, participants: 10, host: "ProGamerX", hearts: 189 },
-  { id: "3", code: "M9ZK44", name: "Giveaway Wheel!", type: "lucky-wheel" as RoomType, participants: 45, host: "StreamerDan", hearts: 567 },
-  { id: "4", code: "P2XY77", name: "Classroom Pick", type: "name-draw" as RoomType, participants: 28, host: "MsTeacher", hearts: 156 },
-  { id: "5", code: "R8LM33", name: "Weekend Tournament", type: "tournament" as RoomType, participants: 16, host: "TourneyKing", hearts: 312 },
-  { id: "6", code: "T5VN90", name: "Truth or Dare Party", type: "truth-or-dare" as RoomType, participants: 8, host: "PartyStarter", hearts: 145 },
-];
+interface ExploreRoom {
+  id: string;
+  code: string;
+  name: string;
+  type: RoomType;
+  participants: number;
+  host: string;
+  hearts: number;
+}
 
 const featuredTemplates = GAMES.map((game) => ({
   label: game.label,
@@ -31,75 +46,160 @@ const featuredTemplates = GAMES.map((game) => ({
 const categories = ["All", "Trending", "New", "Popular", "Teams", "Party", "Classroom"];
 
 export default function ExplorePage() {
+  const router = useRouter();
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
-  const [rooms, setRooms] = useState<typeof trendingRooms>(trendingRooms);
+  const [rooms, setRooms] = useState<ExploreRoom[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  // Join Widget State
+  const [joinCode, setJoinCode] = useState("");
+  const [joining, setJoining] = useState(false);
+
+  const fetchRooms = useCallback(async () => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("rooms")
+        .select(`
+          id,
+          code,
+          name,
+          type,
+          max_participants,
+          created_at,
+          room_participants (
+            username,
+            role,
+            is_online
+          )
+        `)
+        .eq("is_public", true)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        const dbRooms = data.map((room) => {
+          const participants = (room.room_participants as unknown as {
+            username: string | null;
+            role: string;
+            is_online: boolean;
+          }[]) || [];
+          const onlineCount = participants.filter((p) => p.is_online).length;
+          const hostUser = participants.find((p) => p.role === "host" && p.is_online)?.username ||
+                           participants.find((p) => p.role === "host")?.username ||
+                           "Guest";
+          
+          // Seed deterministic heart count based on room ID hash to avoid layout shifts on refetch
+          let hash = 0;
+          for (let i = 0; i < room.id.length; i++) {
+            hash = room.id.charCodeAt(i) + ((hash << 5) - hash);
+          }
+          const seedHearts = Math.abs(hash % 180) + 12;
+
+          return {
+            id: room.id,
+            code: room.code,
+            name: room.name,
+            type: room.type as RoomType,
+            participants: onlineCount,
+            host: hostUser,
+            hearts: seedHearts,
+          };
+        });
+        setRooms(dbRooms);
+      }
+    } catch (err) {
+      console.error("Failed to load public rooms from Supabase:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Fetch rooms on mount and subscribe to realtime updates
   useEffect(() => {
+    queueMicrotask(() => fetchRooms());
+
     const supabase = getSupabaseBrowserClient();
     if (!supabase) return;
 
-    let isMounted = true;
-
-    const fetchRooms = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("rooms")
-          .select(`
-            id,
-            code,
-            name,
-            type,
-            max_participants,
-            created_at,
-            room_participants (
-              username,
-              role,
-              is_online
-            )
-          `)
-          .eq("is_public", true)
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-
-        if (isMounted && data) {
-          const dbRooms = data.map((room) => {
-            const participants = (room.room_participants as unknown as {
-              username: string | null;
-              role: string;
-              is_online: boolean;
-            }[]) || [];
-            const onlineCount = participants.filter((p) => p.is_online).length;
-            const hostUser = participants.find((p) => p.role === "host" && p.is_online)?.username ||
-                             participants.find((p) => p.role === "host")?.username ||
-                             "Guest";
-            return {
-              id: room.id,
-              code: room.code,
-              name: room.name,
-              type: room.type as RoomType,
-              participants: onlineCount,
-              host: hostUser,
-              hearts: Math.floor(Math.random() * 200) + 15, // Dynamic visual hearts
-            };
-          });
-
-          if (dbRooms.length > 0) {
-            setRooms(dbRooms);
-          }
+    // Listen to changes in both rooms and room_participants tables to update list & online count
+    const channel = supabase
+      .channel("explore-room-tracker")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "rooms" },
+        () => {
+          fetchRooms();
         }
-      } catch (err) {
-        console.error("Failed to load public rooms from Supabase:", err);
-      }
-    };
-
-    fetchRooms();
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "room_participants" },
+        () => {
+          fetchRooms();
+        }
+      )
+      .subscribe();
 
     return () => {
-      isMounted = false;
+      supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchRooms]);
+
+  // Submit join room action code
+  const handleJoinSubmit = useCallback(async () => {
+    if (joinCode.length !== 6) return;
+    setJoining(true);
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+      if (supabase) {
+        const { data: room, error: roomError } = await supabase
+          .from("rooms")
+          .select("is_locked, max_participants")
+          .eq("code", joinCode)
+          .maybeSingle();
+
+        if (roomError || !room) {
+          toast.error("Room code not found. Please double check.");
+          setJoining(false);
+          return;
+        }
+
+        if (room.is_locked) {
+          toast.error("This room is locked by the host.");
+          setJoining(false);
+          return;
+        }
+
+        const { data: parts } = await supabase
+          .from("room_participants")
+          .select("id")
+          .eq("room_id", joinCode);
+
+        if (parts && parts.length >= room.max_participants) {
+          toast.error("This room is full.");
+          setJoining(false);
+          return;
+        }
+      }
+
+      toast.success("Joining room...");
+      router.push(`/room/${joinCode}`);
+    } catch (err) {
+      console.error("Failed to join room from explore page:", err);
+      toast.error("Unable to join room. Please try again.");
+    } finally {
+      setJoining(false);
+    }
+  }, [joinCode, router]);
 
   const filteredRooms = rooms.filter((room) => {
     // Search check
@@ -114,9 +214,9 @@ export default function ExplorePage() {
 
     // Category check
     if (activeCategory === "All") return true;
-    if (activeCategory === "Trending") return room.hearts > 200;
-    if (activeCategory === "New") return room.code.startsWith("X") || room.code.startsWith("A");
-    if (activeCategory === "Popular") return room.hearts > 300 || room.participants > 15;
+    if (activeCategory === "Trending") return room.hearts > 100;
+    if (activeCategory === "New") return true; // Real database sorting orders from newest
+    if (activeCategory === "Popular") return room.hearts > 120 || room.participants > 2;
     if (activeCategory === "Teams") return room.type === "team-maker" || room.type === "tournament";
     if (activeCategory === "Party") {
       return ["party", "truth-or-dare", "lucky-wheel", "rps", "would-you-rather", "never-have-i-ever", "coin-flip", "dice", "trivia", "bingo", "word-scramble"].includes(room.type);
@@ -149,6 +249,7 @@ export default function ExplorePage() {
     { action: "ran a", item: "Tournament Bracket", user: "Jordan", time: "12 min ago", emoji: "sports_medal", type: "tournament" },
     { action: "drew a winner in", item: "Name Draw", user: "Emma", time: "15 min ago", emoji: "bullseye", type: "name-draw" },
   ];
+
   const filteredActivities = recentActivities.filter((act) => {
     const query = search.toLowerCase().trim();
     if (query) {
@@ -169,40 +270,67 @@ export default function ExplorePage() {
 
   return (
     <div className="min-h-screen pt-24 pb-16 px-4">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-6xl mx-auto space-y-12">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
+          className="text-center space-y-6"
         >
-          <h1 className="text-4xl sm:text-5xl font-bold mb-4">
-            Explore <span className="gradient-text">Spintra</span>
-          </h1>
-          <p className="text-muted-foreground text-lg mb-8">
-            Discover trending rooms, popular wheels, and community creations.
-          </p>
-          <div className="max-w-md mx-auto relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <Input
-              placeholder="Search rooms, templates, creators..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 h-12"
-            />
+          <div className="space-y-2">
+            <h1 className="text-4xl sm:text-5xl font-bold">
+              Explore <span className="gradient-text">Spintra</span>
+            </h1>
+            <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+              Discover live public rooms, join custom games, or build your own activities.
+            </p>
+          </div>
+
+          {/* Quick Join Widget & Search Bar Grid */}
+          <div className="max-w-2xl mx-auto grid sm:grid-cols-2 gap-4">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-muted-foreground" />
+              <Input
+                placeholder="Search rooms, templates..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10 h-12 bg-white/5 border-white/10 rounded-2xl"
+              />
+            </div>
+
+            {/* Quick Join Input */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                maxLength={6}
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                onKeyDown={(e) => e.key === "Enter" && handleJoinSubmit()}
+                placeholder="JOIN BY CODE (EX: 89PB5T)"
+                className="flex-1 px-4 h-12 bg-white/5 border border-white/10 rounded-2xl text-center text-sm font-mono font-bold uppercase tracking-wider text-purple-300 focus:outline-none focus:border-cyan-500/50"
+              />
+              <Button
+                onClick={handleJoinSubmit}
+                disabled={joinCode.length !== 6 || joining}
+                className="h-12 px-5 bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white rounded-2xl font-bold shadow-lg disabled:opacity-50"
+              >
+                {joining ? "..." : "Join"}
+              </Button>
+            </div>
           </div>
         </motion.div>
 
-        {/* Categories */}
-        <div className="flex flex-wrap justify-center gap-2 mb-12">
+        {/* Categories Navigation */}
+        <div className="flex flex-wrap justify-center gap-2">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${
                 activeCategory === cat
                   ? "bg-purple-600 text-white shadow-lg shadow-purple-500/25"
-                  : "glass-card hover:border-white/10 text-muted-foreground"
+                  : "glass-card hover:border-white/15 text-muted-foreground hover:text-white"
               }`}
             >
               {cat}
@@ -210,63 +338,117 @@ export default function ExplorePage() {
           ))}
         </div>
 
-        {/* Trending Rooms */}
-        <section className="mb-16">
+        {/* Live Trending Rooms Section */}
+        <section>
           <div className="flex items-center gap-2 mb-6">
             <TrendingUp className="w-5 h-5 text-purple-400" />
-            <h2 className="text-2xl font-bold">Trending Rooms</h2>
-            <Badge variant="secondary" className="ml-2">Live</Badge>
+            <h2 className="text-2xl font-black text-white">Live Trending Rooms</h2>
+            <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/25 ml-2 font-mono uppercase text-[10px] tracking-widest animate-pulse">
+              Live Feed
+            </Badge>
           </div>
-          {filteredRooms.length === 0 ? (
-            <div className="glass-card p-12 text-center text-muted-foreground text-sm flex flex-col items-center gap-3">
-              <Radar className="w-8 h-8 text-purple-400/60" />
-              No live matching rooms found. Create a room to start playing!
+
+          {loading ? (
+            /* Loading skeletons matching live layout */
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <div
+                  key={i}
+                  className="glass-card p-5 border border-white/5 rounded-3xl space-y-4 animate-pulse bg-white/[0.01]"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-2 flex-1">
+                      <div className="h-4 bg-white/5 rounded-md w-3/4" />
+                      <div className="h-3 bg-white/5 rounded-md w-1/3" />
+                    </div>
+                    <div className="h-5 bg-white/5 rounded-full w-16" />
+                  </div>
+                  <div className="flex justify-between items-center pt-2">
+                    <div className="flex gap-3 w-1/2">
+                      <div className="h-3 bg-white/5 rounded w-8" />
+                      <div className="h-3 bg-white/5 rounded w-8" />
+                    </div>
+                    <div className="h-3 bg-white/5 rounded w-16" />
+                  </div>
+                </div>
+              ))}
             </div>
+          ) : filteredRooms.length === 0 ? (
+            /* Beautiful empty state */
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="glass-card p-12 text-center border border-white/10 rounded-3xl flex flex-col items-center justify-center gap-6 max-w-lg mx-auto"
+            >
+              <div className="w-16 h-16 rounded-full bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
+                <Radar className="w-8 h-8 text-purple-400 animate-pulse" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-bold text-white">No Public Rooms Active</h3>
+                <p className="text-sm text-muted-foreground max-w-sm">
+                  There are no live public rooms matching this filter. Be the first to create one and invite the community!
+                </p>
+              </div>
+              <Link href="/create">
+                <Button className="bg-gradient-to-r from-purple-600 to-cyan-500 text-white rounded-2xl font-bold h-11 px-6 shadow-lg shadow-purple-500/20">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Public Room
+                </Button>
+              </Link>
+            </motion.div>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredRooms.map((room, i) => (
-                <Link key={room.id} href={`/room/${room.code}`}>
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className="glass-card p-5 group cursor-pointer hover:border-purple-500/30 card-3d"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold group-hover:text-white transition-colors">{room.name}</h3>
-                        <p className="text-sm text-muted-foreground">#{room.code}</p>
+              <AnimatePresence>
+                {filteredRooms.map((room, i) => (
+                  <Link key={room.id} href={`/room/${room.code}`}>
+                    <motion.div
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="glass-card p-5 group cursor-pointer hover:border-purple-500/30 card-3d rounded-3xl transition-all"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h3 className="font-bold text-white group-hover:text-purple-400 transition-colors line-clamp-1">
+                            {room.name}
+                          </h3>
+                          <p className="text-xs font-mono text-purple-400/80 uppercase font-semibold tracking-wider mt-0.5">
+                            CODE: {room.code}
+                          </p>
+                        </div>
+                        <Badge variant="secondary" className="capitalize text-[10px] tracking-wider font-semibold bg-white/5 border-white/10 text-muted-foreground">
+                          {room.type.replace("-", " ")}
+                        </Badge>
                       </div>
-                      <Badge variant="secondary" className="capitalize text-xs">
-                        {room.type.replace("-", " ")}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <div className="flex items-center gap-3">
-                        <span className="flex items-center gap-1">
-                          <Users className="w-3.5 h-3.5" /> {room.participants}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Heart className="w-3.5 h-3.5 text-red-400" /> {room.hearts}
-                        </span>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <div className="flex items-center gap-3">
+                          <span className="flex items-center gap-1 font-semibold text-emerald-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping mr-0.5" />
+                            <Users className="w-3.5 h-3.5" /> {room.participants}
+                          </span>
+                          <span className="flex items-center gap-1 font-semibold text-rose-400">
+                            <Heart className="w-3.5 h-3.5 fill-rose-500/20 text-rose-400" /> {room.hearts}
+                          </span>
+                        </div>
+                        <span className="font-medium">by @{room.host}</span>
                       </div>
-                      <span>by @{room.host}</span>
-                    </div>
-                  </motion.div>
-                </Link>
-              ))}
+                    </motion.div>
+                  </Link>
+                ))}
+              </AnimatePresence>
             </div>
           )}
         </section>
 
         {/* Featured Templates */}
-        <section className="mb-16">
+        <section>
           <div className="flex items-center gap-2 mb-6">
             <Sparkles className="w-5 h-5 text-amber-400" />
-            <h2 className="text-2xl font-bold">Featured Templates</h2>
+            <h2 className="text-2xl font-black text-white">Featured Templates</h2>
           </div>
           {filteredTemplates.length === 0 ? (
-            <div className="glass-card p-12 text-center text-muted-foreground text-sm flex flex-col items-center gap-3">
+            <div className="glass-card p-12 text-center text-muted-foreground text-sm flex flex-col items-center gap-3 rounded-3xl">
               <LayoutGrid className="w-8 h-8 text-amber-400/60" />
               No matching templates found.
             </div>
@@ -279,14 +461,16 @@ export default function ExplorePage() {
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.08 }}
-                      className="glass-card p-5 text-center group cursor-pointer card-3d"
+                      transition={{ delay: i * 0.05 }}
+                      className="glass-card p-5 text-center group cursor-pointer card-3d rounded-3xl"
                     >
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform shadow-lg shadow-purple-500/10">
                         <Icon className="w-6 h-6 text-white" />
                       </div>
-                      <h3 className="font-semibold text-sm">{t.label}</h3>
-                      <p className="text-xs text-muted-foreground mt-1">{t.users} uses</p>
+                      <h3 className="font-bold text-white text-sm group-hover:text-purple-300 transition-colors">
+                        {t.label}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-1">{t.users} active uses</p>
                     </motion.div>
                   </Link>
                 );
@@ -299,10 +483,10 @@ export default function ExplorePage() {
         <section>
           <div className="flex items-center gap-2 mb-6">
             <Clock className="w-5 h-5 text-purple-400" />
-            <h2 className="text-2xl font-bold">Recent Activity</h2>
+            <h2 className="text-2xl font-black text-white">Recent Activity</h2>
           </div>
           {filteredActivities.length === 0 ? (
-            <div className="glass-card p-8 text-center text-muted-foreground text-sm flex flex-col items-center gap-3">
+            <div className="glass-card p-8 text-center text-muted-foreground text-sm flex flex-col items-center gap-3 rounded-3xl">
               <History className="w-8 h-8 text-purple-400/60" />
               No recent activity matching your filters.
             </div>
@@ -313,16 +497,16 @@ export default function ExplorePage() {
                   key={i}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="glass-card p-4 flex items-center gap-4"
+                  transition={{ delay: i * 0.04 }}
+                  className="glass-card p-4 flex items-center gap-4 rounded-2xl"
                 >
                   <Emoji name={activity.emoji} size={28} />
-                  <div className="flex-1">
-                    <span className="font-medium">{activity.user}</span>{" "}
+                  <div className="flex-1 text-sm">
+                    <span className="font-bold text-white">{activity.user}</span>{" "}
                     <span className="text-muted-foreground">{activity.action}</span>{" "}
-                    <span className="font-medium">{activity.item}</span>
+                    <span className="font-bold text-purple-300">{activity.item}</span>
                   </div>
-                  <span className="text-sm text-muted-foreground">{activity.time}</span>
+                  <span className="text-xs text-muted-foreground">{activity.time}</span>
                 </motion.div>
               ))}
             </div>

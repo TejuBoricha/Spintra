@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useEffect, useSyncExternalStore } from "react";
+import { useState, useEffect, useSyncExternalStore, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/components/theme-provider";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   Sun,
   Moon,
@@ -34,6 +37,11 @@ const getServerSnapshot = () => false;
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isJoinOpen, setIsJoinOpen] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
+  const [joining, setJoining] = useState(false);
+
+  const router = useRouter();
   const mounted = useSyncExternalStore(
     subscribeToClient,
     getClientSnapshot,
@@ -46,6 +54,55 @@ export function Navbar() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  const handleJoinRoomSubmit = useCallback(async () => {
+    if (joinCode.length !== 6) return;
+    setJoining(true);
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+      if (supabase) {
+        const { data: room, error: roomError } = await supabase
+          .from("rooms")
+          .select("is_locked, max_participants")
+          .eq("code", joinCode)
+          .maybeSingle();
+
+        if (roomError || !room) {
+          toast.error("Room code not found. Please double check.");
+          setJoining(false);
+          return;
+        }
+
+        if (room.is_locked) {
+          toast.error("This room is locked by the host.");
+          setJoining(false);
+          return;
+        }
+
+        const { data: parts } = await supabase
+          .from("room_participants")
+          .select("id")
+          .eq("room_id", joinCode);
+
+        if (parts && parts.length >= room.max_participants) {
+          toast.error("This room is full.");
+          setJoining(false);
+          return;
+        }
+      }
+
+      toast.success("Joining room...");
+      setIsJoinOpen(false);
+      setJoinCode("");
+      router.push(`/room/${joinCode}`);
+    } catch (err) {
+      console.error("Failed to join room:", err);
+      toast.error("Unable to join room. Please try again.");
+    } finally {
+      setJoining(false);
+    }
+  }, [joinCode, router]);
 
   return (
     <nav
@@ -147,15 +204,26 @@ export function Navbar() {
                 )}
               </Button>
             )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsJoinOpen(true)}
+              className="hidden sm:flex border-purple-500/30 text-purple-300 hover:bg-purple-500/10 rounded-xl font-semibold shadow-sm transition-all"
+            >
+              Join Room
+            </Button>
+
             <Link href="/create">
               <Button
                 size="sm"
-                className="hidden sm:flex bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white border-0"
+                className="hidden sm:flex bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white border-0 rounded-xl"
               >
                 <Sparkles className="w-4 h-4 mr-2" />
                 Create Room
               </Button>
             </Link>
+
             <Button
               variant="ghost"
               size="icon"
@@ -200,16 +268,88 @@ export function Navbar() {
                   {game.label}
                 </Link>
               ))}
+              
+              <button
+                onClick={() => {
+                  setMobileOpen(false);
+                  setIsJoinOpen(true);
+                }}
+                className="flex items-center justify-center gap-3 px-3 py-2 rounded-lg border border-purple-500/30 text-purple-300 hover:bg-purple-500/10 w-full mt-2 font-semibold text-sm transition-all h-10"
+              >
+                Join Room
+              </button>
+
               <Link
                 href="/create"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-cyan-500 text-white mt-2"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-cyan-500 text-white mt-2 h-10 justify-center font-semibold text-sm"
               >
                 <Sparkles className="w-5 h-5" />
                 Create Room
               </Link>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Join Room Dialog Overlay */}
+      <AnimatePresence>
+        {isJoinOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsJoinOpen(false)}
+              className="absolute inset-0 bg-[#07050e]/60 backdrop-blur-md"
+            />
+
+            {/* Modal Box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="glass-card max-w-sm w-full p-6 rounded-3xl border border-white/10 shadow-2xl relative z-10 text-center space-y-6 bg-background/95"
+            >
+              <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Gamepad2 className="w-5 h-5 text-purple-400" />
+                  Join Room
+                </h3>
+                <button
+                  onClick={() => setIsJoinOpen(false)}
+                  className="text-muted-foreground hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-xs text-muted-foreground text-left uppercase tracking-wider font-semibold">
+                  Enter 6-Character Room Code:
+                </p>
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                  onKeyDown={(e) => e.key === "Enter" && handleJoinRoomSubmit()}
+                  placeholder="EX: 89PB5T"
+                  className="w-full h-12 bg-white/5 border border-white/10 rounded-2xl text-center text-2xl font-mono text-purple-300 font-bold focus:outline-none focus:border-cyan-500/50 uppercase tracking-widest"
+                  autoFocus
+                />
+              </div>
+
+              <Button
+                disabled={joinCode.length !== 6 || joining}
+                onClick={handleJoinRoomSubmit}
+                className="w-full h-11 bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white rounded-xl font-bold shadow-lg shadow-purple-500/10 disabled:opacity-50"
+              >
+                {joining ? "Verifying..." : "Join Game"}
+              </Button>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </nav>
