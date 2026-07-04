@@ -250,8 +250,9 @@ useEffect(() => registerEventListener((event) => {
 | 0010 | `create_trivia_and_scramble_prompts` | Creates `trivia_questions` table, seeds trivia questions, and seeds Word Scramble words |
 | 0011 | `rate_limiting` | Before-insert triggers capping room creation (8 / 10 min per `host_id`) and chat messages (20 / 10 sec per `user_id`); supporting composite indexes |
 | 0012 | `moderation_controls` | `room_bans` table + before-insert trigger blocking a banned `user_id` from rejoining a room (kick now also bans); `message_reports` table (insert-only, no select policy — reviewed via Supabase SQL editor) |
+| 0013 | `room_bans_self_select` | Adds a self-scoped select policy to `room_bans` (`user_id = auth.uid()::text`) so a client can check whether *it* is banned before the room UI mounts, instead of only finding out via the before-insert trigger's error after the fact |
 
-**Current status:** all 12 applied; RLS enabled on all 7 tables; latest policy is `0012_moderation_controls`; latest migration is `0012_moderation_controls`.
+**Current status:** all 13 applied; RLS enabled on all 7 tables; latest policy is `0013_room_bans_self_select`; latest migration is `0013_room_bans_self_select`.
 
 ### APIs / Integration Points
 No custom REST or GraphQL API exists — every client talks directly to Supabase (or, unconfigured, the `BroadcastChannel` Web API). The full set of integration points:
