@@ -124,7 +124,11 @@ export function useRoomSubscription({
         .eq("user_id", currentUser.id);
 
       if (partError) {
-        console.error("Failed to elect participant as host in database:", partError);
+        if (partError.message?.includes("already has an online host")) {
+          console.warn("Host election conflict detected. Another online participant was elected first.");
+        } else {
+          console.error("Failed to elect participant as host in database:", partError.message || partError);
+        }
         return;
       }
 
@@ -135,7 +139,7 @@ export function useRoomSubscription({
         .eq("code", roomCode);
 
       if (roomError) {
-        console.error("Failed to update rooms host_id in database:", roomError);
+        console.error("Failed to update rooms host_id in database:", roomError.message || roomError);
       } else {
         setRoomHostId(currentUser.id);
         setParticipants((prev) =>
