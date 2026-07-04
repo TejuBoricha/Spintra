@@ -98,7 +98,8 @@ spintra/
 │       ├── 0005_enable_anonymous_auth_rls.sql
 │       ├── 0006_allow_host_promotion_update.sql
 │       ├── 0007_allow_host_update_participants.sql
-│       └── 0008_create_activity_prompts.sql          ← Latest migration
+│       ├── 0008_create_activity_prompts.sql
+│       └── 0009_backend_and_db_improvements.sql      ← Latest migration
 ├── tests/                          ← Playwright E2E tests
 └── public/                         ← Static assets
 ```
@@ -223,8 +224,9 @@ useEffect(() => registerEventListener((event) => {
 | 0006 | `allow_host_promotion_update` | Lets a participant self-promote to host if the current host is offline/left |
 | 0007 | `allow_host_update_participants` | Lets the host update other participants' rows (e.g. marking a crashed client offline) |
 | 0008 | `create_activity_prompts` | Creates + seeds `activity_prompts` (Truth or Dare / Would You Rather / Never Have I Ever) |
+| 0009 | `backend_and_db_improvements` | Security definer membership helper, hardened RLS policies, check limits trigger, and cleanup function |
 
-**Current status:** all 8 applied; RLS enabled on all 4 tables; latest policy is `0007_allow_host_update_participants`.
+**Current status:** all 9 applied; RLS enabled on all 4 tables; latest policy is `0009_backend_and_db_improvements`.
 
 ### APIs / Integration Points
 No custom REST or GraphQL API exists — every client talks directly to Supabase (or, unconfigured, the `BroadcastChannel` Web API). The full set of integration points:
@@ -372,7 +374,7 @@ Call this on any game win. It uses `canvas-confetti` with a burst configuration.
 
 ## 12. Database ER Diagram
 
-Generated directly from the 8 migration files in `supabase/migrations/` (not from `AI_CONTEXT.md`'s prior "Database Status" table, which incorrectly listed a `users` table that does not exist — corrected 2026-07-04).
+Generated directly from the 9 migration files in `supabase/migrations/` (not from `AI_CONTEXT.md`'s prior "Database Status" table, which incorrectly listed a `users` table that does not exist — corrected 2026-07-04).
 
 ```mermaid
 erDiagram

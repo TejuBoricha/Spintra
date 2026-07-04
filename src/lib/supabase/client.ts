@@ -1,9 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "./database.types";
 
-let browserSupabase: SupabaseClient | null = null;
+let browserSupabase: SupabaseClient<Database> | null = null;
 
-function createBrowserClient() {
+function createBrowserClient(): SupabaseClient<Database> | null {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -14,14 +15,14 @@ function createBrowserClient() {
     return null;
   }
 
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  return createClient<Database>(supabaseUrl, supabaseAnonKey, {
     realtime: {
       params: { eventsPerSecond: 10 },
     },
   });
 }
 
-export function getSupabaseBrowserClient() {
+export function getSupabaseBrowserClient(): SupabaseClient<Database> | null {
   if (typeof window === "undefined") {
     return null;
   }
@@ -32,3 +33,4 @@ export function getSupabaseBrowserClient() {
 
   return browserSupabase;
 }
+

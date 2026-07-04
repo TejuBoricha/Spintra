@@ -960,8 +960,8 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
             joined_at: item.joined_at,
             user: {
               id: item.user_id,
-              username: item.username,
-              avatar_url: item.avatar_url,
+              username: item.username ?? "Guest",
+              avatar_url: item.avatar_url ?? undefined,
               xp: item.xp ?? 0,
               rank: item.rank as User["rank"],
               created_at: item.joined_at,
