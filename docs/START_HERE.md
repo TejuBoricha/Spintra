@@ -10,6 +10,9 @@ Open **[`docs/INDEX.md`](./INDEX.md)** first — it lists every document with a 
 
 Two files are worth checking almost regardless of task: `docs/TASKS.md` (what's active right now) and `docs/HANDOFF.md` (where the previous session left off).
 
+> [!NOTE]
+> If your AI coding assistant supports `AGENTS.md` (or an equivalent repository instruction mechanism), that file is the authoritative session bootstrap. Otherwise, follow the startup workflow described here.
+
 ## The engineering rules
 
 This repo's engineering constitution — decision priorities, quality gates, security rules, refactoring policy — lives in `docs/AI_RULES.md`. Read it once per session if you haven't already; it isn't repeated here.

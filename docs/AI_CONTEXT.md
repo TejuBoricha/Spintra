@@ -10,7 +10,7 @@
 
 ## Current Milestone
 
-Completed the Spintra room joining and dynamic discovery experience overhaul (Session 27). This included building a global Join Room navbar modal, Homepage quick join cards, dynamic scanning QR codes, a Postgres-backed realtime Explore room feed and live activity feed, an inline profile editor with database replication, and solving race conditions on concurrent database writes/elections.
+Completed the Spintra room joining and dynamic discovery experience overhaul (Session 27). This included building a global Join Room navbar modal, Homepage quick join cards, dynamic scanning QR codes, a Postgres-backed realtime Explore room feed and live activity feed, an inline profile editor with database replication, solving race conditions on concurrent database writes/elections, and codifying the strict AI development workflow.
 
 ---
 
@@ -22,7 +22,7 @@ All planned modularisation (14/14 activities), invite and QR sharing systems, re
 
 ## Current Objective
 
-All room joining flows, discovery pages, and profile state sync optimizations are complete. Ready for new goals or feature requests.
+All room joining flows, discovery pages, profile state sync optimizations, and workflow rules are complete. Ready for new goals or feature requests.
 
 ---
 

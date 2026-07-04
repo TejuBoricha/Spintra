@@ -6,13 +6,13 @@ Portable session-continuity note for any AI assistant (Antigravity, Claude Code,
 
 ## Last Completed Task
 
-Completed Session 27, executing a major overhaul of room joining, dynamic Explore feeds, React Portal modal rendering, profile editors, and resolving race condition bugs (e.g. database unique constraint violations on parallel participant registers and promotion warnings). All quality check verification scripts (`npm run verify`) compile successfully and pass.
+Completed Session 27, executing a major overhaul of room joining, dynamic Explore feeds, React Portal modal rendering, profile editors, and resolving race condition bugs (e.g. database unique constraint violations on parallel participant registers and promotion warnings). Enforced strict workflow checklists programmatically in `AGENTS.md` and `docs/AI_RULES.md`. All quality check verification scripts (`npm run verify`) compile successfully and pass.
 
 ---
 
 ## Current Task
 
-None — all requested joining flows, discovery pages, and state synchronization fixes are complete.
+None — all requested joining flows, discovery pages, state synchronization fixes, and workflow rules are complete.
 
 ---
 

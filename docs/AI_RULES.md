@@ -91,21 +91,30 @@ If any check fails, do not proceed. Revert or repair the changes immediately.
 
 To ensure a seamless transition between different AI sessions and models, follow this workflow:
 
-### Startup Checklist
-1. **Inspect Documentation:**
-   - Read the roadmap tasks list to identify active objectives.
-   - Read the current context file to verify the current progress status.
-   - Read the handoff summary to check the exact stopping point of the previous session.
-2. **Verify Codebase Health:** Run the compiler/typecheck command to verify the codebase compiles before making any changes.
+### Startup and Execution Workflow
+In every new session, you MUST execute this workflow (normally completed in a single response):
 
-### End-of-Session Checklist
-1. **Verify Quality Gates:** Run compilation, linting, and build commands. All must pass.
-2. **Synchronize Documentation:**
-   - Update the tasks log (mark completed items, document technical debt).
-   - Update the current context (completed features, blockers, next objective).
-   - Append a new chronological changelog log entry.
-   - Write a portable handoff summary detailing the exact stopping point and next immediate tasks.
-3. **No Stale Memory:** Ensure all reasoning, assumptions, or database state constraints are fully written down so the next AI can start working immediately.
+1. **Internal Initialization**
+   - Read `AGENTS.md`.
+   - Execute the Startup Checklist: Consult `docs/START_HERE.md`, `docs/TASKS.md`, and `docs/HANDOFF.md` first.
+   - Use `docs/INDEX.md` to determine which documentation is required for the current task.
+   - Read only the necessary documents to build an understanding of the current project state.
+
+2. **User-Facing Initialization**
+   - Briefly summarize your understanding of the current project state in your response text before touching any production code.
+   - Mention any assumptions or ambiguities.
+   - If clarification is required, stop and ask the user before making changes.
+
+3. **Implementation**
+   - Perform the requested work in the same response (no need to wait for another conversational turn unless clarification is required).
+
+4. **Verification**
+   - Run the appropriate quality gates/checks (`npm run verify`).
+   - Synchronize all affected documentation in the `docs/` folder (including backlog checkmarks in `docs/TASKS.md`, milestone logs in `docs/AI_CONTEXT.md`, and stopping points in `docs/HANDOFF.md`).
+
+5. **Completion**
+   - Present the Mandatory Change Report in the conversation (following the exact template in §9).
+   - Confirm that the Definition of Done and all Completion Gates have been satisfied.
 
 ---
 
@@ -130,10 +139,10 @@ Documentation exists to be used efficiently, not read exhaustively. To keep sess
 A task is NOT considered complete until ALL of the following conditions have been satisfied:
 
 1. The requested implementation has been completed.
-2. Relevant verification has been performed.
-3. Relevant documentation has been updated (when applicable).
+2. Relevant verification has been performed (run the appropriate verification/lint commands like `npm run verify` before considering the task complete).
+3. Relevant documentation has been updated and synchronized (including `docs/TASKS.md`, `docs/AI_CONTEXT.md`, `docs/HANDOFF.md`, and `docs/CHANGELOG_AI.md`).
 4. A Mandatory Change Report has been presented in the conversation.
-5. Any required project documentation has been synchronized.
+5. Confirm that all Completion Gates have been satisfied.
 
 If any of the above is missing, the task must be treated as incomplete. Never finish a task without satisfying every completion gate.
 

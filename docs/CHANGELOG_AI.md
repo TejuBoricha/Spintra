@@ -124,7 +124,7 @@
 
 ## [2026-07-04] — Session 27: Explore Realtime Feeds, Custom Join Modals, Portal Views, Profile Sync & Database Race Fixes
 **AI:** Antigravity (Google DeepMind)
-**Task:** Redesign and implement the complete custom room joining flows, build a live Supabase Explore room & activity feed, build an inline sidebar profile editor, refactor overlays to mount via React Portals, and resolve database concurrent insert and host promotion election race condition conflicts.
+**Task:** Redesign and implement the complete custom room joining flows, build a live Supabase Explore room & activity feed, build an inline sidebar profile editor, refactor overlays to mount via React Portals, resolve database concurrent insert and host promotion election race condition conflicts, and codify the strict AI development workflow.
 **Files Modified/Created:**
 - `src/app/explore/page.tsx` — Replaced static mock list with direct live Supabase query feeds, bound Postgres realtime change listeners, added lock/capacity indicators, and added pre-entry capacity/status check alerts.
 - `src/app/room/[code]/hooks/use-room-subscription.ts` — Upgraded participant DB insertion to a Postgres upsert on `(room_id, user_id)` conflict to handle race conditions, and muted Promotions conflict errors to debug warnings.
@@ -135,6 +135,9 @@
 - `docs/TASKS.md` — Marked invitation/sharing/discovery backlog tasks as completed.
 - `docs/AI_CONTEXT.md` — Synchronized current progress, milestone logs, and objective definitions.
 - `docs/HANDOFF.md` — Documented Session 27 details and recommended next tasks.
+- `docs/AI_RULES.md` — Updated Startup Checklist and DoD guidelines.
+- `AGENTS.md` — Wrote AI bootstrap and onboarding guide workflow guidelines.
+- `docs/START_HERE.md` — Added bootstrap mechanism redirect note.
 
 **Purpose:**
 - Resolve UX disconnect on custom room entries where copying a link from hosts was the only path.
@@ -148,6 +151,7 @@
 - Real-time synced room list, capacity monitors, and active feeds on the Explore page.
 - Robust concurrent joining rules (locks/capacity are checked for new joins, but bypassed for returning hosts/players).
 - Username edits sync back to database and update all participants instantly.
+- Strictly program-enforced AI workflow guidelines for future sessions.
 - Codebase builds successfully (`npm run verify` runs typecheck, eslint, and drift-checks with 0 errors).
 
 **Risks:** No known risks.

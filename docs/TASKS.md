@@ -42,6 +42,7 @@ Title, completion date, and a pointer to the full implementation detail in `CHAN
 
 | Title | Completed | CHANGELOG_AI.md Session |
 |---|---|---|
+| Room Share Link / QR Code | 2026-07-04 | Session 27 |
 | Explore Page Live Feed, Join Codes, Portal Modals, Profile Editor, and Race Fixes | 2026-07-04 | Session 27 |
 | Foundation & Presence Bugs (hydration mismatch, host self-healing, RLS) | 2026-07-03 | Session 1–2 |
 | Activity Randomization Improvements (Fisher-Yates shuffle, confetti, AnimatePresence) | 2026-07-03 | Session 3 |
