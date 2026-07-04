@@ -259,6 +259,205 @@ export function useRoomSubscription({
     router.push("/explore");
   }, [isHost, roomCode, router, postLocalMessage]);
 
+  // Load room details, participants list, and register self in database
+  useEffect(() => {
+    if (!authReady) return;
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentUser.id);
+    const supabase = getSupabaseBrowserClient();
+    if (supabase && !isUUID) return;
+
+    let isMounted = true;
+
+    const loadParticipants = async () => {
+      try {
+        const supabaseClient = getSupabaseBrowserClient();
+        if (!supabaseClient) return;
+
+        const { data, error } = await supabaseClient
+          .from("room_participants")
+          .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank")
+          .eq("room_id", roomCode)
+          .order("joined_at", { ascending: true });
+
+        if (error) {
+          console.error("Failed to load room participants:", error);
+          if (isMounted) toast.error("Couldn't load participants. Try refreshing the page.");
+          return;
+        }
+
+        if (isMounted && data) {
+          const loadedParticipants = data.map((item) => ({
+            id: item.id,
+            room_id: item.room_id,
+            user_id: item.user_id,
+            role: item.role as RoomParticipant["role"],
+            is_online: item.is_online,
+            joined_at: item.joined_at,
+            user: {
+              id: item.user_id,
+              username: item.username ?? "Guest",
+              avatar_url: item.avatar_url ?? undefined,
+              xp: item.xp ?? 0,
+              rank: item.rank as User["rank"],
+              created_at: item.joined_at,
+            },
+          }));
+
+          setParticipants(loadedParticipants);
+          await electHostIfNeeded(supabaseClient, loadedParticipants);
+        }
+      } catch (cause) {
+        console.error("Participant load failed:", cause);
+      }
+    };
+
+    const trackSelf = async () => {
+      try {
+        const supabaseClient = getSupabaseBrowserClient();
+        if (!supabaseClient) return;
+
+        // Clean up any stale participant rows for our user_id in this room first
+        await supabaseClient
+          .from("room_participants")
+          .delete()
+          .eq("room_id", roomCode)
+          .eq("user_id", currentUser.id);
+
+        const { data: roomRow } = await supabaseClient
+          .from("rooms")
+          .select("is_locked, max_participants, host_id")
+          .eq("code", roomCode)
+          .maybeSingle();
+
+        if (!roomRow) {
+          if (isMounted) {
+            toast.error("This room does not exist.");
+            router.push("/explore");
+          }
+          return;
+        }
+
+        const isRoomHost = roomRow.host_id === currentUser.id;
+        const role = isRoomHost ? ("host" as const) : ("participant" as const);
+        const joined_at = new Date().toISOString();
+
+        let upsertResult = await supabaseClient
+          .from("room_participants")
+          .upsert(
+            {
+              room_id: roomCode,
+              user_id: currentUser.id,
+              role,
+              is_online: true,
+              joined_at,
+              username: currentUser.username,
+              avatar_url: currentUser.avatar_url,
+              xp: currentUser.xp,
+              rank: currentUser.rank,
+            },
+            { onConflict: "room_id,user_id" }
+          )
+          .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
+
+        // Graceful fallback: if another user was elected host in a concurrent request,
+        // retry registration as a regular participant.
+        if (upsertResult.error && upsertResult.error.message?.includes("already has an online host")) {
+          console.warn("Host election conflict detected. Retrying registration as regular participant.");
+          upsertResult = await supabaseClient
+            .from("room_participants")
+            .upsert(
+              {
+                room_id: roomCode,
+                user_id: currentUser.id,
+                role: "participant",
+                is_online: true,
+                joined_at,
+                username: currentUser.username,
+                avatar_url: currentUser.avatar_url,
+                xp: currentUser.xp,
+                rank: currentUser.rank,
+              },
+              { onConflict: "room_id,user_id" }
+            )
+            .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
+        }
+
+        const { data, error } = upsertResult;
+
+        if (error) {
+          console.error("Failed to register participant in DB:", error.message);
+          return;
+        }
+
+        const participantRow = data?.[0];
+        if (participantRow && isMounted) {
+          setParticipants((prev) => [
+            ...prev.filter((participant) => participant.user_id !== currentUser.id),
+            {
+              id: participantRow.id,
+              room_id: participantRow.room_id,
+              user_id: participantRow.user_id,
+              role: participantRow.role as RoomParticipant["role"],
+              is_online: participantRow.is_online,
+              joined_at: participantRow.joined_at,
+              user: {
+                id: currentUser.id,
+                username: currentUser.username,
+                avatar_url: currentUser.avatar_url,
+                xp: currentUser.xp,
+                rank: currentUser.rank,
+                created_at: currentUser.created_at,
+              },
+            },
+          ]);
+        }
+      } catch (error) {
+        console.error("Failed to register participant details in database:", error);
+        if (isMounted) toast.error("Unable to join room. Please try again.");
+      }
+    };
+
+    const loadRoomDetails = async () => {
+      try {
+        const supabaseClient = getSupabaseBrowserClient();
+        if (!supabaseClient) return;
+        const { data, error } = await supabaseClient
+          .from("rooms")
+          .select("name, type, is_locked, max_participants, host_id")
+          .eq("code", roomCode)
+          .maybeSingle();
+        if (error) {
+          console.error("Failed to load room details:", error);
+          return;
+        }
+        if (isMounted && data) {
+          setRoomName(data.name);
+          setRoomType(data.type as RoomType);
+          setIsLocked(!!data.is_locked);
+          setRoomHostId(data.host_id);
+          if (typeof data.max_participants === "number") setMaxParticipantsLimit(data.max_participants);
+          if (data.type !== "party" && data.type !== "classroom") {
+            setActiveActivity((prev) => prev || { type: data.type, state: null });
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load room details:", e);
+      }
+    };
+
+    const runSetup = async () => {
+      await loadRoomDetails();
+      await loadParticipants();
+      await trackSelf();
+    };
+
+    runSetup();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [roomCode, currentUser, electHostIfNeeded, router, authReady]);
+
   // Subscriptions & Fallback Setup Effect
   useEffect(() => {
     if (!authReady) return;
