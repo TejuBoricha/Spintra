@@ -6,7 +6,7 @@ Portable session-continuity note for any AI assistant (Antigravity, Claude Code,
 
 ## Last Completed Task
 
-Added composed `verify`/`ci` npm scripts (the one concrete recommendation from a Staff-Engineer-style review of the drift-check tooling), then two further review passes that each caught and fixed real staleness: `docs/TASKS.md` and `docs/ENGINEERING_GOVERNANCE_REVIEW_V2.md` still cited the drift script's pre-rename filename (`check-docs-drift.js` instead of `.mjs`); `docs/ARCHITECTURE.md` §9 and `README.md`'s Scripts table were both missing the `docs:check`/`verify`/`ci` entries; and `README.md` got a CI badge, a License section, a corrected Testing section, and had its Next.js breaking-changes callout moved out of the above-the-fold area into its own "Development notes" section. Full detail: `CHANGELOG_AI.md` Session 23 (and Session 22 for the documentation-refactor risk fixes — ADR backfill, drift script, CI Node-version fix, governance review V2 — that preceded it and had also not yet been synced into this file).
+Extended the `scripts/check-docs-drift.mjs` verification script to check React context definitions, docs/INDEX.md file alignment, file and relative link verification, and script documentation synchronization. Checked off the corresponding technical debt item in `docs/TASKS.md` and verified all local gates pass cleanly under `npm run verify`. Details: `CHANGELOG_AI.md` Session 24.
 
 ---
 

@@ -26,7 +26,7 @@ None currently. No open bugs or security issues.
 - `[ ]` **Static Prompt Lists → Database-Driven:** Truth or Dare / Would You Rather / Never Have I Ever already have a dynamic path via `activity_prompts` (migration `0008`), but Word Scramble's word bank is still a hardcoded array. Same deferral reasoning as above applies.
 - `[ ]` **Investigate Zustand for Game State:** Zustand is installed (`ARCHITECTURE.md` §1) but unused. Worth investigating only if game state ever needs to persist across activity switches — not currently needed (see `ARCHITECTURE.md` §6 "No Zustand in Rooms").
 - `[x]` **Engineering Governance Review Re-run:** Done 2026-07-04 — see `ENGINEERING_GOVERNANCE_REVIEW_V2.md` (new dated file, per the versioning policy; V1 left unedited as historical record).
-- `[ ]` **Extend `scripts/check-docs-drift.mjs` coverage:** Currently checks `docs/*.md` file listing and migration files against `ARCHITECTURE.md`. Could be extended to verify the documented React context shape (`RoomActivityContextType`) against the real source interface, and to spot-check that `TASKS.md`'s `CHANGELOG_AI.md` session-number pointers resolve. Flagged in `ENGINEERING_GOVERNANCE_REVIEW_V2.md` §3.
+- `[x]` **Extend `scripts/check-docs-drift.mjs` coverage:** Done 2026-07-04 — extended to verify React context shapes, docs/INDEX.md file alignment, file and relative link validations, and package.json scripts coverage. See engineering report.
 
 ---
 

@@ -4,13 +4,13 @@
 > DB schema live in `ARCHITECTURE.md`. Session-to-session handoff lives in `HANDOFF.md`. Backlog
 > and roadmap live in `TASKS.md`. Do not duplicate those here — link to them instead.
 > Always update this file after every significant milestone.
-> Last updated: 2026-07-04T06:10 IST
+> Last updated: 2026-07-04T11:21 IST
 
 ---
 
 ## Current Milestone
 
-No named milestone is in progress. The last completed body of work was a validation/tooling and README polish pass (see `CHANGELOG_AI.md` Sessions 22–23) — composed `verify`/`ci` npm scripts, an ADR backfill, an automated docs-drift check wired into CI, a CI Node-version regression fix, and a README/documentation accuracy cleanup (stale script names and incomplete script inventories, CI badge, license section).
+No named milestone is in progress. The last completed body of work was extending documentation drift checker coverage (see `CHANGELOG_AI.md` Session 24) — now checking TypeScript contexts, INDEX.md file alignment, file and relative link validations, and script documentations. Previously, validation/tooling and README polish pass (Sessions 22–23) were completed.
 
 ---
 

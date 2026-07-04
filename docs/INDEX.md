@@ -23,6 +23,7 @@ Load only what the row tells you to. Don't read every document by default — se
 | File | Purpose |
 |---|---|
 | `START_HERE.md` | Onboarding entry point — how to navigate this system. Start every session here. |
+| `INDEX.md` | Document routing guide — tells you which files to read based on your task (this file). |
 | `AI_RULES.md` | The engineering constitution — decision priorities, quality gates, security rules, Definition of Done. Rarely changes. |
 | `AI_CONTEXT.md` | Current project state only — milestone, progress, objective, focus, known issues, assumptions, next task. |
 | `HANDOFF.md` | Session continuity only — last completed task, current task, blockers, next recommended task. |

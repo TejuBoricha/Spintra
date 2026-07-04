@@ -330,6 +330,7 @@ Two contexts: stable (never changes) + dynamic (participants). Prevents cascade 
 ```bash
 npm run dev        # next dev — starts local dev server at localhost:3000
 npm run build      # next build — production build, runs typecheck + lint
+npm run start      # next start — starts production server locally
 npm run typecheck  # tsc --noEmit — TypeScript only
 npm run lint       # eslint — linting only
 npm run docs:check # scripts/check-docs-drift.mjs — docs/ vs. real filesystem

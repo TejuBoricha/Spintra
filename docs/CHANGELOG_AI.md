@@ -122,6 +122,26 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 24: Extended Documentation Drift Checker
+**AI:** Antigravity (Google Gemini 3.5 Flash)
+**Task:** Extend the automated documentation drift check tool (`check-docs-drift.mjs`) to validate React contexts, index file alignment, file and relative link references, and npm script documentation completeness.
+**Files Modified:**
+- `scripts/check-docs-drift.mjs` — Added Checks 3, 4, 5, and 6 to validate TypeScript context interfaces, INDEX.md, all markdown links, and script references.
+- `docs/ARCHITECTURE.md` — Documented `npm run start` in §9 (Build Pipeline).
+- `docs/INDEX.md` — Added `INDEX.md` reference to the document lookup table.
+- `docs/TASKS.md` — Checked off the script-extension technical debt item.
+
+**Purpose:**
+- Prevent documentation drift on context shape changes, link rotations, script updates, and missing index definitions.
+
+**Outcome:**
+- Automated all 6 drift validation checks successfully.
+- Clean compilation, ESLint validation, and zero-drift verification gates.
+
+**Risks:** No known risks.
+
+---
+
 ## [2026-07-04] — Session 23: Composed verify/ci Scripts, Stale-Reference Cleanup, README Polish
 
 **AI:** Claude Code (Anthropic)
