@@ -52,9 +52,16 @@ spintra/
 │   │   │   ├── page.tsx            ← Room list page
 │   │   │   └── [code]/
 │   │   │       ├── page.tsx        ← Server component; passes `code` prop
-│   │   │       ├── room-client.tsx ← Main client orchestrator (shell only — owns no game state)
+│   │   │       ├── room-client.tsx ← Main client orchestrator (shell only — delegates to hooks/components)
 │   │   │       ├── context/
 │   │   │       │   └── room-activity-context.tsx  ← Shared context for activities
+│   │   │       ├── hooks/
+│   │   │       │   ├── use-room-chat.ts          ← Hook for chat, pagination, and text submissions
+│   │   │       │   └── use-room-subscription.ts  ← Hook for Supabase Realtime, presence, and demo syncs
+│   │   │       ├── components/
+│   │   │       │   ├── room-header.tsx           ← Header details, connection status, lock/sound toggles
+│   │   │       │   ├── room-sidebar.tsx          ← Chat box, reactions list, participant rows, and kick actions
+│   │   │       │   └── close-room-dialog.tsx     ← Confirmation dialog for host closing the room
 │   │   │       └── activities/
 │   │   │           ├── activity-registry.ts       ← Plugin registry (game slug → dynamic import)
 │   │   │           ├── activity-picker-dialog.tsx ← Host UI to switch games
@@ -114,12 +121,15 @@ spintra/
 
 ### The Room Client Pattern
 
-`room-client.tsx` is the only truly monolithic client component. It is the orchestrator:
-- Owns the Supabase Realtime channel lifecycle
-- Owns the chat state and rendering
-- Owns the participant list
-- Owns room metadata (name, type, locked state)
-- **Does NOT own game state** — each activity owns its own local `useState`; migration to this pattern is complete for all 14 games
+`room-client.tsx` serves as the clean client orchestrator. It has been modularized to separate state synchronization, user actions, and presentation elements into custom hooks and components:
+- **Hooks:**
+  - [useRoomSubscription](file:///c:/Users/tejas/Desktop/Spintra-1/src/app/room/[code]/hooks/use-room-subscription.ts): Isolated logic for Supabase Realtime channel lifecycle, Postgres changes subscriptions, presence states, and BroadcastChannel fallback event synchronization.
+  - [useRoomChat](file:///c:/Users/tejas/Desktop/Spintra-1/src/app/room/[code]/hooks/use-room-chat.ts): Isolated logic for chat messages history loading, older messages pagination, and sending text or emoji responses.
+- **Components:**
+  - [RoomHeader](file:///c:/Users/tejas/Desktop/Spintra-1/src/app/room/[code]/components/room-header.tsx): Modular header element showing room title, badges, codes, active activity badges, and action buttons (copy link, locking, sounds toggles).
+  - [RoomSidebar](file:///c:/Users/tejas/Desktop/Spintra-1/src/app/room/[code]/components/room-sidebar.tsx): Modular sidebar rendering the two-tabbed pane for Chat (messages container, reactions) and People list (participants, hosts crown, remove buttons).
+  - [CloseRoomDialog](file:///c:/Users/tejas/Desktop/Spintra-1/src/app/room/[code]/components/close-room-dialog.tsx): Host-only modal dialog to confirm closing the room for everyone.
+- **Does NOT own game state** — each activity owns its own local `useState`; migration to this pattern is complete for all 14 games.
 
 ### Activity Isolation Pattern
 
