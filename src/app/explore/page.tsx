@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Emoji, type EmojiName } from "@/components/emoji";
 import type { RoomType } from "@/lib/types";
 import { GAMES } from "@/lib/games";
+import { getOrCreateRoomUser } from "@/lib/room-user";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface ExploreRoom {
@@ -69,6 +70,7 @@ function getRelativeTimeString(dateStr: string): string {
 
 export default function ExplorePage() {
   const router = useRouter();
+  const [currentUser] = useState(getOrCreateRoomUser);
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
   const [rooms, setRooms] = useState<ExploreRoom[]>([]);
@@ -245,7 +247,7 @@ export default function ExplorePage() {
       if (supabase) {
         const { data: room, error: roomError } = await supabase
           .from("rooms")
-          .select("is_locked, max_participants")
+          .select("is_locked, max_participants, host_id")
           .eq("code", code)
           .maybeSingle();
 
@@ -255,21 +257,36 @@ export default function ExplorePage() {
           return;
         }
 
-        if (room.is_locked) {
-          toast.error("This room is locked by the host.");
-          setJoining(false);
-          return;
-        }
+        const isRoomHost = room.host_id === currentUser.id;
 
-        const { data: parts } = await supabase
+        // Check if user is already a participant of this room (for reconnects)
+        const { data: existingPart } = await supabase
           .from("room_participants")
           .select("id")
-          .eq("room_id", code);
+          .eq("room_id", code)
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
 
-        if (parts && parts.length >= room.max_participants) {
-          toast.error("This room is full.");
-          setJoining(false);
-          return;
+        const isRegistered = !!existingPart;
+
+        // If the user is NEITHER the host NOR already registered, check restrictions
+        if (!isRoomHost && !isRegistered) {
+          if (room.is_locked) {
+            toast.error("This room is locked by the host.");
+            setJoining(false);
+            return;
+          }
+
+          const { data: parts } = await supabase
+            .from("room_participants")
+            .select("id")
+            .eq("room_id", code);
+
+          if (parts && parts.length >= room.max_participants) {
+            toast.error("This room is full.");
+            setJoining(false);
+            return;
+          }
         }
       }
 
@@ -281,7 +298,7 @@ export default function ExplorePage() {
     } finally {
       setJoining(false);
     }
-  }, [router]);
+  }, [router, currentUser.id]);
 
   const filteredRooms = rooms.filter((room) => {
     // Search check
