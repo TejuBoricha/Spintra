@@ -18,7 +18,7 @@ export default function PrivacyPolicyPage() {
         <div className="space-y-8 text-foreground/90 leading-relaxed">
           <p>
             This Privacy Policy explains what information Spintra (&quot;we&quot;, &quot;us&quot;),
-            operated by <strong>[Your Company / Legal Entity Name]</strong>, collects when you
+            operated by <strong>Tejas Gogara</strong>, collects when you
             use the Service, and how it is used, stored, and shared.
           </p>
 
@@ -80,7 +80,7 @@ export default function PrivacyPolicyPage() {
               Depending on your location, you may have the right to request access to,
               correction of, or deletion of your data. Because accounts are anonymous, we can
               typically only act on requests tied to a specific room code or session ID you
-              provide. Contact us at <strong>[privacy@yourdomain.com]</strong> to make a
+              provide. Contact us at <strong>tejasboricha225@gmail.com</strong> to make a
               request.
             </p>
           </section>
@@ -105,7 +105,7 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2 className="text-2xl font-semibold mb-3">8. Contact</h2>
             <p>
-              Questions about this Policy can be sent to <strong>[privacy@yourdomain.com]</strong>.
+              Questions about this Policy can be sent to <strong>tejasboricha225@gmail.com</strong>.
             </p>
           </section>
 

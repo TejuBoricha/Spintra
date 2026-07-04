@@ -19,7 +19,7 @@ export default function TermsOfServicePage() {
           <p>
             These Terms of Service (&quot;Terms&quot;) govern your access to and use of Spintra
             (the &quot;Service&quot;), operated by{" "}
-            <strong>[Your Company / Legal Entity Name]</strong> (&quot;Spintra&quot;, &quot;we&quot;,
+            <strong>Tejas Gogara</strong> (&quot;Spintra&quot;, &quot;we&quot;,
             &quot;us&quot;). By creating or joining a room, you agree to these Terms. If you do
             not agree, do not use the Service.
           </p>
@@ -107,7 +107,7 @@ export default function TermsOfServicePage() {
           <section>
             <h2 className="text-2xl font-semibold mb-3">9. Governing Law</h2>
             <p>
-              These Terms are governed by the laws of <strong>[Your Jurisdiction]</strong>,
+              These Terms are governed by the laws of <strong>India</strong>,
               without regard to its conflict-of-law principles.
             </p>
           </section>
@@ -116,7 +116,7 @@ export default function TermsOfServicePage() {
             <h2 className="text-2xl font-semibold mb-3">10. Contact</h2>
             <p>
               Questions about these Terms can be sent to{" "}
-              <strong>[support@yourdomain.com]</strong>.
+              <strong>tejasboricha225@gmail.com</strong>.
             </p>
           </section>
 
