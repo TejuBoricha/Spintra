@@ -16,7 +16,7 @@ None currently. No open bugs or security issues.
 - `[ ]` **Tournament Bracket Tree UI:** Replace the flat matches list with a visual tree rendering matches in quarter/semi-final brackets.
 - `[ ]` **XP and Leveling System:** Implement an XP rewards engine that updates player stats and ranks (e.g. rookie to explorer to challenger) upon activity wins.
 - `[ ]` **Room Settings Panel:** Add host configurations for max participant counts, chat moderation, and activity timers.
-- `[ ]` **Room Share Link / QR Code:** Add a shareable link or QR code for room invites (currently the 6-character code must be communicated manually).
+- `[x]` **Room Share Link / QR Code:** Add a shareable link or QR code for room invites (currently the 6-character code must be communicated manually).
 
 ---
 
@@ -42,6 +42,7 @@ Title, completion date, and a pointer to the full implementation detail in `CHAN
 
 | Title | Completed | CHANGELOG_AI.md Session |
 |---|---|---|
+| Explore Page Live Feed, Join Codes, Portal Modals, Profile Editor, and Race Fixes | 2026-07-04 | Session 27 |
 | Foundation & Presence Bugs (hydration mismatch, host self-healing, RLS) | 2026-07-03 | Session 1–2 |
 | Activity Randomization Improvements (Fisher-Yates shuffle, confetti, AnimatePresence) | 2026-07-03 | Session 3 |
 | Zero-Prop Modular Refactor (context split, plugin registry, ErrorBoundary, all 14 activities) | 2026-07-03 | Sessions 4–6 |

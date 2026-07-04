@@ -6,13 +6,13 @@ Portable session-continuity note for any AI assistant (Antigravity, Claude Code,
 
 ## Last Completed Task
 
-Optimized the home page bundle size by converting the heavy 3D WebGL hero scene component (`HeroThreeScene`) to dynamic lazy-loading, saving over 1MB of uncompressed JavaScript from the initial load bundle. Checked that all validation gates pass via `npm run verify` and the production build completes via `npm run build`. Details: `CHANGELOG_AI.md` Session 26.
+Completed Session 27, executing a major overhaul of room joining, dynamic Explore feeds, React Portal modal rendering, profile editors, and resolving race condition bugs (e.g. database unique constraint violations on parallel participant registers and promotion warnings). All quality check verification scripts (`npm run verify`) compile successfully and pass.
 
 ---
 
 ## Current Task
 
-None — the documentation refactor above is complete.
+None — all requested joining flows, discovery pages, and state synchronization fixes are complete.
 
 ---
 
@@ -24,4 +24,7 @@ None.
 
 ## Next Recommended Task
 
-No task is queued. See `TASKS.md` for the prioritized backlog if picking up unprompted work — nothing is currently High Priority or In Progress; the top of Medium Priority is the natural starting point.
+Pick up the remaining Medium Priority backlog items in `docs/TASKS.md`:
+1. **Visual Scoreboard**: persistent real-time leaderboard showing ranks inside rooms.
+2. **Tournament Bracket Tree UI**: bracket tree layout for brackets instead of flat match logs.
+3. **XP/Leveling**: dynamic XP engine updates.

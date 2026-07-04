@@ -10,19 +10,19 @@
 
 ## Current Milestone
 
-No named milestone is in progress. The last completed body of work was performing a landing page bundle optimization by dynamically lazy-loading the WebGL 3D scene (see `CHANGELOG_AI.md` Session 26) saving over 1MB of uncompressed JS. Previously, extending automated configuration checks, typescript context checks, link validations, and general README polish passes (Sessions 22–25) were completed.
+Completed the Spintra room joining and dynamic discovery experience overhaul (Session 27). This included building a global Join Room navbar modal, Homepage quick join cards, dynamic scanning QR codes, a Postgres-backed realtime Explore room feed and live activity feed, an inline profile editor with database replication, and solving race conditions on concurrent database writes/elections.
 
 ---
 
 ## Overall Progress
 
-All planned modularisation (14/14 activities), security hardening, CI/dependency automation, and documentation-workflow work is complete. Build/lint/typecheck are clean. No known regressions.
+All planned modularisation (14/14 activities), invite and QR sharing systems, realtime discovery feeds, client profile synchronizations, security hardening, CI/dependency automation, and documentation-workflow work is complete. Build/lint/typecheck are clean. No known regressions.
 
 ---
 
 ## Current Objective
 
-None — ready for new goals or feature requests.
+All room joining flows, discovery pages, and profile state sync optimizations are complete. Ready for new goals or feature requests.
 
 ---
 

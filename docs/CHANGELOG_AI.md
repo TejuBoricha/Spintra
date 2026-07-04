@@ -122,6 +122,38 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 27: Explore Realtime Feeds, Custom Join Modals, Portal Views, Profile Sync & Database Race Fixes
+**AI:** Antigravity (Google DeepMind)
+**Task:** Redesign and implement the complete custom room joining flows, build a live Supabase Explore room & activity feed, build an inline sidebar profile editor, refactor overlays to mount via React Portals, and resolve database concurrent insert and host promotion election race condition conflicts.
+**Files Modified/Created:**
+- `src/app/explore/page.tsx` — Replaced static mock list with direct live Supabase query feeds, bound Postgres realtime change listeners, added lock/capacity indicators, and added pre-entry capacity/status check alerts.
+- `src/app/room/[code]/hooks/use-room-subscription.ts` — Upgraded participant DB insertion to a Postgres upsert on `(room_id, user_id)` conflict to handle race conditions, and muted Promotions conflict errors to debug warnings.
+- `src/app/room/[code]/components/room-header.tsx` — Configured QR code overlays, implemented React Portals to append the QR code backdrop to the document root to bypass layout transforms and prevent window cutoff.
+- `src/components/layout/navbar.tsx` — Refactored the global Join Room code-entry modal to render via React Portal on `document.body` for perfect centering and header overlap clearance.
+- `src/app/page.tsx` — Aligned the Homepage Quick Join card inputs to match the bypass validation logic and improved light mode contrast styles.
+- `src/app/room/[code]/components/room-sidebar.tsx` — Upgraded username editing form variables to support adaptive light/dark mode tokens.
+- `docs/TASKS.md` — Marked invitation/sharing/discovery backlog tasks as completed.
+- `docs/AI_CONTEXT.md` — Synchronized current progress, milestone logs, and objective definitions.
+- `docs/HANDOFF.md` — Documented Session 27 details and recommended next tasks.
+
+**Purpose:**
+- Resolve UX disconnect on custom room entries where copying a link from hosts was the only path.
+- Bring the Explore page to life with active real-time rooms and a feed of recent activity cards.
+- Prevent layout clipping/overlap bugs caused by ancestor CSS stacking contexts and relative transforms.
+- Solve Postgres concurrency conflicts occurring when multiple players mount at the same instant.
+- Fix low-contrast inputs and text in Light Mode.
+
+**Outcome:**
+- Perfect viewport centering of all modals, completely clearing the header navbar.
+- Real-time synced room list, capacity monitors, and active feeds on the Explore page.
+- Robust concurrent joining rules (locks/capacity are checked for new joins, but bypassed for returning hosts/players).
+- Username edits sync back to database and update all participants instantly.
+- Codebase builds successfully (`npm run verify` runs typecheck, eslint, and drift-checks with 0 errors).
+
+**Risks:** No known risks.
+
+---
+
 ## [2026-07-04] — Session 26: Landing Page WebGL Dynamic Loading Optimization
 **AI:** Antigravity (Google Gemini 3.5 Flash)
 **Task:** Optimize initial page load bundle metrics for the application home landing page by converting the statically imported 3D WebGL element (`HeroThreeScene`) to client-side lazy loading.
