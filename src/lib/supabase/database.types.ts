@@ -19,7 +19,6 @@ export interface Database {
           is_public: boolean
           is_locked: boolean
           max_participants: number
-          settings: Json
           created_at: string
         }
         Insert: {
@@ -31,7 +30,6 @@ export interface Database {
           is_public?: boolean
           is_locked?: boolean
           max_participants?: number
-          settings?: Json
           created_at?: string
         }
         Update: {
@@ -43,7 +41,6 @@ export interface Database {
           is_public?: boolean
           is_locked?: boolean
           max_participants?: number
-          settings?: Json
           created_at?: string
         }
         Relationships: []

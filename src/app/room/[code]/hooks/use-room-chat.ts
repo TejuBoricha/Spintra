@@ -38,17 +38,8 @@ export function useRoomChat({
 
   const chatScrollContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const isSidebarOpenRef = useRef(false);
 
   const MAX_MESSAGE_LENGTH = 500;
-
-  // Track if sidebar or drawer is active in order to clear unread flag or trigger it
-  const markMessageUnreadIfHidden = useCallback((sidebarOpen: boolean) => {
-    isSidebarOpenRef.current = sidebarOpen;
-    if (!sidebarOpen) {
-      setHasUnreadMessages(true);
-    }
-  }, [setHasUnreadMessages]);
 
   // Initial messages load
   useEffect(() => {
@@ -272,6 +263,5 @@ export function useRoomChat({
     loadOlderMessages,
     chatScrollContainerRef,
     messagesEndRef,
-    markMessageUnreadIfHidden,
   };
 }

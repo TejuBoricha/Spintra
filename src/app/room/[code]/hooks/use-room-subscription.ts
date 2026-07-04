@@ -199,7 +199,6 @@ export function useRoomSubscription({
     setIsLocked(nextValue);
 
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(`spintra-room-lock-${roomCode}`, nextValue.toString());
       postLocalMessage("LOCK_CHANGE", nextValue);
     }
 

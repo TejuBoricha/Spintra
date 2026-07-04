@@ -93,7 +93,7 @@ spintra/
 │   │   ├── celebration.tsx         ← fireConfetti() wrapper
 │   │   └── emoji.tsx               ← Emoji rendering, renderTextWithEmoji, EMOJI_UNICODE
 │   └── lib/
-│       ├── games.ts                ← GAMES array: GameDefinition[] with metadata for all 14 games
+│       ├── games.ts                ← GAMES array: GameDefinition[], 16 entries (14 real games + 2 create-only pseudo-types: party, classroom)
 │       ├── types.ts                ← Shared TypeScript types (RoomType, ActivityEvent, User, etc.)
 │       ├── utils.ts                ← cn(), shuffleArray<T>()
 │       ├── room-user.ts            ← getOrCreateRoomUser(), getLocalRoomCreatorId()

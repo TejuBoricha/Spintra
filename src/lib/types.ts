@@ -6,7 +6,7 @@ export type GameMode = "easy" | "medium" | "hard" | "extreme";
 
 export type TournamentType = "single-elimination" | "double-elimination" | "round-robin" | "swiss";
 
-export type UserRole = "host" | "participant" | "spectator";
+export type UserRole = "host" | "participant";
 
 // Room activity events carry different fields per game kind (coin flip, dice
 // roll, guess submit, ...) — structured as a discriminated union for strict type safety.
@@ -86,7 +86,6 @@ export interface Room {
   is_locked: boolean;
   max_participants: number;
   created_at: string;
-  settings: Record<string, unknown>;
 }
 
 export interface RoomParticipant {

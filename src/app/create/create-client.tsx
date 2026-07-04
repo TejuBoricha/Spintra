@@ -121,7 +121,6 @@ export default function CreateRoomClient() {
             is_public: isPublic,
             is_locked: false,
             max_participants: maxParticipants,
-            settings: {},
           }),
           2000
         );
