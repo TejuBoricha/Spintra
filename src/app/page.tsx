@@ -364,6 +364,8 @@ export default function HomePage() {
           <div className="flex items-center gap-6">
             <Link href="/explore" className="hover:text-foreground transition-colors">Explore</Link>
             <Link href="/create" className="hover:text-foreground transition-colors">Create Room</Link>
+            <Link href="/legal/terms" className="hover:text-foreground transition-colors">Terms</Link>
+            <Link href="/legal/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
             <span>© 2026 Spintra</span>
           </div>
         </div>

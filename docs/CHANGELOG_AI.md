@@ -122,6 +122,30 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 30: Legal Basics (Terms of Service, Privacy Policy, Cookie Consent)
+
+**AI:** Claude Code (Anthropic)
+**Task:** Implement the first item of the High Priority "pre-launch hardening" tier: a Terms of Service page, a Privacy Policy page, and a global cookie/consent notice.
+**Files Modified/Created:**
+- `src/app/legal/terms/page.tsx` (NEW) — static RSC Terms of Service page
+- `src/app/legal/privacy/page.tsx` (NEW) — static RSC Privacy Policy page
+- `src/components/cookie-consent-banner.tsx` (NEW) — client component, `localStorage`-gated (`spintra-cookie-consent`), links to `/legal/privacy`
+- `src/components/providers.tsx` — mounts `CookieConsentBanner` globally inside `TooltipProvider`
+- `src/app/page.tsx` — added "Terms" and "Privacy" links to the homepage footer
+- `docs/TASKS.md`, `docs/ARCHITECTURE.md`, `docs/AI_CONTEXT.md`, `docs/HANDOFF.md` — synced
+
+**Purpose:**
+- The site collects real (if anonymous) user data — chat messages, profile fields, session IDs — with no governing policy, and the user confirmed intent to publish live on the public internet.
+
+**Outcome:**
+- Both legal pages render correctly (verified via `curl` for titles/200 status and a headless Playwright smoke script for the banner lifecycle: appears on first visit, dismisses on click, stays dismissed after reload via `localStorage`, and both footer links navigate correctly).
+- `npm run verify` (typecheck, lint, docs-drift) passes cleanly. One lint error was hit and fixed: `react-hooks/set-state-in-effect` flagged the banner's conditional `setVisible(true)` inside `useEffect`; resolved using the same `queueMicrotask(() => setState(...))` pattern already established in `room-client.tsx`'s `hasMounted` effect.
+
+**Risks:**
+- The legal page copy ships with bracketed placeholders (`[Your Company / Legal Entity Name]`, `[Your Jurisdiction]`, `[support@yourdomain.com]`, `[privacy@yourdomain.com]`) that must be filled in with real values before the pages are legally reliable — ideally after review by counsel. This is a content gap, not a code defect.
+
+---
+
 ## [2026-07-04] — Session 29: Pre-Launch Hardening Backlog Tier
 
 **AI:** Claude Code (Anthropic)
