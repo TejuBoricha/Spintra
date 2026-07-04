@@ -153,7 +153,7 @@ export function RoomSidebar({
             {/* Messages */}
             <div ref={chatScrollContainerRef} className="contents">
               <ScrollArea className="flex-1 px-4 py-4 overflow-y-auto">
-                <div className="space-y-4">
+                <div className="space-y-4" role="log" aria-live="polite" aria-relevant="additions">
                   {hasMoreMessages && (
                     <div className="flex justify-center pb-2">
                       <Button
@@ -241,6 +241,7 @@ export function RoomSidebar({
                         setNewMessage(newMessage + EMOJI_UNICODE[name]);
                         setShowEmojis(false);
                       }}
+                      aria-label={`Insert ${name.replace(/_/g, " ")} emoji`}
                       className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded-lg transition-colors"
                     >
                       <Emoji name={name} size={22} />
@@ -343,10 +344,10 @@ export function RoomSidebar({
                               }}
                               autoFocus
                             />
-                            <button onClick={handleSaveUsername} className="text-emerald-400 hover:text-emerald-300">
+                            <button onClick={handleSaveUsername} aria-label="Save username" className="text-emerald-400 hover:text-emerald-300">
                               <Check className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={() => setIsEditingUsername(false)} className="text-red-400 hover:text-red-300">
+                            <button onClick={() => setIsEditingUsername(false)} aria-label="Cancel editing username" className="text-red-400 hover:text-red-300">
                               <X className="w-3.5 h-3.5" />
                             </button>
                           </div>

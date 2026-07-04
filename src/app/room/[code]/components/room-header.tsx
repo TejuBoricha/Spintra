@@ -72,6 +72,7 @@ export function RoomHeader({
   toggleSound,
 }: RoomHeaderProps) {
   const [isQrOpen, setIsQrOpen] = useState(false);
+  const [qrLoadFailed, setQrLoadFailed] = useState(false);
   const [mounted, setMounted] = useState(false);
   const roomUrl = typeof window !== "undefined" ? window.location.href : "";
 
@@ -315,17 +316,26 @@ export function RoomHeader({
                 )}
 
                 <div className="flex flex-col items-center justify-center space-y-4 py-2">
-                  <div className="p-3 bg-white rounded-2xl shadow-xl">
-                    {/* Generate QR code using a high speed, reliable standard API */}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(roomUrl)}&color=07050e&margin=10`}
-                      alt="Room QR Code"
-                      width={200}
-                      height={200}
-                      className="rounded-lg object-contain"
-                    />
-                  </div>
+                  {qrLoadFailed ? (
+                    <div className="w-[200px] h-[200px] rounded-2xl bg-muted flex flex-col items-center justify-center gap-2 text-center px-4">
+                      <p className="text-xs text-muted-foreground">
+                        Couldn&apos;t load the QR code. Use the room code or copied link instead.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-white rounded-2xl shadow-xl">
+                      {/* Generate QR code using a high speed, reliable standard API */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(roomUrl)}&color=07050e&margin=10`}
+                        alt="Room QR Code"
+                        width={200}
+                        height={200}
+                        className="rounded-lg object-contain"
+                        onError={() => setQrLoadFailed(true)}
+                      />
+                    </div>
+                  )}
                   <div className="space-y-1">
                     <p className="text-sm font-semibold text-foreground">Scan to join the room</p>
                     <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
