@@ -561,7 +561,7 @@ export function useRoomSubscription({
 
           case "KICKED":
             if (payload === currentUser.id) {
-              toast.error("You were removed from the room by the host.");
+              toast.error("You were removed from the room by the host.", { id: "kicked-toast" });
               router.push("/explore");
               return;
             }
@@ -569,7 +569,7 @@ export function useRoomSubscription({
             break;
 
           case "ROOM_CLOSED":
-            toast.error("The host closed this room.");
+            toast.error("The host closed this room.", { id: "room-closed-toast" });
             router.push("/explore");
             break;
 
@@ -746,7 +746,7 @@ export function useRoomSubscription({
               removed.user_id === currentUser.id;
             if (isSelf) {
               setTimeout(() => {
-                toast.error("You were removed from the room by the host.");
+                toast.error("You were removed from the room by the host.", { id: "kicked-toast" });
                 router.push("/explore");
               }, 0);
               return prev;
@@ -781,7 +781,7 @@ export function useRoomSubscription({
         { event: "DELETE", schema: "public", table: "rooms", filter: `code=eq.${roomCode}` },
         () => {
           if (closingRoomRef.current) return;
-          toast.error("The host closed this room.");
+          toast.error("The host closed this room.", { id: "room-closed-toast" });
           router.push("/explore");
         }
       )
