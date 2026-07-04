@@ -296,6 +296,181 @@ if (fs.existsSync(PACKAGE_PATH)) {
   fail("package.json not found");
 }
 
+// --- Check 7: Node.js Version Sync ---
+
+const ciWorkflowPath = path.join(ROOT, ".github", "workflows", "ci.yml");
+if (fs.existsSync(ciWorkflowPath) && fs.existsSync(PACKAGE_PATH)) {
+  const ciContent = fs.readFileSync(ciWorkflowPath, "utf8");
+  const nodeVersionMatch = ciContent.match(/node-version:\s*['"]?(\d+)['"]?/);
+  const ciNodeVersion = nodeVersionMatch ? nodeVersionMatch[1] : null;
+
+  const pkg = JSON.parse(fs.readFileSync(PACKAGE_PATH, "utf8"));
+  const enginesNode = pkg.engines ? pkg.engines.node : null;
+
+  if (!ciNodeVersion) {
+    fail("Could not find Node.js node-version in .github/workflows/ci.yml");
+  } else {
+    let nodeOk = true;
+
+    // Validate engines.node range compliance
+    if (enginesNode) {
+      const cleanRange = enginesNode.replace(/[^\d.>=]/g, "");
+      const versionMatch = cleanRange.match(/(\d+)\.(\d+)\.(\d+)/);
+      if (versionMatch) {
+        const minMajor = parseInt(versionMatch[1], 10);
+        const targetMajor = parseInt(ciNodeVersion, 10);
+        if (targetMajor < minMajor) {
+          fail(`Node.js version in CI (${ciNodeVersion}) is lower than the minimum allowed version in package.json engines.node (${enginesNode})`);
+          nodeOk = false;
+        }
+      }
+    }
+
+    // Check .nvmrc if it exists
+    const nvmrcPath = path.join(ROOT, ".nvmrc");
+    if (fs.existsSync(nvmrcPath)) {
+      const nvmrcVersion = fs.readFileSync(nvmrcPath, "utf8").trim().replace(/^v/, "");
+      const nvmrcMajor = parseInt(nvmrcVersion, 10);
+      if (nvmrcMajor !== parseInt(ciNodeVersion, 10)) {
+        fail(`Node.js version in .nvmrc (${nvmrcVersion}) does not match CI Node version (${ciNodeVersion})`);
+        nodeOk = false;
+      }
+    }
+
+    // Check .node-version if it exists
+    const nodeVersionFilePath = path.join(ROOT, ".node-version");
+    if (fs.existsSync(nodeVersionFilePath)) {
+      const nvVersion = fs.readFileSync(nodeVersionFilePath, "utf8").trim().replace(/^v/, "");
+      const nvMajor = parseInt(nvVersion, 10);
+      if (nvMajor !== parseInt(ciNodeVersion, 10)) {
+        fail(`Node.js version in .node-version (${nvVersion}) does not match CI Node version (${ciNodeVersion})`);
+        nodeOk = false;
+      }
+    }
+
+    if (nodeOk) {
+      ok(`Node.js versions are synchronized across CI (${ciNodeVersion}) and package.json (${enginesNode || "none"})`);
+    }
+  }
+} else {
+  if (!fs.existsSync(ciWorkflowPath)) {
+    fail("CI workflow file not found at .github/workflows/ci.yml");
+  }
+}
+
+// --- Check 8: Activity Registry & GAMES Slug Integrity ---
+
+const registryPath = path.join(ROOT, "src", "app", "room", "[code]", "activities", "activity-registry.ts");
+const activitiesDir = path.join(ROOT, "src", "app", "room", "[code]", "activities");
+const gamesPath = path.join(ROOT, "src", "lib", "games.ts");
+
+if (fs.existsSync(registryPath) && fs.existsSync(activitiesDir) && fs.existsSync(gamesPath)) {
+  const registryContent = fs.readFileSync(registryPath, "utf8");
+  const gamesSrc = fs.readFileSync(gamesPath, "utf8");
+
+  // 1. Get real activity component filenames & slugs
+  const realActivityFiles = fs
+    .readdirSync(activitiesDir)
+    .filter((f) => f.endsWith("-activity.tsx"));
+  const realActivitySlugs = realActivityFiles.map((f) => f.replace("-activity.tsx", ""));
+
+  // 2. Parse slugs from activity-registry.ts
+  const registryBlock = registryContent.match(/ACTIVITY_REGISTRY\s*:\s*Record<[^>]+>\s*=\s*\{([\s\S]*?)\};/);
+  let registrySlugs = [];
+  if (!registryBlock) {
+    fail("Could not parse ACTIVITY_REGISTRY block in activity-registry.ts");
+  } else {
+    const blockText = registryBlock[1];
+    registrySlugs = Array.from(blockText.matchAll(/["']([a-z-]+)["']\s*:/g)).map((m) => m[1]);
+  }
+
+  // 3. Parse slugs from games.ts (distinguishing standard playable games from createOnly templates)
+  const gameBlocks = Array.from(gamesSrc.matchAll(/\{([\s\S]*?)\}/g)).map((m) => m[1]);
+  const playableSlugs = [];
+  const createOnlySlugs = [];
+  for (const block of gameBlocks) {
+    const typeMatch = block.match(/type\s*:\s*["']([a-z-]+)["']/);
+    if (typeMatch) {
+      const type = typeMatch[1];
+      const isCreateOnly = block.includes("createOnly: true");
+      if (isCreateOnly) {
+        createOnlySlugs.push(type);
+      } else {
+        playableSlugs.push(type);
+      }
+    }
+  }
+
+  let registryOk = true;
+
+  // Check for duplicate slugs in registry
+  const seenRegistrySlugs = new Set();
+  const duplicateRegistrySlugs = [];
+  for (const slug of registrySlugs) {
+    if (seenRegistrySlugs.has(slug)) {
+      duplicateRegistrySlugs.push(slug);
+    }
+    seenRegistrySlugs.add(slug);
+  }
+  if (duplicateRegistrySlugs.length > 0) {
+    fail(`Duplicate slugs registered in activity-registry.ts: ${duplicateRegistrySlugs.join(", ")}`);
+    registryOk = false;
+  }
+
+  // Check for duplicate slugs in games.ts
+  const seenGameSlugs = new Set();
+  const duplicateGameSlugs = [];
+  for (const slug of playableSlugs.concat(createOnlySlugs)) {
+    if (seenGameSlugs.has(slug)) {
+      duplicateGameSlugs.push(slug);
+    }
+    seenGameSlugs.add(slug);
+  }
+  if (duplicateGameSlugs.length > 0) {
+    fail(`Duplicate game slugs defined in games.ts: ${duplicateGameSlugs.join(", ")}`);
+    registryOk = false;
+  }
+
+  // Check for orphaned activity files (exist on disk, but not in registry)
+  for (const slug of realActivitySlugs) {
+    if (!registrySlugs.includes(slug)) {
+      fail(`Orphaned activity file: 'src/app/room/[code]/activities/${slug}-activity.tsx' exists but is not registered in activity-registry.ts`);
+      registryOk = false;
+    }
+  }
+
+  // Check for orphaned registry entries (in registry, but file does not exist on disk)
+  for (const slug of registrySlugs) {
+    if (!realActivitySlugs.includes(slug)) {
+      fail(`Orphaned registry entry: '${slug}' is registered in activity-registry.ts but component file '${slug}-activity.tsx' does not exist`);
+      registryOk = false;
+    }
+  }
+
+  // Check for mismatched/orphaned game definitions in games.ts vs registry
+  for (const slug of registrySlugs) {
+    if (!playableSlugs.includes(slug)) {
+      fail(`Mismatched slug: '${slug}' is registered in activity-registry.ts but is not defined as a playable game type in games.ts`);
+      registryOk = false;
+    }
+  }
+
+  for (const slug of playableSlugs) {
+    if (!registrySlugs.includes(slug)) {
+      fail(`Orphaned game definition: Playable game slug '${slug}' is defined in games.ts but is not registered in activity-registry.ts`);
+      registryOk = false;
+    }
+  }
+
+  if (registryOk) {
+    ok(`Activity Registry and games.ts catalog are structurally synchronized (${registrySlugs.length} games)`);
+  }
+} else {
+  if (!fs.existsSync(registryPath)) fail(`Activity registry file not found at ${registryPath}`);
+  if (!fs.existsSync(activitiesDir)) fail(`Activities folder not found at ${activitiesDir}`);
+  if (!fs.existsSync(gamesPath)) fail(`Games catalog file not found at ${gamesPath}`);
+}
+
 // --- Final Decision ---
 
 if (failed) {

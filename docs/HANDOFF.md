@@ -6,7 +6,7 @@ Portable session-continuity note for any AI assistant (Antigravity, Claude Code,
 
 ## Last Completed Task
 
-Extended the `scripts/check-docs-drift.mjs` verification script to check React context definitions, docs/INDEX.md file alignment, file and relative link verification, and script documentation synchronization. Checked off the corresponding technical debt item in `docs/TASKS.md` and verified all local gates pass cleanly under `npm run verify`. Details: `CHANGELOG_AI.md` Session 24.
+Implemented Node.js configuration drift detection (Check 7) and dynamic Activity Registry slug integrity validation (Check 8) inside `scripts/check-docs-drift.mjs`. All 8 drift validation checks and standard local verification command (`npm run verify`) pass successfully with zero warnings/errors. Details: `CHANGELOG_AI.md` Session 25.
 
 ---
 

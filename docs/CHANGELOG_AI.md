@@ -122,6 +122,26 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-04] — Session 25: Node.js Config Sync & Activity Registry Integrity Checks
+**AI:** Antigravity (Google Gemini 3.5 Flash)
+**Task:** Implement Check 7 (Node.js configuration drift check) and Check 8 (Activity Registry and games.ts catalog slug integrity checks) within `check-docs-drift.mjs`.
+**Files Modified:**
+- `scripts/check-docs-drift.mjs` — Added Check 7 for Node version sync across package.json, CI workflows, .nvmrc, and .node-version; added Check 8 for integrity validation of dynamic activity files, registry entries, and canonical game definition slugs.
+- `docs/AI_CONTEXT.md` — Updated last updated timestamp and milestone details.
+- `docs/HANDOFF.md` — Logged stopping point and completed items.
+
+**Purpose:**
+- Prevent configuration drift and registry configuration mismatch bugs that could cause silent CI regressions or multiplayer room selection failures.
+
+**Outcome:**
+- Successfully integrated Check 7 and Check 8 into the drift checker.
+- Verified that configuration mismatch and registry errors fail the validation gate with clear, descriptive error logs.
+- Confirmed that `npm run verify` runs typecheck, lint, and all 8 checks successfully.
+
+**Risks:** No known risks.
+
+---
+
 ## [2026-07-04] — Session 24: Extended Documentation Drift Checker
 **AI:** Antigravity (Google Gemini 3.5 Flash)
 **Task:** Extend the automated documentation drift check tool (`check-docs-drift.mjs`) to validate React contexts, index file alignment, file and relative link references, and npm script documentation completeness.
