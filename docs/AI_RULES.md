@@ -100,19 +100,22 @@ In every new session, you MUST execute this workflow (normally completed in a si
    - Use `docs/INDEX.md` to determine which documentation is required for the current task.
    - Read only the necessary documents to build an understanding of the current project state.
 
-2. **User-Facing Initialization**
-   - Briefly summarize your understanding of the current project state in your response text before touching any production code.
-   - Mention any assumptions or ambiguities.
-   - If clarification is required, stop and ask the user before making changes.
+2. **Pre-Implementation Impact Assessment**
+   - For every non-trivial feature, bug fix, refactor, database change, API change, infrastructure change, or architectural change, perform a concise impact assessment before modifying any files. See §10 for the required structure.
 
-3. **Implementation**
+3. **User-Facing Initialization**
+   - Briefly summarize your understanding of the current project state and present the Pre-Implementation Impact Assessment in your response text before touching any production code.
+   - Mention any assumptions or ambiguities.
+   - If the task is straightforward and unambiguous, immediately continue with implementation in the same response. Only stop and ask for clarification if the assessment identifies ambiguity, conflicting requirements, architectural uncertainty, or unacceptable risk.
+
+4. **Implementation**
    - Perform the requested work in the same response (no need to wait for another conversational turn unless clarification is required).
 
-4. **Verification**
+5. **Verification**
    - Run the appropriate quality gates/checks (`npm run verify`).
    - Synchronize all affected documentation in the `docs/` folder (including backlog checkmarks in `docs/TASKS.md`, milestone logs in `docs/AI_CONTEXT.md`, and stopping points in `docs/HANDOFF.md`).
 
-5. **Completion**
+6. **Completion**
    - Present the Mandatory Change Report in the conversation (following the exact template in §9).
    - Confirm that the Definition of Done and all Completion Gates have been satisfied.
 
@@ -217,3 +220,24 @@ Do not optimize for shorter responses. Prioritize complete engineering communica
 ### Final Rule
 
 Before ending every task, verify that the Mandatory Change Report has been presented. If it has not been presented, continue the response until it has been fully completed. Treat the report as part of the implementation rather than an optional summary.
+
+---
+
+## 10. Pre-Implementation Impact Assessment
+
+Before modifying any files for any non-trivial feature, bug fix, refactor, database change, API change, infrastructure change, or architectural change, you must perform a concise Pre-Implementation Impact Assessment.
+
+The assessment must be presented in the user-facing initialization and include:
+- **Objective**: What is being changed?
+- **Why**: Why is this change required?
+- **Affected Areas**: Which modules, components, pages, services, APIs, database tables, hooks, contexts, utilities, or infrastructure are affected?
+- **Dependency Analysis**: What depends on this, and what does this depend on?
+- **Blast Radius (Mandatory)**: What could this change accidentally break? Which features could be affected? What modules are tightly coupled? What regression testing is required? Performance, security, accessibility, SEO, scalability, UX, and deployment risks.
+- **Risk Assessment**: Potential regressions, edge cases, backward compatibility concerns, failure scenarios.
+- **Architecture Alignment**: Does this follow current architecture? Can patterns be reused? Does it add complexity? Is an ADR needed?
+- **Alternative Approaches**: Reasonable alternatives and why the preferred one was chosen.
+- **Implementation Plan**: High-level steps before coding.
+- **Validation Plan**: How the implementation will be verified (typecheck, lint, build, tests, manual, UI, DB, performance, security).
+- **Documentation Impact**: Which docs will require updates (AI_CONTEXT.md, HANDOFF.md, TASKS.md, CHANGELOG_AI.md, ARCHITECTURE.md, DECISIONS.md).
+
+This assessment should remain concise (5–15 bullet points total). If the task is straightforward and unambiguous, immediately proceed to implementation in the same response. Only pause for feedback if there is conflicting requirements, architectural uncertainty, or unacceptable risk.

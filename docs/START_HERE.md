@@ -15,7 +15,7 @@ Two files are worth checking almost regardless of task: `docs/TASKS.md` (what's 
 
 ## The engineering rules
 
-This repo's engineering constitution — decision priorities, quality gates, security rules, refactoring policy — lives in `docs/AI_RULES.md`. Read it once per session if you haven't already; it isn't repeated here.
+This repo's engineering constitution — decision priorities, quality gates, security rules, refactoring policy, and the mandatory **Pre-Implementation Impact Assessment** — lives in `docs/AI_RULES.md`. Read it once per session if you haven't already; it isn't repeated here.
 
 ## Completion Policy
 
