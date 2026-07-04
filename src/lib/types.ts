@@ -1,3 +1,5 @@
+import type { Tournament } from "@/lib/tournament-engine";
+
 export type RoomType = "team-maker" | "lucky-wheel" | "name-draw" | "tournament" | "coin-flip" | "dice" | "guess-number" | "rps" | "truth-or-dare" | "would-you-rather" | "never-have-i-ever" | "trivia" | "bingo" | "word-scramble" | "party" | "classroom";
 
 export type GameMode = "easy" | "medium" | "hard" | "extreme";
@@ -20,6 +22,11 @@ type NhieConfessEvent     = { kind: "nhie_confess"; userId: string; username: st
 type RpsChoiceEvent       = { kind: "rps_choice"; userId: string; username: string; choice: string };
 type RpsResetEvent        = { kind: "rps_reset" };
 type TmTeamsEvent         = { kind: "tm_teams"; teams: { name: string; members: string[] }[] };
+type TournamentUpdateEvent = {
+  kind: "tournament_update";
+  tournament: Tournament;
+  outcome?: "champion" | "grand-final-set" | "advanced";
+};
 type NdWinnerEvent        = { kind: "nd_winner"; winner: string };
 type TriviaQuestionEvent  = { kind: "trivia_question"; text: string; options: string[]; correctIndex: number; num: number; category: string; difficulty: "easy" | "medium" | "hard" };
 type TriviaAnswerEvent    = { kind: "trivia_answer"; userId: string; username: string; choiceIndex: number; correct: boolean };
@@ -50,6 +57,7 @@ export type ActivityEvent =
   | NhiePromptEvent   | NhieConfessEvent
   | RpsChoiceEvent    | RpsResetEvent
   | TmTeamsEvent      | NdWinnerEvent
+  | TournamentUpdateEvent
   | TriviaQuestionEvent | TriviaAnswerEvent
   | WheelEntriesEvent | WheelSpinningEvent | WheelSpinEvent
   | GuessSubmitEvent | GuessResetEvent
