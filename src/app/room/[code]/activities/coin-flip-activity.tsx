@@ -46,7 +46,7 @@ export function CoinFlipActivity() {
       {/* 3D Animated Coin aligned with standalone tool design */}
       <motion.div
         className="relative w-40 h-40 mx-auto"
-        animate={coinFlipping ? { rotateY: [0, 720, 1440, 2160, 2880] } : {}}
+        animate={coinFlipping ? { rotateY: [0, 720, 1440, 2160, 2880] } : { rotateY: 0 }}
         transition={{ duration: 1.2, ease: "easeOut" }}
         style={{ perspective: 800 }}
       >

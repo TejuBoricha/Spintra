@@ -13,6 +13,8 @@ import { AggregateIdleScreen } from "./activities/aggregate-idle-screen";
 import { ActivityPickerDialog } from "./activities/activity-picker-dialog";
 import { ACTIVITY_REGISTRY } from "./activities/activity-registry";
 import { RoomActivityContext, RoomParticipantsContext } from "./context/room-activity-context";
+import { useRouter } from "next/navigation";
+import { Emoji, type EmojiName } from "@/components/emoji";
 
 // Custom Hooks
 import { useRoomSubscription } from "./hooks/use-room-subscription";
@@ -50,30 +52,18 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 export default function RoomClient({ code: roomCode }: { code: string }) {
   const [currentUser, setCurrentUser] = useState<User>(getOrCreateRoomUser);
   const [authReady, setAuthReady] = useState(false);
-  const [hasMounted, setHasMounted] = useState(false);
-
-  // Sound capability state
-  const [soundEnabled, setSoundEnabled] = useState(true);
-
-  // Sidebar, picker, dialog and navigation states
-  const [showParticipants, setShowParticipants] = useState(false);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
-  const [isCloseRoomDialogOpen, setIsCloseRoomDialogOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  const [localCreatorId] = useState<string | null>(() => {
-    return getLocalRoomCreatorId(roomCode);
-  });
-
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
+  const [accessError, setAccessError] = useState<"full" | "locked" | "not_found" | null>(null);
+  const router = useRouter();
 
   // Client anonymous auth setup (runs only on mount)
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
-      queueMicrotask(() => setAuthReady(true));
+      queueMicrotask(() => {
+        setAuthReady(true);
+        setCheckingAccess(false);
+      });
       return;
     }
 
@@ -107,6 +97,184 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
 
     signIn();
   }, []);
+
+  // Pre-entry validation logic (runs only when auth is ready)
+  useEffect(() => {
+    if (!authReady) return;
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      queueMicrotask(() => setCheckingAccess(false));
+      return;
+    }
+
+    let isMounted = true;
+
+    const verifyAccess = async () => {
+      try {
+        // 1. Fetch room details
+        const { data: room, error: roomError } = await supabase
+          .from("rooms")
+          .select("is_locked, max_participants, host_id")
+          .eq("code", roomCode)
+          .maybeSingle();
+
+        if (roomError || !room) {
+          if (isMounted) {
+            setAccessError("not_found");
+            setCheckingAccess(false);
+          }
+          return;
+        }
+
+        // 2. Check if current user is host
+        const isRoomHost = room.host_id === currentUser.id;
+        if (isRoomHost) {
+          if (isMounted) setCheckingAccess(false);
+          return;
+        }
+
+        // 3. Check if user is already a participant (reconnection / page refresh)
+        const { data: existingPart } = await supabase
+          .from("room_participants")
+          .select("id")
+          .eq("room_id", roomCode)
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
+
+        if (existingPart) {
+          if (isMounted) setCheckingAccess(false);
+          return;
+        }
+
+        // 4. Validate Lock status for new joiners
+        if (room.is_locked) {
+          if (isMounted) {
+            setAccessError("locked");
+            setCheckingAccess(false);
+          }
+          return;
+        }
+
+        // 5. Validate Room Capacity for new joiners
+        const { data: parts, error: countError } = await supabase
+          .from("room_participants")
+          .select("id")
+          .eq("room_id", roomCode);
+
+        if (countError) {
+          console.error("Failed to fetch participant list:", countError);
+        } else if (parts && parts.length >= room.max_participants) {
+          if (isMounted) {
+            setAccessError("full");
+            setCheckingAccess(false);
+          }
+          return;
+        }
+
+        if (isMounted) {
+          setCheckingAccess(false);
+        }
+      } catch (err) {
+        console.error("Pre-entry validation error:", err);
+        if (isMounted) setCheckingAccess(false);
+      }
+    };
+
+    verifyAccess();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [authReady, roomCode, currentUser.id]);
+
+  if (!authReady || checkingAccess) {
+    return (
+      <div className="min-h-screen bg-[#07050e] flex flex-col items-center justify-center gap-4">
+        <div className="relative w-16 h-16">
+          <div className="absolute inset-0 rounded-full border-4 border-purple-500/20" />
+          <div className="absolute inset-0 rounded-full border-4 border-t-purple-500 animate-spin" />
+        </div>
+        <p className="text-muted-foreground text-sm font-semibold tracking-wider animate-pulse uppercase">
+          Verifying Access...
+        </p>
+      </div>
+    );
+  }
+
+  if (accessError) {
+    const errorDetails = {
+      not_found: {
+        title: "Room Not Found",
+        desc: "The room you are trying to join does not exist or has been closed by the host.",
+        emoji: "mag" as EmojiName,
+      },
+      locked: {
+        title: "Room is Locked",
+        desc: "The host has locked this room. No new participants can join at this time.",
+        emoji: "lock" as EmojiName,
+      },
+      full: {
+        title: "Room is Full",
+        desc: "This room has reached its maximum participant limit. Try joining later.",
+        emoji: "no_entry_sign" as EmojiName,
+      },
+    }[accessError];
+
+    return (
+      <div className="min-h-screen bg-[#07050e] flex items-center justify-center p-4">
+        <div className="glass-card max-w-md w-full p-8 rounded-3xl border border-white/10 text-center shadow-2xl space-y-6">
+          <div className="flex justify-center">
+            <Emoji name={errorDetails.emoji} size={64} pop />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-black text-white">{errorDetails.title}</h1>
+            <p className="text-muted-foreground text-sm leading-relaxed">{errorDetails.desc}</p>
+          </div>
+          <button
+            onClick={() => router.push("/explore")}
+            className="w-full h-11 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white rounded-full font-bold shadow-lg shadow-purple-500/10 transition-all"
+          >
+            Back to Explore
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <RoomUIInner
+      roomCode={roomCode}
+      currentUser={currentUser}
+      authReady={authReady}
+    />
+  );
+}
+
+function RoomUIInner({
+  roomCode,
+  currentUser,
+  authReady,
+}: {
+  roomCode: string;
+  currentUser: User;
+  authReady: boolean;
+}) {
+  const [hasMounted, setHasMounted] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  // Sidebar, picker, dialog and navigation states
+  const [showParticipants, setShowParticipants] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isCloseRoomDialogOpen, setIsCloseRoomDialogOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const [localCreatorId] = useState<string | null>(() => {
+    return getLocalRoomCreatorId(roomCode);
+  });
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
 
   // Post mount sync to prevent hydration mismatch
   useEffect(() => {
@@ -281,9 +449,9 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   );
 
   return (
-    <div className="min-h-screen pt-16 flex flex-col md:flex-row">
+    <div className="min-h-screen pt-16 flex flex-col md:flex-row w-full">
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         <RoomHeader
           roomName={roomName}
           realtimeStatusClass={realtimeStatusClass}

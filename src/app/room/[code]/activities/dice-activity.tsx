@@ -45,7 +45,7 @@ export function DiceActivity() {
         {(diceResults.length > 0 ? diceResults : [0]).map((val, i) => (
           <motion.div
             key={i}
-            animate={diceRolling ? { rotate: [0, 180, 360], scale: [1, 1.25, 1], y: [0, -20, 0] } : {}}
+            animate={diceRolling ? { rotate: [0, 180, 360], scale: [1, 1.25, 1], y: [0, -20, 0] } : { rotate: 0, scale: 1, y: 0 }}
             transition={{ duration: 0.8, delay: i * 0.08, ease: "easeInOut" }}
             className={`w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-5xl font-black text-white shadow-2xl border border-purple-400/40 select-none ${
               val === 0 ? "opacity-40" : "shadow-purple-500/25"

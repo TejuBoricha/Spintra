@@ -326,13 +326,6 @@ export function useRoomSubscription({
         const supabaseClient = getSupabaseBrowserClient();
         if (!supabaseClient) return;
 
-        // Clean up any stale participant rows for our user_id in this room first
-        await supabaseClient
-          .from("room_participants")
-          .delete()
-          .eq("room_id", roomCode)
-          .eq("user_id", currentUser.id);
-
         const { data: roomRow } = await supabaseClient
           .from("rooms")
           .select("is_locked, max_participants, host_id")
@@ -351,10 +344,43 @@ export function useRoomSubscription({
         const role = isRoomHost ? ("host" as const) : ("participant" as const);
         const joined_at = new Date().toISOString();
 
-        let upsertResult = await supabaseClient
+        // 1. Query for existing participant row to handle reconnection safely without deleting
+        const { data: existingParticipant } = await supabaseClient
           .from("room_participants")
-          .upsert(
-            {
+          .select("id, role")
+          .eq("room_id", roomCode)
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
+
+        // 2. If new join, check room lock status
+        if (!existingParticipant && !isRoomHost && roomRow.is_locked) {
+          if (isMounted) {
+            toast.error("This room is locked by the host.");
+            router.push("/explore");
+          }
+          return;
+        }
+
+        let upsertResult;
+        if (existingParticipant) {
+          // Reconnection: update status without trigger limit validation
+          upsertResult = await supabaseClient
+            .from("room_participants")
+            .update({
+              is_online: true,
+              role: isRoomHost ? "host" : existingParticipant.role,
+              username: currentUser.username,
+              avatar_url: currentUser.avatar_url,
+              xp: currentUser.xp,
+              rank: currentUser.rank,
+            })
+            .eq("id", existingParticipant.id)
+            .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
+        } else {
+          // New join: perform insert (triggers db-level max limit check)
+          upsertResult = await supabaseClient
+            .from("room_participants")
+            .insert({
               room_id: roomCode,
               user_id: currentUser.id,
               role,
@@ -364,19 +390,30 @@ export function useRoomSubscription({
               avatar_url: currentUser.avatar_url,
               xp: currentUser.xp,
               rank: currentUser.rank,
-            },
-            { onConflict: "room_id,user_id" }
-          )
-          .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
+            })
+            .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
+        }
 
-        // Graceful fallback: if another user was elected host in a concurrent request,
-        // retry registration as a regular participant.
+        // Graceful fallback for host promotion conflict
         if (upsertResult.error && upsertResult.error.message?.includes("already has an online host")) {
           console.warn("Host election conflict detected. Retrying registration as regular participant.");
-          upsertResult = await supabaseClient
-            .from("room_participants")
-            .upsert(
-              {
+          if (existingParticipant) {
+            upsertResult = await supabaseClient
+              .from("room_participants")
+              .update({
+                is_online: true,
+                role: "participant",
+                username: currentUser.username,
+                avatar_url: currentUser.avatar_url,
+                xp: currentUser.xp,
+                rank: currentUser.rank,
+              })
+              .eq("id", existingParticipant.id)
+              .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
+          } else {
+            upsertResult = await supabaseClient
+              .from("room_participants")
+              .insert({
                 room_id: roomCode,
                 user_id: currentUser.id,
                 role: "participant",
@@ -386,16 +423,19 @@ export function useRoomSubscription({
                 avatar_url: currentUser.avatar_url,
                 xp: currentUser.xp,
                 rank: currentUser.rank,
-              },
-              { onConflict: "room_id,user_id" }
-            )
-            .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
+              })
+              .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
+          }
         }
 
         const { data, error } = upsertResult;
 
         if (error) {
           console.error("Failed to register participant in DB:", error.message);
+          if (isMounted) {
+            toast.error(error.message.includes("limit") ? "This room has reached its participant limit." : "Unable to join room.");
+            router.push("/explore");
+          }
           return;
         }
 
