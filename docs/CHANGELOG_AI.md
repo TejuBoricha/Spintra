@@ -122,6 +122,38 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-05] — Session 40: Room Auto-Expiry + Migration 0009 Live-Recovery
+
+**AI:** Claude Code (Anthropic)
+**Task:** User asked to fix the "Known Issues/Risks" surfaced by a fresh-session repository initialization report. Most listed items (eslint pin, rate-limit/ban bypass via session rotation, multiple room membership) turned out to be documented intentional trade-offs rather than bugs — confirmed scope with the user via a clarifying question, narrowing the actual work to the one genuinely actionable item: rooms persisting indefinitely (queued as Medium Priority in `TASKS.md` since Session 39).
+
+**Root cause:** migration `0009_backend_and_db_improvements.sql` had already defined `public.cleanup_inactive_rooms()` (deletes rooms with no online participants that are >2h old, cascading via existing FKs) but only left a code comment instructing an administrator to run `cron.schedule(...)` manually in the Supabase SQL editor. That manual step was never actually performed.
+
+**New discovery while verifying:** attempting to invoke `cleanup_inactive_rooms()` failed with "function does not exist." Investigation via direct `pg_proc`/`pg_policy`/`pg_trigger` queries against the live database showed migration `0009` in its entirety — the `is_member_of_room` security-definer helper, the hardened RLS select policies on `room_participants`/`chat_messages`, and the `check_room_limit_before_join` trigger — had never actually executed live, despite being tracked as "applied" in `supabase migration list`. This is the same class of bug found in `0008`/`0010` during Sessions 37/38 (now the 3rd instance). Live RLS select policies were still the looser `0005` versions (`using (true)`) this entire time.
+
+**Fix:**
+1. Re-ran migration `0009`'s exact SQL live via `supabase db query --file` (no version-number change, per the established Session 37/38 precedent) — confirmed via direct catalog queries that the function, hardened policies (now correctly referencing `is_member_of_room`), and trigger match source.
+2. Manually invoked `cleanup_inactive_rooms()` once to confirm it runs cleanly — it deleted **23 genuinely abandoned rooms** (65 → 42) that had been silently accumulating in production, concrete evidence of both the gap and the fix.
+3. Added new migration `0020_schedule_room_cleanup_cron.sql`: enables the `pg_cron` extension and schedules `cleanup_inactive_rooms()` every 30 minutes via `cron.schedule`, wrapped in a `DO` block that unschedules any prior job under the same name first (idempotent re-runs). Pushed via `npx supabase db push --linked --yes`.
+4. Verified live via `select * from cron.job` — job `cleanup-inactive-rooms-cron` is `active=true` with the correct schedule and command text.
+
+**Files Modified:**
+- `supabase/migrations/0020_schedule_room_cleanup_cron.sql` (NEW) — `pg_cron` extension + scheduled cleanup job
+- `docs/ARCHITECTURE.md` — migrations table entry for `0020`, updated "Current status" line (20 migrations, note on `0009`'s live re-application)
+- `docs/AI_CONTEXT.md` — milestone/known-issues/next-task updates
+- `docs/HANDOFF.md` — session summary, reminders, next recommended task
+- `docs/TASKS.md` — room auto-expiry marked done; new item flagging a systematic migration-history audit
+
+**Purpose:** Close the last outstanding Medium-priority gap from Session 39's audit (rooms persisting indefinitely), and — as an unavoidable side effect of making that fix actually work — recover a real, previously-undetected production gap where a chunk of hardened RLS/security logic had silently never been live since it was ostensibly shipped.
+
+**Outcome:** Room auto-expiry is genuinely live and self-sustaining (no more manual SQL-editor steps required). Migration `0009`'s full intended security posture (membership-scoped RLS, participant-limit enforcement) is now actually enforced in production, not just tracked as such. `npm run verify` fully clean (typecheck, lint, docs:check all 9 checks passing).
+
+**Follow-up audit (same session):** since `0008`, `0009`, and `0010` had each independently turned out to be tracked-applied-but-never-executed, the user asked for the systematic migration audit that finding suggested. Built a full expected-state checklist from all 20 migration source files, then pulled a comprehensive live snapshot via direct catalog queries (`pg_proc`, `pg_policy`, `pg_trigger`, `pg_constraint`, `pg_indexes`, `pg_publication_tables`, `information_schema.columns`, `pg_class.relrowsecurity`, `pg_class.relreplident`) and diffed every migration's intended objects against it: table/column shapes, RLS enable/policy text (using/check expressions), triggers and their function bodies, constraints, indexes, extensions, realtime publication membership, and replica identity settings. Also spot-checked seed-data row counts for duplication risk (0008/0010 use plain `insert` statements, not idempotent upserts). **Result: no further gaps found** — `0001`–`0008` and `0010`–`0019` all confirmed genuinely live and matching source exactly; `activity_prompts` has 44 rows and `trivia_questions` has 50, both consistent with a single clean application (no duplicates from the Session 37/38 or Session 40 re-applications). The tracked-but-never-ran pattern found in `0008`/`0009`/`0010` appears to be fully closed out, not a wider systemic issue.
+
+**Risks:** None identified — `cleanup_inactive_rooms()`'s deletion criteria (no online participants AND >2h old) is unchanged from its original Session-9-era design and was verified against live data before scheduling it recurrently. The follow-up audit was read-only (catalog queries only, no schema changes) and confirms the fix is complete with no other latent gaps of the same kind.
+
+---
+
 ## [2026-07-05] — Session 39: Platform QA Audit (13-Area Review + Tournament Hardening)
 
 **AI:** Claude Code (Anthropic)

@@ -6,6 +6,20 @@ Portable session-continuity note for any AI assistant (Antigravity, Claude Code,
 
 ## Last Completed Task
 
+**Session 40: Room Auto-Expiry + Migration 0009 Recovery.** User asked to fix the "Known Issues/Risks" from a fresh-session initialization report; after clarifying scope (most listed items are documented intentional trade-offs, not bugs), scoped this to the one genuinely actionable item: rooms persisting indefinitely.
+
+Key findings/fixes:
+- **Root cause:** migration `0009_backend_and_db_improvements.sql` already defined `public.cleanup_inactive_rooms()` (deletes rooms with no online participants, >2h old) back when it was written, but only left a comment telling an admin to run `cron.schedule(...)` by hand in the SQL editor — that manual step was never done.
+- **New discovery:** while verifying, found `is_member_of_room`, the hardened RLS select policies, and the participant-limit trigger — all also defined in `0009` — didn't exist live either. Migration `0009` was tracked "applied" in the migration-history table but had **never actually executed against the live database**, same class of bug as `0008`/`0010` (Sessions 37/38). Live RLS select policies were still the looser `0005` versions this whole time.
+- **Fix:** re-ran `0009`'s exact SQL live via `supabase db query --file` (no numbering change, matching the precedent from Session 37/38) — confirmed via direct `pg_proc`/`pg_policy`/`pg_trigger` queries that the functions, hardened policies, and trigger now exist and match source.
+- **Verification of real impact:** manually invoked `cleanup_inactive_rooms()` once — it deleted **23 genuinely abandoned rooms** that had been silently accumulating in production.
+- **New migration `0020_schedule_room_cleanup_cron.sql`:** enables `pg_cron`, schedules `cleanup_inactive_rooms()` every 30 minutes. Confirmed live via `select * from cron.job` (active=true, correct schedule/command).
+- `npm run verify` clean (typecheck, lint, docs:check all 9 checks — required one `ARCHITECTURE.md` migrations-table update for `0020`, which docs:check itself caught).
+
+**Follow-up (same session):** ran the systematic audit that finding suggested — cross-checked all 20 migrations' expected live objects (tables, columns, functions, triggers, policies, constraints, indexes, extensions, realtime publication membership, replica identity, seed-data row counts) against the actual live database via direct catalog queries (`pg_proc`, `pg_policy`, `pg_trigger`, `pg_constraint`, `pg_indexes`, `pg_publication_tables`, `information_schema.columns`). **Result: no further gaps found.** `0001`–`0008` and `0010`–`0019` all confirmed genuinely live and matching source exactly; seed data is clean (44 `activity_prompts`, 50 `trivia_questions`, no duplicates from the earlier re-applications). The three-migration pattern (`0008`, `0009`, `0010`) appears fully closed out now, not a wider systemic issue.
+
+---
+
 **Session 39: Platform QA Audit (13-Area Review + Tournament Hardening).** User requested a comprehensive 13-area QA audit. All actionable findings were fixed in-session; non-actionable or deferred items were documented.
 
 Key fixes:
@@ -44,9 +58,10 @@ Session 35 then reviewed and triaged the repo's 5 open Dependabot PRs (4 GitHub 
 
 ## Current Task
 
-None in progress. All Session 39 work is complete. Working tree is clean (verified via `npm run verify`).
+None in progress. All Session 40 work is complete. Working tree is clean (verified via `npm run verify`).
 
 **Reminders carried forward:**
+- **New from Session 40:** if a migration touching a given table/function ever behaves as if an earlier migration never ran, check `pg_proc`/`pg_policy`/`pg_trigger` directly rather than trusting `supabase migration list`'s "applied" status — `0008`, `0009`, `0010` all independently turned out to be tracked-applied-but-never-executed. A systematic one-time audit of all 20 migrations was completed this session and found no further instances — treat this as closed unless new evidence surfaces.
 - `eslint ^9 → ^10` is intentionally held back — do not accept until `eslint-config-next`/`eslint-plugin-react` ship ESLint 10 support (verify by installing and running `npm run lint` directly, not just trusting CI).
 - Branch protection on `main` (block force-push + deletion) discussed but not applied — user said to leave it for now.
 - Rate limiting and bans (migrations 0011/0012) are bypassable by rotating the anonymous session — accepted architectural trade-off, documented in `AI_CONTEXT.md` Known Issues.
@@ -64,8 +79,7 @@ None.
 
 ## Next Recommended Task
 
-All High Priority "pre-launch hardening" items are complete except Production Error Monitoring (explicitly deferred by the user). Session 39's 13-area QA audit is done. Remaining open items:
-- **Room auto-expiry / lifecycle cleanup** (Medium Priority, newly queued in `TASKS.md`) — rooms persist indefinitely; needs pg_cron or a Supabase Edge Function with a schedule. Requires Supabase admin access to configure.
+All High Priority "pre-launch hardening" items are complete except Production Error Monitoring (explicitly deferred by the user). Session 39's 13-area QA audit is done, Session 40 closed the room auto-expiry gap, and its follow-up systematic migration audit found no further tracked-but-never-ran gaps. Remaining open items:
 - **3 larger net-new Medium Priority features** (Visual Scoreboard, XP/Leveling System, Room Settings Panel) — each deserves its own scoping discussion given the size; don't just start building.
 - **Production Error Monitoring** — explicitly deferred by the user's own choice; pick up only if asked.
 - **Small number of intentionally-deferred Low findings** (trivia answer key, client-side profanity filter, host-election tiebreak) — see `TASKS.md`.

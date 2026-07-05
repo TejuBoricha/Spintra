@@ -257,8 +257,9 @@ useEffect(() => registerEventListener((event) => {
 | 0017 | `drop_unused_rooms_settings_column` | Drops `rooms.settings` (always `{}`, never read anywhere) |
 | 0018 | `message_reports_host_visibility` | Adds `reviewed` flag + a select/update policy scoped to the room's host (column-restricted to `reviewed` only, via trigger) so reports are actually visible in the app |
 | 0019 | `presence_reconciliation_any_participant` | Lets any participant flip another's `is_online` true→false (never true, never other columns) — previously only the host could, which meant a crashed host's own stale row could never be corrected by anyone, permanently blocking host succession |
+| 0020 | `schedule_room_cleanup_cron` | Enables `pg_cron` and schedules `public.cleanup_inactive_rooms()` (defined in 0009) to run every 30 minutes, closing the gap where that function existed but was never actually scheduled |
 
-**Current status:** all 19 applied; RLS enabled on all 7 tables; latest policy is `0019_presence_reconciliation_any_participant`; latest migration is `0019_presence_reconciliation_any_participant`. Note: 0008 and 0010 were re-applied in Session 37 after discovering their tracked "applied" status didn't match reality (see `CHANGELOG_AI.md` Session 37) — the migration numbering itself didn't change, only their actual execution against the live database.
+**Current status:** all 20 applied; RLS enabled on all 7 tables; latest policy is `0019_presence_reconciliation_any_participant`; latest migration is `0020_schedule_room_cleanup_cron`. Note: 0008 and 0010 were re-applied in Session 37, and 0009 in Session 40, after discovering their tracked "applied" status didn't match reality (see `CHANGELOG_AI.md` Session 37/40) — the migration numbering itself didn't change, only their actual execution against the live database.
 
 ### APIs / Integration Points
 No custom REST or GraphQL API exists — every client talks directly to Supabase (or, unconfigured, the `BroadcastChannel` Web API). The full set of integration points:
