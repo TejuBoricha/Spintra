@@ -61,6 +61,13 @@ export function LuckyWheelActivity() {
   const spinStartTimeRef = useRef<number>(0);
   const targetRotationRef = useRef<number>(0);
 
+  // Read by the event listener below via refs rather than as effect
+  // dependencies — see the registration effect's comment for why.
+  const wheelEntriesRef = useRef(wheelEntries);
+  useEffect(() => {
+    wheelEntriesRef.current = wheelEntries;
+  }, [wheelEntries]);
+
   // ── Draw Wheel function matching Standalone Tool UI ──
   const drawWheel = useCallback((rotation: number) => {
     const canvas = canvasRef.current;
@@ -217,12 +224,29 @@ export function LuckyWheelActivity() {
     ctx.fill();
   }, [wheelEntries, wheelSpinning]);
 
+  const drawWheelRef = useRef(drawWheel);
+  useEffect(() => {
+    drawWheelRef.current = drawWheel;
+  }, [drawWheel]);
+
   // Initial draw & resize listeners
   useEffect(() => {
     drawWheel(rotationAngleRef.current);
   }, [drawWheel]);
 
   // ── Network event subscription ──
+  //
+  // Deliberately stable deps ([registerEventListener, soundEnabled] only —
+  // matching every other activity in this codebase). wheelEntries/drawWheel
+  // are read via refs instead of being dependencies: registerEventListener
+  // replays this activity's full persisted event log to any newly
+  // registering listener (see use-room-subscription.ts), and a
+  // "wheel_spinning" event is never cleared from that log once fired. If
+  // wheelEntries/drawWheel were dependencies here, every wheelSpinning
+  // true/false transition would change drawWheel's identity, re-run this
+  // effect, re-register a new listener, replay the same still-present
+  // "wheel_spinning" event, and restart the spin — forever. (Found live:
+  // the wheel would spin indefinitely, never landing.)
   useEffect(() => {
     return registerEventListener((event) => {
       switch (event.kind) {
@@ -235,9 +259,10 @@ export function LuckyWheelActivity() {
             setWheelSpinning(true);
             playSwipe(soundEnabled);
 
-            const winnerIndex = wheelEntries.indexOf(event.winner);
-            const sliceAngle = (2 * Math.PI) / wheelEntries.length;
-            
+            const entries = wheelEntriesRef.current;
+            const winnerIndex = entries.indexOf(event.winner);
+            const sliceAngle = (2 * Math.PI) / entries.length;
+
             // Deterministic calculation to stop exactly on the winning segment at 12 o'clock position
             const offsetAngle = 1.5 * Math.PI - (winnerIndex + 0.5) * sliceAngle;
             targetRotationRef.current = 6 * Math.PI + offsetAngle;
@@ -247,13 +272,13 @@ export function LuckyWheelActivity() {
               const elapsed = Date.now() - spinStartTimeRef.current;
               const duration = 3000; // 3 seconds spin duration
               const t = Math.min(1, elapsed / duration);
-              
+
               // Cubic ease out curve
               const easeOutCubic = 1 - Math.pow(1 - t, 3);
               const angle = easeOutCubic * targetRotationRef.current;
               rotationAngleRef.current = angle;
-              
-              drawWheel(angle);
+
+              drawWheelRef.current(angle);
 
               if (t < 1) {
                 animationFrameIdRef.current = requestAnimationFrame(animateSpin);
@@ -275,11 +300,11 @@ export function LuckyWheelActivity() {
           setWheelWinner(null);
           setWheelSpinning(false);
           rotationAngleRef.current = 0;
-          drawWheel(0);
+          drawWheelRef.current(0);
           break;
       }
     });
-  }, [registerEventListener, soundEnabled, wheelEntries, drawWheel]);
+  }, [registerEventListener, soundEnabled]);
 
   // Cleanup anim loop
   useEffect(() => {

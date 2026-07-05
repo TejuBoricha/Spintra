@@ -9,6 +9,7 @@ This document tracks all active, remaining, and completed tasks for the Spintra 
 Full write-up with Description/User impact/Technical impact/Recommended fix/Effort for every item lives in the Session 41 artifact report (see `CHANGELOG_AI.md` Session 41 for the full list); this section tracks fix status only.
 
 ### Unplanned, found while the user manually tested this session's fixes
+- `[x]` **Lucky Wheel would spin forever, never landing.** A genuine feedback loop: its listener-registration effect (uniquely among 14 activities) depended on `drawWheel`, which itself depends on `wheelSpinning` — every spin transition re-registered the listener, which replayed the still-present `wheel_spinning` event from the new activity-state persistence log, restarting the spin forever. Fixed by reading `wheelEntries`/`drawWheel` via refs instead of effect dependencies. Hazard documented in `ARCHITECTURE.md`'s Pub/Sub section for future activities.
 - `[x]` **Room capacity permanently shrank every time someone joined and left.** A disconnected participant's row is kept (`is_online=false`), never deleted, but every capacity check — the DB trigger and 4 separate client-side pre-checks (home, explore, navbar, room-client) — counted every row regardless of online status. Fixed via migration `0026` + matching client-side fixes; verified against the exact room the user hit this in.
 
 ### Critical (4/4 done, plus 1 unplanned)

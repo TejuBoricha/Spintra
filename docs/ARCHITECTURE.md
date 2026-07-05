@@ -210,6 +210,8 @@ useEffect(() => registerEventListener((event) => {
 // ← cleanup (deregister) is called automatically on unmount
 ```
 
+**Since Session 41:** `registerEventListener` replays this activity's full persisted event log (`rooms.activity_state`, capped at 200 entries) to any listener the moment it registers — this is what lets a refresh/reconnect recover in-progress state (see §4's migration `0023`). A direct consequence: **an activity's listener-registration `useEffect` must keep a stable dependency array** — `[registerEventListener]`, optionally plus genuinely-stable values like `soundEnabled`/`currentUser.id` (every activity except one follows this). If a dependency changes as a *result* of handling a replayed event (e.g. a derived `useCallback` whose own deps include a state value the event handler sets), re-registering re-triggers the replay, which can re-fire that same terminal event and recreate the same state change — an infinite loop. This actually happened: Lucky Wheel's registration effect depended on `drawWheel`, a `useCallback` depending on `wheelSpinning` — every spin-start/spin-end transition changed `drawWheel`'s identity, re-registered the listener, replayed the still-present `wheel_spinning` event, and restarted the spin forever. Fixed by reading `wheelEntries`/`drawWheel` via refs inside the listener instead of depending on them for re-registration (`src/app/room/[code]/activities/lucky-wheel-activity.tsx`). Any new activity needing data that changes over the session should do the same — read a ref inside the callback, don't add it to the effect's dependency array.
+
 ---
 
 ## 4. Backend Architecture
