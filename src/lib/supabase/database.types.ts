@@ -20,6 +20,7 @@ export interface Database {
           is_locked: boolean
           max_participants: number
           created_at: string
+          activity_state: Json | null
         }
         Insert: {
           id?: string
@@ -31,6 +32,7 @@ export interface Database {
           is_locked?: boolean
           max_participants?: number
           created_at?: string
+          activity_state?: Json | null
         }
         Update: {
           id?: string
@@ -42,6 +44,7 @@ export interface Database {
           is_locked?: boolean
           max_participants?: number
           created_at?: string
+          activity_state?: Json | null
         }
         Relationships: []
       }

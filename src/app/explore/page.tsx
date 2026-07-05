@@ -143,7 +143,8 @@ export default function ExplorePage() {
           )
         `)
         .eq("is_public", true)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(60);
 
       if (error) throw error;
 
@@ -249,7 +250,12 @@ export default function ExplorePage() {
     }
   }, []);
 
-  // Fetch rooms only after auth is ready, then subscribe to realtime updates
+  // Fetch rooms only after auth is ready, then subscribe to realtime updates.
+  // room_participants changes anywhere (any room, public or private) can't be
+  // filtered to "belongs to a public room" server-side, so refetches from
+  // that table are debounced/coalesced rather than firing one full refetch
+  // per event — a burst of joins/leaves across many rooms triggers at most
+  // one refetch per debounce window instead of one per row change.
   useEffect(() => {
     if (!authReady) return;
     queueMicrotask(() => fetchRooms());
@@ -257,21 +263,28 @@ export default function ExplorePage() {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) return;
 
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefetch = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => { fetchRooms(); }, 1200);
+    };
+
     const channel = supabase
       .channel("explore-room-tracker")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "rooms" },
-        () => { fetchRooms(); }
+        { event: "*", schema: "public", table: "rooms", filter: "is_public=eq.true" },
+        scheduleRefetch
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "room_participants" },
-        () => { fetchRooms(); }
+        scheduleRefetch
       )
       .subscribe();
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
     };
   }, [authReady, fetchRooms]);

@@ -122,6 +122,45 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-05] — Session 41: Production Readiness Audit + Critical Tier Fixes
+
+**AI:** Claude Code (Anthropic)
+**Task:** User requested a comprehensive production-readiness audit across 8 perspectives (Production Engineering, QA, Security, Performance, Scalability, Reliability, UX, Accessibility), evaluating whether the product is genuinely ready for real public traffic. Findings only, no fixes, in the first pass. User then asked to fix everything found, tier by tier, starting with Critical.
+
+**Audit methodology:** 5 independent, read-only research agents ran in parallel — Security; Performance & Scalability; Reliability & Production Engineering; QA & Functional; UX & Accessibility — each briefed with the project's prior-session known-issues list to avoid re-reporting already-accepted trade-offs, and instructed to verify rather than trust stale documentation. Findings were deduplicated/cross-referenced and synthesized into one categorized report (60 findings: 4 Critical, 12 High, 16 Medium, 21 Low, 7 Nice-to-have), published as a Claude Artifact.
+
+**Critical findings identified:**
+1. A live Postgres database password committed to git history (Session 11), never confirmed rotated — user is rotating this directly in the Supabase dashboard, not a code fix.
+2. Every Supabase-dependent code path silently falls back to same-browser-tab-only mode if `NEXT_PUBLIC_SUPABASE_*` env vars are missing from a production build, with zero visible error.
+3. The Explore page's query is unbounded (no `.limit()`) and its realtime subscription refetches the entire dataset on every single `rooms`/`room_participants` change anywhere in the app, not just public-room changes — a thundering-herd pattern that can't survive the "thousands of rooms" scale the app is built for.
+4. None of the 14 room activities persist their live game state anywhere — a refresh, tab-background, or reconnect mid-game loses everything with no recovery path. (Elevated from the underlying audit's "High" rating to "Critical" in the final report, since the triggering condition — a phone locking or backgrounding — is routine for a phone-based party game, not an edge case.)
+
+**Critical tier fixes (this session):**
+- **Finding 2 fix:** `src/lib/supabase/client.ts` now exports `isSupabaseConfigured()` (a static, build-time-evaluable check) and logs a distinct `console.error` in production when misconfigured. New `src/components/production-config-warning-banner.tsx` renders a persistent, unmissable red banner app-wide (mounted in `Providers`) exactly when this condition is true — dead-code-eliminated to zero cost when properly configured.
+- **Finding 3 fix:** `src/app/explore/page.tsx` — added `.limit(60)` to the main rooms query; the `rooms` realtime subscription is now scoped with `filter: "is_public=eq.true"`; the `room_participants` subscription (which can't be filtered by a column on a different table) now debounces refetches (1.2s) instead of firing one full refetch per row change. New migration `0022_add_public_rooms_index.sql` adds a partial index `rooms (is_public, created_at desc) where is_public = true` supporting the query's actual filter/sort pattern.
+- **Finding 4 fix (the big one):** New migration `0023_add_room_activity_state.sql` adds `rooms.activity_state jsonb`. Rather than touching all 14 activity components individually, the fix lives entirely in `use-room-subscription.ts`: every activity already communicates state exclusively through `sendActivityEvent`/`registerEventListener`/`handleActivityEvent` (the existing shared event-bus pattern), so `handleActivityEvent` — the single dispatch point for events regardless of origin (sent locally or received via realtime broadcast/BroadcastChannel) — now also appends each event (capped at 200) to an in-memory ordered log and debounce-persists it (600ms) to `rooms.activity_state` as `{ type, events }`. `registerEventListener` replays this log to any newly-registering listener *before* adding it to the live listener set, so a freshly-mounted activity component (page reload, reconnect, late joiner) recovers exactly the state a continuously-connected client would have built. `loadRoomDetails` hydrates the log from the DB on initial load if the persisted `type` matches the room's current activity. `changeActivity` (switching games) and an explicit `activity_reset` event both clear the log so a new game session starts genuinely fresh. Zero changes needed in any of the 14 individual activity files.
+- **Verification:** typecheck/lint/docs:check all clean throughout. The activity-state fix was additionally verified live — not just statically — via a Playwright script driving the real dev server against the production Supabase project: created a Trivia room, started a question, waited for the debounce to flush, reloaded the page, and confirmed the question was still showing (not the blank "waiting for host" state). Directly queried the live `rooms` row afterward and confirmed the exact expected `{ type: "trivia", events: [{ kind: "trivia_question", ... }] }` payload was persisted.
+
+**Unplanned Critical-severity fix, found during that live verification:** the Playwright run initially failed with "infinite recursion detected in policy for relation room_participants" — a genuine, currently-live Postgres 500 error, not a testing artifact. Root-caused to migration `0019`'s `participants_update` RLS policy, which directly self-referenced `room_participants` in its own USING/WITH CHECK clause (`exists (select 1 from room_participants rp where rp.room_id = room_participants.room_id and rp.user_id = auth.uid()::text)`) instead of routing through `is_member_of_room()`, the SECURITY DEFINER helper migration `0009` built specifically to let a policy safely reference its own table without Postgres rejecting it as circular. This broke every UPDATE to `room_participants` in production — reconnects, presence sync, host election — until fixed. New migration `0024_fix_participants_update_recursion.sql` swaps in the safe helper with identical semantics; re-ran the same Playwright verification afterward and confirmed a clean room join + trivia start with zero console errors. **This was not caught by any of the 5 audit agents** (all static/read-only analysis, none of which happened to drive a live round trip against the real database) — it only surfaced because this fix's own verification step did.
+
+**Files Modified:**
+- `src/lib/supabase/client.ts` — `isSupabaseConfigured()` export, production-specific error logging
+- `src/components/production-config-warning-banner.tsx` (NEW)
+- `src/components/providers.tsx` — mounts the new banner
+- `src/app/explore/page.tsx` — query limit, scoped/debounced realtime subscription
+- `src/app/room/[code]/hooks/use-room-subscription.ts` — activity event log, replay-on-register, debounced persistence
+- `src/lib/supabase/database.types.ts` — `rooms.activity_state` typing
+- `supabase/migrations/0022_add_public_rooms_index.sql`, `0023_add_room_activity_state.sql`, `0024_fix_participants_update_recursion.sql` (NEW)
+- `docs/ARCHITECTURE.md` — migrations table (0022–0024), ER diagram (`activity_state` replacing the long-stale `settings` reference)
+
+**Purpose:** Make the product's failure modes match reality for real public launch traffic — a misconfigured deploy, a popular Explore page, and a phone losing its game state mid-round are not edge cases at the scale this app is aiming for, and one of them (the RLS recursion) was already actively broken in production before this session, not merely a future risk.
+
+**Outcome:** All 4 Critical findings addressed (3 via code/migration fixes verified live; 1 in progress directly by the user in the Supabase dashboard), plus 1 unplanned Critical-severity production bug found and fixed. `npm run verify` clean. High/Medium/Low/Nice-to-have tiers (56 remaining findings) queued in `TASKS.md`, to be worked through in subsequent sessions per the user's "fix all, tier by tier" instruction.
+
+**Risks:** The RLS recursion fix (`0024`) changes production access-control logic — re-verified live post-fix (room join, trivia start, no console errors) rather than trusting typecheck alone, given the stakes of a policy change. The activity-state event log is capped at 200 entries per activity session; an unusually long single game generating more than 200 state-changing events would lose its earliest history on replay (accepted trade-off — recent state matters far more than full session history for this recovery use case).
+
+---
+
 ## [2026-07-05] — Session 40: Room Auto-Expiry + Migration 0009 Live-Recovery
 
 **AI:** Claude Code (Anthropic)

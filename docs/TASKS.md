@@ -4,6 +4,54 @@ This document tracks all active, remaining, and completed tasks for the Spintra 
 
 ---
 
+## Session 41: Production Readiness Audit (60 findings, being fixed tier-by-tier)
+
+Full write-up with Description/User impact/Technical impact/Recommended fix/Effort for every item lives in the Session 41 artifact report (see `CHANGELOG_AI.md` Session 41 for the full list); this section tracks fix status only.
+
+### Critical (4/4 done, plus 1 unplanned)
+- `[x]` Production build-time guard + unmissable banner if Supabase env vars are missing from a prod build (was a silent total multiplayer outage).
+- `[x]` Explore page: `.limit(60)`, realtime subscription scoped to `is_public=eq.true` + debounced, supporting partial index (migration `0022`).
+- `[x]` `rooms.activity_state jsonb` (migration `0023`) — generic capped event-log replay so all 14 activities recover state on refresh/reconnect. Verified live via Playwright against production.
+- `[x]` **Unplanned, found during live verification:** migration `0019`'s `participants_update` RLS policy was self-referential, causing a live "infinite recursion detected in policy" 500 on every room_participants update (reconnects, presence, host election). Fixed via migration `0024`.
+- `[ ]` DB password rotation (leaked in git history) — in progress by the user directly in the Supabase dashboard, not a code fix.
+
+### High (1/12)
+- `[ ]` Room joins (`room_participants` inserts) have no rate limit — Explore rankings gameable.
+- `[ ]` No automated post-apply migration verification (root enabler of the 0008/0009/0010 pattern).
+- `[ ]` CI never touches a real/ephemeral Supabase instance.
+- `[ ]` Production env var configuration undocumented tribal knowledge.
+- `[ ]` No backup/disaster-recovery strategy documented; no soft-deletes anywhere.
+- `[x]` Missing index on `rooms(is_public, created_at)` — done as part of the Critical Explore fix above (migration `0022`).
+- `[ ]` 9 redundant serial Supabase round-trips per room join (~1.3s+ latency).
+- `[ ]` Zero e2e coverage of the core join→play→leave loop and 13/14 activities.
+- `[ ]` Explore/Recent-Activity room cards unreachable via keyboard.
+- `[ ]` Tournament match-scoring UI not keyboard-operable.
+- `[ ]` 4 hand-rolled modals lack focus trap/Escape/restore.
+- `[ ]` Room header icon toolbar has no responsive mobile collapse.
+
+### Medium (0/16)
+- `[ ]` Guess-the-Number secret broadcast to all clients + forgeable win claim.
+- `[ ]` Room-capacity check TOCTOU race.
+- `[ ]` Username edit strips all non-ASCII characters.
+- `[ ]` Message reports have no rate limit.
+- `[ ]` Overly permissive CSP (`unsafe-inline`/`unsafe-eval`).
+- `[ ]` Supabase outage misreported as "room not found."
+- `[ ]` No health-check/uptime monitoring.
+- `[ ]` Rate-limit/ban triggers fire with zero observability.
+- `[ ]` Unbounded chat/participant list growth, no virtualization.
+- `[ ]` Unbounded `select("*")` on trivia/prompt tables — silent truncation risk.
+- `[ ]` Join-validation logic triplicated across 3 pages, no caching layer.
+- `[ ]` Realtime connection ceiling vs. Supabase plan tier undocumented.
+- `[ ]` No CD step in-repo / branch protection unconfirmed.
+- `[ ]` Room creation missing `authReady` guard (same race class fixed elsewhere).
+- `[ ]` No `aria-live` region for room notifications / participant join-leave / game-state changes.
+- `[ ]` Trivia correct/incorrect feedback is color-only.
+
+### Low (0/21) and Nice-to-have (0/7)
+Tracked in the artifact report only for now; will be itemized here as the Low/Nice-to-have tiers are reached.
+
+---
+
 ## High Priority
 
 Pre-launch hardening — required before publishing the site publicly on the open internet. None of the Medium Priority items below are launch-blocking; these are.

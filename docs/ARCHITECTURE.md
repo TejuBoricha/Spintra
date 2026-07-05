@@ -259,8 +259,11 @@ useEffect(() => registerEventListener((event) => {
 | 0019 | `presence_reconciliation_any_participant` | Lets any participant flip another's `is_online` true→false (never true, never other columns) — previously only the host could, which meant a crashed host's own stale row could never be corrected by anyone, permanently blocking host succession |
 | 0020 | `schedule_room_cleanup_cron` | Enables `pg_cron` and schedules `public.cleanup_inactive_rooms()` (defined in 0009) to run every 30 minutes, closing the gap where that function existed but was never actually scheduled |
 | 0021 | `drop_unused_spectator_role` | Tightens `room_participants_role_check` to `('host', 'participant')` — `'spectator'` was dead at the DB level since the client-side `UserRole.spectator` enum was removed in Session 38 |
+| 0022 | `add_public_rooms_index` | Partial index on `rooms (is_public, created_at desc) where is_public = true`, supporting the Explore page's actual query pattern as room count grows |
+| 0023 | `add_room_activity_state` | Adds `rooms.activity_state jsonb` — a capped, ordered log of the current activity's events, letting a refreshing/reconnecting client replay and recover in-progress game state instead of starting blank |
+| 0024 | `fix_participants_update_recursion` | Fixes a live "infinite recursion detected in policy for relation room_participants" 500 error — migration 0019's `participants_update` policy directly self-referenced `room_participants` instead of using the safe `is_member_of_room()` security-definer helper; this broke every reconnect, presence sync, and host-election update until fixed |
 
-**Current status:** all 21 applied; RLS enabled on all 7 tables; latest policy is `0019_presence_reconciliation_any_participant`; latest migration is `0021_drop_unused_spectator_role`. Note: 0008 and 0010 were re-applied in Session 37, and 0009 in Session 40, after discovering their tracked "applied" status didn't match reality (see `CHANGELOG_AI.md` Session 37/40) — the migration numbering itself didn't change, only their actual execution against the live database.
+**Current status:** all 24 applied; RLS enabled on all 7 tables; latest policy is `0024_fix_participants_update_recursion`; latest migration is `0024_fix_participants_update_recursion`. Note: 0008 and 0010 were re-applied in Session 37, and 0009 in Session 40, after discovering their tracked "applied" status didn't match reality (see `CHANGELOG_AI.md` Session 37/40) — the migration numbering itself didn't change, only their actual execution against the live database.
 
 ### APIs / Integration Points
 No custom REST or GraphQL API exists — every client talks directly to Supabase (or, unconfigured, the `BroadcastChannel` Web API). The full set of integration points:
@@ -429,7 +432,7 @@ erDiagram
         boolean is_public
         boolean is_locked
         integer max_participants
-        jsonb settings
+        jsonb activity_state "capped event log for the current activity; recovers state on refresh/reconnect"
         timestamptz created_at
     }
 

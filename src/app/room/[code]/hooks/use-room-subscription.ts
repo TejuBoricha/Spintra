@@ -6,6 +6,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { fireConfetti } from "@/components/celebration";
 import { banUserFromRoom } from "@/lib/room-bans";
 import type { User, ChatMessage, RoomParticipant, RoomType, ActivityEvent } from "@/lib/types";
+import type { Json } from "@/lib/supabase/database.types";
 
 interface UseRoomSubscriptionProps {
   roomCode: string;
@@ -49,6 +50,31 @@ export function useRoomSubscription({
   const broadcastRef = useRef<BroadcastChannel | null>(null);
   const listenersRef = useRef<Set<(event: ActivityEvent) => void>>(new Set());
 
+  // Ordered log of this activity session's events, capped at 200. Replayed to
+  // any listener the moment it registers (a fresh mount, a reconnect, or a
+  // late joiner) so state is reconstructed identically to how a live client
+  // would have built it — no per-activity persistence code needed. Cleared
+  // on activity_reset and on switching activities; (re)populated from
+  // `rooms.activity_state` on initial load if it matches the current type.
+  const activityEventLogRef = useRef<ActivityEvent[]>([]);
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ACTIVITY_EVENT_LOG_CAP = 200;
+
+  const persistActivityEventLog = useCallback(() => {
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = setTimeout(() => {
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) return;
+      const type = activeActivityRef.current?.type ?? null;
+      const payload = type ? { type, events: activityEventLogRef.current } : null;
+      supabase
+        .from("rooms")
+        .update({ activity_state: payload as unknown as Json })
+        .eq("code", roomCode)
+        .then();
+    }, 600);
+  }, [roomCode]);
+
   // Derived Values
   // We determine isHost from roomHostId (database) or localCreatorId (local fallback)
   const isHost = roomHostId ? roomHostId === currentUser.id : localCreatorId === currentUser.id;
@@ -63,17 +89,37 @@ export function useRoomSubscription({
     isHostRef.current = isHost;
   }, [isHost]);
 
-  // Listener management for sub-activities
+  // Listener management for sub-activities. Replays this activity's event
+  // log to a newly-registering listener first, so a fresh mount (page load,
+  // reconnect, or a late joiner) recovers current state before it starts
+  // receiving new live events, instead of starting blank.
   const registerEventListener = useCallback((listener: (event: ActivityEvent) => void) => {
+    for (const event of activityEventLogRef.current) {
+      listener(event);
+    }
     listenersRef.current.add(listener);
     return () => {
       listenersRef.current.delete(listener);
     };
   }, []);
 
+  // Single dispatch point for every activity event regardless of origin
+  // (sent locally by this client, or received via realtime broadcast/
+  // BroadcastChannel from another client) — so every client's local event
+  // log stays complete and any of them persisting it to the DB writes the
+  // same shared history, not just the subset of events this client happened
+  // to originate itself.
   const handleActivityEvent = useCallback((payload: ActivityEvent) => {
+    if (payload.kind === "activity_reset") {
+      activityEventLogRef.current = [];
+    } else {
+      activityEventLogRef.current = [...activityEventLogRef.current, payload].slice(
+        -ACTIVITY_EVENT_LOG_CAP
+      );
+    }
+    persistActivityEventLog();
     listenersRef.current.forEach((listener) => listener(payload));
-  }, []);
+  }, [persistActivityEventLog]);
 
   // Post broadcast locally when using BroadcastChannel fallback
   const postLocalMessage = useCallback((type: string, payload: unknown) => {
@@ -163,6 +209,11 @@ export function useRoomSubscription({
     const nextActivity = type ? { type, state: null } : null;
     setActiveActivity(nextActivity);
 
+    // Switching games starts a fresh session — the previous activity's
+    // recorded history must not leak into the new one.
+    activityEventLogRef.current = [];
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       postLocalMessage("ACTIVITY_CHANGE", nextActivity);
@@ -174,21 +225,20 @@ export function useRoomSubscription({
           payload: nextActivity,
         });
       }
+      supabase.from("rooms").update({ activity_state: null }).eq("code", roomCode).then();
     }
-  }, [postLocalMessage]);
+  }, [postLocalMessage, roomCode]);
 
   const sendActivityEvent = useCallback((event: ActivityEvent) => {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       postLocalMessage("ACTIVITY_EVENT", event);
-    } else {
-      if (supabaseChannelRef.current) {
-        supabaseChannelRef.current.send({
-          type: "broadcast",
-          event: "activity_event",
-          payload: event,
-        });
-      }
+    } else if (supabaseChannelRef.current) {
+      supabaseChannelRef.current.send({
+        type: "broadcast",
+        event: "activity_event",
+        payload: event,
+      });
     }
     handleActivityEvent(event);
   }, [postLocalMessage, handleActivityEvent]);
@@ -513,7 +563,7 @@ export function useRoomSubscription({
         }
         const { data, error } = await supabaseClient
           .from("rooms")
-          .select("name, type, is_locked, max_participants, host_id")
+          .select("name, type, is_locked, max_participants, host_id, activity_state")
           .eq("code", roomCode)
           .maybeSingle();
         if (error) {
@@ -528,6 +578,13 @@ export function useRoomSubscription({
           if (typeof data.max_participants === "number") setMaxParticipantsLimit(data.max_participants);
           if (data.type !== "party" && data.type !== "classroom") {
             setActiveActivity((prev) => prev || { type: data.type, state: null });
+          }
+          // Recover this room's in-progress game (if any) so a refresh or
+          // reconnect doesn't drop back to a blank activity screen — see
+          // registerEventListener's replay and handleActivityEvent's logging.
+          const persisted = data.activity_state as { type?: string; events?: ActivityEvent[] } | null;
+          if (persisted?.type === data.type && Array.isArray(persisted.events)) {
+            activityEventLogRef.current = persisted.events.slice(-ACTIVITY_EVENT_LOG_CAP);
           }
         }
       } catch (e) {

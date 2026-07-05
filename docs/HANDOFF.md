@@ -6,6 +6,19 @@ Portable session-continuity note for any AI assistant (Antigravity, Claude Code,
 
 ## Last Completed Task
 
+**Session 41: Production Readiness Audit + Critical Tier Fixes (in progress).** User asked for a comprehensive 8-perspective production-readiness audit (Production Engineering, QA, Security, Performance, Scalability, Reliability, UX, Accessibility) as if launching to real public traffic. Ran 5 parallel research agents (Security · Performance/Scalability · Reliability/Prod-Eng · QA/Functional · UX/Accessibility), synthesized 60 findings into a categorized report (4 Critical, 12 High, 16 Medium, 21 Low, 7 Nice-to-have), published as an artifact. User is rotating the one Critical security finding (a leaked DB password in git history) directly; asked to fix everything else tier by tier, starting with Critical.
+
+**Critical tier — done:**
+- Production build-time guard (`ProductionConfigWarningBanner` + `isSupabaseConfigured()`) — an unmissable banner now renders if a production build is ever missing its Supabase env vars, instead of silently degrading every visitor to same-browser-only mode.
+- Explore page hardened: `.limit(60)` added, realtime subscription scoped to `is_public=eq.true` and debounced (was refetching the full unbounded dataset on every single room/participant change anywhere), migration `0022` adds the supporting `rooms(is_public, created_at)` partial index.
+- **`rooms.activity_state jsonb`** (migration `0023`): a capped, ordered per-activity event log. `registerEventListener` now replays it to any newly-mounting listener, and `handleActivityEvent` (the single dispatch point for events regardless of origin — sent locally or received via broadcast) records to it and debounce-persists it. This generically recovers all 14 activities' in-progress state after a refresh/reconnect with zero per-activity code changes, since every activity already communicates exclusively through `sendActivityEvent`/`registerEventListener`. Verified live: created a real trivia room via Playwright against the production Supabase project, started a question, refreshed the page, confirmed the question was still there — and inspected the DB row directly to see the exact persisted event.
+- **Unplanned, found during that live verification:** migration `0019`'s `participants_update` RLS policy directly self-referenced `room_participants` in its own USING/WITH CHECK clause (instead of routing through `is_member_of_room()`, the SECURITY DEFINER helper migration `0009` built specifically to avoid this). Postgres was rejecting every UPDATE on that table with "infinite recursion detected in policy for relation room_participants" — a real, live 500 error breaking reconnects, presence sync, and host election in production. Fixed via migration `0024`, re-verified live (room join + trivia start worked with zero console errors afterward). **None of the 5 audit agents caught this** — they were static/read-only analysis; this only surfaced because the activity-state fix's own verification step drove a real browser session against the live database instead of stopping at typecheck.
+- `npm run verify` clean throughout (typecheck, lint, docs:check).
+
+**Not yet started:** High (12 findings), Medium (16), Low (21), Nice-to-have (7) — full checklist in `TASKS.md`.
+
+---
+
 **Session 40: Room Auto-Expiry + Migration 0009 Recovery.** User asked to fix the "Known Issues/Risks" from a fresh-session initialization report; after clarifying scope (most listed items are documented intentional trade-offs, not bugs), scoped this to the one genuinely actionable item: rooms persisting indefinitely.
 
 Key findings/fixes:
@@ -60,10 +73,11 @@ Session 35 then reviewed and triaged the repo's 5 open Dependabot PRs (4 GitHub 
 
 ## Current Task
 
-None in progress. All Session 40 work is complete. Working tree is clean (verified via `npm run verify`).
+**In progress: Session 41 audit fix-through, tier by tier.** Critical tier done (see above). High tier (12 findings) is next — full checklist with fix status in `TASKS.md` under "Session 41: Production Readiness Audit." Working tree is clean as of the Critical tier commit (verified via `npm run verify`).
 
 **Reminders carried forward:**
-- **New from Session 40:** if a migration touching a given table/function ever behaves as if an earlier migration never ran, check `pg_proc`/`pg_policy`/`pg_trigger` directly rather than trusting `supabase migration list`'s "applied" status — `0008`, `0009`, `0010` all independently turned out to be tracked-applied-but-never-executed. A systematic one-time audit of all 20 migrations was completed this session and found no further instances — treat this as closed unless new evidence surfaces.
+- **New from Session 41:** when verifying a nontrivial fix, actually drive it live (Playwright against the real dev server + production Supabase project), not just typecheck/lint — the RLS recursion bug in migration `0019` was completely invisible to static analysis (all 5 audit agents missed it) and only surfaced because the activity-state fix's verification step happened to exercise a real room join.
+- **From Session 40:** if a migration touching a given table/function ever behaves as if an earlier migration never ran, check `pg_proc`/`pg_policy`/`pg_trigger` directly rather than trusting `supabase migration list`'s "applied" status — `0008`, `0009`, `0010` all independently turned out to be tracked-applied-but-never-executed. A systematic one-time audit of all 20 migrations was completed this session and found no further instances — treat this as closed unless new evidence surfaces.
 - `eslint ^9 → ^10` is intentionally held back — do not accept until `eslint-config-next`/`eslint-plugin-react` ship ESLint 10 support (verify by installing and running `npm run lint` directly, not just trusting CI).
 - Branch protection on `main` (block force-push + deletion) discussed but not applied — user said to leave it for now.
 - Rate limiting and bans (migrations 0011/0012) are bypassable by rotating the anonymous session — accepted architectural trade-off, documented in `AI_CONTEXT.md` Known Issues.
@@ -81,8 +95,8 @@ None.
 
 ## Next Recommended Task
 
-All High Priority "pre-launch hardening" items are complete except Production Error Monitoring (explicitly deferred by the user). Session 39's 13-area QA audit is done, Session 40 closed the room auto-expiry gap, and its follow-up systematic migration audit found no further tracked-but-never-ran gaps. Remaining open items:
+**Continue the Session 41 audit fix-through: High tier next.** 12 findings, checklist in `TASKS.md`. Notable ones: room-join rate limiting (Explore-ranking gaming vector), no post-apply migration verification process, CI never touching a real Supabase instance, undocumented prod env-var config, no backup/DR strategy, the 9-round-trip join latency, zero e2e coverage of the core multiplayer loop, and 3 accessibility blockers (unreachable Explore cards, unusable Tournament keyboard scoring, 4 leaky modals) plus a mobile toolbar overflow risk.
+
+After High: Medium (16), Low (21), Nice-to-have (7) — same source, `TASKS.md`. Separately, unrelated to the audit:
 - **3 larger net-new Medium Priority features** (Visual Scoreboard, XP/Leveling System, Room Settings Panel) — each deserves its own scoping discussion given the size; don't just start building.
-- **Production Error Monitoring** — explicitly deferred by the user's own choice; pick up only if asked.
-- **Small number of intentionally-deferred Low findings** (trivia answer key, client-side profanity filter, host-election tiebreak) — see `TASKS.md`.
-- Or whatever the user raises next.
+- **Production Error Monitoring** — explicitly deferred by the user's own choice; pick up only if asked (though several audit findings above effectively depend on it).
