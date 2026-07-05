@@ -116,9 +116,17 @@ jobs:
       - name: Export Local Supabase Credentials for the App Build
         run: |
           supabase status -o env > /tmp/supabase-status.env
+          # `supabase status -o env` wraps values in double quotes (env-file
+          # convention) — grep|cut alone captured those literal quote
+          # characters into $GITHUB_ENV, corrupting the URL
+          # (supabase-js then rejected it: "Invalid supabaseUrl: Must be a
+          # valid HTTP or HTTPS URL"). Strip any leading/trailing quotes;
+          # a no-op if a future CLI version stops quoting.
+          URL=$(grep '^API_URL=' /tmp/supabase-status.env | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//')
+          ANON_KEY=$(grep '^ANON_KEY=' /tmp/supabase-status.env | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//')
           {
-            echo "NEXT_PUBLIC_SUPABASE_URL=$(grep '^API_URL=' /tmp/supabase-status.env | cut -d= -f2-)"
-            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$(grep '^ANON_KEY=' /tmp/supabase-status.env | cut -d= -f2-)"
+            echo "NEXT_PUBLIC_SUPABASE_URL=$URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
           } >> "$GITHUB_ENV"
 
       - name: Cache Playwright Browsers
