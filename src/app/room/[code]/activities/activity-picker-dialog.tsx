@@ -1,18 +1,29 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
+import { Sparkles, GraduationCap } from "lucide-react";
 import { GAMES } from "@/lib/games";
 import type { RoomType } from "@/lib/types";
 
 interface ActivityPickerDialogProps {
   activeActivityType?: string;
+  roomType: RoomType;
   onClose: () => void;
   onSelect: (type: RoomType) => void;
 }
 
 /** Host-only dialog for switching the room's current game activity. */
-export function ActivityPickerDialog({ activeActivityType, onClose, onSelect }: ActivityPickerDialogProps) {
+export function ActivityPickerDialog({ activeActivityType, roomType, onClose, onSelect }: ActivityPickerDialogProps) {
+  const isClassroom = roomType === "classroom";
+
+  // Classroom rooms only show education-appropriate activities.
+  // Party rooms show everything.
+  const availableGames = GAMES.filter((g) => {
+    if (g.createOnly) return false;
+    if (isClassroom && g.classroomSafe === false) return false;
+    return true;
+  });
+
   return (
     <motion.div
       key="picker"
@@ -28,12 +39,19 @@ export function ActivityPickerDialog({ activeActivityType, onClose, onSelect }: 
         className="glass-card p-6 w-full max-w-lg rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+        <h2 className="text-xl font-bold mb-1 flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-purple-400" />
           Choose an Activity
         </h2>
+        {isClassroom && (
+          <p className="text-xs text-muted-foreground mb-4 flex items-center gap-1.5">
+            <GraduationCap className="w-3.5 h-3.5 text-sky-400" />
+            Classroom mode — party/social games are hidden
+          </p>
+        )}
+        {!isClassroom && <div className="mb-4" />}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {GAMES.filter((g) => g.type !== "party" && g.type !== "classroom").map((g) => {
+          {availableGames.map((g) => {
             const Icon = g.icon;
             return (
               <button

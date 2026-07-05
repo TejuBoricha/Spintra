@@ -28,6 +28,12 @@ function MatchCard({
   onClick?: () => void;
 }) {
   const isBye = match.player1 === "BYE" || match.player2 === "BYE";
+  // A match is only interactable when both real players are present and the
+  // host provided a click handler. Matches with null/TBD slots must not be
+  // editable — saving scores on them corrupts subsequent bracket advancement.
+  const isReady = !isBye && !!match.player1 && !!match.player2;
+  const isClickable = isReady && !!onClick;
+
   const statusColors = {
     pending: "border-border bg-muted/30",
     "in-progress": "border-amber-500/30 bg-amber-500/5",
@@ -36,14 +42,14 @@ function MatchCard({
 
   return (
     <motion.div
-      whileHover={onClick && !isBye ? { scale: 1.02 } : undefined}
-      onClick={isBye ? undefined : onClick}
+      whileHover={isClickable ? { scale: 1.02 } : undefined}
+      onClick={isClickable ? onClick : undefined}
       data-testid="tournament-match"
       data-match-status={match.status}
-      data-match-ready={!!(match.player1 && match.player2 && !isBye)}
+      data-match-ready={isReady}
       className={`rounded-lg border px-3 py-2 text-xs transition-colors ${statusColors[match.status]} ${
-        onClick && !isBye ? "cursor-pointer hover:border-amber-500/40" : "cursor-default"
-      }`}
+        isClickable ? "cursor-pointer hover:border-amber-500/40" : "cursor-default"
+      } ${!isReady && !isBye ? "opacity-60" : ""}`}
     >
       <div className="flex items-center justify-between gap-2 mb-1">
         <span className="truncate flex-1 font-medium">
@@ -214,6 +220,28 @@ export function TournamentActivity() {
     sendActivityEvent({ kind: "tournament_update", tournament: next });
   }, [participants, tournamentType, sendActivityEvent]);
 
+  // Returns true if the match is safe to edit; shows a toast and returns false otherwise.
+  const guardMatchEdit = useCallback(
+    (match: BracketMatch, bracketKey: "rounds" | "losersBracket" | "grandFinal"): boolean => {
+      if (!match.player1 || !match.player2) {
+        toast.error("Both participants must be decided before this match can be scored.");
+        return false;
+      }
+      if (
+        match.status === "completed" &&
+        bracketKey !== "grandFinal" &&
+        (tournament?.type === "single-elimination" || tournament?.type === "double-elimination")
+      ) {
+        toast.error(
+          "This match is already completed. Re-editing would corrupt the bracket because the winner has already advanced."
+        );
+        return false;
+      }
+      return true;
+    },
+    [tournament]
+  );
+
   const handleScoreSave = useCallback(
     (s1: number, s2: number) => {
       if (!editingMatch || !tournament) return;
@@ -295,8 +323,10 @@ export function TournamentActivity() {
                 rounds={tournament.rounds}
                 onMatchClick={
                   isHost
-                    ? (match, roundIdx, position) =>
-                        setEditingMatch({ match, roundIdx, position, bracketKey: "rounds" })
+                    ? (match, roundIdx, position) => {
+                        if (!guardMatchEdit(match, "rounds")) return;
+                        setEditingMatch({ match, roundIdx, position, bracketKey: "rounds" });
+                      }
                     : undefined
                 }
               />
@@ -312,8 +342,10 @@ export function TournamentActivity() {
                     rounds={tournament.rounds}
                     onMatchClick={
                       isHost
-                        ? (match, roundIdx, position) =>
-                            setEditingMatch({ match, roundIdx, position, bracketKey: "rounds" })
+                        ? (match, roundIdx, position) => {
+                            if (!guardMatchEdit(match, "rounds")) return;
+                            setEditingMatch({ match, roundIdx, position, bracketKey: "rounds" });
+                          }
                         : undefined
                     }
                   />
@@ -327,8 +359,10 @@ export function TournamentActivity() {
                       rounds={tournament.losersBracket}
                       onMatchClick={
                         isHost
-                          ? (match, roundIdx, position) =>
-                              setEditingMatch({ match, roundIdx, position, bracketKey: "losersBracket" })
+                          ? (match, roundIdx, position) => {
+                              if (!guardMatchEdit(match, "losersBracket")) return;
+                              setEditingMatch({ match, roundIdx, position, bracketKey: "losersBracket" });
+                            }
                           : undefined
                       }
                     />
@@ -344,13 +378,15 @@ export function TournamentActivity() {
                         match={tournament.grandFinal}
                         onClick={
                           isHost
-                            ? () =>
+                            ? () => {
+                                if (!guardMatchEdit(tournament.grandFinal!, "grandFinal")) return;
                                 setEditingMatch({
                                   match: tournament.grandFinal!,
                                   roundIdx: 0,
                                   position: 0,
                                   bracketKey: "grandFinal",
-                                })
+                                });
+                              }
                             : undefined
                         }
                       />
@@ -364,9 +400,9 @@ export function TournamentActivity() {
               <div className="space-y-4">
                 {tournament.rounds.map((round, ri) => (
                   <div key={ri}>
-                    {tournament.type === "swiss" && (
+                    {(tournament.type === "swiss" || tournament.type === "round-robin") && (
                       <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                        Round {ri + 1}
+                        {tournament.type === "swiss" ? `Round ${ri + 1}` : "All Matches"}
                       </h3>
                     )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -376,7 +412,10 @@ export function TournamentActivity() {
                           match={match}
                           onClick={
                             isHost && match.player1 !== "BYE" && match.player2 !== "BYE"
-                              ? () => setEditingMatch({ match, roundIdx: ri, position: mi, bracketKey: "rounds" })
+                              ? () => {
+                                  if (!guardMatchEdit(match, "rounds")) return;
+                                  setEditingMatch({ match, roundIdx: ri, position: mi, bracketKey: "rounds" });
+                                }
                               : undefined
                           }
                         />

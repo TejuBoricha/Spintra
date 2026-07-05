@@ -28,7 +28,9 @@ function ok(message) {
   console.log(`✓ ${message}`);
 }
 
-const architectureDoc = fs.readFileSync(ARCHITECTURE_PATH, "utf8");
+// Normalize CRLF → LF so regex patterns using \n work on Windows checkouts
+// where core.autocrlf=true smudges every file on disk to CRLF.
+const architectureDoc = fs.readFileSync(ARCHITECTURE_PATH, "utf8").replace(/\r\n/g, "\n");
 
 // --- Check 1: docs/*.md files vs. ARCHITECTURE.md's folder structure diagram ---
 

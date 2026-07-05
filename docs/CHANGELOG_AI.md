@@ -122,6 +122,58 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-05] — Session 39: Platform QA Audit (13-Area Review + Tournament Hardening)
+
+**AI:** Claude Code (Anthropic)
+**Task:** User requested a comprehensive 13-area platform QA audit covering room lifecycle, multiple membership, public/private logic, live trending feed, room visibility indicators, duplicate toasts, banned-user flow, explore filters, explore search, Party vs Classroom distinction, built-in chat features, fake homepage stats, and a full tournament integrity audit.
+
+**Fixed (Explore Page):**
+- **Live Trending Rooms feed never returned results.** Root cause: the explore page called `getOrCreateRoomUser()` for a localStorage identity but never called `supabase.auth.signInAnonymously()`. Migration `0005`'s RLS requires `auth.uid()` non-null for every `rooms` select — without an authenticated session, every query returned zero rows. Fixed by adding auth initialization (`getSession` → `signInAnonymously` if no session exists) before the subscription effect, gated behind an `authReady` state that prevents premature queries.
+- **Privacy bypass via Recent Activity.** The activity-data query fetched all rooms without an `is_public` filter, exposing private room codes in the Recent Activity feed. Anyone could click the entry and attempt to join. Fixed by adding `.eq("is_public", true)` to that query.
+- **Explore filters were broken or using fake data.** Trending used a deterministic fake hash (`Math.abs(hash % 180) + 12`) instead of real participant counts. New's `cutoff24h` was computed at module load time (SSR-unsafe, also a `react-hooks/purity` lint violation). Popular included zero-participant rooms. Classroom filter had no category logic. All fixed: Trending now requires `participants >= 2` (real online count), New uses a `cutoff24h` state initialized in `useEffect` via `queueMicrotask` (matching the codebase's established pattern), Popular requires `participants >= 1`, Classroom includes the `"classroom"` room type plus 7 educational game slugs.
+- **Banned user "Joining room..." toast inconsistency.** The explore join handler showed a success toast before the room page could block a banned user. Fixed by querying `room_bans` before the toast fires — same pattern applied to the homepage `handleHomeJoin`.
+- **ExploreRoom interface extended** with `maxParticipants`, `isLocked`, `createdAt` fields; room cards now display a Lock badge, Public indicator, and participant count with max.
+
+**Fixed (Homepage `src/app/page.tsx`):**
+- **"10,000+ Active Rooms" hardcoded fake stat** replaced with `{GAMES.filter((g) => !g.createOnly).length} games to play` (evaluates to 14 — real, verifiable).
+- **"GIFs, reactions, mentions — live"** (unimplemented features advertised as live) replaced with `"Emoji-rich real-time chat in every room"`.
+- **"Beautiful share cards for every platform"** (incorrect) replaced with `"Share rooms via link or QR code"`.
+- **Banned user flow** fixed here too: `handleHomeJoin` now checks `room_bans` before the "Joining room..." toast.
+
+**Fixed (Tournament integrity — `src/lib/tournament-engine.ts` + `tournament-activity.tsx`):**
+- **Tie scores in single/double-elimination now rejected.** `recordMatchResult` returns `{ kind: "invalid", message: "Elimination brackets require a decisive winner — scores must not be tied." }` when both formats receive equal non-null scores. Previously a tie produced a null winner and permanently stuck the bracket.
+- **TBD matches (null players) are now non-clickable.** `MatchCard` no longer calls `onClick` when either player is null — those slots render at `opacity-60` with no cursor pointer. Previously clicking a TBD match could save a score and mark it completed with a null winner before the real participants were decided, corrupting advancement.
+- **Completed match re-editing blocked.** New `guardMatchEdit` callback rejects any click on an already-completed single/double-elimination match with an explanatory toast. Previously re-editing a completed match recorded a new winner without rolling back the already-advanced prior winner, silently creating two players in the same bracket slot.
+- **Display labels fixed:** round-robin sections now show "All Matches" instead of "Final"; Swiss renders "Round N" headers per round.
+
+**Fixed (Party vs Classroom mode distinction — `src/lib/games.ts` + `activity-picker-dialog.tsx`):**
+- Both room types previously showed identical game pickers. Added `classroomSafe?: boolean` to `GameDefinition`. Marked `truth-or-dare`, `would-you-rather`, and `never-have-i-ever` as `classroomSafe: false`; all other non-createOnly games as `classroomSafe: true`. `ActivityPickerDialog` now accepts a `roomType` prop and hides `classroomSafe: false` games when `roomType === "classroom"`, with a visible "Classroom mode — party/social games are hidden" notice in the picker. `room-client.tsx` passes `roomType` through.
+
+**Fixed (pre-existing bug in `scripts/check-docs-drift.mjs`):**
+- The `architectureDoc` file read used bare `\n` regex patterns on a file that Windows's `core.autocrlf=true` smudges to CRLF on disk. Both the "folder structure" check and the "Migrations Applied table" check had been silently failing on every Windows checkout. Fixed by adding `.replace(/\r\n/g, "\n")` normalization after the file read.
+
+**Not fixed / deferred (documented in `TASKS.md`):**
+- **Room auto-expiry / lifecycle cleanup:** rooms currently persist indefinitely. The right fix (pg_cron or a Supabase Edge Function on a schedule) requires Supabase admin access to configure — added as a Medium Priority item in `TASKS.md`.
+- **Multiple room membership:** a single anonymous user can join multiple rooms simultaneously (no server-side enforcement). Accepted as an architectural trade-off of the anonymous identity model — documented in `AI_CONTEXT.md` Known Issues.
+- **Explore search** is functional (client-side filter over the live room list) — no fix needed; behavior verified.
+- **Room visibility indicators** (public/private/locked/closed badges) are now shown on explore cards (Lock + Public badges added this session) — outstanding gap for the room page's own header is low priority.
+- **Duplicate toasts** were audited: no systematic double-fire found; the one confirmed gap (banned user seeing success toast) was fixed this session.
+- All pre-existing intentionally-deferred Low findings from Session 38 remain deferred (trivia answer key, client-side profanity filter, host-election tiebreak).
+
+**Files Modified:**
+- `src/lib/games.ts` — added `classroomSafe?: boolean` to `GameDefinition`; annotated 14 games
+- `src/app/room/[code]/activities/activity-picker-dialog.tsx` — rewritten with `roomType` prop + classroom filter
+- `src/app/room/[code]/room-client.tsx` — passed `roomType` to `ActivityPickerDialog`
+- `src/lib/tournament-engine.ts` — tie validation for single/double-elimination
+- `src/app/room/[code]/activities/tournament-activity.tsx` — `guardMatchEdit`, TBD dimming, label fixes
+- `src/app/explore/page.tsx` — auth init, filter fixes, privacy fix, ban check, extended interface
+- `src/app/page.tsx` — fake stat, misleading copy, ban check
+- `scripts/check-docs-drift.mjs` — CRLF normalization
+
+**Verification:** `npm run verify` clean after all changes (typecheck ✓, lint ✓, docs:check all 9 checks ✓ including the newly-reliable CRLF fix).
+
+---
+
 ## [2026-07-05] — Session 38: Pre-Launch Audit Backlog (Medium/Low Findings)
 
 **AI:** Claude Code (Anthropic)

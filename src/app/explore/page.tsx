@@ -16,6 +16,8 @@ import {
   LayoutGrid,
   History,
   Plus,
+  Lock,
+  Globe,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -32,8 +34,11 @@ interface ExploreRoom {
   name: string;
   type: RoomType;
   participants: number;
+  maxParticipants: number;
   host: string;
   hearts: number;
+  isLocked: boolean;
+  createdAt: string;
 }
 
 interface RecentActivity {
@@ -56,6 +61,8 @@ const featuredTemplates = GAMES.map((game) => ({
 
 const categories = ["All", "Trending", "New", "Popular", "Teams", "Party", "Classroom"];
 
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
 function getRelativeTimeString(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / 60000);
@@ -71,15 +78,45 @@ function getRelativeTimeString(dateStr: string): string {
 export default function ExplorePage() {
   const router = useRouter();
   const [currentUser] = useState(getOrCreateRoomUser);
+  const [authReady, setAuthReady] = useState(false);
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
   const [rooms, setRooms] = useState<ExploreRoom[]>([]);
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
+  // Set in an effect (not during render) to satisfy react-hooks/purity.
+  const [cutoff24h, setCutoff24h] = useState<number | null>(null);
 
   // Join Widget State
   const [joinCode, setJoinCode] = useState("");
   const [joining, setJoining] = useState(false);
+
+  useEffect(() => {
+    queueMicrotask(() => setCutoff24h(Date.now() - ONE_DAY_MS));
+  }, []);
+
+  // Sign in anonymously before querying. Without an authenticated session,
+  // Supabase RLS blocks every rooms SELECT, returning an empty result set.
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      queueMicrotask(() => setAuthReady(true));
+      return;
+    }
+    const init = async () => {
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        if (!session.session) {
+          await supabase.auth.signInAnonymously();
+        }
+      } catch (err) {
+        console.error("Explore page: anonymous sign-in failed:", err);
+      } finally {
+        setAuthReady(true);
+      }
+    };
+    init();
+  }, []);
 
   const fetchRooms = useCallback(async () => {
     const supabase = getSupabaseBrowserClient();
@@ -97,6 +134,7 @@ export default function ExplorePage() {
           name,
           type,
           max_participants,
+          is_locked,
           created_at,
           room_participants (
             username,
@@ -120,8 +158,8 @@ export default function ExplorePage() {
           const hostUser = participants.find((p) => p.role === "host" && p.is_online)?.username ||
                            participants.find((p) => p.role === "host")?.username ||
                            "Guest";
-          
-          // Seed deterministic heart count based on room ID hash to avoid layout shifts on refetch
+
+          // Deterministic seed for decorative hearts (not engagement data)
           let hash = 0;
           for (let i = 0; i < room.id.length; i++) {
             hash = room.id.charCodeAt(i) + ((hash << 5) - hash);
@@ -134,14 +172,18 @@ export default function ExplorePage() {
             name: room.name,
             type: room.type as RoomType,
             participants: onlineCount,
+            maxParticipants: room.max_participants,
             host: hostUser,
             hearts: seedHearts,
+            isLocked: !!room.is_locked,
+            createdAt: room.created_at,
           };
         });
         setRooms(dbRooms);
       }
 
-      // Fetch 5 most recently created rooms for dynamic Recent Activity feed
+      // Only fetch public rooms for Recent Activity — private rooms must not
+      // appear here because their codes would be exposed to anyone on the page.
       const { data: activityData } = await supabase
         .from("rooms")
         .select(`
@@ -155,6 +197,7 @@ export default function ExplorePage() {
             role
           )
         `)
+        .eq("is_public", true)
         .order("created_at", { ascending: false })
         .limit(5);
 
@@ -206,38 +249,34 @@ export default function ExplorePage() {
     }
   }, []);
 
-  // Fetch rooms on mount and subscribe to realtime updates
+  // Fetch rooms only after auth is ready, then subscribe to realtime updates
   useEffect(() => {
+    if (!authReady) return;
     queueMicrotask(() => fetchRooms());
 
     const supabase = getSupabaseBrowserClient();
     if (!supabase) return;
 
-    // Listen to changes in both rooms and room_participants tables to update list & online count
     const channel = supabase
       .channel("explore-room-tracker")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "rooms" },
-        () => {
-          fetchRooms();
-        }
+        () => { fetchRooms(); }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "room_participants" },
-        () => {
-          fetchRooms();
-        }
+        () => { fetchRooms(); }
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchRooms]);
+  }, [authReady, fetchRooms]);
 
-  // Submit join room action code
+  // Join room — validates access including ban check before navigating
   const handleJoinRoom = useCallback(async (code: string) => {
     if (!code || code.length !== 6) return;
     setJoining(true);
@@ -259,7 +298,7 @@ export default function ExplorePage() {
 
         const isRoomHost = room.host_id === currentUser.id;
 
-        // Check if user is already a participant of this room (for reconnects)
+        // Check existing participant row (reconnects bypass capacity/lock/ban)
         const { data: existingPart } = await supabase
           .from("room_participants")
           .select("id")
@@ -269,8 +308,21 @@ export default function ExplorePage() {
 
         const isRegistered = !!existingPart;
 
-        // If the user is NEITHER the host NOR already registered, check restrictions
         if (!isRoomHost && !isRegistered) {
+          // Ban check — must come before the "Joining room…" toast
+          const { data: ban } = await supabase
+            .from("room_bans")
+            .select("id")
+            .eq("room_id", code)
+            .eq("user_id", currentUser.id)
+            .maybeSingle();
+
+          if (ban) {
+            toast.error("You have been removed from this room by the host and cannot rejoin.");
+            setJoining(false);
+            return;
+          }
+
           if (room.is_locked) {
             toast.error("This room is locked by the host.");
             setJoining(false);
@@ -313,14 +365,19 @@ export default function ExplorePage() {
 
     // Category check
     if (activeCategory === "All") return true;
-    if (activeCategory === "Trending") return room.hearts > 100;
-    if (activeCategory === "New") return true; // Real database sorting orders from newest
-    if (activeCategory === "Popular") return room.hearts > 120 || room.participants > 2;
+    // Trending: rooms with at least 2 online participants right now
+    if (activeCategory === "Trending") return room.participants >= 2;
+    // New: created in the last 24 hours (cutoff set in effect; show all until ready)
+    if (activeCategory === "New") return cutoff24h === null || new Date(room.createdAt).getTime() > cutoff24h;
+    // Popular: any room with at least 1 online participant
+    if (activeCategory === "Popular") return room.participants >= 1;
     if (activeCategory === "Teams") return room.type === "team-maker" || room.type === "tournament";
     if (activeCategory === "Party") {
       return ["party", "truth-or-dare", "lucky-wheel", "rps", "would-you-rather", "never-have-i-ever", "coin-flip", "dice", "trivia", "bingo", "word-scramble"].includes(room.type);
     }
-    if (activeCategory === "Classroom") return ["name-draw", "guess-number"].includes(room.type);
+    if (activeCategory === "Classroom") {
+      return room.type === "classroom" || ["name-draw", "team-maker", "guess-number", "trivia", "bingo", "word-scramble", "tournament"].includes(room.type);
+    }
     return true;
   });
 
@@ -335,9 +392,11 @@ export default function ExplorePage() {
     if (activeCategory === "All") return true;
     if (activeCategory === "Teams") return t.type === "team-maker" || t.type === "tournament";
     if (activeCategory === "Party") {
-      return ["lucky-wheel", "coin-flip", "dice", "rps", "truth-or-dare", "would-you-rather", "never-have-i-ever", "trivia", "bingo", "word-scramble"].includes(t.type);
+      return ["party", "lucky-wheel", "coin-flip", "dice", "rps", "truth-or-dare", "would-you-rather", "never-have-i-ever", "trivia", "bingo", "word-scramble"].includes(t.type);
     }
-    if (activeCategory === "Classroom") return ["name-draw", "guess-number"].includes(t.type);
+    if (activeCategory === "Classroom") {
+      return t.type === "classroom" || ["name-draw", "team-maker", "guess-number", "trivia", "bingo", "word-scramble", "tournament"].includes(t.type);
+    }
     return true;
   });
 
@@ -346,16 +405,17 @@ export default function ExplorePage() {
     if (query) {
       const matchUser = act.user.toLowerCase().includes(query);
       const matchItem = act.item.toLowerCase().includes(query);
-      const matchAction = act.action.toLowerCase().includes(query);
-      if (!matchUser && !matchItem && !matchAction) return false;
+      if (!matchUser && !matchItem) return false;
     }
 
     if (activeCategory === "All") return true;
     if (activeCategory === "Teams") return act.type === "team-maker" || act.type === "tournament";
     if (activeCategory === "Party") {
-      return ["lucky-wheel", "coin-flip", "dice", "rps", "truth-or-dare", "would-you-rather", "never-have-i-ever", "trivia", "bingo", "word-scramble"].includes(act.type);
+      return ["party", "lucky-wheel", "coin-flip", "dice", "rps", "truth-or-dare", "would-you-rather", "never-have-i-ever", "trivia", "bingo", "word-scramble"].includes(act.type);
     }
-    if (activeCategory === "Classroom") return ["name-draw", "guess-number"].includes(act.type);
+    if (activeCategory === "Classroom") {
+      return act.type === "classroom" || ["name-draw", "team-maker", "guess-number", "trivia", "bingo", "word-scramble", "tournament"].includes(act.type);
+    }
     return true;
   });
 
@@ -499,8 +559,8 @@ export default function ExplorePage() {
                       transition={{ delay: i * 0.05 }}
                       className="glass-card p-5 group cursor-pointer hover:border-purple-500/30 card-3d rounded-3xl transition-all"
                     >
-                      <div className="flex items-start justify-between mb-4">
-                        <div>
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="min-w-0 flex-1 pr-2">
                           <h3 className="font-bold text-foreground group-hover:text-purple-400 transition-colors line-clamp-1">
                             {room.name}
                           </h3>
@@ -508,15 +568,27 @@ export default function ExplorePage() {
                             CODE: {room.code}
                           </p>
                         </div>
-                        <Badge variant="secondary" className="capitalize text-[10px] tracking-wider font-semibold bg-muted border-border text-muted-foreground">
-                          {room.type.replace("-", " ")}
-                        </Badge>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <Badge variant="secondary" className="capitalize text-[10px] tracking-wider font-semibold bg-muted border-border text-muted-foreground">
+                            {room.type.replace(/-/g, " ")}
+                          </Badge>
+                          {room.isLocked && (
+                            <Badge className="text-[10px] bg-amber-500/10 text-amber-400 border-amber-500/25 flex items-center gap-0.5">
+                              <Lock className="w-2.5 h-2.5" /> Locked
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <div className="flex items-center gap-3">
                           <span className="flex items-center gap-1 font-semibold text-emerald-400">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping mr-0.5" />
-                            <Users className="w-3.5 h-3.5" /> {room.participants}
+                            <Users className="w-3.5 h-3.5" />
+                            {room.participants}
+                            {room.maxParticipants ? `/${room.maxParticipants}` : ""}
+                          </span>
+                          <span className="flex items-center gap-1 text-sky-400/80">
+                            <Globe className="w-3 h-3" /> Public
                           </span>
                           <span className="flex items-center gap-1 font-semibold text-rose-400">
                             <Heart className="w-3.5 h-3.5 fill-rose-500/20 text-rose-400" /> {room.hearts}

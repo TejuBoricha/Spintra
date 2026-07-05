@@ -29,6 +29,8 @@ export interface GameDefinition {
   stats: string;
   href: string;
   createOnly?: boolean;
+  /** Safe to offer in a Classroom-mode room (no party/social/confessional content) */
+  classroomSafe?: boolean;
 }
 
 export const GAMES: GameDefinition[] = [
@@ -42,6 +44,7 @@ export const GAMES: GameDefinition[] = [
       "Build balanced teams instantly with intelligent algorithms. Drag, drop, customize — real-time for everyone.",
     stats: "Millions of teams created",
     href: "/tools/team-maker",
+    classroomSafe: true,
   },
   {
     type: "lucky-wheel",
@@ -53,6 +56,7 @@ export const GAMES: GameDefinition[] = [
       "Physics-based 3D spinning wheel with custom entries, colors, and sounds. Multiplayer synchronized.",
     stats: "Everyone watches together",
     href: "/tools/lucky-wheel",
+    classroomSafe: true,
   },
   {
     type: "name-draw",
@@ -64,6 +68,7 @@ export const GAMES: GameDefinition[] = [
       "Random name picker with elimination mode, CSV imports, and winner spotlight animations.",
     stats: "Fair draws guaranteed",
     href: "/tools/name-draw",
+    classroomSafe: true,
   },
   {
     type: "tournament",
@@ -75,6 +80,7 @@ export const GAMES: GameDefinition[] = [
       "Generate brackets for single/double elimination, round robin, Swiss. Live updates, shareable.",
     stats: "Pro-level brackets",
     href: "/tools/tournament",
+    classroomSafe: true,
   },
   {
     type: "coin-flip",
@@ -85,6 +91,7 @@ export const GAMES: GameDefinition[] = [
     featureDescription: "Flip a coin with friends and settle debates in real time.",
     stats: "Quick decisions made fun",
     href: "/tools/coin-flip",
+    classroomSafe: true,
   },
   {
     type: "dice",
@@ -95,6 +102,7 @@ export const GAMES: GameDefinition[] = [
     featureDescription: "Roll custom dice sets together — perfect for tabletop and party games.",
     stats: "Any dice, any count",
     href: "/tools/dice",
+    classroomSafe: true,
   },
   {
     type: "guess-number",
@@ -105,6 +113,7 @@ export const GAMES: GameDefinition[] = [
     featureDescription: "Take turns guessing the secret number with live hints and reactions.",
     stats: "Classic group fun",
     href: "/tools/guess-number",
+    classroomSafe: true,
   },
   {
     type: "rps",
@@ -115,6 +124,7 @@ export const GAMES: GameDefinition[] = [
     featureDescription: "Challenge friends to rock paper scissors with synchronized reveals.",
     stats: "Instant showdowns",
     href: "/tools/rps",
+    classroomSafe: true,
   },
   {
     type: "truth-or-dare",
@@ -125,6 +135,7 @@ export const GAMES: GameDefinition[] = [
     featureDescription: "Draw truths and dares together — great for parties and friend groups.",
     stats: "Party favorite",
     href: "/tools/truth-or-dare",
+    classroomSafe: false,
   },
   {
     type: "would-you-rather",
@@ -135,6 +146,7 @@ export const GAMES: GameDefinition[] = [
     featureDescription: "Vote on impossible choices and see what your group picks live.",
     stats: "Debate starter",
     href: "/tools/would-you-rather",
+    classroomSafe: false,
   },
   {
     type: "never-have-i-ever",
@@ -145,6 +157,7 @@ export const GAMES: GameDefinition[] = [
     featureDescription: "Play never have I ever with prompts that keep the room laughing.",
     stats: "Icebreaker classic",
     href: "/tools/never-have-i-ever",
+    classroomSafe: false,
   },
   {
     type: "trivia",
@@ -155,6 +168,7 @@ export const GAMES: GameDefinition[] = [
     featureDescription: "Answer multiple-choice trivia questions and race to the top of the scoreboard.",
     stats: "Know-it-alls welcome",
     href: "/tools/trivia",
+    classroomSafe: true,
   },
   {
     type: "bingo",
@@ -165,6 +179,7 @@ export const GAMES: GameDefinition[] = [
     featureDescription: "Call numbers, mark your card, and shout bingo the moment you get a line.",
     stats: "A party classic",
     href: "/tools/bingo",
+    classroomSafe: true,
   },
   {
     type: "word-scramble",
@@ -175,6 +190,7 @@ export const GAMES: GameDefinition[] = [
     featureDescription: "Race to unscramble the word before anyone else — hints included.",
     stats: "Fast-paced wordplay",
     href: "/tools/word-scramble",
+    classroomSafe: true,
   },
   {
     type: "party",

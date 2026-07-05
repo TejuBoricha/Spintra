@@ -18,6 +18,7 @@ Pre-launch hardening — required before publishing the site publicly on the ope
 
 ## Medium Priority
 
+- `[ ]` **Room auto-expiry / lifecycle cleanup (NEW — Session 39):** Rooms currently persist indefinitely — a closed or abandoned room occupies DB space and could appear in the explore feed forever. The right fix is a scheduled job (pg_cron on the DB tier or a Supabase Edge Function invoked on a schedule) that marks rooms as closed or deletes them after N hours of inactivity. Requires Supabase admin access to configure pg_cron. Not a launch blocker (explore shows participant count, so abandoned rooms self-sort to the bottom) but a hygiene gap worth fixing once the site has real traffic.
 - `[ ]` **Visual Scoreboard:** Build a persistent real-time leaderboard component displaying user ranks during and after trivia activities. **Audit note (Session 37):** Trivia's `correctCount` resets every question with no running total or defined "game over" screen — this is the concrete gap this item would close.
 - `[x]` **Tournament Bracket Tree UI:** Substantially delivered as a side effect of the Session 37 Critical fix — the room activity now renders real round-columns (winners/losers/grand-final) via `BracketColumns`, not a flat list. Not a connective-line tree diagram, but no longer flat.
 - `[ ]` **XP and Leveling System:** Implement an XP rewards engine that updates player stats and ranks (e.g. rookie to explorer to challenger) upon activity wins.
@@ -54,6 +55,7 @@ Title, completion date, and a pointer to the full implementation detail in `CHAN
 
 | Title | Completed | CHANGELOG_AI.md Session |
 |---|---|---|
+| Platform QA Audit: Live Trending Feed (auth init fix), Privacy Bypass (is_public filter), Explore Filters (real data), Banned-User Toast Flow, Fake Homepage Stats, Tournament Integrity (ties/TBD/re-edit), Party vs Classroom Distinction (classroomSafe), CRLF drift-check fix | 2026-07-05 | Session 39 |
 | Pre-Launch Audit Backlog: RLS Tightening, DB-Level Lock Enforcement, Broken Migrations Discovered & Fixed, Message Reports UI, Presence Reconciliation, Dead Code, UX/A11y Fixes, React Query Removal | 2026-07-05 | Session 38 |
 | Pre-Launch Product Readiness Audit + Critical/High Fixes (Tournament room activity, kick/ban enforcement, room creation safety, realtime channel stability, sharing warnings) | 2026-07-04/05 | Session 37 |
 | Legal Page Placeholders Filled In (entity, jurisdiction, contact) | 2026-07-04 | Session 36 |

@@ -30,8 +30,8 @@ const heroFeatures = GAMES.map((game) => ({
 const perks = [
   { icon: Zap, label: "Instant Rooms", desc: "Create in seconds, join in milliseconds" },
   { icon: Globe, label: "Global Multiplayer", desc: "Real-time sync across the world" },
-  { icon: MessageCircle, label: "Built-in Chat", desc: "GIFs, reactions, mentions — live" },
-  { icon: Star, label: "Viral Sharing", desc: "Beautiful share cards for every platform" },
+  { icon: MessageCircle, label: "Built-in Chat", desc: "Emoji-rich real-time chat in every room" },
+  { icon: Star, label: "Viral Sharing", desc: "Share rooms via link or QR code" },
 ];
 
 export default function HomePage() {
@@ -73,6 +73,20 @@ export default function HomePage() {
 
         // If the user is NEITHER the host NOR already registered, check restrictions
         if (!isRoomHost && !isRegistered) {
+          // Ban check — must come before the "Joining room…" toast
+          const { data: ban } = await supabase
+            .from("room_bans")
+            .select("id")
+            .eq("room_id", homeCode)
+            .eq("user_id", currentUser.id)
+            .maybeSingle();
+
+          if (ban) {
+            toast.error("You have been removed from this room by the host and cannot rejoin.");
+            setHomeJoining(false);
+            return;
+          }
+
           if (room.is_locked) {
             toast.error("This room is locked by the host.");
             setHomeJoining(false);
@@ -240,7 +254,7 @@ export default function HomePage() {
                   />
                 ))}
               </div>
-              <span>10,000+ active rooms</span>
+              <span>{GAMES.filter((g) => !g.createOnly).length} games to play</span>
             </div>
             <div className="hidden sm:block w-px h-4 bg-border" />
             <span className="hidden sm:inline">No download required</span>

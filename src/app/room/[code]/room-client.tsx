@@ -573,6 +573,7 @@ function RoomUIInner({
                   <ActivityPickerDialog
                     key="picker"
                     activeActivityType={activeActivity?.type}
+                    roomType={roomType}
                     onClose={() => setIsPickerOpen(false)}
                     onSelect={(type) => {
                       changeActivity(type);

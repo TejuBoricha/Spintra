@@ -6,6 +6,24 @@ Portable session-continuity note for any AI assistant (Antigravity, Claude Code,
 
 ## Last Completed Task
 
+**Session 39: Platform QA Audit (13-Area Review + Tournament Hardening).** User requested a comprehensive 13-area QA audit. All actionable findings were fixed in-session; non-actionable or deferred items were documented.
+
+Key fixes:
+- **Live Trending Rooms:** explore page never called `signInAnonymously()` so Supabase RLS blocked every rooms query. Fixed with `authReady`-gated auth init.
+- **Privacy bypass:** Recent Activity query exposed private room codes (no `is_public` filter). Fixed.
+- **Explore filters:** Trending used a fake hash (not real participant counts); New's cutoff violated `react-hooks/purity`; Classroom had no logic. All fixed with real data and `queueMicrotask`-initialized state.
+- **Banned user toast:** both explore and homepage showed a "Joining room..." success toast before the ban was checked. Fixed by querying `room_bans` first.
+- **Fake homepage stats:** "10,000+ Active Rooms" → real game count; "GIFs, reactions, mentions — live" → accurate chat description; "Beautiful share cards" → accurate share description.
+- **Tournament integrity:** tie scores in single/double-elimination now rejected; TBD matches (null players) non-clickable; completed-match re-editing blocked by `guardMatchEdit`; round-robin/Swiss labels fixed.
+- **Party vs Classroom:** added `classroomSafe?: boolean` to `GameDefinition`; `ActivityPickerDialog` now filters social/party games in classroom rooms with a visible notice.
+- **Pre-existing CRLF bug in `check-docs-drift.mjs`:** folder-structure and migrations-table checks had been silently failing on Windows. Fixed with `.replace(/\r\n/g, "\n")`.
+
+Verification: `npm run verify` fully clean (typecheck, lint, docs:check all 9 checks passing).
+
+---
+
+**Prior sessions (30–38) summary:**
+
 Sessions 30–33 (Legal Basics, Rate Limiting, Abuse & Moderation Controls, Tournament Bracket Fix) were committed as 4 scoped commits and pushed to `origin/main`. The user then asked to check the resulting CI run — it failed again, this time on `tests/smoke.spec.ts` (not the already-fixed tournament test). Session 34 root-caused and fixed this:
 
 **Session 34: Demo-Mode Room Activity Never Auto-Activated.** Reproduced CI's actual conditions exactly (moved `.env.local` aside — CI has never had Supabase secrets configured — and ran with `CI=true`, which matches the workflow's fresh `next build && next start`). Confirmed this is a wholly separate, **pre-existing** bug unrelated to Sessions 30–33: checked out the original `700dfcc` commit and reproduced the identical failure there too. Root cause: `loadRoomDetails` in `use-room-subscription.ts` returned immediately when Supabase isn't configured, so `activeActivity` was never set from the room's type in demo/`BroadcastChannel` mode — `create-client.tsx` already wrote `spintra-room-type-{code}`/`spintra-room-name-{code}` to `localStorage` specifically for this, but nothing read it back. Fixed by adding the localStorage fallback read. Verified passing in both modes (with and without Supabase configured).
@@ -26,12 +44,15 @@ Session 35 then reviewed and triaged the repo's 5 open Dependabot PRs (4 GitHub 
 
 ## Current Task
 
-None in progress. All Session 38 work (8 commits) is committed and pushed to `origin/main`. Working tree is clean.
-**Reminder carried forward:** the `eslint ^9 → ^10` bump is intentionally held back — do not accept it until `eslint-config-next`/`eslint-plugin-react` ship ESLint 10 support upstream (verify by installing and running `npm run lint` directly, not just trusting a green CI on an unrelated branch).
-**Reminder carried forward:** branch protection on `main` was discussed (user chose "safety net only": block force-push + deletion) but has not been applied yet — user said to leave it for now. Not something the AI can configure directly (no GitHub admin/write API scope was ever confirmed for repo settings, only content/PR write access).
-**Reminder carried forward:** rate limiting and bans (migrations 0011/0012) are bypassable by rotating the anonymous session — an accepted architectural trade-off (documented in `AI_CONTEXT.md`'s Known Issues as of Session 37), not something to "fix" without changing the identity model.
-**Note:** two tabs of the same browser in demo mode share the same `localStorage`-based user identity (`getOrCreateRoomUser()` has no tab-uniqueness), so they collide as the same participant rather than simulating two distinct users. Discovered while writing a Session 37 verification script; not fixed (out of scope, would be an identity-model change), just worth knowing before assuming a same-browser multi-tab test proves multi-user behavior in demo mode.
-**New reminders from Session 38 (all documented in `TASKS.md`, not fixed — intentionally deferred, low severity):** trivia's answer key is still world-readable via RLS; the chat profanity filter is still client-side only; host-election tiebreak ordering still isn't DB-enforced.
+None in progress. All Session 39 work is complete. Working tree is clean (verified via `npm run verify`).
+
+**Reminders carried forward:**
+- `eslint ^9 → ^10` is intentionally held back — do not accept until `eslint-config-next`/`eslint-plugin-react` ship ESLint 10 support (verify by installing and running `npm run lint` directly, not just trusting CI).
+- Branch protection on `main` (block force-push + deletion) discussed but not applied — user said to leave it for now.
+- Rate limiting and bans (migrations 0011/0012) are bypassable by rotating the anonymous session — accepted architectural trade-off, documented in `AI_CONTEXT.md` Known Issues.
+- Same-browser multi-tab demo mode: two tabs share the same `localStorage` identity and collide as one participant — not a real multi-user simulation.
+- Trivia answer key still world-readable via RLS; chat profanity filter still client-side only; host-election tiebreak not DB-enforced — all intentionally deferred (see `TASKS.md`).
+- **New from Session 39:** multiple room membership (one anonymous user in many rooms simultaneously) is accepted as an architectural trade-off, documented in `AI_CONTEXT.md` Known Issues. Room auto-expiry/lifecycle cleanup (orphaned rooms persist indefinitely) is queued as Medium Priority in `TASKS.md`.
 
 ---
 
@@ -43,10 +64,9 @@ None.
 
 ## Next Recommended Task
 
-All of `docs/TASKS.md`'s High Priority "Pre-launch hardening" tier is complete except item 4 (deferred by the user's own choice):
-1. ~~**Legal Basics**~~ — Done, Sessions 30 & 36.
-2. ~~**Rate Limiting**~~ — Done, Session 31.
-3. ~~**Abuse & Moderation Controls**~~ — Done, Session 32.
-4. **Production Error Monitoring** — Explicitly deferred by the user. Pick up only if asked.
-
-The Session 37 audit's Critical + all 6 High findings are done (Session 37), and all 6 Medium + most Low findings are done (Session 38). Remaining open items: 3 larger net-new Medium Priority features (Visual Scoreboard, XP/Leveling System, Room Settings Panel — each deserves its own scoping discussion given the size), the small number of intentionally-deferred Low findings noted above, applying the previously-discussed "safety net only" branch protection (user said leave it for now), or whatever the user raises next.
+All High Priority "pre-launch hardening" items are complete except Production Error Monitoring (explicitly deferred by the user). Session 39's 13-area QA audit is done. Remaining open items:
+- **Room auto-expiry / lifecycle cleanup** (Medium Priority, newly queued in `TASKS.md`) — rooms persist indefinitely; needs pg_cron or a Supabase Edge Function with a schedule. Requires Supabase admin access to configure.
+- **3 larger net-new Medium Priority features** (Visual Scoreboard, XP/Leveling System, Room Settings Panel) — each deserves its own scoping discussion given the size; don't just start building.
+- **Production Error Monitoring** — explicitly deferred by the user's own choice; pick up only if asked.
+- **Small number of intentionally-deferred Low findings** (trivia answer key, client-side profanity filter, host-election tiebreak) — see `TASKS.md`.
+- Or whatever the user raises next.

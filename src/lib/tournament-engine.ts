@@ -363,7 +363,7 @@ export function recordMatchResult(
 
   if (bracketKey === "grandFinal") {
     if (!winner) {
-      return { kind: "invalid", message: "The Grand Final needs a decisive winner." };
+      return { kind: "invalid", message: "The Grand Final needs a decisive winner — scores must not be tied." };
     }
     return {
       kind: "champion",
@@ -373,6 +373,18 @@ export function recordMatchResult(
         grandFinal: { ...match, score1: s1, score2: s2, winner, status: "completed" },
         winner,
       },
+    };
+  }
+
+  // Ties in single or double elimination leave the bracket permanently stuck
+  // because no winner can advance. Require a decisive score before proceeding.
+  if (
+    !winner &&
+    (tournament.type === "single-elimination" || tournament.type === "double-elimination")
+  ) {
+    return {
+      kind: "invalid",
+      message: "Elimination brackets require a decisive winner — scores must not be tied.",
     };
   }
 
