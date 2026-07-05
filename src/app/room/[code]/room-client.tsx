@@ -204,11 +204,16 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           return;
         }
 
-        // 5. Validate Room Capacity for new joiners
+        // 5. Validate Room Capacity for new joiners — only count currently
+        // online participants. A disconnected participant's row is kept
+        // (marked is_online=false) rather than deleted, so counting every
+        // row regardless of status would let a room's effective capacity
+        // shrink permanently every time someone joins and leaves.
         const { data: parts, error: countError } = await supabase
           .from("room_participants")
           .select("id")
-          .eq("room_id", roomCode);
+          .eq("room_id", roomCode)
+          .eq("is_online", true);
 
         if (countError) {
           console.error("Failed to fetch participant list:", countError);

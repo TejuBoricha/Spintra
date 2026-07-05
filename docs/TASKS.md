@@ -8,6 +8,9 @@ This document tracks all active, remaining, and completed tasks for the Spintra 
 
 Full write-up with Description/User impact/Technical impact/Recommended fix/Effort for every item lives in the Session 41 artifact report (see `CHANGELOG_AI.md` Session 41 for the full list); this section tracks fix status only.
 
+### Unplanned, found while the user manually tested this session's fixes
+- `[x]` **Room capacity permanently shrank every time someone joined and left.** A disconnected participant's row is kept (`is_online=false`), never deleted, but every capacity check — the DB trigger and 4 separate client-side pre-checks (home, explore, navbar, room-client) — counted every row regardless of online status. Fixed via migration `0026` + matching client-side fixes; verified against the exact room the user hit this in.
+
 ### Critical (4/4 done, plus 1 unplanned)
 - `[x]` Production build-time guard + unmissable banner if Supabase env vars are missing from a prod build (was a silent total multiplayer outage).
 - `[x]` Explore page: `.limit(60)`, realtime subscription scoped to `is_public=eq.true` + debounced, supporting partial index (migration `0022`).

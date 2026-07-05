@@ -177,6 +177,8 @@
 - **Caveat, stated plainly:** the `db-integration` CI job could not be tested locally (no Docker in this dev environment) — it's implemented carefully against the official Supabase CLI Action's documented behavior, but needs to be verified against a real GitHub Actions run and iterated on if it fails, the same way Session 37's docs-drift CI catch was originally handled.
 - `npm run verify` clean throughout.
 
+**Live bug found and fixed while the user was manually testing this session's changes:** a room's effective capacity was shrinking permanently every time someone joined and later left. A disconnected participant's row is kept (updated to `is_online = false` by the presence-cleanup effect in `use-room-subscription.ts`), never deleted — but every capacity check in the codebase (the DB trigger `check_room_limit_before_join`, and four separate client-side pre-checks: home page, explore page, navbar quick-join, and `room-client.tsx`'s `verifyAccess`) counted *every* row for a room regardless of online status. A `max_participants = 2` room with one person still connected and one who'd left an hour earlier was therefore stuck reporting "full" indefinitely. New migration `0026_fix_capacity_check_online_only.sql` fixes the trigger to count only `is_online = true` rows; all four client-side checks fixed identically in the same commit. Verified via the new `verify-migration.mjs` tool (first real use of it outside its own smoke test) and by re-querying the specific room the user hit the bug in, confirming it now correctly reports 1 of 2 slots used instead of being stuck at capacity.
+
 ---
 
 ## [2026-07-05] — Session 40: Room Auto-Expiry + Migration 0009 Live-Recovery

@@ -342,10 +342,14 @@ export default function ExplorePage() {
             return;
           }
 
+          // Only count currently online participants — see note in
+          // room-client.tsx's verifyAccess for why counting every row
+          // regardless of status is wrong.
           const { data: parts } = await supabase
             .from("room_participants")
             .select("id")
-            .eq("room_id", code);
+            .eq("room_id", code)
+            .eq("is_online", true);
 
           if (parts && parts.length >= room.max_participants) {
             toast.error("This room is full.");

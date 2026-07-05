@@ -93,10 +93,16 @@ export default function HomePage() {
             return;
           }
 
+          // Only count currently online participants — a disconnected
+          // participant's row is kept (is_online=false), not deleted, so
+          // counting every row regardless of status would let a room's
+          // effective capacity shrink permanently every time someone joins
+          // and leaves.
           const { data: parts } = await supabase
             .from("room_participants")
             .select("id")
-            .eq("room_id", homeCode);
+            .eq("room_id", homeCode)
+            .eq("is_online", true);
 
           if (parts && parts.length >= room.max_participants) {
             toast.error("This room is full.");
