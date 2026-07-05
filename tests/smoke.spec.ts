@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test';
 
 test('create and join room shows host for creator', async ({ page }) => {
+  // Surface browser-side console/errors in the CI log — Playwright doesn't
+  // forward these by default, and the last CI failure turned out to be a
+  // genuine caught-by-error.tsx runtime exception with no visible detail.
+  page.on('console', (msg) => console.log(`[browser:${msg.type()}]`, msg.text()));
+  page.on('pageerror', (err) => console.log('[browser:pageerror]', err.message));
+
   await page.goto('/create', { waitUntil: 'networkidle' });
 
   // Wait for the client to hydrate and the create button to appear

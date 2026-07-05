@@ -19,6 +19,9 @@ import { test, expect, chromium } from '@playwright/test';
 test('two participants join, play trivia, and see each other\'s presence', async ({ page, baseURL }) => {
   test.setTimeout(75_000);
 
+  page.on('console', (msg) => console.log(`[browser:${msg.type()}]`, msg.text()));
+  page.on('pageerror', (err) => console.log('[browser:pageerror]', err.message));
+
   await page.goto('/create?type=trivia');
   await page.waitForSelector('[data-testid="create-room-button"]', { timeout: 30000 });
   await page.click('[data-testid="create-room-button"]');
