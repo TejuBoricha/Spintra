@@ -73,3 +73,85 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  # Found in the Session 41 production-readiness audit: the job above never
+  # touches a real database — RLS policies, triggers (rate limiting, bans,
+  # room-lock enforcement), and migrations are never executed or asserted
+  # against in CI, so a change that breaks any of them passes CI green. This
+  # job spins up an ephemeral, local Supabase stack (Docker, via the
+  # Supabase CLI — no secrets, no connection to the live project), applies
+  # every migration fresh (exactly the kind of check that would have caught
+  # migration 0010's SQL syntax bug at PR time instead of silently not
+  # running in production), then builds and runs the E2E suite against that
+  # real instance instead of the demo-mode BroadcastChannel fallback — so
+  # tests/multiplayer-loop.spec.ts actually exercises real anonymous auth,
+  # real RLS policies, and real triggers end-to-end.
+  db-integration:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Ephemeral Local Supabase Stack
+        run: supabase start
+
+      - name: Apply All Migrations Fresh
+        run: supabase db reset
+
+      - name: Export Local Supabase Credentials for the App Build
+        run: |
+          supabase status -o env > /tmp/supabase-status.env
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$(grep '^API_URL=' /tmp/supabase-status.env | cut -d= -f2-)"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$(grep '^ANON_KEY=' /tmp/supabase-status.env | cut -d= -f2-)"
+          } >> "$GITHUB_ENV"
+
+      - name: Cache Playwright Browsers
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright Chromium & Dependencies
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install chromium --with-deps
+
+      - name: Install Playwright System Dependencies (if cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Production Build Against Real Local Supabase Instance
+        run: npm run build
+
+      - name: Execute E2E Tests Against Real RLS/Triggers/Realtime
+        run: npm run test:smoke
+
+      - name: Upload Test Artifacts on Failure
+        uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: db-integration-playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Stop Local Supabase Stack
+        if: always()
+        run: supabase stop

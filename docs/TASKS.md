@@ -15,15 +15,15 @@ Full write-up with Description/User impact/Technical impact/Recommended fix/Effo
 - `[x]` **Unplanned, found during live verification:** migration `0019`'s `participants_update` RLS policy was self-referential, causing a live "infinite recursion detected in policy" 500 on every room_participants update (reconnects, presence, host election). Fixed via migration `0024`.
 - `[ ]` DB password rotation (leaked in git history) — in progress by the user directly in the Supabase dashboard, not a code fix.
 
-### High (6/12)
+### High (12/12) — all done
 - `[x]` Room joins (`room_participants` inserts) have no rate limit — Explore rankings gameable. Fixed via migration `0025` (20 joins/10min per user_id, same pattern as 0011).
-- `[ ]` No automated post-apply migration verification (root enabler of the 0008/0009/0010 pattern).
-- `[ ]` CI never touches a real/ephemeral Supabase instance.
-- `[ ]` Production env var configuration undocumented tribal knowledge.
-- `[ ]` No backup/disaster-recovery strategy documented; no soft-deletes anywhere.
+- `[x]` No automated post-apply migration verification (root enabler of the 0008/0009/0010 pattern). Fixed: new `scripts/verify-migration.mjs` (`npm run verify:migration`) queries the live linked project to confirm a migration's functions/triggers/policies/tables/indexes/extensions/columns actually exist; documented as mandatory after every `supabase db push` in `ARCHITECTURE.md` §9.
+- `[x]` CI never touches a real/ephemeral Supabase instance. Fixed: new `db-integration` job in `ci.yml` spins up an ephemeral local Supabase stack (Docker via the Supabase CLI, no secrets, never touches the live project), applies all migrations fresh via `supabase db reset`, then builds and runs the E2E suite against that real instance. **Not verified locally (no Docker in this dev environment) — verify via the actual CI run and iterate if it fails.**
+- `[x]` Production env var configuration undocumented tribal knowledge. **Learned the app isn't deployed yet** (asked the user directly rather than guess) — documented as a pre-launch checklist in `ARCHITECTURE.md` §10 instead of a stale "here's where it lives" claim.
+- `[x]` No backup/disaster-recovery strategy documented; no soft-deletes anywhere. Documented in `ARCHITECTURE.md` §10 as an unresolved item to check (Supabase dashboard → Backups) before real user data accumulates; cheap mitigation (scheduled `pg_dump` export) suggested if the plan tier lacks it.
 - `[x]` Missing index on `rooms(is_public, created_at)` — done as part of the Critical Explore fix above (migration `0022`).
-- `[ ]` 9 redundant serial Supabase round-trips per room join (~1.3s+ latency).
-- `[ ]` Zero e2e coverage of the core join→play→leave loop and 13/14 activities.
+- `[x]` 9 redundant serial Supabase round-trips per room join (~1.3s+ latency). Fixed: `room-client.tsx`'s `verifyAccess` now caches its `rooms` fetch and existing-participant check, passed down to `useRoomSubscription` so `loadRoomDetails`/`trackSelf` reuse them instead of re-fetching; `loadParticipants`/`trackSelf` now run via `Promise.all` instead of serially. Verified live: host join, guest join, and guest refresh/reconnect all confirmed working correctly afterward.
+- `[x]` Zero e2e coverage of the core join→play→leave loop and 13/14 activities. Added `tests/multiplayer-loop.spec.ts` — two real browser contexts (genuinely distinct anon-auth identities, not two tabs sharing one localStorage identity) join the same room, host starts a trivia question, both sides see it via realtime sync, guest answers, host sees the tally update. Verified passing against the live Supabase project. Still only 1 of 14 activities covered — the other 13 remain a gap, but the core loop itself (join/presence/activity-sync/answer-sync) is now exercised, and the CI `db-integration` job runs it against a real backend, not just demo mode.
 - `[x]` Explore/Recent-Activity room cards unreachable via keyboard — converted to real `<button>`s with `aria-label`s.
 - `[x]` Tournament match-scoring UI not keyboard-operable — `MatchCard` is now a real `<button>` (disabled when not actionable), verified live via keyboard Enter.
 - `[x]` 4 hand-rolled modals lack focus trap/Escape/restore — migrated all 4 (QR code, navbar Join Room, Activity Picker, Tournament ScoreEditor) onto the existing `Dialog` primitive; verified live (Escape closes each one).

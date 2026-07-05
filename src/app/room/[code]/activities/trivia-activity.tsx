@@ -230,6 +230,7 @@ export function TriviaActivity() {
               return (
                 <button
                   key={i}
+                  data-testid="trivia-option"
                   disabled={hasAnswered}
                   onClick={() => {
                     const correct = i === triviaQuestion.correctIndex;

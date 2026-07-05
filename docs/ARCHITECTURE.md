@@ -377,18 +377,40 @@ npm run docs:check # scripts/check-docs-drift.mjs — docs/ vs. real filesystem
 npm run verify     # typecheck + lint + docs:check — full local quality gate
 npm run test:smoke # npx playwright test — E2E smoke tests
 npm run ci         # verify + build + test:smoke — mirrors the CI pipeline locally
+npm run verify:migration [name] # queries the LIVE linked Supabase project to confirm a
+                    # migration's functions/triggers/policies/tables/indexes/extensions/
+                    # columns actually exist — not just that `supabase migration list`
+                    # marks it "applied". Defaults to the newest migration file if no
+                    # name/number is given. Run this after every `supabase db push` —
+                    # see the note below.
 ```
 
+**Mandatory after every `supabase db push --linked --yes`:** run `npm run verify:migration` (or `npm run verify:migration <number>` for an older one) immediately afterward. Three migrations (`0008`, `0009`, `0010`) were each independently tracked "applied" while never having actually executed live, only caught by manual, ad-hoc cross-checking each time (see `docs/CHANGELOG_AI.md` Sessions 37/38/40) — this script (`scripts/verify-migration.mjs`) makes that check automatic and repeatable instead of tribal knowledge a future session has to remember to do by hand.
+
 **Node requirement:** >=20.9.0 (see `package.json` engines field)
+
+**CI (`.github/workflows/ci.yml`) has two jobs:**
+1. `validate` — typecheck, lint, docs:check, `npm audit`, production build, Playwright smoke tests. Runs the app **without** Supabase configured (no secrets in CI), so it exercises the demo-mode `BroadcastChannel` fallback, not real RLS/triggers/realtime.
+2. `db-integration` (added Session 41) — spins up an ephemeral, local Supabase stack via the Supabase CLI (`supabase start`, Docker-based, no secrets, never touches the live project), applies every migration fresh with `supabase db reset` (exactly the check that would have caught migration `0010`'s SQL syntax bug at PR time instead of it silently never running in production), then builds and runs the same Playwright suite **against that real instance** — so `tests/multiplayer-loop.spec.ts` actually exercises real anonymous auth, real RLS policies, and real triggers end-to-end, not just the demo-mode fallback.
 
 ---
 
 ## 10. Deployment
 
-Not documented in this session. The project uses Supabase hosted (remote). Frontend deployment target is unknown — likely Vercel (Next.js default) based on project structure.
+**Status as of Session 41: the app is not yet deployed to production.** No hosting provider has been chosen, and no live frontend deployment exists — this section is a pre-launch checklist, not a record of an existing setup. Found during the Session 41 production-readiness audit: because `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` are inlined into the client bundle at **build time** (not read at runtime), if the very first production build ever runs without these two vars set, every visitor silently gets the same-browser-tab-only `BroadcastChannel` fallback instead of real multiplayer, with no error — this is now caught by `ProductionConfigWarningBanner` (`src/components/production-config-warning-banner.tsx`, mounted in `Providers`), which renders an unmissable red banner if this ever happens, but the goal is to never trigger it in the first place.
+
+**Pre-launch deployment checklist:**
+1. Choose a host. Any Next.js host works (Vercel is the framework's own default and is the most likely target — a `.vercel` entry already exists in `.gitignore` from local CLI use, though no project has been linked/deployed yet).
+2. **Before the first production build**, set both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in that host's environment variable dashboard (values come from the linked Supabase project, ref `qjxaehxwuqntyqrdmihs` — Project Settings → API in the Supabase dashboard). Setting them *after* a build has already run does nothing; the build must be re-triggered.
+3. After the first deploy, visit the live URL and confirm the red "Multiplayer is running in local-only mode" banner does **not** appear. If it does, the env vars weren't picked up by that specific build — fix and redeploy, don't just set the vars and assume it's retroactive.
+4. Confirm real-time sync works across two different devices/networks (not just two tabs in the same browser, which would still "work" even in the broken local-only fallback mode and give a false sense of confidence).
+5. Decide on and enable GitHub branch protection for `main` (require the CI status check to pass before merging) — discussed in a prior session but not yet applied; matters more once deploys are live and irreversible-by-default.
 
 ### Supabase CLI (linked, as of 2026-07-04)
 `supabase/config.toml` exists and the project is linked to the live Supabase project (ref `qjxaehxwuqntyqrdmihs`) via `supabase link`. New migrations can be pushed directly with `npx supabase db push --linked --yes` instead of manually pasting SQL into the Dashboard SQL Editor. Requires a one-time `supabase login` (browser OAuth) per machine — not something an AI assistant can do headlessly.
+
+### Backup & Disaster Recovery
+**Not yet configured — flagged in the Session 41 audit, unresolved.** Every delete in the schema is a hard, cascading delete (no table has a `deleted_at`/soft-delete column); the one closest thing to an "admin" workflow — reviewing `message_reports` — happens by hand in the Supabase SQL editor (`ARCHITECTURE.md` §4's RLS Summary), which is a real fat-finger risk with no undo. What backup/point-in-time-recovery tier the live Supabase project actually has depends on its plan (Free tier historically has little to no automatic backup; Pro tier includes daily backups/PITR) — **this has not been confirmed and should be checked in the Supabase dashboard (Settings → Backups) before real user data accumulates.** If it's on a tier without adequate backups, the cheapest mitigation is a scheduled export (e.g., a GitHub Action running `pg_dump` against the project on a cron schedule) rather than upgrading the plan solely for this.
 
 ---
 

@@ -57,6 +57,27 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   const [accessError, setAccessError] = useState<"full" | "locked" | "not_found" | "banned" | null>(null);
   const router = useRouter();
 
+  // Cached from verifyAccess below so useRoomSubscription doesn't have to
+  // re-fetch the same `rooms` row and re-check the same "am I already a
+  // participant" question a second (and third) time immediately after —
+  // this was the largest concrete latency finding in the Session 41 audit
+  // (9 serial round trips on every room join). `undefined` means "verifyAccess
+  // didn't check this" (the host early-exit path skips both checks), which
+  // tells useRoomSubscription it still needs to check for itself. State, not
+  // a ref, since it's read during render (refs may only be read in effects/
+  // event handlers).
+  const [prefetchedRoom, setPrefetchedRoom] = useState<{
+    name: string;
+    type: string;
+    is_locked: boolean;
+    max_participants: number;
+    host_id: string;
+    activity_state: unknown;
+  } | null>(null);
+  const [prefetchedExistingParticipant, setPrefetchedExistingParticipant] = useState<
+    { id: string; role: string } | null | undefined
+  >(undefined);
+
   // Client anonymous auth setup (runs only on mount)
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
@@ -117,10 +138,12 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
 
     const verifyAccess = async () => {
       try {
-        // 1. Fetch room details
+        // 1. Fetch room details (all columns useRoomSubscription's
+        // loadRoomDetails also needs, so it can reuse this instead of
+        // re-fetching the same row a second time right after).
         const { data: room, error: roomError } = await supabase
           .from("rooms")
-          .select("is_locked, max_participants, host_id")
+          .select("name, type, is_locked, max_participants, host_id, activity_state")
           .eq("code", roomCode)
           .maybeSingle();
 
@@ -131,6 +154,8 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           }
           return;
         }
+
+        setPrefetchedRoom(room);
 
         // 2. Check if current user is host
         const isRoomHost = room.host_id === currentUser.id;
@@ -158,10 +183,12 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         // 4. Check if user is already a participant (reconnection / page refresh)
         const { data: existingPart } = await supabase
           .from("room_participants")
-          .select("id")
+          .select("id, role")
           .eq("room_id", roomCode)
           .eq("user_id", currentUser.id)
           .maybeSingle();
+
+        setPrefetchedExistingParticipant(existingPart ?? null);
 
         if (existingPart) {
           if (isMounted) setCheckingAccess(false);
@@ -273,6 +300,8 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       roomCode={roomCode}
       currentUser={currentUser}
       authReady={authReady}
+      prefetchedRoom={prefetchedRoom}
+      prefetchedExistingParticipant={prefetchedExistingParticipant}
     />
   );
 }
@@ -281,10 +310,21 @@ function RoomUIInner({
   roomCode,
   currentUser,
   authReady,
+  prefetchedRoom,
+  prefetchedExistingParticipant,
 }: {
   roomCode: string;
   currentUser: User;
   authReady: boolean;
+  prefetchedRoom: {
+    name: string;
+    type: string;
+    is_locked: boolean;
+    max_participants: number;
+    host_id: string;
+    activity_state: unknown;
+  } | null;
+  prefetchedExistingParticipant: { id: string; role: string } | null | undefined;
 }) {
   const [hasMounted, setHasMounted] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -369,6 +409,8 @@ function RoomUIInner({
     currentUser: localUser,
     localCreatorId,
     authReady,
+    prefetchedRoom,
+    prefetchedExistingParticipant,
     addIncomingMessage: useCallback(
       (incoming: ChatMessage) => {
         setMessages((prev) => {

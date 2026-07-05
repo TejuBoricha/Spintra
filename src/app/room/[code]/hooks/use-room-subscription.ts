@@ -8,12 +8,28 @@ import { banUserFromRoom } from "@/lib/room-bans";
 import type { User, ChatMessage, RoomParticipant, RoomType, ActivityEvent } from "@/lib/types";
 import type { Json } from "@/lib/supabase/database.types";
 
+interface PrefetchedRoom {
+  name: string;
+  type: string;
+  is_locked: boolean;
+  max_participants: number;
+  host_id: string;
+  activity_state: unknown;
+}
+
 interface UseRoomSubscriptionProps {
   roomCode: string;
   currentUser: User;
   localCreatorId: string | null;
   authReady: boolean;
   addIncomingMessage: (msg: ChatMessage) => void;
+  // Already fetched once by room-client.tsx's pre-entry verifyAccess gate —
+  // reused here instead of re-querying the same rooms row / the same
+  // "am I already a participant" question a second time right after.
+  // `undefined` for the existing-participant check means verifyAccess's
+  // host early-exit path never checked it, so it's still checked here.
+  prefetchedRoom?: PrefetchedRoom | null;
+  prefetchedExistingParticipant?: { id: string; role: string } | null;
 }
 
 export function useRoomSubscription({
@@ -22,6 +38,8 @@ export function useRoomSubscription({
   localCreatorId,
   authReady,
   addIncomingMessage,
+  prefetchedRoom,
+  prefetchedExistingParticipant,
 }: UseRoomSubscriptionProps) {
   const router = useRouter();
 
@@ -392,11 +410,18 @@ export function useRoomSubscription({
         const supabaseClient = getSupabaseBrowserClient();
         if (!supabaseClient) return;
 
-        const { data: roomRow } = await supabaseClient
-          .from("rooms")
-          .select("is_locked, max_participants, host_id")
-          .eq("code", roomCode)
-          .maybeSingle();
+        // Reuse room-client.tsx's verifyAccess fetch instead of re-querying
+        // the same row again — falls back to a real fetch if it's somehow
+        // unavailable (e.g. this hook ever runs without that gate).
+        const roomRow =
+          prefetchedRoom ??
+          (
+            await supabaseClient
+              .from("rooms")
+              .select("is_locked, max_participants, host_id")
+              .eq("code", roomCode)
+              .maybeSingle()
+          ).data;
 
         if (!roomRow) {
           if (isMounted) {
@@ -410,13 +435,21 @@ export function useRoomSubscription({
         const role = isRoomHost ? ("host" as const) : ("participant" as const);
         const joined_at = new Date().toISOString();
 
-        // 1. Query for existing participant row to handle reconnection safely without deleting
-        const { data: existingParticipant } = await supabaseClient
-          .from("room_participants")
-          .select("id, role")
-          .eq("room_id", roomCode)
-          .eq("user_id", currentUser.id)
-          .maybeSingle();
+        // 1. Existing participant row (reconnection safety) — reuse
+        // verifyAccess's check when it ran one (every path except the host
+        // early-exit, which skips it since a host never needs ban/lock/
+        // capacity checks against themselves).
+        const existingParticipant =
+          prefetchedExistingParticipant !== undefined
+            ? prefetchedExistingParticipant
+            : (
+                await supabaseClient
+                  .from("room_participants")
+                  .select("id, role")
+                  .eq("room_id", roomCode)
+                  .eq("user_id", currentUser.id)
+                  .maybeSingle()
+              ).data;
 
         // 2. If new join, check room lock status
         if (!existingParticipant && !isRoomHost && roomRow.is_locked) {
@@ -561,14 +594,21 @@ export function useRoomSubscription({
           }
           return;
         }
-        const { data, error } = await supabaseClient
-          .from("rooms")
-          .select("name, type, is_locked, max_participants, host_id, activity_state")
-          .eq("code", roomCode)
-          .maybeSingle();
-        if (error) {
-          console.error("Failed to load room details:", error);
-          return;
+        // Reuse room-client.tsx's verifyAccess fetch (which already selects
+        // every column below) instead of re-querying the same rooms row a
+        // second time — falls back to a real fetch if unavailable.
+        let data = prefetchedRoom;
+        if (!data) {
+          const result = await supabaseClient
+            .from("rooms")
+            .select("name, type, is_locked, max_participants, host_id, activity_state")
+            .eq("code", roomCode)
+            .maybeSingle();
+          if (result.error) {
+            console.error("Failed to load room details:", result.error);
+            return;
+          }
+          data = result.data;
         }
         if (isMounted && data) {
           setRoomName(data.name);
@@ -593,9 +633,13 @@ export function useRoomSubscription({
     };
 
     const runSetup = async () => {
+      // loadRoomDetails is synchronous when prefetchedRoom is available (no
+      // network call at all); loadParticipants and trackSelf don't depend
+      // on each other's results, so they run concurrently instead of
+      // serially — part of the Session 41 fix for 9 redundant serial round
+      // trips on every room join.
       await loadRoomDetails();
-      await loadParticipants();
-      await trackSelf();
+      await Promise.all([loadParticipants(), trackSelf()]);
     };
 
     runSetup();
@@ -603,7 +647,7 @@ export function useRoomSubscription({
     return () => {
       isMounted = false;
     };
-  }, [roomCode, currentUser, electHostIfNeeded, router, authReady]);
+  }, [roomCode, currentUser, electHostIfNeeded, router, authReady, prefetchedRoom, prefetchedExistingParticipant]);
 
   // Subscriptions & Fallback Setup Effect
   useEffect(() => {
