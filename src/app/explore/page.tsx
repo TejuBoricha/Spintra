@@ -564,14 +564,17 @@ export default function ExplorePage() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <AnimatePresence>
                 {filteredRooms.map((room, i) => (
-                  <div key={room.id} onClick={() => handleJoinRoom(room.code)}>
-                    <motion.div
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ delay: i * 0.05 }}
-                      className="glass-card p-5 group cursor-pointer hover:border-purple-500/30 card-3d rounded-3xl transition-all"
-                    >
+                  <motion.button
+                    key={room.id}
+                    type="button"
+                    onClick={() => handleJoinRoom(room.code)}
+                    aria-label={`Join ${room.name}, code ${room.code}`}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="glass-card p-5 group cursor-pointer hover:border-purple-500/30 card-3d rounded-3xl transition-all w-full text-left"
+                  >
                       <div className="flex items-start justify-between mb-3">
                         <div className="min-w-0 flex-1 pr-2">
                           <h3 className="font-bold text-foreground group-hover:text-purple-400 transition-colors line-clamp-1">
@@ -609,8 +612,7 @@ export default function ExplorePage() {
                         </div>
                         <span className="font-medium">by @{room.host}</span>
                       </div>
-                    </motion.div>
-                  </div>
+                  </motion.button>
                 ))}
               </AnimatePresence>
             </div>
@@ -669,22 +671,24 @@ export default function ExplorePage() {
           ) : (
             <div className="space-y-3">
               {filteredActivities.map((activity, i) => (
-                <div key={i} onClick={() => handleJoinRoom(activity.code)} className="block">
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.04 }}
-                    className="glass-card p-4 flex items-center gap-4 rounded-2xl hover:border-purple-500/30 transition-all cursor-pointer bg-muted/30"
-                  >
-                    <Emoji name={activity.emoji} size={28} />
-                    <div className="flex-1 text-sm">
-                      <span className="font-bold text-foreground">@{activity.user}</span>{" "}
-                      <span className="text-muted-foreground">{activity.action}</span>{" "}
-                      <span className="font-bold text-purple-300">{activity.item}</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground font-semibold">{activity.time}</span>
-                  </motion.div>
-                </div>
+                <motion.button
+                  key={i}
+                  type="button"
+                  onClick={() => handleJoinRoom(activity.code)}
+                  aria-label={`Join @${activity.user}'s ${activity.item}`}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className="glass-card p-4 flex items-center gap-4 rounded-2xl hover:border-purple-500/30 transition-all cursor-pointer bg-muted/30 w-full text-left"
+                >
+                  <Emoji name={activity.emoji} size={28} />
+                  <div className="flex-1 text-sm">
+                    <span className="font-bold text-foreground">@{activity.user}</span>{" "}
+                    <span className="text-muted-foreground">{activity.action}</span>{" "}
+                    <span className="font-bold text-purple-300">{activity.item}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground font-semibold">{activity.time}</span>
+                </motion.button>
               ))}
             </div>
           )}

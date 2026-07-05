@@ -159,6 +159,15 @@
 
 **Risks:** The RLS recursion fix (`0024`) changes production access-control logic — re-verified live post-fix (room join, trivia start, no console errors) rather than trusting typecheck alone, given the stakes of a policy change. The activity-state event log is capped at 200 entries per activity session; an unusually long single game generating more than 200 state-changing events would lose its earliest history on replay (accepted trade-off — recent state matters far more than full session history for this recovery use case).
 
+**High tier, batch 1 (same session) — rate limiting + accessibility:**
+- Migration `0025_room_join_rate_limit.sql`: before-insert rate-limit trigger on `room_participants` (20 joins/10min per `user_id`), same pattern as migration `0011`. Closes the gap where new room joins were the only major write path with no throttling — could otherwise be used to game Explore's participant-count-based Trending/Popular ranking with rapid join/leave cycles.
+- `src/app/explore/page.tsx`: both the main room-card grid and the Recent Activity list were plain clickable `<div>`s — converted to real `motion.button` elements with descriptive `aria-label`s, making them keyboard-reachable and screen-reader-announced for the first time.
+- `src/app/room/[code]/activities/tournament-activity.tsx`: `MatchCard` was a non-semantic clickable `div` — now a real `<button type="button" disabled={!isClickable}>`, so a keyboard user can Tab to and activate any actionable match (TBD/bye/read-only matches are natively disabled and correctly out of the tab order, not just visually dimmed).
+- `src/app/room/[code]/components/room-header.tsx`: the icon toolbar now wraps (`flex-wrap`) instead of clipping on narrow viewports, and the room name/badges block gets `min-w-0`/`truncate` so it degrades gracefully alongside it.
+- **Modal focus-trap fix (4 modals migrated to the existing `Dialog` primitive, which already provides focus trapping/Escape/`aria-modal` — same pattern already used correctly by `CloseRoomDialog` and `MessageReportsPanel`):** the room header's QR code dialog, the navbar's Join Room dialog, `ActivityPickerDialog` (now takes `open`/`onOpenChange` props and is always mounted rather than conditionally rendered, so its own Escape/backdrop-close events don't fight React's mount lifecycle), and Tournament's `ScoreEditor`. All four previously hand-rolled their own overlay with `createPortal`/`AnimatePresence` and no keyboard trap.
+- **Verified live**, not just statically: a Playwright run confirmed the Join Room, QR, and Activity Picker dialogs all open and close on Escape; a second run opened a two-participant tournament room, generated a real bracket, focused a match button via keyboard only, pressed Enter to open `ScoreEditor`, and confirmed Escape closed it — the exact keyboard-only flow the audit finding said was completely blocked.
+- `npm run verify` clean throughout; all test rooms created during verification deleted from the live database afterward.
+
 ---
 
 ## [2026-07-05] — Session 40: Room Auto-Expiry + Migration 0009 Live-Recovery

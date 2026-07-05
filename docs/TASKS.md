@@ -15,8 +15,8 @@ Full write-up with Description/User impact/Technical impact/Recommended fix/Effo
 - `[x]` **Unplanned, found during live verification:** migration `0019`'s `participants_update` RLS policy was self-referential, causing a live "infinite recursion detected in policy" 500 on every room_participants update (reconnects, presence, host election). Fixed via migration `0024`.
 - `[ ]` DB password rotation (leaked in git history) — in progress by the user directly in the Supabase dashboard, not a code fix.
 
-### High (1/12)
-- `[ ]` Room joins (`room_participants` inserts) have no rate limit — Explore rankings gameable.
+### High (6/12)
+- `[x]` Room joins (`room_participants` inserts) have no rate limit — Explore rankings gameable. Fixed via migration `0025` (20 joins/10min per user_id, same pattern as 0011).
 - `[ ]` No automated post-apply migration verification (root enabler of the 0008/0009/0010 pattern).
 - `[ ]` CI never touches a real/ephemeral Supabase instance.
 - `[ ]` Production env var configuration undocumented tribal knowledge.
@@ -24,10 +24,10 @@ Full write-up with Description/User impact/Technical impact/Recommended fix/Effo
 - `[x]` Missing index on `rooms(is_public, created_at)` — done as part of the Critical Explore fix above (migration `0022`).
 - `[ ]` 9 redundant serial Supabase round-trips per room join (~1.3s+ latency).
 - `[ ]` Zero e2e coverage of the core join→play→leave loop and 13/14 activities.
-- `[ ]` Explore/Recent-Activity room cards unreachable via keyboard.
-- `[ ]` Tournament match-scoring UI not keyboard-operable.
-- `[ ]` 4 hand-rolled modals lack focus trap/Escape/restore.
-- `[ ]` Room header icon toolbar has no responsive mobile collapse.
+- `[x]` Explore/Recent-Activity room cards unreachable via keyboard — converted to real `<button>`s with `aria-label`s.
+- `[x]` Tournament match-scoring UI not keyboard-operable — `MatchCard` is now a real `<button>` (disabled when not actionable), verified live via keyboard Enter.
+- `[x]` 4 hand-rolled modals lack focus trap/Escape/restore — migrated all 4 (QR code, navbar Join Room, Activity Picker, Tournament ScoreEditor) onto the existing `Dialog` primitive; verified live (Escape closes each one).
+- `[x]` Room header icon toolbar has no responsive mobile collapse — outer/inner rows now wrap gracefully instead of clipping.
 
 ### Medium (0/16)
 - `[ ]` Guess-the-Number secret broadcast to all clients + forgeable win claim.

@@ -567,21 +567,17 @@ function RoomUIInner({
         <div className="flex-1 p-4 md:p-6 overflow-y-auto">
           <RoomActivityContext.Provider value={stableContextValue}>
             <RoomParticipantsContext.Provider value={dynamicContextValue}>
+              <ActivityPickerDialog
+                open={isPickerOpen && isHost}
+                onOpenChange={setIsPickerOpen}
+                activeActivityType={activeActivity?.type}
+                roomType={roomType}
+                onSelect={(type) => {
+                  changeActivity(type);
+                  setIsPickerOpen(false);
+                }}
+              />
               <AnimatePresence mode="wait">
-                {/* ── Activity Picker (party / classroom hosts) ── */}
-                {isPickerOpen && isHost && (
-                  <ActivityPickerDialog
-                    key="picker"
-                    activeActivityType={activeActivity?.type}
-                    roomType={roomType}
-                    onClose={() => setIsPickerOpen(false)}
-                    onSelect={(type) => {
-                      changeActivity(type);
-                      setIsPickerOpen(false);
-                    }}
-                  />
-                )}
-
                 {/* ── No Activity Selected ── */}
                 {!activeActivity && (
                   <IdleScreen

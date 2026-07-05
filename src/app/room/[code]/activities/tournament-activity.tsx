@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Swords, Trophy, Crown, RotateCcw, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import type { TournamentType } from "@/lib/types";
 import { Emoji } from "@/components/emoji";
@@ -40,14 +41,22 @@ function MatchCard({
     completed: "border-emerald-500/30 bg-emerald-500/5",
   };
 
+  // Always a real <button> — disabled (and so out of the tab order and
+  // non-clickable natively) whenever the match isn't actionable, instead of
+  // a plain div that a keyboard user could never reach in the first place.
   return (
-    <motion.div
+    <motion.button
+      type="button"
+      disabled={!isClickable}
       whileHover={isClickable ? { scale: 1.02 } : undefined}
       onClick={isClickable ? onClick : undefined}
+      aria-label={
+        isClickable ? `Record score: ${match.player1} vs ${match.player2}` : undefined
+      }
       data-testid="tournament-match"
       data-match-status={match.status}
       data-match-ready={isReady}
-      className={`rounded-lg border px-3 py-2 text-xs transition-colors ${statusColors[match.status]} ${
+      className={`rounded-lg border px-3 py-2 text-xs transition-colors text-left w-full ${statusColors[match.status]} ${
         isClickable ? "cursor-pointer hover:border-amber-500/40" : "cursor-default"
       } ${!isReady && !isBye ? "opacity-60" : ""}`}
     >
@@ -70,7 +79,7 @@ function MatchCard({
       {match.winner && (
         <div className="mt-1 text-[11px] text-amber-400">{match.winner} won</div>
       )}
-    </motion.div>
+    </motion.button>
   );
 }
 
@@ -87,23 +96,12 @@ function ScoreEditor({
   const [score2, setScore2] = useState(match.score2 ?? 0);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        className="glass-card p-6 w-full max-w-sm"
-      >
-        <h3 className="text-lg font-bold mb-4 text-center">Update Score</h3>
-        <div className="flex items-center gap-4 mb-6">
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="text-center">Update Score</DialogTitle>
+        </DialogHeader>
+        <div className="flex items-center gap-4 mb-2">
           <div className="flex-1 text-center">
             <p className="text-sm font-semibold mb-2 truncate">{match.player1 || "TBD"}</p>
             <Input
@@ -138,8 +136,8 @@ function ScoreEditor({
             Save
           </Button>
         </div>
-      </motion.div>
-    </motion.div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -448,15 +446,13 @@ export function TournamentActivity() {
         </Button>
       )}
 
-      <AnimatePresence>
-        {editingMatch && (
-          <ScoreEditor
-            match={editingMatch.match}
-            onSave={handleScoreSave}
-            onClose={() => setEditingMatch(null)}
-          />
-        )}
-      </AnimatePresence>
+      {editingMatch && (
+        <ScoreEditor
+          match={editingMatch.match}
+          onSave={handleScoreSave}
+          onClose={() => setEditingMatch(null)}
+        />
+      )}
     </motion.div>
   );
 }
