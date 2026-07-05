@@ -18,6 +18,8 @@ Key findings/fixes:
 
 **Follow-up (same session):** ran the systematic audit that finding suggested — cross-checked all 20 migrations' expected live objects (tables, columns, functions, triggers, policies, constraints, indexes, extensions, realtime publication membership, replica identity, seed-data row counts) against the actual live database via direct catalog queries (`pg_proc`, `pg_policy`, `pg_trigger`, `pg_constraint`, `pg_indexes`, `pg_publication_tables`, `information_schema.columns`). **Result: no further gaps found.** `0001`–`0008` and `0010`–`0019` all confirmed genuinely live and matching source exactly; seed data is clean (44 `activity_prompts`, 50 `trivia_questions`, no duplicates from the earlier re-applications). The three-migration pattern (`0008`, `0009`, `0010`) appears fully closed out now, not a wider systemic issue.
 
+**Small cleanup (same session):** the audit surfaced one harmless drift — `room_participants_role_check` still permitted `'spectator'`, a value the client stopped being able to produce back in Session 38 (dead `UserRole.spectator` enum removed then, but the DB constraint was never updated). Verified zero live rows used it, then added migration `0021` to tighten the constraint to `('host', 'participant')`. Applied and verified live.
+
 ---
 
 **Session 39: Platform QA Audit (13-Area Review + Tournament Hardening).** User requested a comprehensive 13-area QA audit. All actionable findings were fixed in-session; non-actionable or deferred items were documented.

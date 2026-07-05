@@ -152,6 +152,8 @@
 
 **Risks:** None identified — `cleanup_inactive_rooms()`'s deletion criteria (no online participants AND >2h old) is unchanged from its original Session-9-era design and was verified against live data before scheduling it recurrently. The follow-up audit was read-only (catalog queries only, no schema changes) and confirms the fix is complete with no other latent gaps of the same kind.
 
+**Small cleanup (same session):** the audit surfaced one harmless, unrelated drift: `room_participants_role_check` still permitted `'spectator'` at the DB level, even though the client-side `UserRole.spectator` enum was removed as dead code back in Session 38 (no migration had ever targeted the constraint itself). Verified via `select role, count(*) from room_participants group by role` that zero live rows used `'spectator'` (only `'host'`/`'participant'` exist), and grepped `src/` to confirm no code references it either. Added migration `0021_drop_unused_spectator_role.sql` tightening the constraint to `check (role in ('host', 'participant'))`, applied via `supabase db push --linked --yes`, and verified live via `pg_get_constraintdef`. Updated the ER diagram comment in `ARCHITECTURE.md` (`role "host / participant / spectator"` → `role "host / participant"`) and the migrations table. `npm run verify` clean (21/21 migrations tracked, docs:check all 9 passing).
+
 ---
 
 ## [2026-07-05] — Session 39: Platform QA Audit (13-Area Review + Tournament Hardening)
