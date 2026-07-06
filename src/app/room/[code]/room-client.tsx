@@ -158,7 +158,6 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     is_locked: boolean;
     max_participants: number;
     host_id: string;
-    activity_state: unknown;
   } | null>(null);
   const [prefetchedExistingParticipant, setPrefetchedExistingParticipant] = useState<
     { id: string; role: string } | null | undefined
@@ -229,7 +228,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         // re-fetching the same row a second time right after).
         const { data: room, error: roomError } = await supabase
           .from("rooms")
-          .select("name, type, is_locked, max_participants, host_id, activity_state")
+          .select("name, type, is_locked, max_participants, host_id")
           .eq("code", roomCode)
           .maybeSingle();
 
@@ -450,7 +449,6 @@ function RoomUIInner({
     is_locked: boolean;
     max_participants: number;
     host_id: string;
-    activity_state: unknown;
   } | null;
   prefetchedExistingParticipant: { id: string; role: string } | null | undefined;
 }) {

@@ -14,7 +14,6 @@ interface PrefetchedRoom {
   is_locked: boolean;
   max_participants: number;
   host_id: string;
-  activity_state: unknown;
 }
 
 interface UseRoomSubscriptionProps {
@@ -88,7 +87,7 @@ export function useRoomSubscription({
   // late joiner) so state is reconstructed identically to how a live client
   // would have built it — no per-activity persistence code needed. Cleared
   // on activity_reset and on switching activities; (re)populated from
-  // `rooms.activity_state` on initial load if it matches the current type.
+  // `room_activity_state` on initial load if it matches the current type.
   const activityEventLogRef = useRef<ActivityEvent[]>([]);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ACTIVITY_EVENT_LOG_CAP = 200;
@@ -101,9 +100,8 @@ export function useRoomSubscription({
       const type = activeActivityRef.current?.type ?? null;
       const payload = type ? { type, events: activityEventLogRef.current } : null;
       supabase
-        .from("rooms")
-        .update({ activity_state: payload as unknown as Json })
-        .eq("code", roomCode)
+        .from("room_activity_state")
+        .upsert({ room_code: roomCode, activity_state: payload as unknown as Json }, { onConflict: "room_code" })
         .then();
     }, 600);
   }, [roomCode]);
@@ -288,7 +286,7 @@ export function useRoomSubscription({
           payload: nextActivity,
         });
       }
-      supabase.from("rooms").update({ activity_state: null }).eq("code", roomCode).then();
+      supabase.from("room_activity_state").upsert({ room_code: roomCode, activity_state: null }, { onConflict: "room_code" }).then();
     }
   }, [postLocalMessage, roomCode]);
 
@@ -646,7 +644,7 @@ export function useRoomSubscription({
         if (!data) {
           const result = await supabaseClient
             .from("rooms")
-            .select("name, type, is_locked, max_participants, host_id, activity_state")
+            .select("name, type, is_locked, max_participants, host_id")
             .eq("code", roomCode)
             .maybeSingle();
           if (result.error) {
@@ -664,12 +662,17 @@ export function useRoomSubscription({
           if (data.type !== "party" && data.type !== "classroom") {
             setActiveActivity((prev) => prev || { type: data.type, state: null });
           }
-          // Recover this room's in-progress game (if any) so a refresh or
-          // reconnect doesn't drop back to a blank activity screen — see
-          // registerEventListener's replay and handleActivityEvent's logging.
-          const persisted = data.activity_state as { type?: string; events?: ActivityEvent[] } | null;
-          if (persisted?.type === data.type && Array.isArray(persisted.events)) {
-            activityEventLogRef.current = persisted.events.slice(-ACTIVITY_EVENT_LOG_CAP);
+          // Fetch activity state from the participant-only table.
+          const stateResult = await supabaseClient
+            .from("room_activity_state")
+            .select("activity_state")
+            .eq("room_code", roomCode)
+            .maybeSingle();
+          if (stateResult.data?.activity_state) {
+            const persisted = stateResult.data.activity_state as { type?: string; events?: ActivityEvent[] } | null;
+            if (persisted?.type === data.type && Array.isArray(persisted.events)) {
+              activityEventLogRef.current = persisted.events.slice(-ACTIVITY_EVENT_LOG_CAP);
+            }
           }
         }
       } catch (e) {
