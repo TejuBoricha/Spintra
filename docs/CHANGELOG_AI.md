@@ -122,6 +122,22 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-06] — Session 42: Production Readiness Audit — Medium Tier Fixes
+
+**AI:** Claude Code (Anthropic)
+**Task:** Continue the Session 41 audit's tier-by-tier fix mandate into the Medium tier (16 findings tracked in `TASKS.md`), after Critical and High were completed and the `db-integration` CI job was finally confirmed passing (5 iterations: build/CPU contention, then two genuine bugs the job itself uncovered — a malformed `NEXT_PUBLIC_SUPABASE_URL` from unstripped quotes, and a CSP blocking the loopback instance).
+
+**Medium tier, item 1 — Guess-the-Number secret broadcast + forgeable win claim:** the host's secret number was sent as a plain Realtime broadcast event to every participant (readable directly in devtools/network tab, no guessing required), and each guesser's own client independently computed and broadcast its own "hint" with no verification at all — a participant could fabricate a "correct" result outright. Both problems trace to the same root cause: the secret was known client-side. Fixed with new migration `0028_guess_number_server_side_secret.sql`:
+- New `guess_number_secrets (room_code text primary key, secret smallint, updated_at)` table — RLS enabled with **zero** policies defined, so no role can SELECT/INSERT/UPDATE it directly via PostgREST at all.
+- `set_guess_number_secret(room_code, secret)` — SECURITY DEFINER, verifies the caller is the room's host before upserting.
+- `check_guess_number(room_code, guess)` — SECURITY DEFINER, verifies the caller is a room member (`is_member_of_room`), looks up the secret (bypassing RLS as the function owner), and returns only the hint string — never the secret itself.
+- `src/app/room/[code]/activities/guess-number-activity.tsx`: reset/guess handlers now call these RPCs when a real Supabase client is configured; `GuessResetEvent.secret` is now optional and only populated in demo mode (no real backend to check against there, and no meaningful security boundary either — single browser, `BroadcastChannel`-shared identity), preserving demo mode's existing behavior unchanged.
+- `database.types.ts`: added `Functions` typings for both RPCs (this codebase's first use of `supabase.rpc()` — the `Functions` map had been an empty `[_ in never]: never` stub since Session 1).
+- **Verified live** with a disposable Node script against the real production project (not just typecheck): a non-host's `set_guess_number_secret` call correctly rejected; the host's call succeeded; a direct `select *` against `guess_number_secrets` returned nothing (confirming the deny-all RLS); `check_guess_number` returned the correct hint for guesses above/below/equal to the secret; an outsider (not a room member) was correctly rejected. Test room deleted afterward.
+- `npm run verify` clean.
+
+---
+
 ## [2026-07-05] — Session 41: Production Readiness Audit + Critical Tier Fixes
 
 **AI:** Claude Code (Anthropic)

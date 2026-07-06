@@ -38,7 +38,11 @@ type WheelSpinEvent     = { kind: "wheel_spin"; winner: string };
 
 // guess-number
 type GuessSubmitEvent   = { kind: "guess_submit"; username: string; guess: number; hint: string };
-type GuessResetEvent    = { kind: "guess_reset"; secret: number };
+// `secret` is only ever populated in demo mode (no real backend to check
+// against, so the client-side fallback needs it); in real Supabase mode the
+// secret lives server-side only (see check_guess_number RPC, migration
+// 0028) and is never broadcast.
+type GuessResetEvent    = { kind: "guess_reset"; secret?: number };
 
 // bingo
 type BingoCallEvent     = { kind: "bingo_call"; number: number };

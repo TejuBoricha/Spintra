@@ -259,7 +259,14 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      set_guess_number_secret: {
+        Args: { p_room_code: string; p_secret: number }
+        Returns: undefined
+      }
+      check_guess_number: {
+        Args: { p_room_code: string; p_guess: number }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

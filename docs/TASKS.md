@@ -34,8 +34,8 @@ Full write-up with Description/User impact/Technical impact/Recommended fix/Effo
 - `[x]` 4 hand-rolled modals lack focus trap/Escape/restore — migrated all 4 (QR code, navbar Join Room, Activity Picker, Tournament ScoreEditor) onto the existing `Dialog` primitive; verified live (Escape closes each one).
 - `[x]` Room header icon toolbar has no responsive mobile collapse — outer/inner rows now wrap gracefully instead of clipping.
 
-### Medium (0/16)
-- `[ ]` Guess-the-Number secret broadcast to all clients + forgeable win claim.
+### Medium (1/16)
+- `[x]` Guess-the-Number secret broadcast to all clients + forgeable win claim. Fixed via migration `0028`: secret and hint-check moved server-side behind two SECURITY DEFINER RPCs (`set_guess_number_secret` host-only, `check_guess_number` room-members-only), backed by a table with no direct SELECT/INSERT/UPDATE policies at all — no client can read the secret back through the API. Verified live (host-only set, RLS-blocked direct read, correct hints, non-member denied).
 - `[ ]` Room-capacity check TOCTOU race.
 - `[ ]` Username edit strips all non-ASCII characters.
 - `[ ]` Message reports have no rate limit.

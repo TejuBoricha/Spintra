@@ -3,13 +3,15 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Target, ArrowUp, ArrowDown } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRoomActivity } from "../context/room-activity-context";
 import { Emoji } from "@/components/emoji";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export function GuessNumberActivity() {
-  const { isHost, sendActivityEvent, registerEventListener, currentUser } = useRoomActivity();
+  const { roomCode, isHost, sendActivityEvent, registerEventListener, currentUser } = useRoomActivity();
 
   const [guessHistory, setGuessHistory] = useState<
     { username: string; guess: number; hint: string }[]
@@ -28,7 +30,7 @@ export function GuessNumberActivity() {
         }
         case "guess_reset": {
           setGuessHistory([]);
-          setGuessSecretNumber(event.secret);
+          if (typeof event.secret === "number") setGuessSecretNumber(event.secret);
           break;
         }
         case "activity_reset":
@@ -37,6 +39,57 @@ export function GuessNumberActivity() {
       }
     });
   }, [registerEventListener]);
+
+  // Real Supabase mode: the secret is set/checked server-side (migration
+  // 0028's RPCs) so it's never known to any client but the host's own, and a
+  // guess's hint can't be forged by broadcasting a fabricated result. Demo
+  // mode has no real backend to check against, so it falls back to the
+  // previous client-local comparison — there's no meaningful security
+  // boundary there anyway (single browser, BroadcastChannel-shared identity).
+  const resetSecretNumber = async () => {
+    const secret = Math.floor(Math.random() * 100) + 1;
+    setGuessSecretNumber(secret);
+
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) {
+      const { error } = await supabase.rpc("set_guess_number_secret", {
+        p_room_code: roomCode,
+        p_secret: secret,
+      });
+      if (error) {
+        console.error("Failed to set secret number:", error.message);
+        toast.error("Couldn't set the secret number. Please try again.");
+        return;
+      }
+      sendActivityEvent({ kind: "guess_reset" });
+    } else {
+      sendActivityEvent({ kind: "guess_reset", secret });
+    }
+  };
+
+  const submitGuess = async (val: number) => {
+    if (!val || val < 1 || val > 100) return;
+
+    const supabase = getSupabaseBrowserClient();
+    let hint: string;
+    if (supabase) {
+      const { data, error } = await supabase.rpc("check_guess_number", {
+        p_room_code: roomCode,
+        p_guess: val,
+      });
+      if (error || !data) {
+        console.error("Failed to check guess:", error?.message);
+        toast.error("Couldn't check your guess. Please try again.");
+        return;
+      }
+      hint = data;
+    } else {
+      hint =
+        val === guessSecretNumber ? "correct" : val > guessSecretNumber ? "too high" : "too low";
+    }
+
+    sendActivityEvent({ kind: "guess_submit", username: currentUser.username, guess: val, hint });
+  };
 
   return (
     <motion.div
@@ -60,11 +113,7 @@ export function GuessNumberActivity() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                const secret = Math.floor(Math.random() * 100) + 1;
-                setGuessSecretNumber(secret);
-                sendActivityEvent({ kind: "guess_reset", secret });
-              }}
+              onClick={resetSecretNumber}
               className="ml-auto rounded-full border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10 h-9 px-4"
             >
               Reset Number
@@ -136,19 +185,7 @@ export function GuessNumberActivity() {
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 const val = parseInt((e.target as HTMLInputElement).value);
-                if (!val || val < 1 || val > 100) return;
-                const hint =
-                  val === guessSecretNumber
-                    ? "correct"
-                    : val > guessSecretNumber
-                    ? "too high"
-                    : "too low";
-                sendActivityEvent({
-                  kind: "guess_submit",
-                  username: currentUser.username,
-                  guess: val,
-                  hint,
-                });
+                submitGuess(val);
                 (e.target as HTMLInputElement).value = "";
               }
             }}
@@ -157,19 +194,7 @@ export function GuessNumberActivity() {
             onClick={() => {
               const input = document.getElementById("guess-input") as HTMLInputElement;
               const val = parseInt(input?.value);
-              if (!val || val < 1 || val > 100) return;
-              const hint =
-                val === guessSecretNumber
-                  ? "correct"
-                  : val > guessSecretNumber
-                  ? "too high"
-                  : "too low";
-              sendActivityEvent({
-                kind: "guess_submit",
-                username: currentUser.username,
-                guess: val,
-                hint,
-              });
+              submitGuess(val);
               if (input) input.value = "";
             }}
             className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white border-0 rounded-full px-6 h-11 shadow-md shadow-cyan-500/10"
