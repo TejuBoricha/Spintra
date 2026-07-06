@@ -13,7 +13,7 @@ export function RouteErrorFallback({
   description?: string;
 }) {
   return (
-    <div className="min-h-screen bg-[#07050e] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="glass-card max-w-md w-full p-8 rounded-3xl border border-red-500/20 text-center shadow-2xl space-y-6">
         <div className="space-y-2">
           <h1 className="text-2xl font-black text-foreground">{title}</h1>

@@ -745,7 +745,7 @@ export default function LuckyWheelPage() {
                       )}
 
                       {/* Weight slider */}
-                      <div className="hidden group-hover/entry:flex items-center gap-1.5 w-20">
+                      <div className="hidden group-hover/entry:flex group-focus-within/entry:flex items-center gap-1.5 w-20">
                         <Slider
                           value={[entry.weight]}
                           onValueChange={(v) => {

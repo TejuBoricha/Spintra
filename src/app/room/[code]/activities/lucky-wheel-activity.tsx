@@ -449,6 +449,7 @@ export function LuckyWheelActivity() {
               onChange={(e) => setNewWheelEntryText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addWheelEntry()}
               placeholder="Add an option..."
+              aria-label="Add a wheel option"
               maxLength={40}
               disabled={wheelSpinning || wheelEntries.length >= 12}
               className="flex-1"

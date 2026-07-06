@@ -176,6 +176,7 @@ export default function HomePage() {
                 onChange={(e) => setHomeCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
                 onKeyDown={(e) => e.key === "Enter" && handleHomeJoin()}
                 placeholder="ENTER CODE"
+                aria-label="Enter room code"
                 className="flex-1 px-4 h-12 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl text-center text-lg font-mono font-bold uppercase tracking-widest text-purple-600 dark:text-purple-300 focus:outline-none focus:border-cyan-500/50"
               />
               <Button

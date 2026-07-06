@@ -256,6 +256,7 @@ export function RoomSidebar({
               <div className="flex gap-2">
                 <Input
                   placeholder="Type a message..."
+                  aria-label="Type a message"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && sendMessage()}

@@ -345,7 +345,7 @@ export default function DicePage() {
                   Tray
                 </span>
                 {results.length > 0 && !rolling && (
-                  <span className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 text-xs px-3 py-1 font-bold rounded-full">
+                  <span role="status" aria-live="polite" className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 text-xs px-3 py-1 font-bold rounded-full">
                     Total: {total}
                   </span>
                 )}

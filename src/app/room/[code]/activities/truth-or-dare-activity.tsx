@@ -131,6 +131,8 @@ export function TruthOrDareActivity() {
           initial={{ opacity: 0, scale: 0.9, rotateX: -20 }}
           animate={{ opacity: 1, scale: 1, rotateX: 0 }}
           transition={{ type: "spring", stiffness: 100, damping: 12 }}
+          role="status"
+          aria-live="polite"
           className={`w-full text-center px-8 py-10 rounded-3xl border-2 shadow-2xl leading-relaxed ${
             todPrompt.type === "truth"
               ? "bg-gradient-to-br from-cyan-500/5 to-blue-500/5 border-cyan-500/40 text-cyan-100 shadow-cyan-500/10"

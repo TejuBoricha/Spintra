@@ -155,6 +155,7 @@ export function WordScrambleActivity() {
                 onChange={(e) => setGuess(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && submitGuess()}
                 placeholder="Your guess..."
+                aria-label="Guess the word"
                 className="flex-1 rounded-full px-4 h-11"
               />
               <Button

@@ -134,6 +134,8 @@ export function BingoActivity() {
           key={lastCalled}
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
+          role="status"
+          aria-live="polite"
           className="w-20 h-20 rounded-full flex flex-col items-center justify-center bg-gradient-to-br from-cyan-500 to-blue-600 border border-cyan-400/40 shadow-xl shadow-cyan-500/10 text-white select-none"
         >
           <span className="text-[10px] uppercase font-bold tracking-widest leading-none text-cyan-200/80 mb-0.5">Called</span>

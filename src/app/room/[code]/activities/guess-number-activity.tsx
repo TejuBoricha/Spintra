@@ -181,6 +181,7 @@ export function GuessNumberActivity() {
             min={1}
             max={100}
             placeholder="1 – 100"
+            aria-label="Enter your guess from 1 to 100"
             className="flex-1 rounded-full px-4 h-11"
             onKeyDown={(e) => {
               if (e.key === "Enter") {

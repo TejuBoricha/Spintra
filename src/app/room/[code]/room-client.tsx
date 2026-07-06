@@ -352,7 +352,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
 
   if (!authReady || checkingAccess) {
     return (
-      <div className="min-h-screen bg-[#07050e] flex flex-col items-center justify-center gap-4">
+      <div role="status" aria-live="polite" className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
         <div className="relative w-16 h-16">
           <div className="absolute inset-0 rounded-full border-4 border-purple-500/20" />
           <div className="absolute inset-0 rounded-full border-4 border-t-purple-500 animate-spin" />
@@ -394,7 +394,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     }[accessError];
 
     return (
-      <div className="min-h-screen bg-[#07050e] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="glass-card max-w-md w-full p-8 rounded-3xl border border-white/10 text-center shadow-2xl space-y-6">
           <div className="flex justify-center">
             <Emoji name={errorDetails.emoji} size={64} pop />
