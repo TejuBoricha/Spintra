@@ -1171,6 +1171,13 @@ export function useRoomSubscription({
 
   useEffect(() => {
     return () => {
+      // A pending activity-state persistence debounce shouldn't fire after
+      // this room unmounts — harmless in practice (discarded result), but a
+      // stray timer issuing a write against a room the user just left.
+      if (persistTimerRef.current) {
+        clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = null;
+      }
       const supabase = getSupabaseBrowserClient();
       if (supabase && currentUser?.id) {
         supabase

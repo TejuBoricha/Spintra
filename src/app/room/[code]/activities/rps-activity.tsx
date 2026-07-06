@@ -78,6 +78,8 @@ export function RpsActivity() {
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
+          role="status"
+          aria-live="polite"
           className="glass-card p-4 rounded-2xl text-center w-full max-w-xs border border-rose-500/20"
         >
           {roundResult.outcome === "decided" ? (
@@ -140,6 +142,11 @@ export function RpsActivity() {
               {rpsChoices[currentUser.id].choice}
             </span>
           </div>
+          {!roundResult && (
+            <p className="text-xs text-muted-foreground mt-3">
+              Waiting for everyone to lock in…
+            </p>
+          )}
         </div>
       )}
 

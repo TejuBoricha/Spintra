@@ -123,6 +123,12 @@ export function BingoActivity() {
           </p>
         </motion.div>
       )}
+      {/* Same "waiting for host" cue 11 of 14 activities already show —
+          without it a guest just sees an inert card with no hint that only
+          the host can call numbers. */}
+      {!isHost && bingoCalled.length === 0 && !bingoWinner && (
+        <p className="text-sm text-muted-foreground">Waiting for host to call the first number…</p>
+      )}
       {lastCalled && !bingoWinner && (
         <motion.div
           key={lastCalled}

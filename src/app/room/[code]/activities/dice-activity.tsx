@@ -40,6 +40,15 @@ export function DiceActivity() {
         <Emoji name="game_die" size={28} /> Dice Roller
       </h2>
 
+      {/* Announces each roll's values to screen readers — the dice faces
+          themselves are purely visual glyphs. Visually hidden; the visible
+          grid below stays exactly as it was. */}
+      <div className="sr-only" role="status" aria-live="polite">
+        {!diceRolling && diceResults.length > 0
+          ? `Rolled: ${diceResults.join(", ")}${diceResults.length > 1 ? ` — total ${diceResults.reduce((a, b) => a + b, 0)}` : ""}`
+          : null}
+      </div>
+
       {/* Dice Grid aligned with standalone tool design */}
       <div className="flex flex-wrap gap-6 justify-center py-4">
         {(diceResults.length > 0 ? diceResults : [0]).map((val, i) => (

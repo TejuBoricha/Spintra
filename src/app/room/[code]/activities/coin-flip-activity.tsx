@@ -80,6 +80,10 @@ export function CoinFlipActivity() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
+          // Announce the reveal to screen readers — the flip is otherwise
+          // a purely visual event a non-sighted participant never hears.
+          role="status"
+          aria-live="polite"
         >
           <Badge className="text-lg px-6 py-2 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border-yellow-500/30">
             {coinResult}!

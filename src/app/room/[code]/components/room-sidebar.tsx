@@ -403,7 +403,7 @@ export function RoomSidebar({
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className={`h-7 w-7 ${blockedUsers.includes(p.user_id) ? "text-red-400" : ""}`}
+                                  className={`h-9 w-9 ${blockedUsers.includes(p.user_id) ? "text-red-400" : ""}`}
                                   onClick={() => handleToggleBlock(p.user_id)}
                                   aria-label={`${
                                     blockedUsers.includes(p.user_id) ? "Unblock" : "Block"
@@ -424,7 +424,7 @@ export function RoomSidebar({
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7"
+                                    className="h-9 w-9"
                                     onClick={() => handleKickParticipant(p)}
                                     aria-label={`Remove ${
                                       p.user?.username || "participant"

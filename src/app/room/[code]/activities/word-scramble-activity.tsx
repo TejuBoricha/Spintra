@@ -142,6 +142,8 @@ export function WordScrambleActivity() {
             <motion.p
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
+              role="status"
+              aria-live="polite"
               className="text-xl font-bold text-emerald-400 flex items-center gap-2 bg-emerald-500/10 px-6 py-2 rounded-full border border-emerald-500/20"
             >
               <Emoji name="party_popper" size={24} pop /> {scrambleWinner} got it — {scrambleWord.answer}!

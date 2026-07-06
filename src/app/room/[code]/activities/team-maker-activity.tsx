@@ -6,7 +6,7 @@ import { Split } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity, useRoomParticipants } from "../context/room-activity-context";
-import { shuffleArray } from "@/lib/utils";
+import { shuffleArray, disambiguatedUsernames } from "@/lib/utils";
 
 export function TeamMakerActivity() {
   const { isHost, sendActivityEvent, registerEventListener } = useRoomActivity();
@@ -46,9 +46,7 @@ export function TeamMakerActivity() {
               variant="outline"
               className="h-10 px-5 text-sm font-semibold border-cyan-500/30 hover:bg-cyan-500/10 text-cyan-300 rounded-full transition-all"
               onClick={() => {
-                const names = participants
-                  .filter((p) => p.is_online)
-                  .map((p) => p.user?.username || "Guest");
+                const names = disambiguatedUsernames(participants.filter((p) => p.is_online));
                 const shuffled = shuffleArray(names);
                 const teams = Array.from({ length: n }, (_, i) => ({
                   name: `Team ${i + 1}`,

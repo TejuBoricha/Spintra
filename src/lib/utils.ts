@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import type { ChatMessage } from "./types"
+import type { ChatMessage, RoomParticipant } from "./types"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -28,6 +28,25 @@ export function capMessageHistory(messages: ChatMessage[]): ChatMessage[] {
     : messages;
 }
 
+
+/**
+ * Display names for a set of participants, disambiguated when two
+ * participants share the same (editable, non-unique) username — a bare
+ * username list makes them indistinguishable in a team roster or draw
+ * result. Duplicates get a short user-id suffix; unique names are
+ * returned untouched, so nothing changes in the common case.
+ */
+export function disambiguatedUsernames(participants: RoomParticipant[]): string[] {
+  const counts = new Map<string, number>();
+  for (const p of participants) {
+    const name = p.user?.username || "Guest";
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  return participants.map((p) => {
+    const name = p.user?.username || "Guest";
+    return (counts.get(name) ?? 0) > 1 ? `${name} (${p.user_id.slice(0, 4)})` : name;
+  });
+}
 
 /** Unbiased Fisher-Yates shuffle. Does not mutate the input array. */
 export function shuffleArray<T>(arr: T[]): T[] {

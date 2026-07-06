@@ -684,6 +684,11 @@ function RoomUIInner({
     [participants]
   );
 
+  const onlineCount = useMemo(
+    () => participants.filter((p) => p.is_online).length,
+    [participants]
+  );
+
   if (!hasMounted) {
     return null;
   }
@@ -733,7 +738,7 @@ function RoomUIInner({
           isLocalOnlyMode={isLocalOnlyMode}
           isLocked={isLocked}
           roomCode={roomCode}
-          onlineCount={participants.filter((p) => p.is_online).length}
+          onlineCount={onlineCount}
           maxParticipantsLimit={maxParticipantsLimit}
           activeActivityType={activeActivity?.type}
           realtimeError={realtimeError}

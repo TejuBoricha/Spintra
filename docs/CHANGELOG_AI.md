@@ -122,6 +122,23 @@
 <!-- APPEND NEW ENTRIES BELOW THIS LINE -->
 <!-- Format: ## [YYYY-MM-DD] — Session Title -->
 
+## [2026-07-06] — Session 43 (continued): Nice-to-have Tier — Audit Fully Complete
+
+**AI:** Claude Code (Anthropic)
+**Task:** Complete the final (Nice-to-have, 15 findings) tier of the re-derived Session 41 audit, finishing the tier-by-tier fix mandate across all 64 findings (4 Critical + 12 High + 16 Medium + 17 Low + 15 Nice-to-have).
+
+**Fixed (11):** `Math.random()` room-code fallback removed (crypto-only, fails loudly rather than silently downgrading randomness); `persistTimerRef` cleared on unmount; `onlineCount` memoized; `timeout-minutes` on both CI jobs (25/40 min); "waiting for host" cues added to Lucky Wheel/Bingo/RPS (verified live via a real guest context); new shared `disambiguatedUsernames()` helper fixes Team Maker/Name Draw username collisions (short user-id suffix only when names actually collide); Name Draw empty-pool guard (toast instead of broadcasting "?" as winner — verified live); route loading spinner announced via `role="status"`; touch targets bumped (sidebar block/kick 28→36px, dice steppers 36→44px + `aria-label`s); activity result reveals announced to screen readers (coin-flip/word-scramble/RPS `role="status"`, dice via a visually-hidden value readout); Would-You-Rather got an explicit "✓ Your vote" label, `aria-pressed`, and the shared focus ring (verified live).
+
+**Deliberately resolved without a code change (4), each with documented reasoning in `TASKS.md`:** `npm audit` threshold kept at `high` (lowering would fail CI on Next.js's currently-unfixable bundled postcss moderate advisory — reasoning now inline in `ci.yml`); prompt-table provenance deferred until an admin-editing feature exists (speculative columns contradict this repo's dead-code discipline); shared Supabase retry wrapper accepted as disproportionate for low-stakes anonymous gameplay; `RoomSidebar` memoization intentionally skipped (it owns the chat input's state, so re-rendering on keystrokes is correct — `RoomHeader` was already memoized in the Low tier).
+
+**Files Modified:** `src/app/create/create-client.tsx`; `src/app/room/[code]/hooks/use-room-subscription.ts`; `src/app/room/[code]/room-client.tsx`; `src/app/room/[code]/components/room-sidebar.tsx`; `src/app/room/[code]/activities/lucky-wheel-activity.tsx`, `bingo-activity.tsx`, `rps-activity.tsx`, `name-draw-activity.tsx`, `team-maker-activity.tsx`, `coin-flip-activity.tsx`, `dice-activity.tsx`, `word-scramble-activity.tsx`, `would-you-rather-activity.tsx`; `src/lib/utils.ts`; `src/components/route-loading-spinner.tsx`; `src/app/tools/dice/page.tsx`; `.github/workflows/ci.yml`; `docs/TASKS.md`.
+
+**Outcome:** **The Session 41 production-readiness audit is fully complete: 64/64 findings resolved across all five tiers** (fixed, or deliberately accepted with documented reasoning — never silently skipped). `npm run verify` clean. Per the user's direction, the next step is a fresh full audit now that every tier is closed out.
+
+**Risks:** The `disambiguatedUsernames()` suffix changes displayed names only when two online participants genuinely share a name (previously indistinguishable anyway). The Lucky Wheel/Bingo/RPS waiting cues are additive UI. All other changes are ARIA attributes, size bumps, timers, and CI config — no behavioral logic changes beyond the Name Draw empty-pool guard.
+
+---
+
 ## [2026-07-06] — Session 43: Production Readiness Audit — Low Tier Fixes
 
 **AI:** Claude Code (Anthropic)

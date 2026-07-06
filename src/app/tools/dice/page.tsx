@@ -250,7 +250,8 @@ export default function DicePage() {
                     size="icon"
                     onClick={() => setCount(Math.max(1, count - 1))}
                     disabled={rolling}
-                    className="h-9 w-9 border-border bg-card/30 rounded-lg"
+                    aria-label="Decrease dice count"
+                    className="h-11 w-11 border-border bg-card/30 rounded-lg"
                   >
                     -
                   </Button>
@@ -268,7 +269,8 @@ export default function DicePage() {
                     size="icon"
                     onClick={() => setCount(Math.min(10, count + 1))}
                     disabled={rolling}
-                    className="h-9 w-9 border-border bg-card/30 rounded-lg"
+                    aria-label="Increase dice count"
+                    className="h-11 w-11 border-border bg-card/30 rounded-lg"
                   >
                     +
                   </Button>

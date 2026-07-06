@@ -370,6 +370,13 @@ export function LuckyWheelActivity() {
         </div>
       )}
 
+      {/* 11 of 14 activities already show non-hosts an explicit "waiting
+          for host" cue; without it, a guest just sees an inert wheel with
+          no hint that only the host can spin. */}
+      {!isHost && !wheelSpinning && !wheelWinner && (
+        <p className="text-sm text-muted-foreground">Waiting for host to spin the wheel…</p>
+      )}
+
       {isHost && (
         <div className="w-full space-y-3">
           <div className="flex flex-wrap gap-2">

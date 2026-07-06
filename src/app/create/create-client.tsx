@@ -109,13 +109,15 @@ export default function CreateRoomClient() {
 
   const generateCode = () => {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    // 32-character alphabet divides 2^32 evenly, so this is unbiased.
-    if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
-      const bytes = new Uint32Array(6);
-      window.crypto.getRandomValues(bytes);
-      return Array.from(bytes, (b) => chars[b % chars.length]).join("");
-    }
-    return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    // 32-character alphabet divides 2^32 evenly, so this is unbiased. No
+    // Math.random() fallback: crypto.getRandomValues has universal browser
+    // support, this only runs client-side in an event handler, and a
+    // guessable room code is a real (if minor) privacy exposure — better to
+    // fail loudly in some hypothetical crippled environment than silently
+    // downgrade code randomness.
+    const bytes = new Uint32Array(6);
+    window.crypto.getRandomValues(bytes);
+    return Array.from(bytes, (b) => chars[b % chars.length]).join("");
   };
 
   const handleCreate = useCallback(async () => {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { MessageCircleQuestion, Shuffle } from "lucide-react";
+import { MessageCircleQuestion, Shuffle, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Emoji } from "@/components/emoji";
@@ -136,13 +136,27 @@ export function WouldYouRatherActivity() {
                       option: opt,
                     });
                   }}
-                  className={`relative flex flex-col p-6 h-48 rounded-3xl border text-left transition-all duration-300 shadow-lg ${optStyle.bg} ${optStyle.border}`}
+                  aria-pressed={myVote === opt}
+                  // outline-none + the app's shared focus-visible ring —
+                  // this raw motion.button otherwise fell back to the
+                  // browser default outline, unlike every shared Button.
+                  className={`relative flex flex-col p-6 h-48 rounded-3xl border text-left transition-all duration-300 shadow-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${optStyle.bg} ${optStyle.border}`}
                 >
-                  <Badge
-                    className={`mb-3 text-[10px] uppercase font-bold tracking-wider ${optStyle.badge}`}
-                  >
-                    Option {opt}
-                  </Badge>
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <Badge
+                      className={`text-[10px] uppercase font-bold tracking-wider ${optStyle.badge}`}
+                    >
+                      Option {opt}
+                    </Badge>
+                    {/* Explicit non-color "this is your vote" signal — the
+                        border/opacity shift alone is a weak cue, especially
+                        for color-blind users. */}
+                    {myVote === opt && (
+                      <span className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider ${optStyle.countColor}`}>
+                        <Check className="w-3.5 h-3.5" aria-hidden="true" /> Your vote
+                      </span>
+                    )}
+                  </div>
                   <p className="font-bold text-base flex-1 line-clamp-3 leading-relaxed text-white">
                     {text}
                   </p>

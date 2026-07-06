@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity, useRoomParticipants } from "../context/room-activity-context";
 import { fireConfetti } from "@/components/celebration";
+import { disambiguatedUsernames } from "@/lib/utils";
+import { toast } from "sonner";
 
 export function NameDrawActivity() {
   const { isHost, sendActivityEvent, registerEventListener } = useRoomActivity();
@@ -65,8 +67,15 @@ export function NameDrawActivity() {
         <Button
           onClick={() => {
             const online = participants.filter((p) => p.is_online);
-            const winner =
-              online[Math.floor(Math.random() * online.length)]?.user?.username || "?";
+            // Drawing from an empty pool used to broadcast "?" as the
+            // winner; a room where everyone else disconnected should say
+            // so, not announce a mystery victor.
+            if (online.length === 0) {
+              toast.error("Nobody is online to draw from right now.");
+              return;
+            }
+            const names = disambiguatedUsernames(online);
+            const winner = names[Math.floor(Math.random() * names.length)];
             sendActivityEvent({ kind: "nd_winner", winner });
           }}
           className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 text-white border-0 rounded-full h-11 font-bold shadow-lg shadow-pink-500/10"

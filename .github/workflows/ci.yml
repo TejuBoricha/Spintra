@@ -9,6 +9,9 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    # Fail fast on a hang instead of burning the GitHub default 360-minute
+    # ceiling; a healthy run of this job finishes well under 15 minutes.
+    timeout-minutes: 25
 
     steps:
       - name: Checkout Repository
@@ -23,6 +26,11 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      # Threshold deliberately kept at `high` (not `moderate`): Next.js
+      # currently bundles a moderate-severity postcss advisory whose only
+      # npm-suggested "fix" is downgrading Next to 9.x — unfixable here
+      # until upstream ships a patched release. Dependabot (weekly) covers
+      # the fixable-bump path for lower severities.
       - name: Strict Dependency Security Audit
         run: npm audit --audit-level=high # Block build on high or critical vulnerability findings
 
@@ -88,6 +96,10 @@ jobs:
   # real RLS policies, and real triggers end-to-end.
   db-integration:
     runs-on: ubuntu-latest
+    # Bigger budget than validate: this job also pulls/starts ~10 Supabase
+    # Docker containers and runs the full E2E suite with CI retries. A
+    # healthy run still finishes well under half of this.
+    timeout-minutes: 40
 
     steps:
       - name: Checkout Repository
