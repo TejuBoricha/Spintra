@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef, Component, ReactNode } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, memo, Component, ReactNode } from "react";
 import { toast } from "sonner";
 import { AnimatePresence } from "framer-motion";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import type { User, ChatMessage } from "@/lib/types";
+import type { User, ChatMessage, RoomType } from "@/lib/types";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getOrCreateRoomUser, getLocalRoomCreatorId } from "@/lib/room-user";
 import { isUserBannedFromRoom } from "@/lib/room-bans";
@@ -49,6 +49,92 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     return this.props.children;
   }
 }
+
+// Memoized so unrelated state changes elsewhere in RoomUIInner (most
+// notably every chat-input keystroke updating `newMessage` in
+// useRoomChat) don't cascade into re-rendering — and remounting the active
+// game's AnimatePresence transition — every time someone types.
+const RoomGameArea = memo(function RoomGameArea({
+  activeActivity,
+  isHost,
+  roomType,
+  changeActivity,
+  isPickerOpen,
+  setIsPickerOpen,
+  stableContextValue,
+  dynamicContextValue,
+}: {
+  activeActivity: { type: string; state: unknown } | null;
+  isHost: boolean;
+  roomType: RoomType;
+  changeActivity: (type: string | null) => void;
+  isPickerOpen: boolean;
+  setIsPickerOpen: (open: boolean) => void;
+  stableContextValue: Parameters<typeof RoomActivityContext.Provider>[0]["value"];
+  dynamicContextValue: Parameters<typeof RoomParticipantsContext.Provider>[0]["value"];
+}) {
+  const ActiveGame = activeActivity?.type ? ACTIVITY_REGISTRY[activeActivity.type] ?? null : null;
+
+  const handleSelect = useCallback(
+    (type: string | null) => {
+      changeActivity(type);
+      setIsPickerOpen(false);
+    },
+    [changeActivity, setIsPickerOpen]
+  );
+  const handleChooseActivity = useCallback(() => setIsPickerOpen(true), [setIsPickerOpen]);
+
+  return (
+    <div className="flex-1 p-4 md:p-6 overflow-y-auto">
+      <RoomActivityContext.Provider value={stableContextValue}>
+        <RoomParticipantsContext.Provider value={dynamicContextValue}>
+          <ActivityPickerDialog
+            open={isPickerOpen && isHost}
+            onOpenChange={setIsPickerOpen}
+            activeActivityType={activeActivity?.type}
+            roomType={roomType}
+            onSelect={handleSelect}
+          />
+          <AnimatePresence mode="wait">
+            {/* ── No Activity Selected ── */}
+            {!activeActivity && (
+              <IdleScreen key="idle" isHost={isHost} onChooseActivity={handleChooseActivity} />
+            )}
+
+            {/* ── Active Game from Plugin Registry ── */}
+            {activeActivity &&
+              activeActivity.type !== "party" &&
+              activeActivity.type !== "classroom" &&
+              ActiveGame && (
+                <ErrorBoundary
+                  key={activeActivity.type}
+                  fallback={
+                    <div className="glass-card p-8 rounded-2xl text-center border border-red-500/20 max-w-md mx-auto mt-8">
+                      <p className="text-xl font-bold text-red-400 mb-2">Something went wrong</p>
+                      <p className="text-sm text-muted-foreground">
+                        The activity crashed or failed to load. Try picking a different activity.
+                      </p>
+                    </div>
+                  }
+                >
+                  <ActiveGame />
+                </ErrorBoundary>
+              )}
+
+            {/* ── PARTY / CLASSROOM with no sub-activity ── */}
+            {(activeActivity?.type === "party" || activeActivity?.type === "classroom") && (
+              <AggregateIdleScreen
+                key="aggregate-idle"
+                activityType={activeActivity.type}
+                isHost={isHost}
+              />
+            )}
+          </AnimatePresence>
+        </RoomParticipantsContext.Provider>
+      </RoomActivityContext.Provider>
+    </div>
+  );
+});
 
 export default function RoomClient({ code: roomCode }: { code: string }) {
   const [currentUser, setCurrentUser] = useState<User>(getOrCreateRoomUser);
@@ -526,7 +612,7 @@ function RoomUIInner({
   } = chat;
 
   // Copy Room Link Handler
-  const copyRoomLink = async () => {
+  const copyRoomLink = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(`${window.location.origin}/room/${roomCode}`);
       setCopied(true);
@@ -540,7 +626,34 @@ function RoomUIInner({
       console.error("Failed to copy room link:", error);
       toast.error("Unable to copy link. Please copy it manually.");
     }
-  };
+  }, [roomCode, isLocalOnlyMode]);
+
+  // Stable identities for RoomHeader's callback props — RoomHeader is
+  // React.memo'd specifically so that unrelated state changes elsewhere in
+  // this component (e.g. every chat-input keystroke updating `newMessage`
+  // in useRoomChat) don't cascade into re-rendering the header; that only
+  // works if the props it receives don't get new identities on every render.
+  const handleOpenCloseRoomDialog = useCallback(() => setIsCloseRoomDialogOpen(true), []);
+  const handleOpenPicker = useCallback(() => setIsPickerOpen(true), []);
+  const handleResetActivity = useCallback(() => {
+    sendActivityEvent({ kind: "activity_reset" });
+    handleActivityEvent({ kind: "activity_reset" });
+    if (roomType === "party" || roomType === "classroom") {
+      changeActivity(null);
+    }
+  }, [sendActivityEvent, handleActivityEvent, roomType, changeActivity]);
+  const handleToggleSidebar = useCallback(() => {
+    // Reads the ref mirror, not the closed-over `showParticipants` state,
+    // since this callback is intentionally kept referentially stable
+    // ([] deps) for RoomHeader's memo to be effective.
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setIsMobileSidebarOpen(true);
+      if (!showParticipantsRef.current) setHasUnreadMessages(false);
+    } else {
+      if (showParticipantsRef.current) setHasUnreadMessages(false);
+      setShowParticipants(!showParticipantsRef.current);
+    }
+  }, []);
 
   // Stable context values provided to sub-activities
   const stableContextValue = useMemo(
@@ -574,10 +687,6 @@ function RoomUIInner({
   if (!hasMounted) {
     return null;
   }
-
-  const ActiveGame = activeActivity?.type
-    ? ACTIVITY_REGISTRY[activeActivity.type] ?? null
-    : null;
 
   const sidebarContent = (
     <RoomSidebar
@@ -633,85 +742,26 @@ function RoomUIInner({
           copyRoomLink={copyRoomLink}
           isHost={isHost}
           toggleLock={toggleLock}
-          onOpenCloseRoomDialog={() => setIsCloseRoomDialogOpen(true)}
+          onOpenCloseRoomDialog={handleOpenCloseRoomDialog}
           roomType={roomType}
-          onOpenPicker={() => setIsPickerOpen(true)}
-          onResetActivity={() => {
-            sendActivityEvent({ kind: "activity_reset" });
-            handleActivityEvent({ kind: "activity_reset" });
-            if (roomType === "party" || roomType === "classroom") {
-              changeActivity(null);
-            }
-          }}
-          onToggleSidebar={() => {
-            if (typeof window !== "undefined" && window.innerWidth < 768) {
-              setIsMobileSidebarOpen(true);
-              if (!showParticipants) setHasUnreadMessages(false);
-            } else {
-              setShowParticipants(!showParticipants);
-              if (showParticipants) setHasUnreadMessages(false);
-            }
-          }}
+          onOpenPicker={handleOpenPicker}
+          onResetActivity={handleResetActivity}
+          onToggleSidebar={handleToggleSidebar}
           soundEnabled={soundEnabled}
           toggleSound={toggleSound}
         />
 
         {/* Game Area */}
-        <div className="flex-1 p-4 md:p-6 overflow-y-auto">
-          <RoomActivityContext.Provider value={stableContextValue}>
-            <RoomParticipantsContext.Provider value={dynamicContextValue}>
-              <ActivityPickerDialog
-                open={isPickerOpen && isHost}
-                onOpenChange={setIsPickerOpen}
-                activeActivityType={activeActivity?.type}
-                roomType={roomType}
-                onSelect={(type) => {
-                  changeActivity(type);
-                  setIsPickerOpen(false);
-                }}
-              />
-              <AnimatePresence mode="wait">
-                {/* ── No Activity Selected ── */}
-                {!activeActivity && (
-                  <IdleScreen
-                    key="idle"
-                    isHost={isHost}
-                    onChooseActivity={() => setIsPickerOpen(true)}
-                  />
-                )}
-
-                {/* ── Active Game from Plugin Registry ── */}
-                {activeActivity &&
-                  activeActivity.type !== "party" &&
-                  activeActivity.type !== "classroom" &&
-                  ActiveGame && (
-                    <ErrorBoundary
-                      key={activeActivity.type}
-                      fallback={
-                        <div className="glass-card p-8 rounded-2xl text-center border border-red-500/20 max-w-md mx-auto mt-8">
-                          <p className="text-xl font-bold text-red-400 mb-2">Something went wrong</p>
-                          <p className="text-sm text-muted-foreground">
-                            The activity crashed or failed to load. Try picking a different activity.
-                          </p>
-                        </div>
-                      }
-                    >
-                      <ActiveGame />
-                    </ErrorBoundary>
-                  )}
-
-                {/* ── PARTY / CLASSROOM with no sub-activity ── */}
-                {(activeActivity?.type === "party" || activeActivity?.type === "classroom") && (
-                  <AggregateIdleScreen
-                    key="aggregate-idle"
-                    activityType={activeActivity.type}
-                    isHost={isHost}
-                  />
-                )}
-              </AnimatePresence>
-            </RoomParticipantsContext.Provider>
-          </RoomActivityContext.Provider>
-        </div>
+        <RoomGameArea
+          activeActivity={activeActivity}
+          isHost={isHost}
+          roomType={roomType}
+          changeActivity={changeActivity}
+          isPickerOpen={isPickerOpen}
+          setIsPickerOpen={setIsPickerOpen}
+          stableContextValue={stableContextValue}
+          dynamicContextValue={dynamicContextValue}
+        />
       </div>
 
       {/* Desktop Sidebar - Chat & Participants */}

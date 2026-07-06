@@ -75,6 +75,13 @@ export function useRoomSubscription({
   const roomTypeRef = useRef(roomType);
   const broadcastRef = useRef<BroadcastChannel | null>(null);
   const listenersRef = useRef<Set<(event: ActivityEvent) => void>>(new Set());
+  // Escalates the "trying to reconnect" notification if the channel stays
+  // unsubscribed for too long — supabase-js retries the underlying socket
+  // connection on its own (no need to reimplement that here), but it isn't
+  // guaranteed to eventually succeed, and the notification used to sit at
+  // "Trying to reconnect..." indefinitely either way with no further
+  // guidance for the user.
+  const realtimeReconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Ordered log of this activity session's events, capped at 200. Replayed to
   // any listener the moment it registers (a fresh mount, a reconnect, or a
@@ -117,6 +124,33 @@ export function useRoomSubscription({
   useEffect(() => {
     isHostRef.current = isHost;
   }, [isHost]);
+
+  // Lets the participants/reconciliation effect below key off currentUser.id
+  // only, instead of the whole currentUser object — editing a display name
+  // (room-client.tsx's handleUpdateUsername creates a new currentUser object
+  // identity) used to re-trigger that entire effect: reloading participants,
+  // re-running electHostIfNeeded, and tearing down/recreating the 20s
+  // reconciliation interval, just to persist a name. The username update
+  // itself is already handled by handleUpdateUsername's own direct
+  // `.update({ username })` call, so this effect only needs the *latest*
+  // profile fields at the moment it actually runs (mount/reconnect), not a
+  // re-run on every edit.
+  const currentUserRef = useRef(currentUser);
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
+  // Read by the reconciliation interval below so it can skip its poll
+  // entirely while realtime is healthy, instead of hitting the DB every 20s
+  // for the lifetime of every open room regardless of connection state.
+  const isRealtimeReadyRef = useRef(isRealtimeReady);
+  useEffect(() => {
+    isRealtimeReadyRef.current = isRealtimeReady;
+  }, [isRealtimeReady]);
+  const realtimeErrorRef = useRef(realtimeError);
+  useEffect(() => {
+    realtimeErrorRef.current = realtimeError;
+  }, [realtimeError]);
 
   // Listener management for sub-activities. Replays this activity's event
   // log to a newly-registering listener first, so a fresh mount (page load,
@@ -479,10 +513,10 @@ export function useRoomSubscription({
             .update({
               is_online: true,
               role: isRoomHost ? "host" : existingParticipant.role,
-              username: currentUser.username,
-              avatar_url: currentUser.avatar_url,
-              xp: currentUser.xp,
-              rank: currentUser.rank,
+              username: currentUserRef.current.username,
+              avatar_url: currentUserRef.current.avatar_url,
+              xp: currentUserRef.current.xp,
+              rank: currentUserRef.current.rank,
             })
             .eq("id", existingParticipant.id)
             .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
@@ -498,10 +532,10 @@ export function useRoomSubscription({
               role,
               is_online: true,
               joined_at,
-              username: currentUser.username,
-              avatar_url: currentUser.avatar_url,
-              xp: currentUser.xp,
-              rank: currentUser.rank,
+              username: currentUserRef.current.username,
+              avatar_url: currentUserRef.current.avatar_url,
+              xp: currentUserRef.current.xp,
+              rank: currentUserRef.current.rank,
             }, { onConflict: "room_id,user_id" })
             .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
         }
@@ -515,10 +549,10 @@ export function useRoomSubscription({
               .update({
                 is_online: true,
                 role: "participant",
-                username: currentUser.username,
-                avatar_url: currentUser.avatar_url,
-                xp: currentUser.xp,
-                rank: currentUser.rank,
+                username: currentUserRef.current.username,
+                avatar_url: currentUserRef.current.avatar_url,
+                xp: currentUserRef.current.xp,
+                rank: currentUserRef.current.rank,
               })
               .eq("id", existingParticipant.id)
               .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
@@ -531,10 +565,10 @@ export function useRoomSubscription({
                 role: "participant",
                 is_online: true,
                 joined_at,
-                username: currentUser.username,
-                avatar_url: currentUser.avatar_url,
-                xp: currentUser.xp,
-                rank: currentUser.rank,
+                username: currentUserRef.current.username,
+                avatar_url: currentUserRef.current.avatar_url,
+                xp: currentUserRef.current.xp,
+                rank: currentUserRef.current.rank,
               }, { onConflict: "room_id,user_id" })
               .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
           }
@@ -569,11 +603,11 @@ export function useRoomSubscription({
               joined_at: participantRow.joined_at,
               user: {
                 id: currentUser.id,
-                username: currentUser.username,
-                avatar_url: currentUser.avatar_url,
-                xp: currentUser.xp,
-                rank: currentUser.rank,
-                created_at: currentUser.created_at,
+                username: currentUserRef.current.username,
+                avatar_url: currentUserRef.current.avatar_url,
+                xp: currentUserRef.current.xp,
+                rank: currentUserRef.current.rank,
+                created_at: currentUserRef.current.created_at,
               },
             },
           ]);
@@ -664,13 +698,26 @@ export function useRoomSubscription({
     // stale forever, with nothing to self-heal it. Demo mode's
     // BroadcastChannel fallback doesn't need this: it's synchronous and
     // same-machine, with no equivalent "missed while reconnecting" gap.
-    const reconciliationInterval = supabase ? setInterval(loadParticipants, 20_000) : null;
+    //
+    // The tick itself is cheap and always scheduled, but the actual
+    // `room_participants` fetch only fires while realtime is degraded
+    // (`isRealtimeReadyRef` false, or a `realtimeErrorRef` is set) — a
+    // healthy room shouldn't cost a DB round trip every 20s for its entire
+    // lifetime just to guard against a rare missed-event edge case that
+    // reconnection already flags via those refs.
+    const reconciliationInterval = supabase
+      ? setInterval(() => {
+          if (!isRealtimeReadyRef.current || realtimeErrorRef.current) {
+            loadParticipants();
+          }
+        }, 20_000)
+      : null;
 
     return () => {
       isMounted = false;
       if (reconciliationInterval) clearInterval(reconciliationInterval);
     };
-  }, [roomCode, currentUser, electHostIfNeeded, router, authReady, prefetchedRoom, prefetchedExistingParticipant]);
+  }, [roomCode, currentUser.id, electHostIfNeeded, router, authReady, prefetchedRoom, prefetchedExistingParticipant]);
 
   // Subscriptions & Fallback Setup Effect
   useEffect(() => {
@@ -913,10 +960,36 @@ export function useRoomSubscription({
           filter: `room_id=eq.${roomCode}`,
         },
         (payload) => {
-          const updated = payload.new as RoomParticipant;
+          // Like the INSERT handler below: the raw row has flat
+          // username/avatar_url/xp/rank columns, not the app-level
+          // RoomParticipant type's nested `user` object. Spreading it
+          // directly onto the participant (the previous behavior) silently
+          // never updated the displayed profile — it wrote a stray top-level
+          // `username` field the UI never reads, instead of `.user.username`.
+          const updated = payload.new as RoomParticipant & {
+            username?: string;
+            avatar_url?: string;
+            xp?: number;
+            rank?: string;
+          };
           setParticipants((prev) => {
             const next = prev.map((participant) =>
-              participant.id === updated.id ? { ...participant, ...updated } : participant
+              participant.id === updated.id
+                ? {
+                    ...participant,
+                    role: updated.role,
+                    is_online: updated.is_online,
+                    user: {
+                      ...participant.user,
+                      id: participant.user?.id ?? updated.user_id,
+                      username: updated.username ?? participant.user?.username ?? "Guest",
+                      avatar_url: updated.avatar_url ?? participant.user?.avatar_url,
+                      xp: updated.xp ?? participant.user?.xp ?? 0,
+                      rank: (updated.rank ?? participant.user?.rank) as User["rank"],
+                      created_at: participant.user?.created_at ?? participant.joined_at,
+                    },
+                  }
+                : participant
             );
             if (updated.role !== "host" || !updated.is_online) {
               electHostIfNeeded(supabase, next);
@@ -1043,6 +1116,10 @@ export function useRoomSubscription({
 
     channel.subscribe((status: string) => {
       if (status === "SUBSCRIBED") {
+        if (realtimeReconnectTimerRef.current) {
+          clearTimeout(realtimeReconnectTimerRef.current);
+          realtimeReconnectTimerRef.current = null;
+        }
         setIsRealtimeReady(true);
         setRealtimeError(null);
         setNotification(null);
@@ -1058,10 +1135,26 @@ export function useRoomSubscription({
         setIsRealtimeReady(false);
         setRealtimeError("Realtime subscription failed.");
         setNotification("Realtime connection lost. Trying to reconnect...");
+        // supabase-js keeps retrying the socket connection on its own; if it
+        // hasn't recovered after 20s, upgrade the guidance instead of
+        // leaving "Trying to reconnect..." showing forever with no next
+        // step for the user.
+        if (!realtimeReconnectTimerRef.current) {
+          realtimeReconnectTimerRef.current = setTimeout(() => {
+            realtimeReconnectTimerRef.current = null;
+            setNotification(
+              "Still having trouble reconnecting. If this continues, try refreshing the page."
+            );
+          }, 20_000);
+        }
       }
     });
 
     return () => {
+      if (realtimeReconnectTimerRef.current) {
+        clearTimeout(realtimeReconnectTimerRef.current);
+        realtimeReconnectTimerRef.current = null;
+      }
       supabase.removeChannel(channel);
       supabaseChannelRef.current = null;
     };

@@ -67,7 +67,12 @@ export function WordScrambleActivity() {
           break;
         }
         case "scramble_correct": {
-          setScrambleWinner(event.username);
+          // Same class of race as Bingo: each client independently checks
+          // its own guess and broadcasts its own win claim with no
+          // server-side arbitration, so on a near-simultaneous correct
+          // guess a client could otherwise receive two of these events and
+          // flip-flop which name it displays. Keep only the first.
+          setScrambleWinner((prev) => prev ?? event.username);
           playSuccess(soundEnabled);
           break;
         }

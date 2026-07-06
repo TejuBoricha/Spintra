@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import {
   Wifi,
   Lock,
@@ -45,7 +45,7 @@ interface RoomHeaderProps {
   toggleSound: () => void;
 }
 
-export function RoomHeader({
+export const RoomHeader = memo(function RoomHeader({
   roomName,
   realtimeStatusClass,
   realtimeStatusLabel,
@@ -317,4 +317,4 @@ export function RoomHeader({
       </Dialog>
     </div>
   );
-}
+});

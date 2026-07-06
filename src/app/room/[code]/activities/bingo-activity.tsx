@@ -54,7 +54,13 @@ export function BingoActivity() {
           break;
         }
         case "bingo_win": {
-          setBingoWinner(event.username);
+          // Two players can each independently detect their own win and
+          // broadcast it before either has seen the other's event (no
+          // server-side arbitration). Keeping only the first one received
+          // per client — instead of always overwriting with whichever
+          // arrived most recently — stops a client from flip-flopping which
+          // name it shows as more of these events trickle in.
+          setBingoWinner((prev) => prev ?? event.username);
           break;
         }
         case "bingo_reset":

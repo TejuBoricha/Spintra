@@ -105,7 +105,14 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Pinned rather than "latest" — this exact version's behavior
+          # (supabase status -o env output format, db reset semantics) is
+          # what Session 42's CI iterations 1-9 were fought against and
+          # verified working; "latest" can silently drift to a version with
+          # different behavior on any future run, with no warning, plus it
+          # depends on a GitHub API call to resolve which risks its own
+          # rate-limit failures (observed once already). Bump deliberately.
+          version: 2.109.0
 
       - name: Start Ephemeral Local Supabase Stack
         run: supabase start

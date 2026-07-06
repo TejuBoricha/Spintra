@@ -88,3 +88,109 @@ test('two participants join, play trivia, and see each other\'s presence', async
     await browser.close();
   }
 });
+
+// Tournament and Lucky Wheel were, until now, the two highest-complexity
+// activities with zero e2e coverage — and each had already shipped a real,
+// previously-live bug once (double-elimination bracket matches never
+// completing, Session 33; the wheel spinning forever and never landing,
+// Session 41's activity-state persistence fix). Regression coverage for
+// exactly those failure modes, not just a smoke check that the UI renders.
+test('tournament bracket generates, scores, and crowns a champion', async ({ page, baseURL }) => {
+  test.setTimeout(90_000);
+  page.on('pageerror', (err) => console.log('[browser:pageerror]', err.message));
+
+  await page.goto('/create?type=tournament');
+  await page.waitForSelector('[data-testid="create-room-button"]', { timeout: 30000 });
+  await page.click('[data-testid="create-room-button"]');
+  await page.waitForURL(/\/room\/[A-Z0-9]+/);
+  const roomCode = page.url().split('/room/')[1];
+
+  const isLocalOnlyMode = await page.getByText(/this device only/i).isVisible().catch(() => false);
+  if (isLocalOnlyMode) {
+    test.skip(true, 'App is running without Supabase configured (demo-mode BroadcastChannel fallback) — a second browser context can never see this room');
+  }
+
+  const browser = await chromium.launch();
+  const guestContext = await browser.newContext();
+  const guestPage = await guestContext.newPage();
+
+  try {
+    await guestPage.goto(`${baseURL}/room/${roomCode}`);
+    await expect(guestPage.getByText('Live', { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/People \(2\)/)).toBeVisible({ timeout: 30000 });
+
+    // Default format is single-elimination; 2 online participants makes
+    // exactly one match, whose completion should crown a champion directly
+    // (no further rounds to advance through).
+    await page.getByRole('button', { name: /generate bracket/i }).click();
+    const match = page.locator('[data-testid="tournament-match"][data-match-ready="true"]').first();
+    await expect(match).toBeVisible({ timeout: 10000 });
+    await match.click();
+
+    await expect(page.getByText('Update Score')).toBeVisible({ timeout: 5000 });
+    const scoreInputs = page.locator('input[type="number"]');
+    await scoreInputs.nth(0).fill('3');
+    await scoreInputs.nth(1).fill('1');
+    await page.getByRole('button', { name: /^save$/i }).click();
+
+    // Host: champion toast + banner. Guest: the same tournament_update
+    // broadcast should independently render the champion banner too.
+    await expect(page.getByText(/wins the tournament/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/Tournament Champion/i)).toBeVisible({ timeout: 10000 });
+    await expect(guestPage.getByText(/Tournament Champion/i)).toBeVisible({ timeout: 10000 });
+  } finally {
+    await guestContext.close();
+    await browser.close();
+  }
+});
+
+test('lucky wheel spins, lands on a winner, and does not spin again on its own', async ({ page, baseURL }) => {
+  test.setTimeout(90_000);
+  page.on('pageerror', (err) => console.log('[browser:pageerror]', err.message));
+
+  await page.goto('/create?type=lucky-wheel');
+  await page.waitForSelector('[data-testid="create-room-button"]', { timeout: 30000 });
+  await page.click('[data-testid="create-room-button"]');
+  await page.waitForURL(/\/room\/[A-Z0-9]+/);
+  const roomCode = page.url().split('/room/')[1];
+
+  const isLocalOnlyMode = await page.getByText(/this device only/i).isVisible().catch(() => false);
+  if (isLocalOnlyMode) {
+    test.skip(true, 'App is running without Supabase configured (demo-mode BroadcastChannel fallback) — a second browser context can never see this room');
+  }
+
+  const browser = await chromium.launch();
+  const guestContext = await browser.newContext();
+  const guestPage = await guestContext.newPage();
+
+  try {
+    await guestPage.goto(`${baseURL}/room/${roomCode}`);
+    await expect(guestPage.getByText('Live', { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/People \(2\)/)).toBeVisible({ timeout: 30000 });
+
+    const spinButton = page.getByRole('button', { name: /spin the wheel/i });
+    await expect(spinButton).toBeVisible({ timeout: 10000 });
+    await spinButton.click();
+
+    // The spin animation runs ~3s; "Winner!" appearing confirms it actually
+    // landed rather than spinning indefinitely (the exact bug this test
+    // guards against). Guest should land on the same winner independently
+    // via the same broadcast winner-selection payload.
+    await expect(page.getByText('Winner!')).toBeVisible({ timeout: 10000 });
+    await expect(guestPage.getByText('Winner!')).toBeVisible({ timeout: 10000 });
+    const winnerText = await page.locator('text=Winner!').locator('..').textContent();
+
+    // Regression guard: wait well past landing and confirm the button
+    // returned to "Spin the Wheel!" (not stuck re-announcing "Spinning…"),
+    // and the winner text is still the same one, not overwritten by a
+    // self-triggered restart.
+    await page.waitForTimeout(4000);
+    await expect(spinButton).toHaveText(/spin the wheel/i);
+    const winnerTextAfterWait = await page.locator('text=Winner!').locator('..').textContent();
+    console.log('Wheel winner:', winnerText, '| after wait:', winnerTextAfterWait);
+    expect(winnerTextAfterWait).toBe(winnerText);
+  } finally {
+    await guestContext.close();
+    await browser.close();
+  }
+});

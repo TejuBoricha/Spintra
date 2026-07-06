@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Lightbulb, Shuffle, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -95,11 +95,18 @@ export function TriviaActivity() {
     });
   }, [registerEventListener, soundEnabled, currentUser.id]);
 
-  const filteredQuestions = questions.filter((q) => {
-    const categoryMatch = selectedCategory === "All" || q.category === selectedCategory;
-    const difficultyMatch = selectedDifficulty === "All" || q.difficulty === selectedDifficulty;
-    return categoryMatch && difficultyMatch;
-  });
+  // Re-filtering the full (up to 2000-row) question bank is wasted work on
+  // every render that isn't caused by a filter/question-bank change — most
+  // notably the trivia_answer events other participants' answers trigger.
+  const filteredQuestions = useMemo(
+    () =>
+      questions.filter((q) => {
+        const categoryMatch = selectedCategory === "All" || q.category === selectedCategory;
+        const difficultyMatch = selectedDifficulty === "All" || q.difficulty === selectedDifficulty;
+        return categoryMatch && difficultyMatch;
+      }),
+    [questions, selectedCategory, selectedDifficulty]
+  );
 
   const drawNextQuestion = () => {
     let currentIndices = [...remainingIndices];

@@ -29,21 +29,21 @@ export async function GET() {
     const { error } = await supabase.from("rooms").select("id", { count: "exact", head: true }).limit(1);
 
     if (error) {
+      // Logged server-side only — the public response stays generic so an
+      // unauthenticated prober can't use raw Postgres/PostgREST error text
+      // to fingerprint schema/internal details.
+      console.error("Health check: database query failed:", error.message);
       return NextResponse.json(
-        { status: "error", database: "unreachable", detail: error.message, timestamp: new Date().toISOString() },
+        { status: "error", database: "unreachable", timestamp: new Date().toISOString() },
         { status: 503 }
       );
     }
 
     return NextResponse.json({ status: "ok", database: "reachable", timestamp: new Date().toISOString() });
   } catch (err) {
+    console.error("Health check: unexpected error:", err instanceof Error ? err.message : err);
     return NextResponse.json(
-      {
-        status: "error",
-        database: "unreachable",
-        detail: err instanceof Error ? err.message : "Unknown error",
-        timestamp: new Date().toISOString(),
-      },
+      { status: "error", database: "unreachable", timestamp: new Date().toISOString() },
       { status: 503 }
     );
   }

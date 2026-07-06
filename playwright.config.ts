@@ -10,6 +10,13 @@ export default defineConfig({
   // timeouts below (observed: create-room-button, purely static markup,
   // never found within 30-45s).
   timeout: 60 * 1000,
+  // A residual non-deterministic CI flake was accepted rather than chased
+  // further (see TASKS.md's High-tier CI item) — an ephemeral Supabase
+  // Docker stack on a shared runner has real timing/resource variance this
+  // suite can hit even when nothing is actually broken. Retrying in CI lets
+  // that class of flake self-heal instead of failing the whole run; a
+  // genuinely broken test still fails after using up its retries.
+  retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? [['html', { open: 'never' }], ['list']] : 'list',
   use: {

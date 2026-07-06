@@ -427,6 +427,7 @@ export default function DicePage() {
                   variant="outline"
                   size="icon"
                   onClick={() => setSoundEnabled(!soundEnabled)}
+                  aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
                   className="h-12 w-12 border-border bg-card/30 hover:bg-muted rounded-xl"
                 >
                   {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}

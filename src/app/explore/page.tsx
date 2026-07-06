@@ -408,6 +408,7 @@ export default function ExplorePage() {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-muted-foreground" />
               <Input
                 placeholder="Search rooms, templates..."
+                aria-label="Search rooms and templates"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10 h-12 bg-muted/50 border-border rounded-2xl"
@@ -416,14 +417,15 @@ export default function ExplorePage() {
 
             {/* Quick Join Input */}
             <div className="flex gap-2">
-              <input
+              <Input
                 type="text"
                 maxLength={6}
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
                 onKeyDown={(e) => e.key === "Enter" && handleJoinRoom(joinCode)}
                 placeholder="JOIN BY CODE (EX: 89PB5T)"
-                className="flex-1 px-4 h-12 bg-muted/50 border border-border rounded-2xl text-center text-sm font-mono font-bold uppercase tracking-wider text-purple-300 focus:outline-none focus:border-cyan-500/50"
+                aria-label="Join room by code"
+                className="flex-1 px-4 h-12 bg-muted/50 border-border rounded-2xl text-center text-sm font-mono font-bold uppercase tracking-wider text-purple-300"
               />
               <Button
                 onClick={() => handleJoinRoom(joinCode)}
