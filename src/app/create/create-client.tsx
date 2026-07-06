@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Sparkles, Copy, Check } from "lucide-react";
@@ -35,10 +35,34 @@ export default function CreateRoomClient() {
 
   const [currentUser, setCurrentUser] = useState(getOrCreateRoomUser);
   const [selectedType, setSelectedType] = useState<RoomType>(preselected || "team-maker");
+  // Guards handleCreate against the same race class already fixed in
+  // room-client.tsx: currentUser.id starts as a locally-generated random id
+  // and is only overwritten with the real auth.uid() once sign-in resolves.
+  // Without this, clicking "Create Room" fast enough (RLS on rooms' INSERT
+  // is wide open, so nothing rejects it) persists host_id as that stale
+  // local id — by the time the creator lands on their own room, currentUser
+  // has since updated to the real auth.uid(), no longer matching the room's
+  // stored host_id, so the creator isn't recognized as their own room's host.
+  const [authReady, setAuthReady] = useState(false);
+  // Mirrored in refs so handleCreate (below) reads the *latest* values even
+  // when invoked from the E2E test bridge, which calls it directly and
+  // bypasses the visible button's disabled={!authReady} state entirely —
+  // relying on the button alone isn't enough to close this race.
+  const authReadyRef = useRef(authReady);
+  const currentUserRef = useRef(currentUser);
+  useEffect(() => {
+    authReadyRef.current = authReady;
+  }, [authReady]);
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
-    if (!supabase) return;
+    if (!supabase) {
+      queueMicrotask(() => setAuthReady(true));
+      return;
+    }
 
     const signIn = async () => {
       try {
@@ -69,6 +93,8 @@ export default function CreateRoomClient() {
             "Anonymous sign-ins are disabled in your Supabase project. Please enable 'Allow Anonymous Sign-ins' in your Supabase Dashboard (Settings -> Authentication)."
           );
         }
+      } finally {
+        setAuthReady(true);
       }
     };
 
@@ -93,12 +119,27 @@ export default function CreateRoomClient() {
   };
 
   const handleCreate = useCallback(async () => {
+    // Wait out sign-in rather than proceeding with whatever currentUserRef
+    // holds right now — see the authReady comment above for why a stale
+    // local id here is a real, if delayed, bug rather than an immediate
+    // failure. Reads via refs (not the closed-over currentUser/authReady)
+    // since this callback can be invoked from the E2E bridge, whose
+    // pre-hydration call captured whatever render happened to be current
+    // then, not necessarily the latest one.
+    if (!authReadyRef.current) {
+      await new Promise<void>((resolve) => {
+        const check = () => (authReadyRef.current ? resolve() : setTimeout(check, 50));
+        check();
+      });
+    }
+
     setIsCreating(true);
 
     const supabase = getSupabaseBrowserClient();
     let code = generateCode();
     const gameLabel = GAMES.find((g) => g.type === selectedType)?.label || "Game";
     const finalRoomName = roomName || `${gameLabel} Room`;
+    const hostId = currentUserRef.current.id;
 
     if (supabase) {
       try {
@@ -117,7 +158,7 @@ export default function CreateRoomClient() {
             code,
             name: finalRoomName,
             type: selectedType,
-            host_id: currentUser.id,
+            host_id: hostId,
             is_public: isPublic,
             is_locked: false,
             max_participants: maxParticipants,
@@ -147,11 +188,11 @@ export default function CreateRoomClient() {
     }
 
     setCreatedRoom({ code, url });
-    setLocalRoomCreator(code, currentUser.id);
+    setLocalRoomCreator(code, hostId);
     setIsCreating(false);
     toast.success(`Room ${code} created!`);
     router.push(`/room/${code}`);
-  }, [currentUser.id, selectedType, roomName, isPublic, maxParticipants, router]);
+  }, [selectedType, roomName, isPublic, maxParticipants, router]);
 
   // If E2E clicks the server-rendered button, forward that click to this client handler
   useEffect(() => {
@@ -278,7 +319,7 @@ export default function CreateRoomClient() {
               <Button
                 onClick={handleCreate}
                 data-testid="create-room-button-client"
-                disabled={isCreating}
+                disabled={isCreating || !authReady}
                 className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white border-0 h-12"
               >
                 {isCreating ? (
