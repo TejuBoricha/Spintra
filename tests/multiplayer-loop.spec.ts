@@ -17,7 +17,7 @@ import { test, expect, chromium } from '@playwright/test';
 // than failing confusingly.
 
 test('two participants join, play trivia, and see each other\'s presence', async ({ page, baseURL }) => {
-  test.setTimeout(75_000);
+  test.setTimeout(90_000);
 
   page.on('console', (msg) => console.log(`[browser:${msg.type()}]`, msg.text()));
   page.on('pageerror', (err) => console.log('[browser:pageerror]', err.message));
@@ -66,8 +66,14 @@ test('two participants join, play trivia, and see each other\'s presence', async
 
     // Host sees the guest join in the participants count before proceeding,
     // for the same reason — confirms the host's own channel has processed
-    // the guest's presence, not just that the guest's page loaded.
-    await expect(page.getByText(/People \(2\)/)).toBeVisible({ timeout: 15000 });
+    // the guest's presence, not just that the guest's page loaded. Given a
+    // longer budget than the guest's own "Live" check: on a freshly-started
+    // CI Supabase instance, the Realtime service's Postgres logical
+    // replication connection can still be warming up even after the guest's
+    // own channel reports subscribed, so postgres_changes propagation to
+    // the host can lag further behind than it ever does against the
+    // long-running hosted project this test was first verified against.
+    await expect(page.getByText(/People \(2\)/)).toBeVisible({ timeout: 30000 });
 
     // Host starts a question; guest should see it appear via realtime sync.
     await startTriviaButton.click();
