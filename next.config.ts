@@ -12,11 +12,15 @@ import type { NextConfig } from "next";
 // bootstrap/hydration payload uses inline <script> tags on every route, not
 // just this app's one inline script (which was moved to a static file,
 // public/e2e-create-room-bridge.js, anyway — real improvement, just not
-// sufficient on its own). 'unsafe-eval' IS dropped — nothing in this app
-// calls eval()/`new Function()`, and the same live check (including the
-// Lucky Wheel's WebGL/Three.js rendering, the one place a runtime eval was
-// plausible) showed zero script-src violations once only 'unsafe-eval' was
-// removed.
+// sufficient on its own). 'unsafe-eval' IS dropped in production — nothing
+// in this app calls eval()/`new Function()`, and a live check (including
+// the Lucky Wheel's WebGL/Three.js rendering, the one place a runtime eval
+// was plausible) against a production build/server showed zero script-src
+// violations once only 'unsafe-eval' was removed. It stays in *development*
+// only: React's own dev-mode debugging (reconstructing callstacks, Fast
+// Refresh) calls eval() unconditionally in dev builds regardless of this
+// app's own code — confirmed by `next dev` breaking outright (every
+// Supabase call failing) the moment 'unsafe-eval' was dropped unconditionally.
 //
 // connect-src is normally https:/wss:-only (the real hosted Supabase
 // project only ever uses those). But CI's db-integration job — and any dev
@@ -41,7 +45,7 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      process.env.NODE_ENV === "production" ? "script-src 'self' 'unsafe-inline'" : "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       // style-src keeps 'unsafe-inline' deliberately — Framer Motion and
       // Radix primitives set inline style="" attributes directly via JS at
       // runtime (not <style> tags), which CSP nonces cannot cover (nonces

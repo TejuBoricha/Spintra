@@ -644,8 +644,20 @@ export function useRoomSubscription({
 
     runSetup();
 
+    // Periodic reconciliation, real-Supabase mode only: postgres_changes
+    // delivery has no delivery guarantee if a client's websocket briefly
+    // drops mid-reconnect (or, observed in CI against a freshly-started
+    // Supabase instance, if the Realtime service's logical-replication
+    // connection is still warming up) — an INSERT/UPDATE/DELETE missed that
+    // way would otherwise leave every client's participant list silently
+    // stale forever, with nothing to self-heal it. Demo mode's
+    // BroadcastChannel fallback doesn't need this: it's synchronous and
+    // same-machine, with no equivalent "missed while reconnecting" gap.
+    const reconciliationInterval = supabase ? setInterval(loadParticipants, 20_000) : null;
+
     return () => {
       isMounted = false;
+      if (reconciliationInterval) clearInterval(reconciliationInterval);
     };
   }, [roomCode, currentUser, electHostIfNeeded, router, authReady, prefetchedRoom, prefetchedExistingParticipant]);
 
