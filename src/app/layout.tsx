@@ -57,20 +57,12 @@ export default function RootLayout({
         </Providers>
         {/* E2E test bridge: catches clicks on the hidden server-rendered
             create-room button (src/app/create/page.tsx) that happen before
-            React hydration attaches the real handler. beforeInteractive
-            requires next/script rather than a raw <script> tag, and per
-            Next's docs that strategy must live in the root layout. */}
-        <Script id="e2e-create-room-bridge" strategy="afterInteractive" dangerouslySetInnerHTML={{
-          __html: `
-            window.e2eRoomClicked = false;
-            document.addEventListener('click', function(e) {
-              var btn = e.target;
-              if (btn && (btn.getAttribute('data-testid') === 'create-room-button' || btn.closest('[data-testid="create-room-button"]'))) {
-                window.e2eRoomClicked = true;
-              }
-            });
-          `
-        }} />
+            React hydration attaches the real handler. Loaded from a static
+            file (public/e2e-create-room-bridge.js) rather than an inline
+            dangerouslySetInnerHTML script so the CSP's script-src can stay
+            'self'-only — no 'unsafe-inline', no nonce, no dynamic rendering
+            trade-off (see next.config.ts). */}
+        <Script src="/e2e-create-room-bridge.js" strategy="afterInteractive" />
       </body>
     </html>
   );
