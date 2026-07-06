@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Emoji } from "@/components/emoji";
@@ -374,7 +375,7 @@ export function LuckyWheelActivity() {
           for host" cue; without it, a guest just sees an inert wheel with
           no hint that only the host can spin. */}
       {!isHost && !wheelSpinning && !wheelWinner && (
-        <p className="text-sm text-muted-foreground">Waiting for host to spin the wheel…</p>
+        <EmptyState icon={<Emoji name="ferris_wheel" size={48} />} description="Waiting for host to spin the wheel…" />
       )}
 
       {isHost && (

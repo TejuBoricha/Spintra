@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
@@ -107,7 +108,7 @@ export function CoinFlipActivity() {
         </Button>
       )}
       {!isHost && !coinResult && !coinFlipping && (
-        <p className="text-muted-foreground text-sm">Waiting for host to flip…</p>
+        <EmptyState icon={<Emoji name="coin" size={48} />} description="Waiting for host to flip…" />
       )}
     </motion.div>
   );

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
 import { playDiceRoll, playTick } from "@/lib/audio";
@@ -97,7 +98,7 @@ export function DiceActivity() {
         </div>
       )}
       {!isHost && diceResults.length === 0 && !diceRolling && (
-        <p className="text-muted-foreground text-sm">Waiting for host to roll…</p>
+        <EmptyState icon={<Emoji name="game_die" size={48} />} description="Waiting for host to roll…" />
       )}
     </motion.div>
   );

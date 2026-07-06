@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Lightbulb, Shuffle, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
@@ -286,10 +287,7 @@ export function TriviaActivity() {
       )}
 
       {!isHost && !triviaQuestion && (
-        <div className="glass-card p-8 rounded-2xl text-center w-full border border-white/10">
-          <p className="mb-3 flex justify-center"><Emoji name="thinking_face" size={48} /></p>
-          <p className="text-muted-foreground">Waiting for host to begin…</p>
-        </div>
+        <EmptyState icon={<Emoji name="thinking_face" size={48} />} description="Waiting for host to begin…" />
       )}
     </motion.div>
   );

@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Grid3x3, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
 import { shuffleArray } from "@/lib/utils";
@@ -127,7 +128,7 @@ export function BingoActivity() {
           without it a guest just sees an inert card with no hint that only
           the host can call numbers. */}
       {!isHost && bingoCalled.length === 0 && !bingoWinner && (
-        <p className="text-sm text-muted-foreground">Waiting for host to call the first number…</p>
+        <EmptyState icon={<Emoji name="bullseye" size={48} />} description="Waiting for host to call the first number…" />
       )}
       {lastCalled && !bingoWinner && (
         <motion.div
