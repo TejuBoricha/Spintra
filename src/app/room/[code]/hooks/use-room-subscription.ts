@@ -399,9 +399,8 @@ export function useRoomSubscription({
   // Load room details, participants list, and register self in database
   useEffect(() => {
     if (!authReady) return;
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentUser.id);
     const supabase = getSupabaseBrowserClient();
-    if (supabase && !isUUID) return;
+    if (!supabase) return;
 
     let isMounted = true;
 

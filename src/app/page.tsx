@@ -14,6 +14,7 @@ import { getOrCreateRoomUser } from "@/lib/room-user";
 import dynamic from "next/dynamic";
 const HeroThreeScene = dynamic(() => import("@/components/landing/hero-scene").then((m) => m.HeroThreeScene), {
   ssr: false,
+  loading: () => <div className="h-full w-full bg-gradient-to-b from-purple-950/50 to-background" />,
 });
 import { FeatureCard } from "@/components/landing/feature-card";
 import { AuroraBackground } from "@/components/landing/aurora-bg";

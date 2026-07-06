@@ -546,8 +546,11 @@ function RoomUIInner({
           return capMessageHistory([...prev, incoming]);
         });
         if (incoming.user_id !== localUser.id) {
-          // If sidebar is showing participants OR mobile drawer is closed, trigger unread badge
-          if (showParticipantsRef.current || !isMobileSidebarOpenRef.current) {
+          // On desktop the sidebar is always visible; only mark unread if the
+          // user has switched to the participants panel (chat hidden). On mobile
+          // mark unread when the sidebar drawer is closed.
+          const isDesktop = window.innerWidth >= 768;
+          if (isDesktop ? !showParticipantsRef.current : !isMobileSidebarOpenRef.current) {
             setHasUnreadMessages(true);
           }
         }
