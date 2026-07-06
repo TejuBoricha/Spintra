@@ -335,7 +335,12 @@ export function RoomSidebar({
                             <input
                               type="text"
                               value={editValue}
-                              onChange={(e) => setEditValue(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))}
+                              // Unicode-aware: \p{L}/\p{N} keep any script's
+                              // letters/digits (accented, CJK, Cyrillic,
+                              // etc.) — a plain a-zA-Z0-9 filter was
+                              // silently mangling every non-ASCII name.
+                              // Still blocks control characters and emoji.
+                              onChange={(e) => setEditValue(e.target.value.replace(/[^\p{L}\p{N} _.'-]/gu, ""))}
                               maxLength={15}
                               className="text-xs bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded px-1.5 py-0.5 font-medium text-foreground focus:outline-none focus:border-purple-500/50 w-24"
                               onKeyDown={(e) => {
