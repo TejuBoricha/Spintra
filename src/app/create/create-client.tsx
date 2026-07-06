@@ -244,6 +244,7 @@ export default function CreateRoomClient() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
               onClick={() => setSelectedType(rt.type)}
+              aria-pressed={selectedType === rt.type}
               className={`text-left p-4 rounded-xl border transition-all duration-200 ${
                 selectedType === rt.type
                   ? "glass-card border-purple-500/50 bg-purple-500/10 shadow-lg shadow-purple-500/10"
@@ -303,7 +304,7 @@ export default function CreateRoomClient() {
                 Selected Game
               </Label>
               {selectedGame && SelectedGameIcon && (
-                <div className="mt-2 flex items-center gap-3 rounded-xl border border-purple-500/30 bg-purple-500/10 p-3">
+                <div aria-live="polite" className="mt-2 flex items-center gap-3 rounded-xl border border-purple-500/30 bg-purple-500/10 p-3">
                   <div
                     className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${selectedGame.color}`}
                   >

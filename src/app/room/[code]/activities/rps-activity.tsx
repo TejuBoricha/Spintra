@@ -143,7 +143,7 @@ export function RpsActivity() {
             </span>
           </div>
           {!roundResult && (
-            <p className="text-xs text-muted-foreground mt-3">
+            <p aria-live="polite" className="text-xs text-muted-foreground mt-3">
               Waiting for everyone to lock in…
             </p>
           )}

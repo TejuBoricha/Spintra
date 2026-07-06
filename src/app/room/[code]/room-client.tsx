@@ -400,7 +400,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
             <Emoji name={errorDetails.emoji} size={64} pop />
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-black text-white">{errorDetails.title}</h1>
+            <h1 tabIndex={-1} ref={(el) => el?.focus()} className="text-2xl font-black text-white">{errorDetails.title}</h1>
             <p className="text-muted-foreground text-sm leading-relaxed">{errorDetails.desc}</p>
           </div>
           {accessError === "error" ? (

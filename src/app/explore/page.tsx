@@ -9,7 +9,7 @@ import {
   Search,
   TrendingUp,
   Clock,
-  Heart,
+  Zap,
   Sparkles,
   Users,
   Radar,
@@ -444,6 +444,7 @@ export default function ExplorePage() {
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
+              aria-pressed={activeCategory === cat}
               className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${
                 activeCategory === cat
                   ? "bg-purple-600 text-white shadow-lg shadow-purple-500/25"
@@ -495,6 +496,8 @@ export default function ExplorePage() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
+              role="status"
+              aria-live="polite"
               className="glass-card p-12 text-center border border-border rounded-3xl flex flex-col items-center justify-center gap-6 max-w-lg mx-auto"
             >
               <div className="w-16 h-16 rounded-full bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
@@ -559,8 +562,8 @@ export default function ExplorePage() {
                           <span className="flex items-center gap-1 text-sky-400/80">
                             <Globe className="w-3 h-3" /> Public
                           </span>
-                          <span className="flex items-center gap-1 font-semibold text-rose-400">
-                            <Heart className="w-3.5 h-3.5 fill-rose-500/20 text-rose-400" /> {room.hearts}
+                          <span className="flex items-center gap-1 font-semibold text-amber-400" title="Activity score">
+                            <Zap className="w-3.5 h-3.5 fill-amber-500/20 text-amber-400" /> {room.hearts}
                           </span>
                         </div>
                         <span className="font-medium">by @{room.host}</span>

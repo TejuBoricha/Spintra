@@ -695,7 +695,7 @@ export default function LuckyWheelPage() {
                           className="absolute inset-0 w-5 h-5 opacity-0 cursor-pointer z-10"
                         />
                         <div
-                          className="w-5 h-5 rounded-full ring-1 ring-white/10 shrink-0"
+                          className="w-5 h-5 rounded-full ring-1 ring-white/10 shrink-0 group-focus-within/entry:ring-2 group-focus-within/entry:ring-purple-500"
                           style={{ backgroundColor: entry.color }}
                         />
                       </div>
@@ -806,7 +806,11 @@ export default function LuckyWheelPage() {
                 {TEMPLATES.map((tpl) => (
                   <button
                     key={tpl.label}
-                    onClick={() => applyTemplate(tpl)}
+                    onClick={() => {
+                      if (entries.length > 0 && !window.confirm(`Replace current entries with "${tpl.label}" template?`)) return;
+                      applyTemplate(tpl);
+                    }}
+                    aria-label={`Apply "${tpl.label}" template (replaces current entries)`}
                     className="flex items-center gap-3 p-2.5 rounded-lg border border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.04] hover:border-cyan-500/20 transition-all text-left group"
                   >
                     <Emoji name={tpl.icon} size={22} animated={false} />

@@ -129,6 +129,7 @@ export function NeverHaveIEverActivity() {
                   key={choice}
                   whileHover={myChoice ? {} : { scale: 1.02, y: -2 }}
                   whileTap={myChoice ? {} : { scale: 0.98 }}
+                  aria-pressed={myChoice === choice}
                   onClick={() => {
                     if (myChoice) return;
                     sendActivityEvent({
