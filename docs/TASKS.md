@@ -34,11 +34,11 @@ Full write-up with Description/User impact/Technical impact/Recommended fix/Effo
 - `[x]` 4 hand-rolled modals lack focus trap/Escape/restore — migrated all 4 (QR code, navbar Join Room, Activity Picker, Tournament ScoreEditor) onto the existing `Dialog` primitive; verified live (Escape closes each one).
 - `[x]` Room header icon toolbar has no responsive mobile collapse — outer/inner rows now wrap gracefully instead of clipping.
 
-### Medium (3/16)
+### Medium (4/16)
 - `[x]` Guess-the-Number secret broadcast to all clients + forgeable win claim. Fixed via migration `0028`: secret and hint-check moved server-side behind two SECURITY DEFINER RPCs (`set_guess_number_secret` host-only, `check_guess_number` room-members-only), backed by a table with no direct SELECT/INSERT/UPDATE policies at all — no client can read the secret back through the API. Verified live (host-only set, RLS-blocked direct read, correct hints, non-member denied).
 - `[x]` Room-capacity check TOCTOU race. Fixed via migration `0029`: `pg_advisory_xact_lock` keyed on room code serializes concurrent joins to the same room. Verified live under real concurrency — 10 simultaneous join attempts for a room's single remaining slot, exactly 1 succeeded.
 - `[x]` Username edit strips all non-ASCII characters. `room-sidebar.tsx`'s edit input filtered to `a-zA-Z0-9_` only, mangling any accented/CJK/Cyrillic/etc. name. Fixed with a Unicode-aware `\p{L}\p{N}` filter (plus space/`_`/`.`/`'`/`-`) that still blocks control characters and emoji.
-- `[ ]` Message reports have no rate limit.
+- `[x]` Message reports have no rate limit. The existing `unique (message_id, reporter_id)` constraint only stopped re-reporting the same message. Fixed via migration `0030` (10 reports/10min per reporter, same pattern as 0011/0025). Verified live: 11 reports of 11 distinct messages, exactly 10 succeeded.
 - `[ ]` Overly permissive CSP (`unsafe-inline`/`unsafe-eval`).
 - `[ ]` Supabase outage misreported as "room not found."
 - `[ ]` No health-check/uptime monitoring.

@@ -241,7 +241,12 @@ export function useRoomChat({
         toast.success("Reported. Thanks for flagging this.");
       } catch (error) {
         console.error("Failed to report message:", error);
-        toast.error("Unable to report message. Please try again.");
+        const errMsg = (error as { message?: string })?.message || "";
+        toast.error(
+          errMsg.toLowerCase().includes("rate limit exceeded")
+            ? errMsg
+            : "Unable to report message. Please try again."
+        );
       }
     },
     [currentUser, roomCode]
