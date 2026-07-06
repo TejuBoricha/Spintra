@@ -37,6 +37,11 @@ export function TriviaActivity() {
       supabase
         .from("trivia_questions")
         .select("*")
+        // PostgREST truncates unbounded selects silently (no error) past its
+        // configured row cap — an explicit limit makes the ceiling this
+        // code actually relies on visible and intentional, generous enough
+        // to comfortably outgrow the current question bank.
+        .limit(2000)
         .then(({ data, error }) => {
           if (data && !error && data.length > 0) {
             const fetched = data.map((q) => ({

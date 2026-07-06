@@ -43,6 +43,11 @@ export function WordScrambleActivity() {
         .from("activity_prompts")
         .select("*")
         .eq("activity_type", "word-scramble")
+        // PostgREST truncates unbounded selects silently (no error) past
+        // its configured row cap — an explicit limit makes that ceiling
+        // intentional and visible, generous enough to comfortably outgrow
+        // the current prompt bank.
+        .limit(1000)
         .then(({ data, error }) => {
           if (data && !error && data.length > 0) {
             const fetched = data.map((p) => (p.prompt_data as { word: string }).word.toUpperCase());

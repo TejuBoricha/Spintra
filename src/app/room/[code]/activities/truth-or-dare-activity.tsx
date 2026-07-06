@@ -57,6 +57,11 @@ export function TruthOrDareActivity() {
         .from("activity_prompts")
         .select("*")
         .eq("activity_type", "truth-or-dare")
+        // PostgREST truncates unbounded selects silently (no error) past
+        // its configured row cap — an explicit limit makes that ceiling
+        // intentional and visible, generous enough to comfortably outgrow
+        // the current prompt bank.
+        .limit(1000)
         .then(({ data, error }) => {
           if (data && !error) {
             const fetchedTruths = data

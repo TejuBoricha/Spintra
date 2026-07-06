@@ -32,6 +32,11 @@ export function WouldYouRatherActivity() {
         .from("activity_prompts")
         .select("*")
         .eq("activity_type", "would-you-rather")
+        // PostgREST truncates unbounded selects silently (no error) past
+        // its configured row cap — an explicit limit makes that ceiling
+        // intentional and visible, generous enough to comfortably outgrow
+        // the current prompt bank.
+        .limit(1000)
         .then(({ data, error }) => {
           if (data && !error) {
             const fetched = data.map((p) => p.prompt_data as { a: string; b: string });
