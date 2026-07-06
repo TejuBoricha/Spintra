@@ -27,6 +27,7 @@ import type { RoomType } from "@/lib/types";
 import { GAMES } from "@/lib/games";
 import { getOrCreateRoomUser } from "@/lib/room-user";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { checkCanJoinRoom, ROOM_JOIN_ERROR_MESSAGES } from "@/lib/room-join-check";
 
 interface ExploreRoom {
   id: string;
@@ -297,65 +298,11 @@ export default function ExplorePage() {
     try {
       const supabase = getSupabaseBrowserClient();
       if (supabase) {
-        const { data: room, error: roomError } = await supabase
-          .from("rooms")
-          .select("is_locked, max_participants, host_id")
-          .eq("code", code)
-          .maybeSingle();
-
-        if (roomError || !room) {
-          toast.error("Room code not found. Please double check.");
+        const result = await checkCanJoinRoom(supabase, code, currentUser.id);
+        if (!result.ok) {
+          toast.error(ROOM_JOIN_ERROR_MESSAGES[result.reason]);
           setJoining(false);
           return;
-        }
-
-        const isRoomHost = room.host_id === currentUser.id;
-
-        // Check existing participant row (reconnects bypass capacity/lock/ban)
-        const { data: existingPart } = await supabase
-          .from("room_participants")
-          .select("id")
-          .eq("room_id", code)
-          .eq("user_id", currentUser.id)
-          .maybeSingle();
-
-        const isRegistered = !!existingPart;
-
-        if (!isRoomHost && !isRegistered) {
-          // Ban check — must come before the "Joining room…" toast
-          const { data: ban } = await supabase
-            .from("room_bans")
-            .select("id")
-            .eq("room_id", code)
-            .eq("user_id", currentUser.id)
-            .maybeSingle();
-
-          if (ban) {
-            toast.error("You have been removed from this room by the host and cannot rejoin.");
-            setJoining(false);
-            return;
-          }
-
-          if (room.is_locked) {
-            toast.error("This room is locked by the host.");
-            setJoining(false);
-            return;
-          }
-
-          // Only count currently online participants — see note in
-          // room-client.tsx's verifyAccess for why counting every row
-          // regardless of status is wrong.
-          const { data: parts } = await supabase
-            .from("room_participants")
-            .select("id")
-            .eq("room_id", code)
-            .eq("is_online", true);
-
-          if (parts && parts.length >= room.max_participants) {
-            toast.error("This room is full.");
-            setJoining(false);
-            return;
-          }
         }
       }
 

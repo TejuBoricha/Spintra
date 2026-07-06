@@ -7,6 +7,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { checkCanJoinRoom, ROOM_JOIN_ERROR_MESSAGES } from "@/lib/room-join-check";
 import { ArrowRight, Sparkles, Zap, Globe, MessageCircle, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getOrCreateRoomUser } from "@/lib/room-user";
@@ -47,68 +48,11 @@ export default function HomePage() {
     try {
       const supabase = getSupabaseBrowserClient();
       if (supabase) {
-        const { data: room, error: roomError } = await supabase
-          .from("rooms")
-          .select("is_locked, max_participants, host_id")
-          .eq("code", homeCode)
-          .maybeSingle();
-
-        if (roomError || !room) {
-          toast.error("Room code not found. Please double check.");
+        const result = await checkCanJoinRoom(supabase, homeCode, currentUser.id);
+        if (!result.ok) {
+          toast.error(ROOM_JOIN_ERROR_MESSAGES[result.reason]);
           setHomeJoining(false);
           return;
-        }
-
-        const isRoomHost = room.host_id === currentUser.id;
-
-        // Check if user is already a participant of this room (for reconnects)
-        const { data: existingPart } = await supabase
-          .from("room_participants")
-          .select("id")
-          .eq("room_id", homeCode)
-          .eq("user_id", currentUser.id)
-          .maybeSingle();
-
-        const isRegistered = !!existingPart;
-
-        // If the user is NEITHER the host NOR already registered, check restrictions
-        if (!isRoomHost && !isRegistered) {
-          // Ban check — must come before the "Joining room…" toast
-          const { data: ban } = await supabase
-            .from("room_bans")
-            .select("id")
-            .eq("room_id", homeCode)
-            .eq("user_id", currentUser.id)
-            .maybeSingle();
-
-          if (ban) {
-            toast.error("You have been removed from this room by the host and cannot rejoin.");
-            setHomeJoining(false);
-            return;
-          }
-
-          if (room.is_locked) {
-            toast.error("This room is locked by the host.");
-            setHomeJoining(false);
-            return;
-          }
-
-          // Only count currently online participants — a disconnected
-          // participant's row is kept (is_online=false), not deleted, so
-          // counting every row regardless of status would let a room's
-          // effective capacity shrink permanently every time someone joins
-          // and leaves.
-          const { data: parts } = await supabase
-            .from("room_participants")
-            .select("id")
-            .eq("room_id", homeCode)
-            .eq("is_online", true);
-
-          if (parts && parts.length >= room.max_participants) {
-            toast.error("This room is full.");
-            setHomeJoining(false);
-            return;
-          }
         }
       }
 

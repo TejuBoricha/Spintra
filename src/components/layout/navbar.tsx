@@ -8,6 +8,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { checkCanJoinRoom, ROOM_JOIN_ERROR_MESSAGES } from "@/lib/room-join-check";
+import { getOrCreateRoomUser } from "@/lib/room-user";
 import {
   Sun,
   Moon,
@@ -41,6 +43,7 @@ export function Navbar() {
   const [isJoinOpen, setIsJoinOpen] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [joining, setJoining] = useState(false);
+  const [currentUser] = useState(getOrCreateRoomUser);
 
   const router = useRouter();
   const mounted = useSyncExternalStore(
@@ -63,35 +66,9 @@ export function Navbar() {
     try {
       const supabase = getSupabaseBrowserClient();
       if (supabase) {
-        const { data: room, error: roomError } = await supabase
-          .from("rooms")
-          .select("is_locked, max_participants")
-          .eq("code", joinCode)
-          .maybeSingle();
-
-        if (roomError || !room) {
-          toast.error("Room code not found. Please double check.");
-          setJoining(false);
-          return;
-        }
-
-        if (room.is_locked) {
-          toast.error("This room is locked by the host.");
-          setJoining(false);
-          return;
-        }
-
-        // Only count currently online participants — see note in
-        // room-client.tsx's verifyAccess for why counting every row
-        // regardless of status is wrong.
-        const { data: parts } = await supabase
-          .from("room_participants")
-          .select("id")
-          .eq("room_id", joinCode)
-          .eq("is_online", true);
-
-        if (parts && parts.length >= room.max_participants) {
-          toast.error("This room is full.");
+        const result = await checkCanJoinRoom(supabase, joinCode, currentUser.id);
+        if (!result.ok) {
+          toast.error(ROOM_JOIN_ERROR_MESSAGES[result.reason]);
           setJoining(false);
           return;
         }
@@ -107,7 +84,7 @@ export function Navbar() {
     } finally {
       setJoining(false);
     }
-  }, [joinCode, router]);
+  }, [joinCode, router, currentUser.id]);
 
   return (
     <nav
