@@ -20,6 +20,7 @@ import {
   Gamepad2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -294,6 +295,7 @@ export function Navbar() {
               onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
               onKeyDown={(e) => e.key === "Enter" && handleJoinRoomSubmit()}
               placeholder="EX: 89PB5T"
+              aria-label="Enter 6-character room code"
               className="w-full h-12 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl text-center text-2xl font-mono text-purple-600 dark:text-purple-300 font-bold focus:outline-none focus:border-cyan-500/50 uppercase tracking-widest"
               autoFocus
             />

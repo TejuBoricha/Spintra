@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { MessageCircle, Users as UsersIcon, Crown, Smile, Send, UserX, Pencil, Check, X, Flag, Ban } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -83,7 +83,10 @@ export function RoomSidebar({
     setBlockedUsers(toggleBlockedUser(userId));
   }, []);
 
-  const visibleMessages = messages.filter((m) => !blockedUsers.includes(m.user_id));
+  const visibleMessages = useMemo(
+    () => messages.filter((m) => !blockedUsers.includes(m.user_id)),
+    [messages, blockedUsers]
+  );
 
   const handleSaveUsername = useCallback(async () => {
     const trimmed = editValue.trim();

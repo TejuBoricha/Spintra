@@ -161,7 +161,7 @@ export function TriviaActivity() {
                   setSelectedCategory(e.target.value);
                   setRemainingIndices([]);
                 }}
-                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-yellow-500/50 w-full"
+                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus-visible:border-yellow-500/50 focus-visible:ring-2 focus-visible:ring-yellow-500/20 focus-visible:outline-none w-full"
               >
                 <option value="All" className="bg-neutral-950 text-white">All Categories</option>
                 <option value="General Knowledge" className="bg-neutral-950 text-white">General Knowledge</option>
@@ -181,7 +181,7 @@ export function TriviaActivity() {
                   setSelectedDifficulty(e.target.value);
                   setRemainingIndices([]);
                 }}
-                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-yellow-500/50 w-full"
+                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus-visible:border-yellow-500/50 focus-visible:ring-2 focus-visible:ring-yellow-500/20 focus-visible:outline-none w-full"
               >
                 <option value="All" className="bg-neutral-950 text-white">All Difficulties</option>
                 <option value="easy" className="bg-neutral-950 text-white">Easy</option>

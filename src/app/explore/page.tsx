@@ -419,7 +419,7 @@ export default function ExplorePage() {
               key={cat}
               onClick={() => setActiveCategory(cat)}
               aria-pressed={activeCategory === cat}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${
+              className={`px-5 py-2 rounded-full text-sm font-semibold transition-all focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none ${
                 activeCategory === cat
                   ? "bg-purple-600 text-white shadow-lg shadow-purple-500/25"
                   : "glass-card hover:border-border text-muted-foreground hover:text-foreground"
