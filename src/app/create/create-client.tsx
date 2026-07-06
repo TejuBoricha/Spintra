@@ -287,7 +287,7 @@ export default function CreateRoomClient() {
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <Label htmlFor="max-participants-slider">Max Participants</Label>
-                <span className="text-sm font-semibold text-purple-400">{maxParticipants}</span>
+                <span className="text-sm font-semibold text-purple-400">{maxParticipants} people</span>
               </div>
               <Slider
                 id="max-participants-slider"

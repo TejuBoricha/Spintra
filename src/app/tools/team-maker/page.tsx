@@ -19,6 +19,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -475,7 +476,7 @@ export default function TeamMakerPage() {
                       {/* Add member */}
                       {!isCollapsed && (
                         <div className="flex gap-2">
-                          <input
+                          <Input
                             type="text"
                             placeholder="Add player..."
                             value={newMemberInput[teamIdx] || ""}
@@ -488,7 +489,7 @@ export default function TeamMakerPage() {
                             onKeyDown={(e) => {
                               if (e.key === "Enter") addMember(teamIdx);
                             }}
-                            className="flex-1 h-8 px-2.5 text-xs rounded-lg border border-input bg-transparent outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50 placeholder:text-muted-foreground"
+                            className="flex-1 text-xs"
                           />
                           <Button
                             size="icon-sm"

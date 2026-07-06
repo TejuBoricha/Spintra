@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -776,7 +777,7 @@ export default function LuckyWheelPage() {
 
               {/* Add entry */}
               <div className="flex gap-2">
-                <input
+                <Input
                   type="text"
                   placeholder="New entry..."
                   value={newEntryLabel}
@@ -784,7 +785,7 @@ export default function LuckyWheelPage() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") addEntry();
                   }}
-                  className="flex-1 h-8 px-2.5 text-xs rounded-lg border border-input bg-transparent outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50 placeholder:text-muted-foreground"
+                  className="flex-1 text-xs"
                 />
                 <Button
                   size="icon-sm"
