@@ -619,7 +619,7 @@ export default function LuckyWheelPage() {
                 onClick={spin}
                 disabled={spinning || entries.length === 0}
                 size="lg"
-                className="h-14 px-10 text-lg font-bold bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white border-0 rounded-full shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className="h-14 px-10 text-lg font-bold bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 text-white border-0 rounded-full shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Play className="w-5 h-5 mr-2" />
                 {spinning ? "Spinning..." : "Spin!"}
@@ -859,7 +859,7 @@ export default function LuckyWheelPage() {
             Perfect for giveaways, game nights, and decision-making.
           </p>
           <Link href="/create?type=lucky-wheel">
-            <Button className="gap-2 bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white border-0">
+            <Button className="gap-2 bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 text-white border-0">
               <Disc3 className="w-4 h-4" />
               Create Room
               <ArrowRight className="w-4 h-4" />

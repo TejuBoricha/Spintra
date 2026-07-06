@@ -65,6 +65,7 @@ export function NameDrawActivity() {
 
       {isHost && (
         <Button
+          disabled={!!ndWinner}
           onClick={() => {
             const online = participants.filter((p) => p.is_online);
             // Drawing from an empty pool used to broadcast "?" as the

@@ -80,6 +80,7 @@ export function WouldYouRatherActivity() {
       </h2>
       {isHost && (
         <Button
+          disabled={!!wyrPrompt}
           onClick={() => {
             const prompt = prompts[Math.floor(Math.random() * prompts.length)];
             sendActivityEvent({ kind: "wyr_prompt", ...prompt });

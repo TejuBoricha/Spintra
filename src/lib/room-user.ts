@@ -4,12 +4,14 @@ const USER_STORAGE_KEY = "spintra-room-user";
 const CREATOR_STORAGE_PREFIX = "spintra-room-creator-";
 
 function generateId() {
-  return Math.random().toString(36).slice(2, 10);
+  const bytes = new Uint8Array(4);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("").slice(0, 8);
 }
 
 const defaultUser: Omit<User, "created_at"> = {
   id: generateId(),
-  username: `Guest_${Math.random().toString(36).slice(2, 6)}`,
+  username: `Guest_${generateId().slice(0, 5)}`,
   xp: 0,
   rank: "rookie",
   avatar_url: "",

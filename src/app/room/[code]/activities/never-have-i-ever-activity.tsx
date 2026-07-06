@@ -82,6 +82,7 @@ export function NeverHaveIEverActivity() {
       </h2>
       {isHost && (
         <Button
+          disabled={!!nhiePrompt}
           onClick={() => {
             const text = statements[Math.floor(Math.random() * statements.length)];
             sendActivityEvent({ kind: "nhie_prompt", text });

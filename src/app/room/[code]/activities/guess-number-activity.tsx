@@ -17,6 +17,7 @@ export function GuessNumberActivity() {
     { username: string; guess: number; hint: string }[]
   >([]);
   const [guessSecretNumber, setGuessSecretNumber] = useState(50);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     return registerEventListener((event) => {
@@ -47,6 +48,8 @@ export function GuessNumberActivity() {
   // previous client-local comparison — there's no meaningful security
   // boundary there anyway (single browser, BroadcastChannel-shared identity).
   const resetSecretNumber = async () => {
+    if (resetting) return;
+    setResetting(true);
     const secret = Math.floor(Math.random() * 100) + 1;
     setGuessSecretNumber(secret);
 
@@ -59,12 +62,14 @@ export function GuessNumberActivity() {
       if (error) {
         console.error("Failed to set secret number:", error.message);
         toast.error("Couldn't set the secret number. Please try again.");
+        setResetting(false);
         return;
       }
       sendActivityEvent({ kind: "guess_reset" });
     } else {
       sendActivityEvent({ kind: "guess_reset", secret });
     }
+    setResetting(false);
   };
 
   const submitGuess = async (val: number) => {
@@ -113,6 +118,7 @@ export function GuessNumberActivity() {
             <Button
               size="sm"
               variant="outline"
+              disabled={resetting}
               onClick={resetSecretNumber}
               className="ml-auto rounded-full border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10 h-9 px-4"
             >

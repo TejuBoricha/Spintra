@@ -392,7 +392,7 @@ export function RoomSidebar({
                             {p.role === "host" && <Crown className="w-3 h-3 text-amber-400 shrink-0" />}
                           </div>
                           <span className="text-xs text-muted-foreground capitalize">
-                            {p.role} {!p.is_online && " • Offline"}
+                            {p.role} {p.is_online ? " • Online" : " • Offline"}
                           </span>
                         </div>
                       )}
