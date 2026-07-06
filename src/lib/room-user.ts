@@ -1,4 +1,5 @@
 import type { User } from "@/lib/types";
+import { safeStorageGet, safeStorageSet } from "@/lib/utils";
 
 const USER_STORAGE_KEY = "spintra-room-user";
 const CREATOR_STORAGE_PREFIX = "spintra-room-creator-";
@@ -22,7 +23,7 @@ export function getOrCreateRoomUser(): User {
     return { ...defaultUser, created_at: new Date().toISOString() };
   }
 
-  const saved = window.localStorage.getItem(USER_STORAGE_KEY);
+  const saved = safeStorageGet(USER_STORAGE_KEY);
   if (saved) {
     try {
       return JSON.parse(saved) as User;
@@ -32,7 +33,7 @@ export function getOrCreateRoomUser(): User {
   }
 
   const user = { ...defaultUser, created_at: new Date().toISOString() };
-  window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+  safeStorageSet(USER_STORAGE_KEY, JSON.stringify(user));
   return user;
 }
 
@@ -45,12 +46,12 @@ export function setLocalRoomCreator(roomCode: string | undefined, userId: string
   if (typeof window === "undefined") return;
   const normalizedCode = normalizeRoomCode(roomCode);
   if (!normalizedCode) return;
-  window.localStorage.setItem(`${CREATOR_STORAGE_PREFIX}${normalizedCode}`, userId);
+  safeStorageSet(`${CREATOR_STORAGE_PREFIX}${normalizedCode}`, userId);
 }
 
 export function getLocalRoomCreatorId(roomCode?: string): string | null {
   if (typeof window === "undefined") return null;
   const normalizedCode = normalizeRoomCode(roomCode);
   if (!normalizedCode) return null;
-  return window.localStorage.getItem(`${CREATOR_STORAGE_PREFIX}${normalizedCode}`);
+  return safeStorageGet(`${CREATOR_STORAGE_PREFIX}${normalizedCode}`);
 }

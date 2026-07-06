@@ -58,7 +58,7 @@ export function TriviaActivity() {
             })) as TriviaQuestion[];
             setQuestions(fetched);
           }
-        });
+        }, (e: unknown) => console.error("Failed to load trivia questions:", e));
     }
   }, [isHost]);
 

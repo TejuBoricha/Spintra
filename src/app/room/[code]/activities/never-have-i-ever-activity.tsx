@@ -46,7 +46,7 @@ export function NeverHaveIEverActivity() {
               setStatements(fetched);
             }
           }
-        });
+        }, (e: unknown) => console.error("Failed to load NHIE prompts:", e));
     }
   }, [isHost]);
 

@@ -102,7 +102,7 @@ export function useRoomSubscription({
       supabase
         .from("room_activity_state")
         .upsert({ room_code: roomCode, activity_state: payload as unknown as Json }, { onConflict: "room_code" })
-        .then();
+        .then(() => {}, () => {});
     }, 600);
   }, [roomCode]);
 
@@ -286,7 +286,7 @@ export function useRoomSubscription({
           payload: nextActivity,
         });
       }
-      supabase.from("room_activity_state").upsert({ room_code: roomCode, activity_state: null }, { onConflict: "room_code" }).then();
+      supabase.from("room_activity_state").upsert({ room_code: roomCode, activity_state: null }, { onConflict: "room_code" }).then(() => {}, () => {});
     }
   }, [postLocalMessage, roomCode]);
 
@@ -944,7 +944,7 @@ export function useRoomSubscription({
                   crashed.map((p) => p.user_id)
                 )
                 .eq("room_id", roomCode)
-                .then();
+                .then(() => {}, () => {});
             }
           }
 
@@ -1193,7 +1193,7 @@ export function useRoomSubscription({
           .update({ is_online: false })
           .eq("room_id", roomCode)
           .eq("user_id", currentUser.id)
-          .then();
+          .then(() => {}, () => {});
       }
     };
   }, [roomCode, currentUser?.id]);

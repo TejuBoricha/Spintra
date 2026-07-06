@@ -76,7 +76,7 @@ export function TruthOrDareActivity() {
               dares: fetchedDares.length > 0 ? fetchedDares : BACKUP_DARES,
             });
           }
-        });
+        }, (e: unknown) => console.error("Failed to load Truth or Dare prompts:", e));
     }
   }, [isHost]);
 
