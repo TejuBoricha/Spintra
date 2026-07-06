@@ -16,6 +16,18 @@ export function isDuplicateMessage(messages: ChatMessage[], candidate: ChatMessa
   );
 }
 
+// A long-running room session (hours, hundreds of messages) grew this array
+// — and its Framer-Motion-wrapped DOM row per message — without limit.
+// Capped generously: comfortably covers any single active party session,
+// this is a safety net against unbounded growth, not a tight window.
+export const MAX_RETAINED_MESSAGES = 500;
+
+export function capMessageHistory(messages: ChatMessage[]): ChatMessage[] {
+  return messages.length > MAX_RETAINED_MESSAGES
+    ? messages.slice(messages.length - MAX_RETAINED_MESSAGES)
+    : messages;
+}
+
 
 /** Unbiased Fisher-Yates shuffle. Does not mutate the input array. */
 export function shuffleArray<T>(arr: T[]): T[] {

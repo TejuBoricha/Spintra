@@ -8,7 +8,7 @@ import type { User, ChatMessage } from "@/lib/types";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getOrCreateRoomUser, getLocalRoomCreatorId } from "@/lib/room-user";
 import { isUserBannedFromRoom } from "@/lib/room-bans";
-import { isDuplicateMessage } from "@/lib/utils";
+import { isDuplicateMessage, capMessageHistory } from "@/lib/utils";
 import { IdleScreen } from "./activities/idle-screen";
 import { AggregateIdleScreen } from "./activities/aggregate-idle-screen";
 import { ActivityPickerDialog } from "./activities/activity-picker-dialog";
@@ -459,7 +459,7 @@ function RoomUIInner({
           if (isDuplicateMessage(prev, incoming)) {
             return prev;
           }
-          return [...prev, incoming];
+          return capMessageHistory([...prev, incoming]);
         });
         if (incoming.user_id !== localUser.id) {
           // If sidebar is showing participants OR mobile drawer is closed, trigger unread badge
