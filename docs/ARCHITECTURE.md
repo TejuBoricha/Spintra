@@ -275,11 +275,12 @@ useEffect(() => registerEventListener((event) => {
 **Current status:** all 31 applied; RLS enabled on all 8 tables; latest policy is `0024_fix_participants_update_recursion`; latest migration is `0031_grant_table_privileges`. Note: 0008 and 0010 were re-applied in Session 37, and 0009 in Session 40, after discovering their tracked "applied" status didn't match reality (see `CHANGELOG_AI.md` Session 37/40) — the migration numbering itself didn't change, only their actual execution against the live database.
 
 ### APIs / Integration Points
-No custom REST or GraphQL API exists — every client talks directly to Supabase (or, unconfigured, the `BroadcastChannel` Web API). The full set of integration points:
+No custom REST or GraphQL API exists for app functionality — every client talks directly to Supabase (or, unconfigured, the `BroadcastChannel` Web API). The one exception is a health check. The full set of integration points:
 - **Supabase Realtime — broadcast channel** (`room_{code}`): activity events (game state) and activity-type switching
 - **Supabase Realtime — presence channel**: participant online/offline tracking
 - **Supabase DB** (`@supabase/supabase-js`): `rooms`, `room_participants`, `chat_messages`, `activity_prompts` — see §12 for the full ER diagram
 - **`BroadcastChannel`** (Web API): same-browser-tab fallback for all of the above when Supabase env vars are absent
+- **`GET /api/health`** (`src/app/api/health/route.ts`): a stable, machine-readable liveness contract for external uptime monitors / a hosting platform's health check / deploy pipeline — found missing entirely in the Session 41 audit (no way to detect a silent outage). `force-dynamic`, never cached. Returns `200 {"status":"ok","database":"reachable"}` after a real (cheapest-possible, zero-row) query against `rooms`; `503 {"status":"error","database":"unreachable"|"not_configured"}` if the query fails or env vars are missing.
 
 ---
 

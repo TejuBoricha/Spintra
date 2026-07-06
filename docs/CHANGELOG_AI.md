@@ -165,6 +165,9 @@
 - **Verified live**, not just by reading the code: a genuinely nonexistent room code (`/room/ZZZZZZ`) still correctly shows "Room Not Found." A simulated fetch failure (Playwright route interception aborting the specific `rooms` REST call for a given code, leaving every other request untouched) now correctly shows "Couldn't Connect" with a working "Try Again" button — confirming both the `roomError` branch and the exception-handling fix.
 - `npm run verify` clean.
 
+**Medium tier, item 7 — no health-check/uptime monitoring:** nothing existed to detect a silent outage — no way for an external uptime monitor, a hosting platform's own health check, or a deploy pipeline to confirm the app (and its only real dependency, Supabase) is actually working. Added the app's first-ever API route, `GET /api/health` (`src/app/api/health/route.ts`), marked `force-dynamic` so it's never statically cached. Runs the cheapest possible real round-trip — a zero-row `count`-only `select` against `rooms` — and returns `200 {"status":"ok","database":"reachable",...}` on success, or `503 {"status":"error","database":"unreachable"|"not_configured",...}` if the query fails or the Supabase env vars are missing entirely. Documented in `ARCHITECTURE.md` §4's integration-points list. **Verified live:** `curl` against a real local server returned `200`/`reachable` against the production database, and `503`/`not_configured` when the env vars were unset.
+- `npm run verify` clean.
+
 ---
 
 ## [2026-07-05] — Session 41: Production Readiness Audit + Critical Tier Fixes
