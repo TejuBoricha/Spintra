@@ -494,6 +494,7 @@ function RoomUIInner({
     isLocalOnlyMode,
     realtimeError,
     notification,
+    roomAnnouncement,
   } = subscription;
 
   // 2. Chat hook: Handles message listing, input, pagination and emojis
@@ -606,6 +607,14 @@ function RoomUIInner({
 
   return (
     <div className="min-h-screen pt-16 flex flex-col md:flex-row w-full">
+      {/* Screen-reader-only announcements for participant join/leave and
+          game changes — found missing entirely in the Session 41 audit.
+          Visually hidden (sr-only): these are transient events that would
+          be noisy as a persistent visible banner, but matter to screen
+          reader users with no other way to notice them. */}
+      <div className="sr-only" role="status" aria-live="polite">
+        {roomAnnouncement}
+      </div>
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         <RoomHeader

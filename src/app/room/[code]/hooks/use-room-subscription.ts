@@ -59,12 +59,20 @@ export function useRoomSubscription({
   const [isRealtimeReady, setIsRealtimeReady] = useState<boolean | null>(null);
   const [realtimeError, setRealtimeError] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
+  // Screen-reader-only announcements (participant join/leave, activity/game
+  // changes) — found missing entirely in the Session 41 audit. Deliberately
+  // separate from `notification` above: that one is a persistent, visible
+  // banner meant for a handful of durable states (host promotion, connection
+  // loss), not a stream of transient join/leave chatter that would make it
+  // noisy and misleading if repurposed for this instead.
+  const [roomAnnouncement, setRoomAnnouncement] = useState<string | null>(null);
   const [isClosingRoom, setIsClosingRoom] = useState(false);
 
   // Refs
   const supabaseChannelRef = useRef<RealtimeChannel | null>(null);
   const closingRoomRef = useRef(false);
   const activeActivityRef = useRef(activeActivity);
+  const roomTypeRef = useRef(roomType);
   const broadcastRef = useRef<BroadcastChannel | null>(null);
   const listenersRef = useRef<Set<(event: ActivityEvent) => void>>(new Set());
 
@@ -102,6 +110,9 @@ export function useRoomSubscription({
   useEffect(() => {
     activeActivityRef.current = activeActivity;
   }, [activeActivity]);
+  useEffect(() => {
+    roomTypeRef.current = roomType;
+  }, [roomType]);
 
   useEffect(() => {
     isHostRef.current = isHost;
@@ -923,10 +934,15 @@ export function useRoomSubscription({
           filter: `room_id=eq.${roomCode}`,
         },
         (payload) => {
-          const newParticipant = payload.new as RoomParticipant;
+          // The raw row (unlike the app-level RoomParticipant type) has a
+          // flat `username` column, not a nested `user` object.
+          const newParticipant = payload.new as RoomParticipant & { username?: string };
           setParticipants((prev) => {
             if (prev.some((participant) => participant.id === newParticipant.id)) {
               return prev;
+            }
+            if (newParticipant.user_id !== currentUser.id) {
+              setRoomAnnouncement(`${newParticipant.username || "A participant"} joined the room.`);
             }
             const next = [...prev, newParticipant];
             electHostIfNeeded(supabase, next);
@@ -943,12 +959,15 @@ export function useRoomSubscription({
           filter: `room_id=eq.${roomCode}`,
         },
         (payload) => {
-          const removed = payload.old as { id: string; user_id?: string };
+          const removed = payload.old as { id: string; user_id?: string; username?: string };
           setParticipants((prev) => {
             const selfParticipant = prev.find((p) => p.user_id === currentUser.id);
             const isSelf =
               (selfParticipant && selfParticipant.id === removed.id) ||
               removed.user_id === currentUser.id;
+            if (!isSelf) {
+              setRoomAnnouncement(`${removed.username || "A participant"} left the room.`);
+            }
             if (isSelf) {
               setTimeout(async () => {
                 const supabaseClient = getSupabaseBrowserClient();
@@ -988,7 +1007,12 @@ export function useRoomSubscription({
             host_id?: string;
           };
           if (updated.name) setRoomName(updated.name);
-          if (updated.type) setRoomType(updated.type);
+          if (updated.type) {
+            if (updated.type !== roomTypeRef.current) {
+              setRoomAnnouncement(`Game changed to ${updated.type.replace(/-/g, " ")}.`);
+            }
+            setRoomType(updated.type);
+          }
           if (typeof updated.is_locked === "boolean") setIsLocked(updated.is_locked);
           if (typeof updated.max_participants === "number")
             setMaxParticipantsLimit(updated.max_participants);
@@ -1099,6 +1123,7 @@ export function useRoomSubscription({
     isRealtimeReady,
     realtimeError,
     notification,
+    roomAnnouncement,
     isClosingRoom,
     isHost,
     changeActivity,

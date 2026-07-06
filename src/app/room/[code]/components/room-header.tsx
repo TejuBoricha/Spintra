@@ -113,6 +113,8 @@ export function RoomHeader({
           </div>
           {(realtimeError || notification) && (
             <div
+              role="status"
+              aria-live="polite"
               className={`mt-3 rounded-xl border px-3 py-2 text-sm transition-all ${
                 realtimeError
                   ? "border-red-500/20 bg-red-500/10 text-red-200"
