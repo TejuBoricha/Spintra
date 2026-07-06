@@ -54,7 +54,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   const [currentUser, setCurrentUser] = useState<User>(getOrCreateRoomUser);
   const [authReady, setAuthReady] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
-  const [accessError, setAccessError] = useState<"full" | "locked" | "not_found" | "banned" | null>(null);
+  const [accessError, setAccessError] = useState<"full" | "locked" | "not_found" | "banned" | "error" | null>(null);
   const router = useRouter();
 
   // Cached from verifyAccess below so useRoomSubscription doesn't have to
@@ -147,7 +147,22 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           .eq("code", roomCode)
           .maybeSingle();
 
-        if (roomError || !room) {
+        if (roomError) {
+          // A real fetch failure (network error, Supabase outage, RLS/
+          // permission error) is not the same claim as "this room doesn't
+          // exist" — .maybeSingle() only returns roomError for an actual
+          // query failure, never for zero matching rows (that's `!room`
+          // below). Conflating the two told users a room was gone/never
+          // existed when the real problem was that we simply couldn't check.
+          console.error("Failed to fetch room:", roomError);
+          if (isMounted) {
+            setAccessError("error");
+            setCheckingAccess(false);
+          }
+          return;
+        }
+
+        if (!room) {
           if (isMounted) {
             setAccessError("not_found");
             setCheckingAccess(false);
@@ -229,8 +244,16 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           setCheckingAccess(false);
         }
       } catch (err) {
+        // An unexpected exception here (e.g. a network-level fetch failure
+        // that supabase-js doesn't wrap into a clean `{ error }` result) used
+        // to just log and clear the loading state with no accessError set —
+        // falling through to render the room UI with incomplete/null
+        // prefetched data instead of telling the user anything went wrong.
         console.error("Pre-entry validation error:", err);
-        if (isMounted) setCheckingAccess(false);
+        if (isMounted) {
+          setAccessError("error");
+          setCheckingAccess(false);
+        }
       }
     };
 
@@ -277,6 +300,11 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         desc: "The host removed you from this room and you can't rejoin it.",
         emoji: "broom" as EmojiName,
       },
+      error: {
+        title: "Couldn't Connect",
+        desc: "We couldn't check this room right now — this doesn't mean it's gone. Check your connection and try again.",
+        emoji: "disappointed_face" as EmojiName,
+      },
     }[accessError];
 
     return (
@@ -289,12 +317,21 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
             <h1 className="text-2xl font-black text-white">{errorDetails.title}</h1>
             <p className="text-muted-foreground text-sm leading-relaxed">{errorDetails.desc}</p>
           </div>
-          <button
-            onClick={() => router.push("/explore")}
-            className="w-full h-11 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white rounded-full font-bold shadow-lg shadow-purple-500/10 transition-all"
-          >
-            Back to Explore
-          </button>
+          {accessError === "error" ? (
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full h-11 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white rounded-full font-bold shadow-lg shadow-purple-500/10 transition-all"
+            >
+              Try Again
+            </button>
+          ) : (
+            <button
+              onClick={() => router.push("/explore")}
+              className="w-full h-11 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white rounded-full font-bold shadow-lg shadow-purple-500/10 transition-all"
+            >
+              Back to Explore
+            </button>
+          )}
         </div>
       </div>
     );
