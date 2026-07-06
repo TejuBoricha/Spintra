@@ -182,63 +182,37 @@ export default function ExplorePage() {
           };
         });
         setRooms(dbRooms);
-      }
 
-      // Only fetch public rooms for Recent Activity — private rooms must not
-      // appear here because their codes would be exposed to anyone on the page.
-      const { data: activityData } = await supabase
-        .from("rooms")
-        .select(`
-          id,
-          code,
-          name,
-          type,
-          created_at,
-          room_participants (
-            username,
-            role
-          )
-        `)
-        .eq("is_public", true)
-        .order("created_at", { ascending: false })
-        .limit(5);
-
-      if (activityData) {
-        const mapped = activityData.map((r) => {
-          const participants = (r.room_participants as unknown as {
-            username: string | null;
-            role: string;
-          }[] | null) || [];
-          const hostObj = participants.find((p) => p.role === "host");
-          const hostName = hostObj?.username || "Guest";
+        // Derive Recent Activity from the same data instead of a second query.
+        // The 5 most recent public rooms are already in dbRooms (ordered by created_at desc).
+        const recentRooms = dbRooms.slice(0, 5);
+        const emojiMap: Record<string, EmojiName> = {
+          "lucky-wheel": "ferris_wheel",
+          "coin-flip": "coin",
+          "dice": "game_die",
+          "rps": "scissors",
+          "would-you-rather": "thinking_face",
+          "never-have-i-ever": "see_no_evil_monkey",
+          "truth-or-dare": "performing_arts",
+          "word-scramble": "books",
+          "guess-number": "question_mark",
+          "trivia": "trophy",
+          "bingo": "bullseye",
+          "team-maker": "busts_in_silhouette",
+          "tournament": "sports_medal",
+          "name-draw": "admission_tickets",
+        };
+        const mapped = recentRooms.map((r) => {
           const game = GAMES.find((g) => g.type === r.type);
           const gameLabel = game?.label || "Game";
-
-          const emojiMap: Record<string, EmojiName> = {
-            "lucky-wheel": "ferris_wheel",
-            "coin-flip": "coin",
-            "dice": "game_die",
-            "rps": "scissors",
-            "would-you-rather": "thinking_face",
-            "never-have-i-ever": "see_no_evil_monkey",
-            "truth-or-dare": "performing_arts",
-            "word-scramble": "books",
-            "guess-number": "question_mark",
-            "trivia": "trophy",
-            "bingo": "bullseye",
-            "team-maker": "busts_in_silhouette",
-            "tournament": "sports_medal",
-            "name-draw": "admission_tickets",
-          };
           const emoji = emojiMap[r.type] || "thinking_face";
-
           return {
-            user: hostName,
+            user: r.host,
             action: "created the",
             item: `${r.name} (${gameLabel})`,
-            time: getRelativeTimeString(r.created_at),
+            time: getRelativeTimeString(r.createdAt),
             emoji,
-            type: r.type as RoomType,
+            type: r.type,
             code: r.code,
           };
         });
