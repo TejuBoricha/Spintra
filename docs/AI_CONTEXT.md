@@ -4,7 +4,7 @@
 > DB schema live in `ARCHITECTURE.md`. Session-to-session handoff lives in `HANDOFF.md`. Backlog
 > and roadmap live in `TASKS.md`. Do not duplicate those here — link to them instead.
 > Always update this file after every significant milestone.
-> Last updated: 2026-07-05T14:00 IST
+> Last updated: 2026-07-06T14:00 IST
 
 ---
 
@@ -30,7 +30,7 @@ All room joining flows, discovery pages, profile state sync optimizations, datab
 
 ## Current Focus
 
-The High Priority "pre-launch hardening" tier is done except Production Error Monitoring (explicitly deferred). The Session 37 audit's Critical + High findings, Session 38's Medium + most-Low findings, and Session 39's 13-area QA audit are all complete. Remaining: room auto-expiry/lifecycle cleanup (Medium Priority, new in Session 39 — needs pg_cron or Edge Function, requires Supabase admin access), a small number of intentionally-deferred Low findings (see `TASKS.md`), the 3 larger net-new Medium Priority features (visual scoreboard, XP system, room settings panel — each needs its own scoping), and Production Error Monitoring if the user asks for it.
+All pre-launch hardening tiers are complete. The Session 41 Production Readiness Audit is fully resolved (64/64 findings across Critical/High/Medium/Low/Nice-to-have). The `session-39-platform-qa-audit` branch has been merged to `main`. Remaining: 3 net-new Medium Priority features (Visual Scoreboard, XP/Leveling System, Room Settings Panel) and Production Error Monitoring (explicitly deferred — do not start unprompted).
 
 **Workflow change for future sessions:** the Supabase CLI is now linked to the live project (`qjxaehxwuqntyqrdmihs`) — `supabase/config.toml` was created via `supabase init`, the user ran `supabase login` once, and the AI ran `supabase link` + `supabase db push` directly. Future migrations no longer need manual copy-paste into the Supabase Dashboard SQL Editor; run `npx supabase db push --linked --yes` after adding a new migration file. Note: the remote migration-history table was out of sync with reality before this (many migrations 0001-0011 were originally applied by hand) — this was fixed once via `supabase migration repair --status applied <versions> --linked`. **Session 38 caveat:** "applied" in the tracking table does not guarantee the SQL actually ran successfully — `migration repair --status applied` just edits the bookkeeping, it doesn't execute anything. If a later migration touching the same table fails with "relation does not exist," don't assume it's an ordering issue; check the earlier migration's SQL for a real bug and verify the table exists via a direct REST query.
 
@@ -62,7 +62,13 @@ Load-bearing assumptions a new session should be aware of before making changes:
 
 ## Next Recommended Task
 
-Session 41's Production Readiness Audit found 60 findings (see `TASKS.md` for the live per-item checklist); the user asked to fix all of them, tier by tier, starting with Critical. **Critical tier is done** (see above). Remaining, in priority order: High tier (12 findings — RLS/CI/rate-limiting gaps, join-latency, missing test coverage, 3 accessibility blockers, mobile toolbar overflow), then Medium (16), Low (21), Nice-to-have (7) — all itemized in `TASKS.md`. Production Error Monitoring remains unimplemented by the user's explicit earlier choice to defer it — do not start it unprompted unless it resurfaces as part of the audit fix-through. The 3 larger net-new Medium Priority features (Visual Scoreboard, XP/Leveling, Room Settings Panel) are separate from the audit and still need their own scoping discussion before starting.
+**Session 41's Production Readiness Audit is fully complete across all tiers** (64/64 findings resolved, `session-39-platform-qa-audit` branch merged to `main`). Three net-new Medium Priority features remain:
+
+1. **Visual Scoreboard** — persistent real-time leaderboard during trivia/activities
+2. **XP and Leveling System** — XP rewards engine with player ranks
+3. **Room Settings Panel** — host-configurable settings (max participants, chat moderation, activity timers)
+
+Production Error Monitoring remains explicitly deferred by the user's earlier choice — do not start unprompted.
 
 ---
 

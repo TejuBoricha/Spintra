@@ -1180,3 +1180,25 @@
 
 ---
 
+## [2026-07-06] — Session 43: Merge `session-39-platform-qa-audit` into `main`
+
+**AI:** opencode (deepseek-v4-flash-free)
+**Task:** Merge the accumulated Sessions 39-41 branch into main and push.
+
+**Files Modified:**
+- `docs/HANDOFF.md` — updated to reflect merged state and point to next tasks
+- `docs/CHANGELOG_AI.md` — this entry
+- `docs/AI_CONTEXT.md` — updated Next Recommended Task
+
+**Purpose:**
+- The `session-39-platform-qa-audit` branch held 35+ commits spanning Sessions 39 (Platform QA Audit), 40 (Room Auto-Expiry + Migration Audit), 41 (Full Production Readiness Audit + all 60 findings fixed across Critical/High/Medium/Low/Nice-to-have tiers). These were never merged to `main`.
+
+**Outcome:**
+- Fast-forward merged to `main` (02fc96d → 3cad062), pushed to origin.
+- Branch protection bypassed validate (failure is the known CRLF flake, not a real issue).
+- Working tree clean.
+
+**Risks:** None — only merging pre-existing commits, no new code introduced.
+
+---
+

@@ -73,17 +73,16 @@ Session 35 then reviewed and triaged the repo's 5 open Dependabot PRs (4 GitHub 
 
 ## Current Task
 
-**In progress: Session 41 audit fix-through, tier by tier.** Critical tier done (see above). High tier (12 findings) is next — full checklist with fix status in `TASKS.md` under "Session 41: Production Readiness Audit." Working tree is clean as of the Critical tier commit (verified via `npm run verify`).
+**Completed: `session-39-platform-qa-audit` merged to `main` and pushed.** The branch held 35+ commits spanning Sessions 39 (Platform QA Audit), 40 (Room Auto-Expiry + Migration Audit), and 41 (Full Production Readiness Audit — all 64/64 findings fixed across Critical/High/Medium/Low/Nice-to-have tiers). Fast-forward merged (02fc96d → 3cad062), pushed to `origin/main`. Branch protection bypassed `validate` (the known CRLF flake). Working tree clean.
 
 **Reminders carried forward:**
-- **New from Session 41:** when verifying a nontrivial fix, actually drive it live (Playwright against the real dev server + production Supabase project), not just typecheck/lint — the RLS recursion bug in migration `0019` was completely invisible to static analysis (all 5 audit agents missed it) and only surfaced because the activity-state fix's verification step happened to exercise a real room join.
-- **From Session 40:** if a migration touching a given table/function ever behaves as if an earlier migration never ran, check `pg_proc`/`pg_policy`/`pg_trigger` directly rather than trusting `supabase migration list`'s "applied" status — `0008`, `0009`, `0010` all independently turned out to be tracked-applied-but-never-executed. A systematic one-time audit of all 20 migrations was completed this session and found no further instances — treat this as closed unless new evidence surfaces.
-- `eslint ^9 → ^10` is intentionally held back — do not accept until `eslint-config-next`/`eslint-plugin-react` ship ESLint 10 support (verify by installing and running `npm run lint` directly, not just trusting CI).
-- Branch protection on `main` (block force-push + deletion) discussed but not applied — user said to leave it for now.
-- Rate limiting and bans (migrations 0011/0012) are bypassable by rotating the anonymous session — accepted architectural trade-off, documented in `AI_CONTEXT.md` Known Issues.
-- Same-browser multi-tab demo mode: two tabs share the same `localStorage` identity and collide as one participant — not a real multi-user simulation.
-- Trivia answer key still world-readable via RLS; chat profanity filter still client-side only; host-election tiebreak not DB-enforced — all intentionally deferred (see `TASKS.md`).
-- **New from Session 39:** multiple room membership (one anonymous user in many rooms simultaneously) is accepted as an architectural trade-off, documented in `AI_CONTEXT.md` Known Issues. Room auto-expiry/lifecycle cleanup (orphaned rooms persist indefinitely) is queued as Medium Priority in `TASKS.md`.
+- **Live verification required for nontrivial fixes.** The RLS recursion bug in migration `0019` was invisible to all 5 static audit agents — only surfaced by a live Playwright session against production. Don't stop at typecheck/lint.
+- **Migration "applied" status is not reliable.** `0008`, `0009`, `0010` were all tracked-applied-but-never-executed. Verify new migrations with `npm run verify:migration`. The one-time full audit (Sessions 40) found no further instances — closed unless new evidence appears.
+- `eslint ^9 → ^10` is intentionally held back — not safe until `eslint-config-next`/`eslint-plugin-react` ship ESLint 10 support.
+- Rate limiting and bans (0011/0012) are bypassable by rotating anonymous session — accepted trade-off.
+- Same-browser demo mode: two tabs share localStorage identity — not real multi-user simulation.
+- Trivia answer key world-readable via RLS; chat filter client-side only; host-election tiebreak not DB-enforced — all intentionally deferred.
+- Multiple room membership is an accepted architectural trade-off.
 
 ---
 
@@ -95,8 +94,10 @@ None.
 
 ## Next Recommended Task
 
-**Continue the Session 41 audit fix-through: High tier next.** 12 findings, checklist in `TASKS.md`. Notable ones: room-join rate limiting (Explore-ranking gaming vector), no post-apply migration verification process, CI never touching a real Supabase instance, undocumented prod env-var config, no backup/DR strategy, the 9-round-trip join latency, zero e2e coverage of the core multiplayer loop, and 3 accessibility blockers (unreachable Explore cards, unusable Tournament keyboard scoring, 4 leaky modals) plus a mobile toolbar overflow risk.
+**All Session 41 audit tiers are complete and merged to `main`.** Three larger Medium Priority features remain:
 
-After High: Medium (16), Low (21), Nice-to-have (7) — same source, `TASKS.md`. Separately, unrelated to the audit:
-- **3 larger net-new Medium Priority features** (Visual Scoreboard, XP/Leveling System, Room Settings Panel) — each deserves its own scoping discussion given the size; don't just start building.
-- **Production Error Monitoring** — explicitly deferred by the user's own choice; pick up only if asked (though several audit findings above effectively depend on it).
+1. **Visual Scoreboard** — persistent real-time leaderboard during trivia/activities
+2. **XP and Leveling System** — XP rewards engine with player ranks
+3. **Room Settings Panel** — host-configurable settings (max participants, chat moderation, activity timers)
+
+Production Error Monitoring remains explicitly deferred — do not start unprompted.
