@@ -31,7 +31,15 @@ function withTimeout<T>(promise: PromiseLike<T>, ms = 2000): Promise<T> {
 export default function CreateRoomClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const preselected = searchParams?.get("type") as RoomType | null;
+  const rawType = searchParams?.get("type");
+  const RAW_ROOM_TYPES: RoomType[] = [
+    "team-maker", "lucky-wheel", "name-draw", "tournament", "coin-flip",
+    "dice", "guess-number", "rps", "truth-or-dare", "would-you-rather",
+    "never-have-i-ever", "trivia", "bingo", "word-scramble", "party", "classroom",
+  ];
+  const preselected = rawType && RAW_ROOM_TYPES.includes(rawType as RoomType)
+    ? (rawType as RoomType)
+    : null;
 
   const [currentUser, setCurrentUser] = useState(getOrCreateRoomUser);
   const [selectedType, setSelectedType] = useState<RoomType>(preselected || "team-maker");
@@ -217,10 +225,14 @@ export default function CreateRoomClient() {
 
   const copyToClipboard = async () => {
     if (!createdRoom) return;
-    await navigator.clipboard.writeText(createdRoom.url);
-    setCopied(true);
-    toast.success("Room link copied!");
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(createdRoom.url);
+      setCopied(true);
+      toast.success("Room link copied!");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy to clipboard");
+    }
   };
 
   const joinRoom = () => {

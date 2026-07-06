@@ -49,8 +49,12 @@ export async function GET() {
 
   // Realtime check — verify the Realtime endpoint is alive
   try {
-    const rtUrl = supabaseUrl.replace(/\/+$/, "") + "/realtime/v1/ws?apikey=" + supabaseAnonKey;
-    const rtRes = await fetch(rtUrl, { method: "GET", signal: AbortSignal.timeout(5000) });
+    const rtUrl = supabaseUrl.replace(/\/+$/, "") + "/realtime/v1/ws";
+    const rtRes = await fetch(rtUrl, {
+      method: "GET",
+      headers: { apikey: supabaseAnonKey },
+      signal: AbortSignal.timeout(5000),
+    });
     checks.realtime = rtRes.status !== 404 ? "reachable" : "error";
     if (rtRes.status === 404) allOk = false;
   } catch {
@@ -60,6 +64,12 @@ export async function GET() {
 
   return NextResponse.json(
     { status: allOk ? "ok" : "degraded", ...checks, timestamp: new Date().toISOString() },
-    { status: allOk ? 200 : 503 }
+    {
+      status: allOk ? 200 : 503,
+      headers: {
+        "X-Content-Type-Options": "nosniff",
+        "Content-Type": "application/json; charset=utf-8",
+      },
+    }
   );
 }

@@ -93,10 +93,10 @@ export function RoomSidebar({
     }
     try {
       await onUpdateUsername(trimmed);
-      toast.success("Username updated!");
+      toast.success("Username updated!", { id: "username-update" });
     } catch (err) {
       console.error("Failed to update username:", err);
-      toast.error("Failed to update username");
+      toast.error("Failed to update username", { id: "username-update-error" });
     } finally {
       setIsEditingUsername(false);
     }

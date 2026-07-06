@@ -28,6 +28,7 @@ import { cn, shuffleArray } from "@/lib/utils";
 import { getGameByType } from "@/lib/games";
 import { Emoji, type EmojiName } from "@/components/emoji";
 import { playPop, playSuccess } from "@/lib/audio";
+import { toast } from "sonner";
 
 const GameIcon = getGameByType("team-maker")!.icon;
 
@@ -183,7 +184,7 @@ export default function TeamMakerPage() {
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    });
+    }).catch(() => toast.error("Failed to copy to clipboard"));
   }, [teams]);
 
   // ── Render ──

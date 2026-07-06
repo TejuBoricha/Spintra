@@ -68,6 +68,8 @@ const securityHeaders = [
         ? "connect-src 'self' https: wss: http://127.0.0.1:* ws://127.0.0.1:* http://localhost:* ws://localhost:*"
         : "connect-src 'self' https: wss:",
       "frame-ancestors 'none'",
+      "form-action 'self'",
+      "base-uri 'self'",
     ].join("; "),
   },
 ];

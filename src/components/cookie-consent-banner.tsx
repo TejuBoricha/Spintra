@@ -28,7 +28,7 @@ export function CookieConsentBanner() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 40 }}
-          className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-[90] glass border border-white/10 rounded-2xl shadow-2xl p-4 sm:p-5"
+          className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-40 glass border border-white/10 rounded-2xl shadow-2xl p-4 sm:p-5"
           role="region"
           aria-label="Cookie notice"
         >

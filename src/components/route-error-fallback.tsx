@@ -20,12 +20,12 @@ export function RouteErrorFallback({
           <p className="text-muted-foreground text-sm leading-relaxed">{description}</p>
         </div>
         <div className="flex flex-col gap-3">
-          <Button onClick={reset} className="w-full h-11 rounded-full font-bold">
+          <Button onClick={reset} className="w-full h-11 font-bold">
             Try again
           </Button>
           <Link
             href="/explore"
-            className="w-full h-11 flex items-center justify-center bg-secondary hover:bg-secondary/85 text-secondary-foreground border border-border rounded-full font-bold transition-colors"
+            className="w-full h-11 flex items-center justify-center bg-secondary hover:bg-secondary/85 text-secondary-foreground border border-border rounded-lg font-bold transition-colors"
           >
             Back to Explore
           </Link>

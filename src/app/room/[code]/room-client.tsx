@@ -524,7 +524,7 @@ function RoomUIInner({
       if (typeof window !== "undefined") {
         window.localStorage.setItem("spintra-room-sound", String(next));
       }
-      toast.info(next ? "Sound effects enabled!" : "Sound effects muted!");
+      toast.info(next ? "Sound effects enabled!" : "Sound effects muted!", { id: "sound-toggle" });
       return next;
     });
   }, []);

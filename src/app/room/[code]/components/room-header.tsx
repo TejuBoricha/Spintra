@@ -301,6 +301,7 @@ export const RoomHeader = memo(function RoomHeader({
                   alt="Room QR Code"
                   width={200}
                   height={200}
+                  loading="lazy"
                   className="rounded-lg object-contain"
                   onError={() => setQrLoadFailed(true)}
                 />

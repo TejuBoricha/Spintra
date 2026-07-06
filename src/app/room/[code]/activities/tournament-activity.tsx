@@ -189,7 +189,7 @@ export function TournamentActivity() {
             icon: <Emoji name="trophy" size={18} />,
           });
         } else if (event.outcome === "grand-final-set") {
-          toast.success("Grand Final is set!");
+          toast.success("Grand Final is set!", { id: "grand-final-set" });
         }
       } else if (event.kind === "activity_reset") {
         setTournament(null);
@@ -201,7 +201,7 @@ export function TournamentActivity() {
   const generateBracket = useCallback(() => {
     const names = participants.filter((p) => p.is_online).map((p) => p.user?.username || "Guest");
     if (names.length < 2) {
-      toast.error("Need at least 2 online participants!");
+      toast.error("Need at least 2 online participants!", { id: "tournament-needs-players" });
       return;
     }
 
