@@ -1,5 +1,12 @@
 import type { NextConfig } from "next";
 
+const REQUIRED_ENV_VARS = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"] as const;
+for (const key of REQUIRED_ENV_VARS) {
+  if (!process.env[key]) {
+    throw new Error(`Missing required env var: ${key}. Set it in .env.local or the CI environment.`);
+  }
+}
+
 // script-src used to include 'unsafe-inline'/'unsafe-eval', which defeats
 // most of what a CSP is for. A stricter, nonce-based policy is possible in
 // Next.js but requires reading headers() in the root layout, which forces
