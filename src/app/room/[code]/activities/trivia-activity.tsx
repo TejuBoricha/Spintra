@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Lightbulb, Shuffle } from "lucide-react";
+import { Lightbulb, Shuffle, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Emoji } from "@/components/emoji";
@@ -241,9 +241,15 @@ export function TriviaActivity() {
                     const correct = i === triviaQuestion.correctIndex;
                     sendActivityEvent({ kind: "trivia_answer", userId: currentUser.id, username: currentUser.username, choiceIndex: i, correct });
                   }}
-                  className={`p-4 rounded-xl border text-left font-semibold transition-all duration-200 disabled:cursor-default ${btnStyle}`}
+                  className={`p-4 rounded-xl border text-left font-semibold transition-all duration-200 disabled:cursor-default flex items-center justify-between gap-2 ${btnStyle}`}
                 >
-                  {opt}
+                  {/* Color alone shouldn't be the only signal for
+                      correct/incorrect (a real accessibility issue for
+                      color-blind users) — icons carry the same meaning
+                      through shape, not just color. */}
+                  <span>{opt}</span>
+                  {hasAnswered && isCorrectOption && <Check className="w-5 h-5 shrink-0" aria-label="Correct answer" />}
+                  {hasAnswered && isPicked && !isCorrectOption && <X className="w-5 h-5 shrink-0" aria-label="Your answer, incorrect" />}
                 </button>
               );
             })}
