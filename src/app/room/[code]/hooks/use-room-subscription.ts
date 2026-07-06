@@ -922,10 +922,16 @@ export function useRoomSubscription({
           // is_online rows against live presence — otherwise a crashed
           // host's own row could never be corrected by anyone (nobody else
           // is permitted to touch it), permanently blocking host succession.
+          // If the current user has zero presence entries, the room is empty:
+          // also reconcile any stale row belonging to the current user's
+          // own previous session (crashed singleton case).
           const supabaseClient = getSupabaseBrowserClient();
           if (supabaseClient) {
             const crashed = prev.filter(
-              (p) => p.is_online && !onlineIds.has(p.user_id) && p.user_id !== currentUser.id
+              (p) =>
+                p.is_online &&
+                !onlineIds.has(p.user_id) &&
+                (p.user_id !== currentUser.id || onlineIds.size === 0)
             );
             if (crashed.length > 0) {
               supabaseClient

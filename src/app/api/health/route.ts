@@ -1,13 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// Found in the Session 41 audit: no way for an uptime monitor, load
-// balancer, or deploy pipeline to check whether the app (and its only
-// backend dependency, Supabase) is actually working — the app could be
-// silently down with nothing to page anyone. This is deliberately a plain
-// GET route handler, not a page, so it stays a stable machine-readable
-// contract for external monitoring services (UptimeRobot, Pingdom, a
-// platform's own health check, etc.) regardless of UI changes.
 export const dynamic = "force-dynamic";
 
 export async function GET() {
@@ -16,35 +9,57 @@ export async function GET() {
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return NextResponse.json(
-      { status: "error", database: "not_configured", timestamp: new Date().toISOString() },
+      { status: "error", database: "not_configured", auth: "not_configured", realtime: "not_configured", timestamp: new Date().toISOString() },
       { status: 503 }
     );
   }
 
+  const checks: { database?: string; auth?: string; realtime?: string } = {};
+  let allOk = true;
+
+  // Database check
   try {
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
-    // Cheapest possible real round-trip: no rows returned, just confirms
-    // the database accepts and answers a query under current RLS/network
-    // conditions — the same dependency every real page load has.
     const { error } = await supabase.from("rooms").select("id", { count: "exact", head: true }).limit(1);
-
     if (error) {
-      // Logged server-side only — the public response stays generic so an
-      // unauthenticated prober can't use raw Postgres/PostgREST error text
-      // to fingerprint schema/internal details.
       console.error("Health check: database query failed:", error.message);
-      return NextResponse.json(
-        { status: "error", database: "unreachable", timestamp: new Date().toISOString() },
-        { status: 503 }
-      );
+      checks.database = "unreachable";
+      allOk = false;
+    } else {
+      checks.database = "reachable";
     }
-
-    return NextResponse.json({ status: "ok", database: "reachable", timestamp: new Date().toISOString() });
   } catch (err) {
-    console.error("Health check: unexpected error:", err instanceof Error ? err.message : err);
-    return NextResponse.json(
-      { status: "error", database: "unreachable", timestamp: new Date().toISOString() },
-      { status: 503 }
-    );
+    console.error("Health check: database error:", err instanceof Error ? err.message : err);
+    checks.database = "unreachable";
+    allOk = false;
   }
+
+  // Auth check — verify the Supabase Auth endpoint responds
+  try {
+    const authRes = await fetch(`${supabaseUrl.replace(/\/+$/, "")}/auth/v1/health`, {
+      headers: { apikey: supabaseAnonKey },
+      signal: AbortSignal.timeout(5000),
+    });
+    checks.auth = authRes.ok ? "reachable" : "error";
+    if (!authRes.ok) allOk = false;
+  } catch {
+    checks.auth = "unreachable";
+    allOk = false;
+  }
+
+  // Realtime check — verify the Realtime endpoint is alive
+  try {
+    const rtUrl = supabaseUrl.replace(/\/+$/, "") + "/realtime/v1/ws?apikey=" + supabaseAnonKey;
+    const rtRes = await fetch(rtUrl, { method: "GET", signal: AbortSignal.timeout(5000) });
+    checks.realtime = rtRes.status !== 404 ? "reachable" : "error";
+    if (rtRes.status === 404) allOk = false;
+  } catch {
+    checks.realtime = "unreachable";
+    allOk = false;
+  }
+
+  return NextResponse.json(
+    { status: allOk ? "ok" : "degraded", ...checks, timestamp: new Date().toISOString() },
+    { status: allOk ? 200 : 503 }
+  );
 }
