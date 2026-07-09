@@ -8,7 +8,7 @@ Portable session-continuity note for any AI assistant (Antigravity, Claude Code,
 
 **Session 48: Comprehensive Platform Readiness Audit — COMPLETE.**
 - Performed a comprehensive 15-phase audit of the entire Spintra repository to evaluate launch readiness, engineering patterns, security, and UX.
-- Authored the detailed audit report: [production_ready_audit_report.md](file:///C:/Users/tejas/.gemini/antigravity-ide/brain/5ae5bc52-37df-4536-82e3-e886da1225ba/production_ready_audit_report.md).
+- Authored the detailed audit report (`production_ready_audit_report.md`), stored outside this repository in the authoring tool's workspace.
 - Documented 50 launch-blocking issues, 20 quick wins, 10 technical debt items, 10 UX improvements, 10 product features, and a prioritized project roadmap.
 
 **Session 47: Unban UI, empty-state copy pass, expanded e2e coverage — COMPLETE.**

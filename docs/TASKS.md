@@ -7,7 +7,7 @@ This document tracks all active, remaining, and completed tasks for the Spintra 
 ## Session 48: Comprehensive Platform Readiness Audit (Audit only — COMPLETE)
 
 - `[x]` Run a complete 15-phase audit of the entire Spintra repository to evaluate launch readiness, architecture, performance, security, and UX.
-- `[x]` Document all findings in [production_ready_audit_report.md](file:///C:/Users/tejas/.gemini/antigravity-ide/brain/5ae5bc52-37df-4536-82e3-e886da1225ba/production_ready_audit_report.md) with custom severity tiers, score breakdowns, prioritized lists of issues, quick wins, and the project roadmap.
+- `[x]` Document all findings in `production_ready_audit_report.md` (stored outside this repository in the authoring tool's workspace) with custom severity tiers, score breakdowns, prioritized lists of issues, quick wins, and the project roadmap.
 
 ### Session 48 continued: Sentry, fingerprint bans, Bingo verification, DB backups — COMPLETE
 
