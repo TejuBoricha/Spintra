@@ -6,308 +6,23 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export interface Database {
-  public: {
+export type Database = {
+  graphql_public: {
     Tables: {
-      rooms: {
-        Row: {
-          id: string
-          code: string
-          name: string
-          type: string
-          host_id: string
-          is_public: boolean
-          is_locked: boolean
-          max_participants: number
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          code: string
-          name: string
-          type: string
-          host_id: string
-          is_public?: boolean
-          is_locked?: boolean
-          max_participants?: number
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          code?: string
-          name?: string
-          type?: string
-          host_id?: string
-          is_public?: boolean
-          is_locked?: boolean
-          max_participants?: number
-          created_at?: string
-        }
-        Relationships: []
-      }
-      room_activity_state: {
-        Row: {
-          room_code: string
-          activity_state: Json | null
-        }
-        Insert: {
-          room_code: string
-          activity_state?: Json | null
-        }
-        Update: {
-          room_code?: string
-          activity_state?: Json | null
-        }
-        Relationships: []
-      }
-      room_participants: {
-        Row: {
-          id: string
-          room_id: string
-          user_id: string
-          role: string
-          is_online: boolean
-          joined_at: string
-          username: string | null
-          avatar_url: string | null
-          xp: number | null
-          rank: string | null
-        }
-        Insert: {
-          id?: string
-          room_id: string
-          user_id: string
-          role?: string
-          is_online?: boolean
-          joined_at?: string
-          username?: string | null
-          avatar_url?: string | null
-          xp?: number | null
-          rank?: string | null
-        }
-        Update: {
-          id?: string
-          room_id?: string
-          user_id?: string
-          role?: string
-          is_online?: boolean
-          joined_at?: string
-          username?: string | null
-          avatar_url?: string | null
-          xp?: number | null
-          rank?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_room_participants_room"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "rooms"
-            referencedColumns: ["code"]
-          }
-        ]
-      }
-      chat_messages: {
-        Row: {
-          id: string
-          room_id: string
-          user_id: string
-          content: string
-          created_at: string
-          username: string | null
-        }
-        Insert: {
-          id?: string
-          room_id: string
-          user_id: string
-          content: string
-          created_at?: string
-          username?: string | null
-        }
-        Update: {
-          id?: string
-          room_id?: string
-          user_id?: string
-          content?: string
-          created_at?: string
-          username?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_chat_messages_room"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "rooms"
-            referencedColumns: ["code"]
-          }
-        ]
-      }
-      activity_prompts: {
-        Row: {
-          id: string
-          activity_type: string
-          category: string | null
-          prompt_data: Json
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          activity_type: string
-          category?: string | null
-          prompt_data: Json
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          activity_type?: string
-          category?: string | null
-          prompt_data?: Json
-          created_at?: string
-        }
-        Relationships: []
-      }
-      trivia_questions: {
-        Row: {
-          id: string
-          text: string
-          options: Json
-          correct_index: number
-          category: string
-          difficulty: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          text: string
-          options: Json
-          correct_index: number
-          category: string
-          difficulty: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          text?: string
-          options?: Json
-          correct_index?: number
-          category?: string
-          difficulty?: string
-          created_at?: string
-        }
-        Relationships: []
-      }
-      room_bans: {
-        Row: {
-          id: string
-          room_id: string
-          user_id: string
-          banned_by: string
-          created_at: string
-          username: string | null
-        }
-        Insert: {
-          id?: string
-          room_id: string
-          user_id: string
-          banned_by: string
-          created_at?: string
-          username?: string | null
-        }
-        Update: {
-          id?: string
-          room_id?: string
-          user_id?: string
-          banned_by?: string
-          created_at?: string
-          username?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_room_bans_room"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "rooms"
-            referencedColumns: ["code"]
-          }
-        ]
-      }
-      message_reports: {
-        Row: {
-          id: string
-          message_id: string
-          room_id: string
-          reported_user_id: string
-          reporter_id: string
-          reason: string | null
-          reviewed: boolean
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          message_id: string
-          room_id: string
-          reported_user_id: string
-          reporter_id: string
-          reason?: string | null
-          reviewed?: boolean
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          message_id?: string
-          room_id?: string
-          reported_user_id?: string
-          reporter_id?: string
-          reason?: string | null
-          reviewed?: boolean
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_message_reports_room"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "rooms"
-            referencedColumns: ["code"]
-          }
-        ]
-      }
-      analytics_events: {
-        Row: {
-          id: number
-          event_name: string
-          activity_type: string | null
-          actor_id: string
-          created_at: string
-        }
-        Insert: {
-          id?: number
-          event_name: string
-          activity_type?: string | null
-          actor_id: string
-          created_at?: string
-        }
-        Update: {
-          id?: number
-          event_name?: string
-          activity_type?: string | null
-          actor_id?: string
-          created_at?: string
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      set_guess_number_secret: {
-        Args: { p_room_code: string; p_secret: number }
-        Returns: undefined
-      }
-      check_guess_number: {
-        Args: { p_room_code: string; p_guess: number }
-        Returns: string
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
       }
     }
     Enums: {
@@ -317,4 +32,580 @@ export interface Database {
       [_ in never]: never
     }
   }
+  public: {
+    Tables: {
+      activity_prompts: {
+        Row: {
+          activity_type: string
+          category: string | null
+          created_at: string
+          id: string
+          prompt_data: Json
+        }
+        Insert: {
+          activity_type: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          prompt_data: Json
+        }
+        Update: {
+          activity_type?: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          prompt_data?: Json
+        }
+        Relationships: []
+      }
+      analytics_events: {
+        Row: {
+          activity_type: string | null
+          actor_id: string
+          created_at: string
+          event_name: string
+          id: number
+        }
+        Insert: {
+          activity_type?: string | null
+          actor_id: string
+          created_at?: string
+          event_name: string
+          id?: number
+        }
+        Update: {
+          activity_type?: string | null
+          actor_id?: string
+          created_at?: string
+          event_name?: string
+          id?: number
+        }
+        Relationships: []
+      }
+      analytics_events_insert_attempts: {
+        Row: {
+          actor_id: string
+          created_at: string
+          id: number
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          id?: number
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          id?: number
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          room_id: string
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          room_id: string
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          room_id?: string
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_chat_messages_room"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      guess_number_attempts: {
+        Row: {
+          created_at: string
+          id: number
+          room_code: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          room_code: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          room_code?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guess_number_attempts_room_code_fkey"
+            columns: ["room_code"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      guess_number_secrets: {
+        Row: {
+          room_code: string
+          secret: number
+          updated_at: string
+        }
+        Insert: {
+          room_code: string
+          secret: number
+          updated_at?: string
+        }
+        Update: {
+          room_code?: string
+          secret?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guess_number_secrets_room_code_fkey"
+            columns: ["room_code"]
+            isOneToOne: true
+            referencedRelation: "rooms"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      message_reports: {
+        Row: {
+          created_at: string
+          id: string
+          message_id: string
+          reason: string | null
+          reported_user_id: string
+          reporter_id: string
+          reviewed: boolean
+          room_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_id: string
+          reason?: string | null
+          reported_user_id: string
+          reporter_id: string
+          reviewed?: boolean
+          room_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_id?: string
+          reason?: string | null
+          reported_user_id?: string
+          reporter_id?: string
+          reviewed?: boolean
+          room_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_message_reports_message"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_message_reports_room"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      room_activity_state: {
+        Row: {
+          activity_state: Json | null
+          room_code: string
+        }
+        Insert: {
+          activity_state?: Json | null
+          room_code: string
+        }
+        Update: {
+          activity_state?: Json | null
+          room_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_activity_state_room_code_fkey"
+            columns: ["room_code"]
+            isOneToOne: true
+            referencedRelation: "rooms"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      room_bans: {
+        Row: {
+          banned_by: string
+          created_at: string
+          id: string
+          room_id: string
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          banned_by: string
+          created_at?: string
+          id?: string
+          room_id: string
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          banned_by?: string
+          created_at?: string
+          id?: string
+          room_id?: string
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_room_bans_room"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      room_participants: {
+        Row: {
+          avatar_url: string | null
+          id: string
+          is_online: boolean
+          joined_at: string
+          rank: string | null
+          role: string
+          room_id: string
+          user_id: string
+          username: string | null
+          xp: number | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          id?: string
+          is_online?: boolean
+          joined_at?: string
+          rank?: string | null
+          role?: string
+          room_id: string
+          user_id: string
+          username?: string | null
+          xp?: number | null
+        }
+        Update: {
+          avatar_url?: string | null
+          id?: string
+          is_online?: boolean
+          joined_at?: string
+          rank?: string | null
+          role?: string
+          room_id?: string
+          user_id?: string
+          username?: string | null
+          xp?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_room_participants_room"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      room_participants_update_attempts: {
+        Row: {
+          actor_id: string
+          created_at: string
+          id: number
+          room_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          id?: number
+          room_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          id?: number
+          room_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_participants_update_attempts_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          code: string
+          created_at: string
+          host_id: string
+          id: string
+          is_locked: boolean
+          is_public: boolean
+          max_participants: number
+          name: string
+          participant_count: number
+          type: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          host_id: string
+          id?: string
+          is_locked?: boolean
+          is_public?: boolean
+          max_participants?: number
+          name: string
+          participant_count?: number
+          type: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          host_id?: string
+          id?: string
+          is_locked?: boolean
+          is_public?: boolean
+          max_participants?: number
+          name?: string
+          participant_count?: number
+          type?: string
+        }
+        Relationships: []
+      }
+      trivia_questions: {
+        Row: {
+          category: string
+          correct_index: number
+          created_at: string
+          difficulty: string
+          id: string
+          options: Json
+          text: string
+        }
+        Insert: {
+          category: string
+          correct_index: number
+          created_at?: string
+          difficulty: string
+          id?: string
+          options: Json
+          text: string
+        }
+        Update: {
+          category?: string
+          correct_index?: number
+          created_at?: string
+          difficulty?: string
+          id?: string
+          options?: Json
+          text?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      check_guess_number: {
+        Args: { p_guess: number; p_room_code: string }
+        Returns: string
+      }
+      cleanup_inactive_rooms: { Args: never; Returns: undefined }
+      elect_room_host: {
+        Args: { p_room_code: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_member_of_room: {
+        Args: { room_code: string; user_uuid: string }
+        Returns: boolean
+      }
+      log_moderation_event: {
+        Args: {
+          p_detail: string
+          p_event_type: string
+          p_room_id: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      set_guess_number_secret: {
+        Args: { p_room_code: string; p_secret: number }
+        Returns: undefined
+      }
+      verify_trivia_answer: { Args: { p_question_id: string }; Returns: number }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
+  public: {
+    Enums: {},
+  },
+} as const
+

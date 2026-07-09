@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, memo } from "react";
 import { toast } from "sonner";
 import { MessageCircle, Users as UsersIcon, Crown, Smile, Send, UserX, Pencil, Check, X, Flag, Ban } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -60,6 +60,73 @@ interface RoomSidebarProps {
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   onUpdateUsername: (newName: string) => Promise<void>;
 }
+
+interface ChatMessageItemProps {
+  msg: ChatMessage;
+  username: string;
+  isMsgHost: boolean;
+  isOwnMessage: boolean;
+  isRecent: boolean;
+  onReport: (msg: ChatMessage) => void;
+}
+
+const ChatMessageItem = memo(function ChatMessageItem({
+  msg,
+  username,
+  isMsgHost,
+  isOwnMessage,
+  isRecent,
+  onReport,
+}: ChatMessageItemProps) {
+  const initials = username.slice(0, 2).toUpperCase() || "??";
+  const MessageWrapper = isRecent ? motion.div : "div";
+  const motionProps = isRecent
+    ? {
+        initial: { opacity: 0, y: 12, scale: 0.96 },
+        animate: { opacity: 1, y: 0, scale: 1 },
+        exit: { opacity: 0, scale: 0.96 },
+        transition: { type: "spring" as const, stiffness: 350, damping: 25 },
+      }
+    : {};
+
+  return (
+    <MessageWrapper
+      {...motionProps}
+      className="flex gap-3 group"
+    >
+      <Avatar className="w-8 h-8 shrink-0">
+        <AvatarFallback className="text-xs bg-gradient-to-br from-purple-500 to-cyan-500 text-white">
+          {initials}
+        </AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">{username}</span>
+          {isMsgHost && <Crown className="w-3 h-3 text-amber-400" />}
+          {!isOwnMessage && (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    onClick={() => onReport(msg)}
+                    className="ml-auto rounded opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [@media(hover:none)]:opacity-100 text-muted-foreground hover:text-red-400 transition-opacity"
+                    aria-label="Report message"
+                  />
+                }
+              >
+                <Flag className="w-3 h-3" />
+              </TooltipTrigger>
+              <TooltipContent>Report message</TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {renderTextWithEmoji(msg.content)}
+        </p>
+      </div>
+    </MessageWrapper>
+  );
+});
 
 export function RoomSidebar({
   showParticipants,
@@ -204,56 +271,19 @@ export function RoomSidebar({
                       const username = isOwnMessage
                         ? "You"
                         : participant?.user?.username || msg.user?.username || "Guest";
-                      const initials = username.slice(0, 2).toUpperCase() || "??";
                       const isMsgHost = participant?.role === "host";
                       const isRecent = index >= visibleMessages.length - ANIMATE_MESSAGE_COUNT;
-                      const MessageWrapper = isRecent ? motion.div : "div";
-                      const motionProps = isRecent
-                        ? {
-                            initial: { opacity: 0, y: 12, scale: 0.96 },
-                            animate: { opacity: 1, y: 0, scale: 1 },
-                            exit: { opacity: 0, scale: 0.96 },
-                            transition: { type: "spring" as const, stiffness: 350, damping: 25 },
-                          }
-                        : {};
 
                       return (
-                        <MessageWrapper
+                        <ChatMessageItem
                           key={msg.id}
-                          {...motionProps}
-                          className="flex gap-3 group"
-                        >
-                          <Avatar className="w-8 h-8 shrink-0">
-                            <AvatarFallback className="text-xs bg-gradient-to-br from-purple-500 to-cyan-500 text-white">
-                              {initials}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium">{username}</span>
-                              {isMsgHost && <Crown className="w-3 h-3 text-amber-400" />}
-                              {!isOwnMessage && (
-                                <Tooltip>
-                                  <TooltipTrigger
-                                    render={
-                                      <button
-                                        onClick={() => reportMessage(msg)}
-                                        className="ml-auto rounded opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [@media(hover:none)]:opacity-100 text-muted-foreground hover:text-red-400 transition-opacity"
-                                        aria-label="Report message"
-                                      />
-                                    }
-                                  >
-                                    <Flag className="w-3 h-3" />
-                                  </TooltipTrigger>
-                                  <TooltipContent>Report message</TooltipContent>
-                                </Tooltip>
-                              )}
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {renderTextWithEmoji(msg.content)}
-                            </p>
-                          </div>
-                        </MessageWrapper>
+                          msg={msg}
+                          username={username}
+                          isMsgHost={isMsgHost}
+                          isOwnMessage={isOwnMessage}
+                          isRecent={isRecent}
+                          onReport={reportMessage}
+                        />
                       );
                     })}
                   </AnimatePresence>
@@ -373,6 +403,7 @@ export function RoomSidebar({
                             <input
                               type="text"
                               value={editValue}
+                              aria-label="Edit username"
                               // Unicode-aware: \p{L}/\p{N} keep any script's
                               // letters/digits (accented, CJK, Cyrillic,
                               // etc.) — a plain a-zA-Z0-9 filter was
@@ -380,7 +411,7 @@ export function RoomSidebar({
                               // Still blocks control characters and emoji.
                               onChange={(e) => setEditValue(e.target.value.replace(/[^\p{L}\p{N} _.'-]/gu, ""))}
                               maxLength={15}
-                              className="text-xs bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded px-1.5 py-0.5 font-medium text-foreground focus:outline-none focus:border-purple-500/50 w-24"
+                              className="text-xs bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded px-1.5 py-0.5 font-medium text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-purple-500/50 w-24"
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") handleSaveUsername();
                                 if (e.key === "Escape") setIsEditingUsername(false);

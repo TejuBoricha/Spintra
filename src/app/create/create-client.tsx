@@ -116,7 +116,7 @@ export default function CreateRoomClient() {
   const [createdRoom, setCreatedRoom] = useState<{ code: string; url: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const generateCode = () => {
+  const generateCode = (length = 6) => {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     // 32-character alphabet divides 2^32 evenly, so this is unbiased. No
     // Math.random() fallback: crypto.getRandomValues has universal browser
@@ -124,7 +124,7 @@ export default function CreateRoomClient() {
     // guessable room code is a real (if minor) privacy exposure — better to
     // fail loudly in some hypothetical crippled environment than silently
     // downgrade code randomness.
-    const bytes = new Uint32Array(6);
+    const bytes = new Uint32Array(length);
     window.crypto.getRandomValues(bytes);
     return Array.from(bytes, (b) => chars[b % chars.length]).join("");
   };
@@ -147,7 +147,7 @@ export default function CreateRoomClient() {
     setIsCreating(true);
 
     const supabase = getSupabaseBrowserClient();
-    let code = generateCode();
+    let code = generateCode(6);
     const gameLabel = GAMES.find((g) => g.type === selectedType)?.label || "Game";
     const finalRoomName = roomName || `${gameLabel} Room`;
     const hostId = currentUserRef.current.id;
@@ -155,13 +155,13 @@ export default function CreateRoomClient() {
     if (supabase) {
       try {
         // Regenerate on collision so we never silently reuse an existing room's code.
-        for (let attempt = 0; attempt < 5; attempt++) {
+        for (let attempt = 0; attempt < 10; attempt++) {
           const { data: existing } = await withTimeout(
             supabase.from("rooms").select("code").eq("code", code).maybeSingle(),
             2000
           );
           if (!existing) break;
-          code = generateCode();
+          code = attempt >= 7 ? generateCode(8) : generateCode(6);
         }
 
         const { error } = await withTimeout(

@@ -255,52 +255,28 @@ export function useRoomSubscription({
       const earliest = onlineParticipants[0];
       if (earliest.user_id !== currentUser.id) return;
 
-      // Verify the room still exists to prevent host promotion if the room is being closed/deleted
-      const { data: roomExists } = await supabase
-        .from("rooms")
-        .select("id")
-        .eq("code", roomCode)
-        .maybeSingle();
+      // Promote our participant row and update room host_id in a single atomic database RPC call
+      const { data: success, error: electError } = await supabase.rpc("elect_room_host", {
+        p_room_code: roomCode,
+        p_user_id: currentUser.id,
+      });
 
-      if (!roomExists) return;
-
-      // Promote our participant row to 'host'
-      const { error: partError } = await supabase
-        .from("room_participants")
-        .update({ role: "host" })
-        .eq("room_id", roomCode)
-        .eq("user_id", currentUser.id);
-
-      if (partError) {
-        if (partError.message?.includes("already has an online host")) {
-          console.warn("Host election conflict detected. Another online participant was elected first.");
-        } else {
-          console.error("Failed to elect participant as host in database:", partError.message || partError);
-        }
+      if (electError || !success) {
+        console.error("Host election RPC failed or was rejected:", electError?.message || "Conflict or room not found");
         return;
       }
 
-      // Update rooms table host_id to match the new host
-      const { error: roomError } = await supabase
-        .from("rooms")
-        .update({ host_id: currentUser.id })
-        .eq("code", roomCode);
-
-      if (roomError) {
-        console.error("Failed to update rooms host_id in database:", roomError.message || roomError);
-      } else {
-        setRoomHostId(currentUser.id);
-        setParticipants((prev) =>
-          prev.map((participant) =>
-            participant.user_id === currentUser.id
-              ? { ...participant, role: "host" as const }
-              : participant
-          )
-        );
-        toast.success("You are now the host.");
-        setNotification("The previous host left, and you have been promoted to host.");
-        fireConfetti();
-      }
+      setRoomHostId(currentUser.id);
+      setParticipants((prev) =>
+        prev.map((participant) =>
+          participant.user_id === currentUser.id
+            ? { ...participant, role: "host" as const }
+            : participant
+        )
+      );
+      toast.success("You are now the host.");
+      setNotification("The previous host left, and you have been promoted to host.");
+      fireConfetti();
     },
     [currentUser.id, roomCode]
   );
@@ -696,6 +672,28 @@ export function useRoomSubscription({
             if (storedType !== "party" && storedType !== "classroom") {
               setActiveActivity((prev) => prev || { type: storedType, state: null });
             }
+
+            // Save to room history in localStorage (Demo Mode)
+            if (typeof window !== "undefined") {
+              try {
+                const historyKey = "spintra-room-history";
+                const stored = localStorage.getItem(historyKey);
+                let history: { code: string; name: string; type: string; joinedAt: string }[] = [];
+                if (stored) {
+                  history = JSON.parse(stored);
+                }
+                history = history.filter((item) => item.code !== roomCode);
+                history.unshift({
+                  code: roomCode,
+                  name: storedName || "Demo Room",
+                  type: storedType,
+                  joinedAt: new Date().toISOString(),
+                });
+                localStorage.setItem(historyKey, JSON.stringify(history.slice(0, 5)));
+              } catch (e) {
+                console.error("Failed to update room history in demo mode:", e);
+              }
+            }
           }
           return null;
         }
@@ -721,6 +719,29 @@ export function useRoomSubscription({
           setIsLocked(!!data.is_locked);
           setRoomHostId(data.host_id);
           if (typeof data.max_participants === "number") setMaxParticipantsLimit(data.max_participants);
+
+          // Save to room history in localStorage
+          if (typeof window !== "undefined") {
+            try {
+              const historyKey = "spintra-room-history";
+              const stored = localStorage.getItem(historyKey);
+              let history: { code: string; name: string; type: string; joinedAt: string }[] = [];
+              if (stored) {
+                history = JSON.parse(stored);
+              }
+              history = history.filter((item) => item.code !== roomCode);
+              history.unshift({
+                code: roomCode,
+                name: data.name,
+                type: data.type,
+                joinedAt: new Date().toISOString(),
+              });
+              localStorage.setItem(historyKey, JSON.stringify(history.slice(0, 5)));
+            } catch (e) {
+              console.error("Failed to update room history:", e);
+            }
+          }
+
           return { type: data.type as RoomType };
         }
         return null;

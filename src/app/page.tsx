@@ -41,6 +41,18 @@ export default function HomePage() {
   const [currentUser] = useState(getOrCreateRoomUser);
   const [homeCode, setHomeCode] = useState("");
   const [homeJoining, setHomeJoining] = useState(false);
+  const [roomHistory, setRoomHistory] = useState<{ code: string; name: string; type: string }[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("spintra-room-history");
+      if (stored) {
+        try {
+          setRoomHistory(JSON.parse(stored));
+        } catch (e) {}
+      }
+    }
+  }, []);
 
   const handleHomeJoin = useCallback(async () => {
     if (homeCode.length !== 6) return;
@@ -194,11 +206,15 @@ export default function HomePage() {
             transition={{ delay: 0.7, duration: 0.6 }}
             className="max-w-md mx-auto mt-12 p-6 glass-card border border-border rounded-3xl space-y-4"
           >
-            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest text-left">
+            <label
+              htmlFor="home-code-input"
+              className="block text-sm font-bold text-muted-foreground uppercase tracking-widest text-left cursor-pointer"
+            >
               Have a Room Code?
-            </h3>
+            </label>
             <div className="flex gap-2">
               <input
+                id="home-code-input"
                 type="text"
                 maxLength={6}
                 value={homeCode}
@@ -206,7 +222,7 @@ export default function HomePage() {
                 onKeyDown={(e) => e.key === "Enter" && handleHomeJoin()}
                 placeholder="ENTER CODE"
                 aria-label="Enter room code"
-                className="flex-1 px-4 h-12 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl text-center text-lg font-mono font-bold uppercase tracking-widest text-purple-600 dark:text-purple-300 focus:outline-none focus:border-cyan-500/50"
+                className="flex-1 px-4 h-12 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl text-center text-lg font-mono font-bold uppercase tracking-widest text-purple-600 dark:text-purple-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-all"
               />
               <Button
                 onClick={handleHomeJoin}
@@ -217,6 +233,52 @@ export default function HomePage() {
               </Button>
             </div>
           </motion.div>
+
+          {roomHistory.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8, duration: 0.6 }}
+              className="max-w-md mx-auto mt-6 p-6 glass-card border border-border rounded-3xl space-y-3 text-left"
+            >
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                Recently Visited Rooms
+              </h3>
+              <div className="flex flex-col gap-2">
+                {roomHistory.map((room) => {
+                  const game = GAMES.find((g) => g.type === room.type);
+                  const Icon = game?.icon || Star;
+                  return (
+                    <button
+                      key={room.code}
+                      onClick={() => {
+                        setHomeCode(room.code);
+                        router.push(`/room/${room.code}`);
+                      }}
+                      className="flex items-center justify-between p-3 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.08] hover:border-purple-500/30 transition-all group w-full cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-xl bg-gradient-to-br ${game?.color || "from-purple-500 to-cyan-500"} text-white`}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold group-hover:text-purple-300 transition-colors">
+                            {room.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {game?.label || "Multiplayer"} Activity
+                          </p>
+                        </div>
+                      </div>
+                      <span className="font-mono text-xs font-bold text-purple-400 group-hover:text-purple-200 bg-purple-500/10 px-2.5 py-1 rounded-lg">
+                        {room.code}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
 
           {/* Social proof */}
           <motion.div

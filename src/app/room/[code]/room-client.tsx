@@ -163,6 +163,17 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     { id: string; role: string } | null | undefined
   >(undefined);
 
+  // Prevent accidental leave on reload/tab close
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "Are you sure you want to leave the room?";
+      return e.returnValue;
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
   // Client anonymous auth setup (runs only on mount)
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();

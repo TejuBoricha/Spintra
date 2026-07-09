@@ -10,7 +10,7 @@ import { useRoomActivity } from "../context/room-activity-context";
 import { generateBingoCard as generateCard, BINGO_LINES as LINES, BINGO_COLUMNS as COLUMNS } from "@/lib/utils";
 
 export function BingoActivity() {
-  const { isHost, sendActivityEvent, registerEventListener, currentUser } = useRoomActivity();
+  const { roomCode, isHost, sendActivityEvent, registerEventListener, currentUser } = useRoomActivity();
 
   const [bingoCalled, setBingoCalled] = useState<number[]>([]);
   const [bingoWinner, setBingoWinner] = useState<string | null>(null);
@@ -21,9 +21,28 @@ export function BingoActivity() {
   // number twice, or otherwise race win-detection.
   const [isCalling, setIsCalling] = useState(false);
 
-  const [card, setCard] = useState<number[][]>(generateCard);
+  const [card, setCard] = useState<number[][]>(() => generateCard());
   const hasCalledBingoRef = useRef(false);
   const prevCalledLenRef = useRef(0);
+
+  // Load card from localStorage to handle reconnect stability
+  useEffect(() => {
+    if (typeof window !== "undefined" && roomCode) {
+      const key = `spintra-bingo-card-${roomCode}`;
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        try {
+          setCard(JSON.parse(stored));
+          return;
+        } catch (e) {
+          console.error("Failed to parse stored bingo card:", e);
+        }
+      }
+      const newCard = generateCard();
+      localStorage.setItem(key, JSON.stringify(newCard));
+      setCard(newCard);
+    }
+  }, [roomCode]);
 
   useEffect(() => {
     return registerEventListener((event) => {
@@ -59,11 +78,15 @@ export function BingoActivity() {
 
   useEffect(() => {
     if (bingoCalled.length === 0 && prevCalledLenRef.current > 0) {
-      setCard(generateCard());
+      const newCard = generateCard();
+      if (typeof window !== "undefined" && roomCode) {
+        localStorage.setItem(`spintra-bingo-card-${roomCode}`, JSON.stringify(newCard));
+      }
+      setCard(newCard);
       hasCalledBingoRef.current = false;
     }
     prevCalledLenRef.current = bingoCalled.length;
-  }, [bingoCalled]);
+  }, [bingoCalled, roomCode]);
 
   const isMarked = useCallback(
     (col: number, row: number) => (col === 2 && row === 2) || bingoCalled.includes(card[col][row]),

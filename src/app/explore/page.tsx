@@ -135,12 +135,13 @@ export default function ExplorePage() {
           max_participants,
           is_locked,
           created_at,
+          participant_count,
           room_participants (
             username,
-            role,
-            is_online
+            role
           )
         `)
+        .eq("room_participants.role", "host")
         .eq("is_public", true)
         .order("created_at", { ascending: false })
         .limit(60);
@@ -152,12 +153,9 @@ export default function ExplorePage() {
           const participants = (room.room_participants as unknown as {
             username: string | null;
             role: string;
-            is_online: boolean;
           }[]) || [];
-          const onlineCount = participants.filter((p) => p.is_online).length;
-          const hostUser = participants.find((p) => p.role === "host" && p.is_online)?.username ||
-                           participants.find((p) => p.role === "host")?.username ||
-                           "Guest";
+          const onlineCount = room.participant_count || 0;
+          const hostUser = participants.find((p) => p.role === "host")?.username || "Guest";
 
           return {
             id: room.id,
@@ -216,11 +214,8 @@ export default function ExplorePage() {
   }, []);
 
   // Fetch rooms only after auth is ready, then subscribe to realtime updates.
-  // room_participants changes anywhere (any room, public or private) can't be
-  // filtered to "belongs to a public room" server-side, so refetches from
-  // that table are debounced/coalesced rather than firing one full refetch
-  // per event — a burst of joins/leaves across many rooms triggers at most
-  // one refetch per debounce window instead of one per row change.
+  // We subscribe only to rooms changes where is_public=true, avoiding any
+  // wildcard room_participants table-wide subscriptions.
   useEffect(() => {
     if (!authReady) return;
     queueMicrotask(() => fetchRooms());
@@ -239,11 +234,6 @@ export default function ExplorePage() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "rooms", filter: "is_public=eq.true" },
-        scheduleRefetch
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "room_participants" },
         scheduleRefetch
       )
       .subscribe();

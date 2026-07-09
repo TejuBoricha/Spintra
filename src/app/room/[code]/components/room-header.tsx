@@ -12,6 +12,7 @@ import {
   Volume2,
   VolumeX,
   QrCode,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -83,6 +84,7 @@ export const RoomHeader = memo(function RoomHeader({
   const [qrLoadFailed, setQrLoadFailed] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
   const roomUrl = typeof window !== "undefined" ? window.location.href : "";
 
   // Generated client-side (dynamically imported so the ~30KB library only
@@ -307,6 +309,22 @@ export const RoomHeader = memo(function RoomHeader({
             </TooltipTrigger>
             <TooltipContent>{soundEnabled ? "Mute sounds" : "Unmute sounds"}</TooltipContent>
           </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsExitConfirmOpen(true)}
+                  aria-label="Leave room"
+                  className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                />
+              }
+            >
+              <LogOut className="w-4 h-4" />
+            </TooltipTrigger>
+            <TooltipContent>Leave room</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -380,6 +398,31 @@ export const RoomHeader = memo(function RoomHeader({
               }}
             >
               Reset activity
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isExitConfirmOpen} onOpenChange={setIsExitConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Leave the room?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to leave this room? You will disconnect from the active game and chat thread.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsExitConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setIsExitConfirmOpen(false);
+                window.location.href = "/";
+              }}
+            >
+              Leave Room
             </Button>
           </DialogFooter>
         </DialogContent>

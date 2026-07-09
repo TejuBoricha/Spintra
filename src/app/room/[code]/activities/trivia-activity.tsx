@@ -17,9 +17,10 @@ import { playSwipe, playPop, playSuccess, playFailure } from "@/lib/audio";
 export function TriviaActivity() {
   const { isHost, currentUser, sendActivityEvent, registerEventListener, soundEnabled } = useRoomActivity();
   const [triviaQuestion, setTriviaQuestion] = useState<{
+    id?: string;
     text: string;
     options: string[];
-    correctIndex: number;
+    correctIndex?: number;
     num: number;
     category: string;
     difficulty: "easy" | "medium" | "hard";
@@ -37,7 +38,7 @@ export function TriviaActivity() {
     if (supabase && isHost) {
       supabase
         .from("trivia_questions")
-        .select("*")
+        .select("id, text, options, category, difficulty")
         // PostgREST truncates unbounded selects silently (no error) past its
         // configured row cap — an explicit limit makes the ceiling this
         // code actually relies on visible and intentional, generous enough
@@ -46,16 +47,16 @@ export function TriviaActivity() {
         .then(({ data, error }) => {
           if (data && !error && data.length > 0) {
             const fetched = data.map((q) => ({
+              id: q.id,
               text: q.text,
               options: Array.isArray(q.options)
                 ? (q.options as string[])
                 : typeof q.options === "string"
                 ? JSON.parse(q.options)
                 : [],
-              correctIndex: q.correct_index,
               category: q.category,
               difficulty: q.difficulty,
-            })) as TriviaQuestion[];
+            })) as unknown as TriviaQuestion[];
             setQuestions(fetched);
           }
         }, (e: unknown) => console.error("Failed to load trivia questions:", e));
@@ -66,6 +67,7 @@ export function TriviaActivity() {
     return registerEventListener((event) => {
       if (event.kind === "trivia_question") {
         setTriviaQuestion({
+          id: event.questionId,
           text: event.text,
           options: event.options,
           correctIndex: event.correctIndex,
@@ -80,6 +82,9 @@ export function TriviaActivity() {
           ...prev,
           [event.userId]: { username: event.username, choiceIndex: event.choiceIndex, correct: event.correct },
         }));
+        if (typeof event.correctIndex === "number") {
+          setTriviaQuestion((prev) => prev ? { ...prev, correctIndex: event.correctIndex } : null);
+        }
         if (event.userId === currentUser.id) {
           if (event.correct) {
             playSuccess(soundEnabled);
@@ -123,6 +128,7 @@ export function TriviaActivity() {
       const num = (triviaQuestion?.num ?? 0) + 1;
       sendActivityEvent({
         kind: "trivia_question",
+        questionId: q.id,
         text: q.text,
         options: [...q.options],
         correctIndex: q.correctIndex,
@@ -228,7 +234,7 @@ export function TriviaActivity() {
             {triviaQuestion.options.map((opt, i) => {
               const isPicked = myAnswer?.choiceIndex === i;
               const hasAnswered = !!myAnswer;
-              const isCorrectOption = i === triviaQuestion.correctIndex;
+              const isCorrectOption = typeof triviaQuestion.correctIndex === "number" && i === triviaQuestion.correctIndex;
 
               let btnStyle = "border-white/10 hover:border-yellow-500/50 hover:bg-yellow-500/10";
               if (hasAnswered) {
@@ -246,9 +252,33 @@ export function TriviaActivity() {
                   key={i}
                   data-testid="trivia-option"
                   disabled={hasAnswered}
-                  onClick={() => {
-                    const correct = i === triviaQuestion.correctIndex;
-                    sendActivityEvent({ kind: "trivia_answer", userId: currentUser.id, username: currentUser.username, choiceIndex: i, correct });
+                  onClick={async () => {
+                    let correct = false;
+                    let correctIndex = triviaQuestion.correctIndex;
+
+                    const supabase = getSupabaseBrowserClient();
+                    if (supabase && triviaQuestion.id) {
+                      const { data, error } = await supabase.rpc("verify_trivia_answer", {
+                        p_question_id: triviaQuestion.id,
+                      });
+                      if (!error && typeof data === "number") {
+                        correctIndex = data;
+                        correct = i === data;
+                      } else {
+                        console.error("Failed to verify trivia answer via RPC:", error?.message);
+                      }
+                    } else if (typeof triviaQuestion.correctIndex === "number") {
+                      correct = i === triviaQuestion.correctIndex;
+                    }
+
+                    sendActivityEvent({
+                      kind: "trivia_answer",
+                      userId: currentUser.id,
+                      username: currentUser.username,
+                      choiceIndex: i,
+                      correctIndex,
+                      correct,
+                    });
                   }}
                   className={`p-4 rounded-xl border text-left font-semibold transition-all duration-200 disabled:cursor-default flex items-center justify-between gap-2 ${btnStyle}`}
                 >

@@ -1,7 +1,8 @@
 export interface TriviaQuestion {
+  id?: string;
   text: string;
   options: string[];
-  correctIndex: number;
+  correctIndex?: number;
   category: "General Knowledge" | "Science & Nature" | "Geography" | "History" | "Pop Culture" | "Sports";
   difficulty: "easy" | "medium" | "hard";
 }
