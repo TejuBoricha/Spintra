@@ -12,6 +12,7 @@ import type { TournamentType } from "@/lib/types";
 import { Emoji } from "@/components/emoji";
 import { fireConfetti, CelebrationBanner } from "@/components/celebration";
 import { playPop, playSuccess } from "@/lib/audio";
+import { disambiguatedUsernames } from "@/lib/utils";
 import { useRoomActivity, useRoomParticipants } from "../context/room-activity-context";
 import {
   type BracketMatch,
@@ -199,7 +200,7 @@ export function TournamentActivity() {
   }, [registerEventListener]);
 
   const generateBracket = useCallback(() => {
-    const names = participants.filter((p) => p.is_online).map((p) => p.user?.username || "Guest");
+    const names = disambiguatedUsernames(participants.filter((p) => p.is_online));
     if (names.length < 2) {
       toast.error("Need at least 2 online participants!", { id: "tournament-needs-players" });
       return;

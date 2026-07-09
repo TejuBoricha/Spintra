@@ -194,3 +194,98 @@ test('lucky wheel spins, lands on a winner, and does not spin again on its own',
     await browser.close();
   }
 });
+
+// Kick + ban-on-rejoin had zero e2e coverage (Session 45 audit) despite
+// being the app's only moderation enforcement mechanism — a regression here
+// would silently break the one tool a host has against a disruptive
+// participant, with no automated signal.
+test('host kicks a participant, and the kicked participant is blocked from rejoining', async ({ page, baseURL }) => {
+  test.setTimeout(90_000);
+  page.on('pageerror', (err) => console.log('[browser:pageerror]', err.message));
+
+  await page.goto('/create?type=trivia');
+  await page.waitForSelector('[data-testid="create-room-button"]', { timeout: 30000 });
+  await page.click('[data-testid="create-room-button"]');
+  await page.waitForURL(/\/room\/[A-Z0-9]+/);
+  const roomCode = page.url().split('/room/')[1];
+
+  const isLocalOnlyMode = await page.getByText(/this device only/i).isVisible().catch(() => false);
+  if (isLocalOnlyMode) {
+    test.skip(true, 'App is running without Supabase configured (demo-mode BroadcastChannel fallback) — a second browser context can never see this room');
+  }
+
+  const browser = await chromium.launch();
+  const guestContext = await browser.newContext();
+  const guestPage = await guestContext.newPage();
+
+  try {
+    await guestPage.goto(`${baseURL}/room/${roomCode}`);
+    await expect(guestPage.getByText('Live', { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/People \(2\)/)).toBeVisible({ timeout: 30000 });
+
+    // Switch the host's sidebar to the People tab and kick the guest —
+    // exercises the Session 45 confirm-dialog fix (previously an
+    // unconfirmed, instant, irreversible action) end to end.
+    await page.getByRole('button', { name: /people \(2\)/i }).click();
+    await page.getByRole('button', { name: /remove .* from the room/i }).click();
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: 'Remove', exact: true }).click();
+
+    // Guest is redirected away from the closed/kicked room.
+    await guestPage.waitForURL(/\/explore/, { timeout: 15000 });
+
+    // Ban-on-kick: the guest's anon session is now blocked from rejoining
+    // this specific room (migration 0012) — navigating back in should show
+    // the pre-entry banned state, not the room UI.
+    await guestPage.goto(`${baseURL}/room/${roomCode}`);
+    await expect(guestPage.getByRole('heading', { name: /you've been removed/i })).toBeVisible({ timeout: 15000 });
+  } finally {
+    await guestContext.close();
+    await browser.close();
+  }
+});
+
+// Host-election (a healthy participant self-promoting after the host
+// disconnects) had zero e2e coverage — the only regression class this
+// project has already shipped to production twice (a self-referencing RLS
+// policy breaking every host promotion, Session 41; a stale-column trigger
+// breaking it again, Session 43) with neither caught by a test.
+test('guest is promoted to host after the original host disconnects', async ({ page, baseURL }) => {
+  test.setTimeout(90_000);
+
+  await page.goto('/create?type=trivia');
+  await page.waitForSelector('[data-testid="create-room-button"]', { timeout: 30000 });
+  await page.click('[data-testid="create-room-button"]');
+  await page.waitForURL(/\/room\/[A-Z0-9]+/);
+  const roomCode = page.url().split('/room/')[1];
+
+  const isLocalOnlyMode = await page.getByText(/this device only/i).isVisible().catch(() => false);
+  if (isLocalOnlyMode) {
+    test.skip(true, 'App is running without Supabase configured (demo-mode BroadcastChannel fallback) — a second browser context can never see this room');
+  }
+
+  const browser = await chromium.launch();
+  const guestContext = await browser.newContext();
+  const guestPage = await guestContext.newPage();
+
+  try {
+    await guestPage.goto(`${baseURL}/room/${roomCode}`);
+    await expect(guestPage.getByText('Live', { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/People \(2\)/)).toBeVisible({ timeout: 30000 });
+
+    // Simulate the host crashing/closing their tab — no graceful
+    // "close room" action, just the connection dropping.
+    await page.close();
+
+    // The guest's own presence-reconciliation (migration 0019) should
+    // notice the host is gone and self-promote — confirmed via the
+    // persistent notification banner (not the transient toast, which
+    // auto-dismisses and would make this assertion timing-sensitive).
+    await expect(
+      guestPage.getByText(/previous host left, and you have been promoted to host/i)
+    ).toBeVisible({ timeout: 45_000 });
+  } finally {
+    await guestContext.close();
+    await browser.close();
+  }
+});

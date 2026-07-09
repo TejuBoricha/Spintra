@@ -484,6 +484,21 @@ function RoomUIInner({
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
+  // Tracks the md breakpoint reactively so RoomSidebar renders in exactly one
+  // location (desktop rail or mobile Sheet), never both — previously
+  // `sidebarContent` was rendered in both places simultaneously (the desktop
+  // container only used `hidden md:flex` to visually hide it below md, it was
+  // still mounted), so every room session ran a full live chat/participants
+  // instance twice, worst on the mobile devices most users are actually on.
+  const [isDesktopSidebar, setIsDesktopSidebar] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 768px)");
+    const update = () => setIsDesktopSidebar(mql.matches);
+    update();
+    mql.addEventListener("change", update);
+    return () => mql.removeEventListener("change", update);
+  }, []);
+
   // Mirrored in refs so addIncomingMessage (below) can read the latest sidebar
   // state without depending on it directly — depending on it directly used to
   // give the callback a new identity on every sidebar toggle, which tore down
@@ -747,6 +762,7 @@ function RoomUIInner({
           copied={copied}
           copyRoomLink={copyRoomLink}
           isHost={isHost}
+          currentUserId={localUser.id}
           toggleLock={toggleLock}
           onOpenCloseRoomDialog={handleOpenCloseRoomDialog}
           roomType={roomType}
@@ -772,7 +788,7 @@ function RoomUIInner({
 
       {/* Desktop Sidebar - Chat & Participants */}
       <div className="hidden md:flex md:w-80 md:border-l md:border-white/5 md:flex-col md:bg-background/50 md:backdrop-blur-sm">
-        {sidebarContent}
+        {isDesktopSidebar && sidebarContent}
       </div>
 
       {/* Mobile Sidebar Slide-over Drawer */}
@@ -781,7 +797,7 @@ function RoomUIInner({
           side="right"
           className="p-0 w-80 bg-background border-l border-white/5 flex flex-col h-full"
         >
-          {sidebarContent}
+          {!isDesktopSidebar && sidebarContent}
         </SheetContent>
       </Sheet>
 

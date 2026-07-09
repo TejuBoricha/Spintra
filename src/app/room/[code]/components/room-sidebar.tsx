@@ -7,6 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Emoji, renderTextWithEmoji, EMOJI_UNICODE } from "@/components/emoji";
 import { getBlockedUsers, toggleBlockedUser } from "@/lib/blocked-users";
 import type { User, ChatMessage, RoomParticipant } from "@/lib/types";
@@ -23,6 +31,11 @@ const REACTION_NAMES = [
 ] as const;
 
 const MAX_MESSAGE_LENGTH = 500;
+// Only the most recent messages get the enter/exit spring animation — a
+// long-running session's full (up to 500-capped) history rendering every
+// row as its own Framer Motion instance was a real perf cost (Session 45
+// audit). Older rows still render, just as plain non-animated divs.
+const ANIMATE_MESSAGE_COUNT = 40;
 
 interface RoomSidebarProps {
   showParticipants: boolean;
@@ -73,6 +86,19 @@ export function RoomSidebar({
 }: RoomSidebarProps) {
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [editValue, setEditValue] = useState("");
+  const [kickTarget, setKickTarget] = useState<RoomParticipant | null>(null);
+  const [isKicking, setIsKicking] = useState(false);
+
+  const confirmKick = useCallback(async () => {
+    if (!kickTarget) return;
+    setIsKicking(true);
+    try {
+      await handleKickParticipant(kickTarget);
+    } finally {
+      setIsKicking(false);
+      setKickTarget(null);
+    }
+  }, [kickTarget, handleKickParticipant]);
   const [blockedUsers, setBlockedUsers] = useState<string[]>([]);
 
   useEffect(() => {
@@ -105,6 +131,7 @@ export function RoomSidebar({
     }
   }, [editValue, currentUser.username, onUpdateUsername]);
   return (
+    <>
     <div className="flex-1 flex flex-col h-full bg-background/50 backdrop-blur-sm overflow-hidden">
       {/* Tabs */}
       <div className="flex border-b border-border shrink-0">
@@ -171,7 +198,7 @@ export function RoomSidebar({
                     </div>
                   )}
                   <AnimatePresence initial={false}>
-                    {visibleMessages.map((msg) => {
+                    {visibleMessages.map((msg, index) => {
                       const participant = participants.find((p) => p.user_id === msg.user_id);
                       const isOwnMessage = msg.user_id === currentUser.id;
                       const username = isOwnMessage
@@ -179,14 +206,21 @@ export function RoomSidebar({
                         : participant?.user?.username || msg.user?.username || "Guest";
                       const initials = username.slice(0, 2).toUpperCase() || "??";
                       const isMsgHost = participant?.role === "host";
+                      const isRecent = index >= visibleMessages.length - ANIMATE_MESSAGE_COUNT;
+                      const MessageWrapper = isRecent ? motion.div : "div";
+                      const motionProps = isRecent
+                        ? {
+                            initial: { opacity: 0, y: 12, scale: 0.96 },
+                            animate: { opacity: 1, y: 0, scale: 1 },
+                            exit: { opacity: 0, scale: 0.96 },
+                            transition: { type: "spring" as const, stiffness: 350, damping: 25 },
+                          }
+                        : {};
 
                       return (
-                        <motion.div
+                        <MessageWrapper
                           key={msg.id}
-                          initial={{ opacity: 0, y: 12, scale: 0.96 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.96 }}
-                          transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                          {...motionProps}
                           className="flex gap-3 group"
                         >
                           <Avatar className="w-8 h-8 shrink-0">
@@ -204,7 +238,7 @@ export function RoomSidebar({
                                     render={
                                       <button
                                         onClick={() => reportMessage(msg)}
-                                        className="ml-auto opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 transition-opacity"
+                                        className="ml-auto rounded opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [@media(hover:none)]:opacity-100 text-muted-foreground hover:text-red-400 transition-opacity"
                                         aria-label="Report message"
                                       />
                                     }
@@ -219,7 +253,7 @@ export function RoomSidebar({
                               {renderTextWithEmoji(msg.content)}
                             </p>
                           </div>
-                        </motion.div>
+                        </MessageWrapper>
                       );
                     })}
                   </AnimatePresence>
@@ -429,7 +463,7 @@ export function RoomSidebar({
                                     variant="ghost"
                                     size="icon"
                                     className="h-9 w-9"
-                                    onClick={() => handleKickParticipant(p)}
+                                    onClick={() => setKickTarget(p)}
                                     aria-label={`Remove ${
                                       p.user?.username || "participant"
                                     } from the room`}
@@ -452,5 +486,24 @@ export function RoomSidebar({
         )}
       </AnimatePresence>
     </div>
+    <Dialog open={!!kickTarget} onOpenChange={(open) => { if (!open) setKickTarget(null); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Remove {kickTarget?.user?.username || "this participant"}?</DialogTitle>
+          <DialogDescription>
+            {`They'll be removed from the room immediately and blocked from rejoining, unless they clear their browser data or use a different device.`}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setKickTarget(null)} disabled={isKicking}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={confirmKick} disabled={isKicking}>
+            {isKicking ? "Removing..." : "Remove"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
