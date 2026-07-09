@@ -108,15 +108,18 @@ export function MessageReportsPanel({
         .delete()
         .eq("room_id", roomCode)
         .eq("user_id", kickTargetId);
-      const { error: banError } = await supabase.from("room_bans").insert({
-        room_id: roomCode,
-        user_id: kickTargetId,
-        banned_by: currentUserId,
-        username: participantRow?.username ?? null,
-        fingerprint_hash: participantRow?.fingerprint_hash ?? null,
-      });
+      const { error: banError } = await supabase.from("room_bans").upsert(
+        {
+          room_id: roomCode,
+          user_id: kickTargetId,
+          banned_by: currentUserId,
+          username: participantRow?.username ?? null,
+          fingerprint_hash: participantRow?.fingerprint_hash ?? null,
+        },
+        { onConflict: "room_id,user_id", ignoreDuplicates: false }
+      );
       if (banError) {
-        console.error("Failed to record room ban:", banError);
+        console.error("Failed to record room ban:", banError.message || JSON.stringify(banError));
       }
       toast.success("Participant removed from the room.");
     } catch (error) {
