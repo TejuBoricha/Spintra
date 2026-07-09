@@ -75,6 +75,8 @@ Then, at the user's request, the 5 items Session 45 had left open (1 deliberatel
 
 **Verification:** `npm run verify` clean throughout. Both new migrations (`0040`, `0041`) applied and verified against a freshly-reset local Docker Supabase stack alongside a full Playwright run, then pushed live and re-verified with `npm run verify:migration` — see `CHANGELOG_AI.md` Session 46 for the full writeup.
 
+**Follow-up bug found during the user's own manual testing:** joining a 2-person-capped room as a genuine 2nd participant raised a console error claiming the room was full, even though the join actually succeeded (confirmed via direct DB query — both rows existed, `is_online = true`). Root cause: the capacity trigger (`0009`/`0026`/`0029`) counted the joining user's own row against their own capacity check when a redundant/duplicate join upsert fired (reliably reproduced via React Strict Mode's dev-only double-effect-invocation; the same flaw could also misfire in production on a fast-reconnect race). Fixed via migration `0042` — excludes the joining user's own row from the count. A genuinely new participant is still correctly blocked once a room is truly full; verified both directions via direct SQL against a local Docker instance plus a full Playwright rerun (7/7 passing). See `CHANGELOG_AI.md`'s "Post-Session-46 fix" entry.
+
 ---
 
 ## Session 41: Production Readiness Audit (60 findings, being fixed tier-by-tier)

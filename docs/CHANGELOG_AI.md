@@ -1316,3 +1316,22 @@
 
 ---
 
+## [2026-07-09] — Post-Session-46 fix: room capacity trigger blocks a legitimate 2nd join
+
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** User manually testing today's fixes via `npm run dev` (pointed at the real production Supabase project) hit a console error joining a 2-person-capped room as the 2nd participant: "This room has reached its maximum participant limit of 2." Investigated rather than dismissed as expected behavior — user was right to push back.
+
+**Root cause:** Direct query against the live database confirmed the join actually succeeded (both the host's and the 2nd user's `room_participants` rows existed, `is_online = true`) — the error was a real bug, not the capacity limit correctly doing its job. `check_room_limit_before_join()` (migration `0009`, online-only counting added `0026`, TOCTOU race closed `0029`) is a `before insert` trigger that fires on every upsert attempt against `room_participants`, including one that resolves via `on conflict (room_id, user_id) do update` into updating the caller's own existing row rather than adding a new participant. Its count query never excluded `new.user_id`, so a redundant/duplicate upsert for a user who is already one of the counted online participants can see the room "at capacity" (counting themselves) and reject its own harmless upsert. Reliably reproduced via React Strict Mode's dev-only double-invocation of effects (the room-join effect calls the join upsert twice in quick succession before the first call's result is reflected back) — but the same flaw could also misfire in production during a legitimate fast-reconnect race, so this isn't purely a dev artifact.
+
+**Files Modified:**
+- `supabase/migrations/0042_capacity_check_excludes_own_row.sql` (NEW) — excludes `user_id <> new.user_id` from the online-participant count.
+- `docs/ARCHITECTURE.md` — added migration `0042` to the table, updated migration count/latest pointer.
+
+**Purpose:** Fix a real correctness gap in the capacity trigger without weakening enforcement — a genuinely new participant is still correctly blocked once a room is truly full; only a self-referential upsert for someone already online is now exempted.
+
+**Outcome:** Verified via direct SQL against a local Docker Supabase stack (isolated from the user's live `npm run dev` session against production — used explicit shell-exported env vars for the build/test run instead of touching `.env.local` on disk, so their active testing session was never disrupted): reproduced the exact scenario (room capped at 2, host + 1 real guest already online), confirmed a redundant self-upsert for the already-joined guest now succeeds (previously blocked), and confirmed a genuinely new 3rd participant is still correctly rejected. Full Playwright suite (7/7) passing against the same local instance with this migration applied. `npm run verify` clean.
+
+**Risks:** None expected — the fix only narrows what counts as "at capacity" (excluding the caller's own already-counted row), it cannot let a room exceed `max_participants` from a genuinely new participant's perspective, since their own row can never already be among the counted rows before their first successful join.
+
+---
+
