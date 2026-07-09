@@ -32,6 +32,7 @@ export function BingoActivity() {
       const stored = localStorage.getItem(key);
       if (stored) {
         try {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setCard(JSON.parse(stored));
           return;
         } catch (e) {

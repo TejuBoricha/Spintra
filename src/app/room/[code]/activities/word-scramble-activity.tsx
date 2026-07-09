@@ -15,10 +15,17 @@ const WORDS = WORD_SCRAMBLE_WORDS;
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { playSwipe, playSuccess, playFailure } from "@/lib/audio";
 
+async function hashWord(word: string): Promise<string> {
+  const msgBuffer = new TextEncoder().encode(word.trim().toUpperCase());
+  const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 export function WordScrambleActivity() {
   const { isHost, sendActivityEvent, registerEventListener, currentUser, soundEnabled } = useRoomActivity();
 
-  const [scrambleWord, setScrambleWord] = useState<{ scrambled: string; answer: string } | null>(null);
+  const [scrambleWord, setScrambleWord] = useState<{ scrambled: string; hash?: string; answer?: string } | null>(null);
   const [scrambleWinner, setScrambleWinner] = useState<string | null>(null);
   const [guess, setGuess] = useState("");
   const [words, setWords] = useState<string[]>([...WORDS]);
@@ -48,7 +55,7 @@ export function WordScrambleActivity() {
     return registerEventListener((event) => {
       switch (event.kind) {
         case "scramble_word": {
-          setScrambleWord({ scrambled: event.scrambled, answer: event.answer });
+          setScrambleWord({ scrambled: event.scrambled, hash: event.hash });
           setScrambleWinner(null);
           playSwipe(soundEnabled);
           break;
@@ -60,6 +67,7 @@ export function WordScrambleActivity() {
           // guess a client could otherwise receive two of these events and
           // flip-flop which name it displays. Keep only the first.
           setScrambleWinner((prev) => prev ?? event.username);
+          setScrambleWord((prev) => prev ? { ...prev, answer: event.answer } : null);
           playSuccess(soundEnabled);
           break;
         }
@@ -71,17 +79,20 @@ export function WordScrambleActivity() {
     });
   }, [registerEventListener, soundEnabled]);
 
-  const newWord = () => {
+  const newWord = async () => {
     const word = words[Math.floor(Math.random() * words.length)];
-    const payload = { scrambled: scramble(word), answer: word };
+    const hash = await hashWord(word);
+    const payload = { scrambled: scramble(word), hash };
     sendActivityEvent({ kind: "scramble_word", ...payload });
     setGuess("");
   };
 
-  const submitGuess = () => {
-    if (!scrambleWord || scrambleWinner) return;
-    if (guess.trim().toUpperCase() === scrambleWord.answer) {
-      sendActivityEvent({ kind: "scramble_correct", username: currentUser.username });
+  const submitGuess = async () => {
+    if (!scrambleWord || scrambleWinner || !scrambleWord.hash) return;
+    const cleanGuess = guess.trim().toUpperCase();
+    const guessHash = await hashWord(cleanGuess);
+    if (guessHash === scrambleWord.hash) {
+      sendActivityEvent({ kind: "scramble_correct", username: currentUser.username, answer: cleanGuess });
     } else {
       playFailure(soundEnabled);
       toast.error("Not quite — try again!");

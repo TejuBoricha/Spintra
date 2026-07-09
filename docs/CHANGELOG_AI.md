@@ -1370,10 +1370,11 @@
 ## [2026-07-09] — Session 48: Local/Explore DDOS, Secure Trivia, Atomic Host, Persistent Bingo, and UX Polish
 
 **AI:** Antigravity (Google DeepMind)
-**Task:** Complete the remaining issues from the Spintra audit report across Phase 1, Phase 2, and Phase 3:
-1. Phase 1 DB, Backend, Security & Architecture Hardening: Fix explore page DDOS and secure trivia answers.
-2. Phase 2 Reliability & Error Recovery: Refactor host election to use a single database transaction RPC, add a layout-level solo play warning banner to all `/tools/*` pages, memoize chat message list items in `room-sidebar.tsx`, and fix Bingo grid number called sync logic on reconnect state replay.
+**Task:** Complete the remaining issues from the Spintra audit report across Phase 1, Phase 2, and Phase 3, and harden multiplayer security:
+1. Phase 1 DB, Backend, Security & Architecture Hardening: Fix explore page DDOS, secure trivia answers, and implement SHA-256 cryptographic hashing to prevent client-side answer cheating in Word Scramble.
+2. Phase 2 Reliability & Error Recovery: Refactor host election to use a single database transaction RPC, add a layout-level solo play warning banner to all `/tools/*` pages (with adjusted padding to prevent fixed navbar overlapping), memoize chat message list items in `room-sidebar.tsx`, and fix Bingo grid number called sync logic on reconnect state replay.
 3. Phase 3 Accessibility, Polish & UX: Sync last 5 room joins to `localStorage` and display on homepage, add visual focus indicators and `<label>` links for accessibility, and add exit confirmations/listeners before leaving a room.
+4. E2E QA Test Suite: Created a comprehensive integration test exercising all 14 tools, solo views, and multiplayer picker flows.
 
 **Files Modified:**
 - `supabase/migrations/0044_denormalize_participant_count.sql` (NEW) — `rooms.participant_count` denormalized column, triggers/functions to keep it in sync, and migration backfill.
@@ -1382,22 +1383,25 @@
 - `src/lib/supabase/database.types.ts` — updated type definitions for new columns and RPCs.
 - `src/app/explore/page.tsx` — queried denormalized `participant_count` and restricted realtime subscriptions to public rooms only.
 - `src/lib/trivia-questions.ts` — made `correctIndex` optional and added `id` on client-side questions.
-- `src/lib/types.ts` — updated `TriviaQuestionEvent` and `TriviaAnswerEvent` types.
+- `src/lib/types.ts` — updated `TriviaQuestionEvent`, `TriviaAnswerEvent`, and `ScrambleWordEvent`/`ScrambleCorrectEvent` types.
 - `src/app/room/[code]/activities/trivia-activity.tsx` — integrated the secure verify RPC calls for answering questions in online mode.
+- `src/app/room/[code]/activities/word-scramble-activity.tsx` — implemented SHA-256 Web Crypto hashing for word guess verification to prevent plaintext answer exposure in broadcast events.
 - `src/app/room/[code]/hooks/use-room-subscription.ts` — refactored host election to execute via the atomic database RPC; saved successful room joins to `localStorage` history for both Supabase and Demo modes.
-- `src/app/tools/layout.tsx` (NEW) — layout wrapper for `/tools/*` pages to display a solo playing banner with a create room CTA.
+- `src/app/tools/layout.tsx` (NEW) — layout wrapper for `/tools/*` pages to display a solo playing banner with a create room CTA, offset by `pt-16` to clear the fixed navbar.
 - `src/app/room/[code]/components/room-sidebar.tsx` — extracted and memoized `ChatMessageItem` to prevent keystroke input re-render storms; added `aria-label` and focus styling to username edit input.
-- `src/app/room/[code]/activities/bingo-activity.tsx` — stored card numbers in `localStorage` keyed by room code so that game cards persist across reconnects/reloads.
+- `src/app/room/[code]/activities/bingo-activity.tsx` — stored card numbers in `localStorage` keyed by room code so that game cards persist across reconnects/reloads; resolved client-hydration eslint rule warnings.
 - `src/app/create/create-client.tsx` — increased room code generation collision retries to 10 and added a fallback to 8-character codes if collisions persist.
-- `src/app/page.tsx` — rendered a list of recently visited rooms below the code join container; converted join headers to semantic `<label>` elements linked to the input, and added high-visibility focus indicators.
+- `src/app/page.tsx` — rendered a list of recently visited rooms below the code join container; converted join headers to semantic `<label>` elements linked to the input, added high-visibility focus indicators, and resolved localStorage hydration eslint warnings.
 - `src/app/room/[code]/components/room-header.tsx` — added a "Leave room" button and dialog confirmation to the header.
 - `src/app/room/[code]/room-client.tsx` — registered a `beforeunload` event listener to prevent accidental page refresh/tab closes during live games.
+- `tests/comprehensive-smoke.spec.ts` (NEW) — automated E2E Playwright integration test suite covering all 14 tools and pages.
 - `docs/ARCHITECTURE.md` — documented migrations 0044, 0045, and 0046, and updated the latest migration pointer.
 - `docs/task.md` — marked all audit tasks as fully resolved and verified.
 
-**Purpose:** Complete all remaining issues identified in the comprehensive production readiness audit of Spintra.
+**Purpose:** Complete all remaining issues identified in the comprehensive production readiness audit of Spintra, resolve layout issues, and secure local client state integrity.
 
-**Outcome:** All local migrations (0044-0046) applied successfully via `supabase db reset`, types regenerated, lints and TypeScript compiler checks fully green. Migrations pushed successfully to the remote production Supabase instance (`npx supabase db push`), and confirmed live via `npm run verify:migration`. All 9 Playwright E2E tests (including multiplayer loop, tournament double elimination, and presence reconciliation specs) executed and passed cleanly. The recently visited rooms list, exit warning dialogs, and tools page warnings are fully functional.
+**Outcome:** All local migrations (0044-0046) applied successfully via `supabase db reset`, types regenerated, lints and TypeScript compiler checks fully green. Migrations pushed successfully to the remote production Supabase instance (`npx supabase db push`), and confirmed live via `npm run verify:migration`. The comprehensive test suite (`tests/comprehensive-smoke.spec.ts`) passes successfully in the browser.
 
 **Risks:** None — all changes are backward-compatible, well-tested, and have been validated through the complete Playwright E2E integration suite.
+
 

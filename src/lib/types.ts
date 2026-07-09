@@ -56,8 +56,8 @@ type BingoWinEvent      = { kind: "bingo_win"; username: string };
 type BingoResetEvent    = { kind: "bingo_reset" };
 
 // word-scramble
-type ScrambleWordEvent  = { kind: "scramble_word"; scrambled: string; answer: string };
-type ScrambleCorrectEvent = { kind: "scramble_correct"; username: string };
+type ScrambleWordEvent  = { kind: "scramble_word"; scrambled: string; hash: string; answer?: string };
+type ScrambleCorrectEvent = { kind: "scramble_correct"; username: string; answer?: string };
 
 export type ActivityEvent =
   | CoinFlippingEvent | CoinFlipEvent

@@ -48,8 +48,11 @@ export default function HomePage() {
       const stored = localStorage.getItem("spintra-room-history");
       if (stored) {
         try {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setRoomHistory(JSON.parse(stored));
-        } catch (e) {}
+        } catch {
+          // Ignore parse errors
+        }
       }
     }
   }, []);
