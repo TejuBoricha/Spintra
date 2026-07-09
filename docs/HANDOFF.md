@@ -6,7 +6,23 @@ Portable session-continuity note for any AI assistant (Antigravity, Claude Code,
 
 ## Last Completed Task
 
-**Session 48: Comprehensive Platform Readiness Audit — COMPLETE.**
+**Session 49: Room Settings Panel — first net-new backlog feature, analysis-first — COMPLETE.**
+
+First net-new feature from the Session 48 backlog, built through a deliberate Business-Analysis-first process: a codebase-grounded BA on all four backlog items, then decision-by-decision analysis for Room Settings recorded as **ADR-007**, then implementation. Scope strictly matches the decisions.
+
+- **Decision A (editable field set)** — panel exposes **name + capacity + visibility + lock**; lock mirrored in the panel while keeping the fast header toggle. Game-type change **excluded** (wipes activity state / event log; deferred as its own feature).
+- **Decision B (capacity ceiling)** — kept at 50, made **server-authoritative** via migration `0049` (`2 ≤ max_participants ≤ 50` CHECK, replacing 0016's `> 0`). The creation slider, the panel, and any raw API call now share one DB-enforced bound.
+- **Panel + wiring** — new `room-settings-panel.tsx` (name / capacity slider / public switch / lock switch; lock reuses `toggleLock`; capacity floor = max(2, online count); graceful demo-mode degradation), rendered in `room-header.tsx`'s host-only block.
+- **e2e** — host edits name + raises capacity to the ceiling in one save; a guest sees both propagate live via realtime. Full suite 11/11 passing on local Docker Supabase.
+- **Correction (accountability):** an earlier BA/ADR draft claimed a live dangling `settings` reference in `restrict_host_promotion_update()` (0014); verification before coding showed migration **0027** already fixed it.
+
+**Migration 0049** applied live and verified: `rooms_max_participants_bounds` CHECK constraint confirmed present on the production database via `pg_constraint`/`pg_get_constraintdef` — not just tracked as applied (mitigating the 0008/0009/0010 failure mode). `npm run verify` clean. Committed as `0c984b8` and pushed to `origin/feat/room-settings-panel`.
+
+**Next recommended task:** the 2 remaining net-new Medium-priority features (Visual Scoreboard, XP/Leveling System) or the Moderation Dashboard.
+
+---
+
+**Session 48: Comprehensive Platform Readiness Audit — COMPLETE.****
 - Performed a comprehensive 15-phase audit of the entire Spintra repository to evaluate launch readiness, engineering patterns, security, and UX.
 - Authored the detailed audit report (`production_ready_audit_report.md`), stored outside this repository in the authoring tool's workspace.
 - Documented 50 launch-blocking issues, 20 quick wins, 10 technical debt items, 10 UX improvements, 10 product features, and a prioritized project roadmap.
@@ -27,7 +43,7 @@ Closed the 3 remaining smaller items from the audit's UX×10/Product×10 lists (
 
 **Verification:** all migrations applied fresh via local Docker Supabase, full Playwright suite (9/9) run twice for stability. Unban feature manually smoke-tested end-to-end via a scripted browser flow — this is what caught bugs #2 and #3, neither of which any automated test covers. `npm run verify` clean; migration `0043` pushed live and re-verified. Full detail: `docs/TASKS.md`'s Session 47 section, `docs/CHANGELOG_AI.md`'s Session 47 entry.
 
-**Next recommended task:** the 3 net-new Medium-priority features (Visual Scoreboard, XP/Leveling System, Room Settings Panel) or the Moderation Dashboard (Product×10 item, also net-new) — see below.
+**Next recommended task:** the 2 remaining net-new Medium-priority features (Visual Scoreboard, XP/Leveling System) or the Moderation Dashboard (Product×10 item, also net-new) — see below.
 
 ---
 
@@ -52,7 +68,7 @@ Then, at the user's request, all 5 items Session 45 had left open were fixed:
 
 **Final state:** all 42 Session 45 findings + the 2 CI bugs found today are now resolved. Local Docker/Supabase stack stopped after verification. Production `.env.local` credentials (recovered via `supabase projects api-keys` after being briefly overwritten mid-session for local testing — never actually lost, anon keys are retrievable/publishable) restored and confirmed correct.
 
-**Next recommended task:** the 3 net-new Medium-priority features that predate the Session 45 audit (Visual Scoreboard, XP/Leveling System, Room Settings Panel — see below).
+**Next recommended task:** the 2 remaining net-new Medium-priority features that predate the Session 45 audit (Visual Scoreboard, XP/Leveling System — see below).
 
 ---
 

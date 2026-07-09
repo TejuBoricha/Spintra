@@ -4,7 +4,7 @@ This document tracks all active, remaining, and completed tasks for the Spintra 
 
 ---
 
-## Session 49: Room Settings Panel — first backlog feature, analysis-first (COMPLETE, live push pending)
+## Session 49: Room Settings Panel — first backlog feature, analysis-first (COMPLETE)
 
 First net-new feature from the Session 48 backlog, built through a deliberate Business-Analysis-first process: a codebase-grounded BA on all four backlog items (Visual Scoreboard, XP/Leveling, Room Settings, Moderation Dashboard — published artifact), then decision-by-decision analysis for Room Settings, decisions recorded as **ADR-007**, then implementation. Scope strictly matches the decisions — nothing more.
 
@@ -13,7 +13,7 @@ First net-new feature from the Session 48 backlog, built through a deliberate Bu
 - `[x]` **Panel + wiring** — new `room-settings-panel.tsx` (name / capacity slider / public switch / lock switch, explicit Save for name+capacity+visibility via discrete `rooms` columns; lock reuses `toggleLock`; capacity floor = max(2, online count); graceful demo-mode degradation), rendered in `room-header.tsx`'s host-only block.
 - `[x]` **e2e** — new `multiplayer-loop.spec.ts` test: host edits name + raises capacity to the ceiling in one save, a guest sees both propagate live via realtime. Full suite 11/11 passing on local Docker Supabase.
 - `[x]` **Correction (accountability)** — an earlier BA/ADR draft claimed a live dangling `settings` reference in `restrict_host_promotion_update()` (0014); verification before coding showed migration **0027** already fixed it. Corrected in ADR-007 + the BA artifact; confirmed against the applied DB. No cleanup was needed.
-- `[ ]` **Live migration push** (`supabase db push --linked` + `verify:migration 0049`) and git commit/push — pending explicit user approval.
+- `[x]` **Live migration push** (`supabase db push --linked`) + `verify:migration` + git commit/push — migration 0049 applied live and verified directly: the `rooms_max_participants_bounds` CHECK (`2 ≤ max_participants ≤ 50`) confirmed present on the production database via `pg_constraint`/`pg_get_constraintdef`. Committed (`0c984b8`) and pushed to `origin/feat/room-settings-panel`.
 
 **Verification:** migration 0049 applied fresh via `supabase db reset` on local Docker; CHECK verified directly (accepts 2/50, rejects 1/51); `npm run verify` clean; full Playwright suite 11/11.
 
