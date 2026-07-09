@@ -120,13 +120,22 @@ export function useRoomSubscription({
   const persistMaxWaitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ACTIVITY_EVENT_LOG_CAP = 200;
 
-  // Returns the write's promise (rather than firing purely fire-and-forget)
-  // so a caller that needs the persisted state to be genuinely current —
-  // specifically, an activity about to call award_score() for Bingo/RPS,
-  // whose server-side verification reads room_activity_state directly, not
-  // a client's live in-memory state — can await it first. See
+  // Returns the write's success as a boolean (rather than firing purely
+  // fire-and-forget) so a caller that needs the persisted state to be
+  // genuinely current — specifically, an activity about to call
+  // award_score() for Bingo/RPS, whose server-side verification reads
+  // room_activity_state directly, not a client's live in-memory state —
+  // can confirm the flush actually succeeded before proceeding. See
   // flushActivityState below and ADR-008's design-refinement note.
-  const flushActivityEventLog = useCallback((): Promise<void> => {
+  //
+  // Resolves `true`/`false` rather than rejecting on failure — the
+  // debounce-timer call sites below (persistActivityEventLog) fire this via
+  // `setTimeout`, which discards the return value entirely and would
+  // produce an unhandled rejection on failure if this ever rejected. A
+  // resolved boolean lets flushActivityState's callers make an informed
+  // decision (skip awarding against state that might be stale) without
+  // requiring every fire-and-forget caller to also handle rejection.
+  const flushActivityEventLog = useCallback((): Promise<boolean> => {
     if (persistTimerRef.current) {
       clearTimeout(persistTimerRef.current);
       persistTimerRef.current = null;
@@ -136,14 +145,17 @@ export function useRoomSubscription({
       persistMaxWaitTimerRef.current = null;
     }
     const supabase = getSupabaseBrowserClient();
-    if (!supabase) return Promise.resolve();
+    if (!supabase) return Promise.resolve(true);
     const type = activeActivityRef.current?.type ?? null;
     const payload = type ? { type, events: activityEventLogRef.current } : null;
     return Promise.resolve(
       supabase
         .from("room_activity_state")
         .upsert({ room_code: roomCode, activity_state: payload as unknown as Json }, { onConflict: "room_code" })
-    ).then(() => {}, () => {});
+    ).then(
+      ({ error }) => !error,
+      () => false
+    );
   }, [roomCode]);
 
   const persistActivityEventLog = useCallback(() => {
