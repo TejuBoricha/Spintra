@@ -15,7 +15,7 @@ import { shuffleArray } from "@/lib/utils";
 import { playSwipe, playPop, playSuccess, playFailure } from "@/lib/audio";
 
 export function TriviaActivity() {
-  const { isHost, currentUser, sendActivityEvent, registerEventListener, soundEnabled } = useRoomActivity();
+  const { isHost, currentUser, sendActivityEvent, registerEventListener, soundEnabled, awardScore } = useRoomActivity();
   const [triviaQuestion, setTriviaQuestion] = useState<{
     id?: string;
     text: string;
@@ -279,6 +279,14 @@ export function TriviaActivity() {
                       correctIndex,
                       correct,
                     });
+
+                    // Scoreboard/XP (ADR-008/009): server-verifies independently
+                    // via the same trivia_questions lookup above — no flush
+                    // needed first, unlike RPS/Bingo, since this doesn't depend
+                    // on the persisted activity-state event log at all.
+                    if (triviaQuestion.id) {
+                      awardScore("trivia", triviaQuestion.id, i);
+                    }
                   }}
                   className={`p-4 rounded-xl border text-left font-semibold transition-all duration-200 disabled:cursor-default flex items-center justify-between gap-2 ${btnStyle}`}
                 >

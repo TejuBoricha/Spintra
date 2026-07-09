@@ -53,7 +53,10 @@ type GuessResetEvent    = { kind: "guess_reset"; secret?: number };
 // bingo
 type BingoCallEvent     = { kind: "bingo_call"; number: number };
 type BingoWinEvent      = { kind: "bingo_win"; username: string; userId: string };
-type BingoVerifiedEvent = { kind: "bingo_verified"; username: string };
+// userId is optional so a pre-migration event still sitting in a persisted
+// room_activity_state snapshot (from before ADR-008's Scoreboard shipped)
+// replays without crashing — the reducer simply skips awarding for it.
+type BingoVerifiedEvent = { kind: "bingo_verified"; username: string; userId?: string };
 type BingoResetEvent    = { kind: "bingo_reset" };
 
 // word-scramble

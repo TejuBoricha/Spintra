@@ -9,6 +9,8 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getOrCreateRoomUser, getLocalRoomCreatorId } from "@/lib/room-user";
 import { isUserBannedFromRoom } from "@/lib/room-bans";
 import { isDuplicateMessage, capMessageHistory } from "@/lib/utils";
+import { tierOf } from "@/lib/xp";
+import { fireConfetti } from "@/components/celebration";
 import { IdleScreen } from "./activities/idle-screen";
 import { AggregateIdleScreen } from "./activities/aggregate-idle-screen";
 import { ActivityPickerDialog } from "./activities/activity-picker-dialog";
@@ -490,6 +492,55 @@ function RoomUIInner({
     }
   }, [roomCode, localUser.id]);
 
+  // Shared award trigger for Scoreboard + XP (ADR-008/009): calls the
+  // server-verified award_score RPC and applies its RETURNED totals to
+  // local state/localStorage immediately. This closes a real bug found
+  // during design, not a hypothetical: trackSelf's reconnect path (see
+  // use-room-subscription.ts) unconditionally writes this client's local
+  // xp back into room_participants on every reconnect — if the award's
+  // result never updated local state too, a reconnect moments after a win
+  // would silently regress the DB back to the pre-award value. No-ops in
+  // demo/local-only mode (Scoreboard/XP are Supabase-only features, same
+  // as Room Settings/moderation).
+  const awardScore = useCallback(
+    async (activityType: "trivia" | "rps" | "bingo", questionId?: string, choiceIndex?: number) => {
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) return;
+
+      const { data, error } = await supabase.rpc("award_score", {
+        p_room_id: roomCode,
+        p_activity_type: activityType,
+        p_question_id: questionId ?? undefined,
+        p_choice_index: choiceIndex ?? undefined,
+      });
+
+      if (error) {
+        console.error("award_score failed:", error.message);
+        return;
+      }
+      const result = data?.[0];
+      if (!result?.awarded || result.new_xp == null) return;
+
+      const previousTier = tierOf(localUser.xp ?? 0);
+      const newXp = result.new_xp;
+      const newRank = (result.new_rank ?? tierOf(newXp)) as User["rank"];
+
+      setLocalUser((prev) => {
+        const next = { ...prev, xp: newXp, rank: newRank };
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem("spintra-room-user", JSON.stringify(next));
+        }
+        return next;
+      });
+
+      if (newRank !== previousTier) {
+        toast.success(`Leveled up to ${newRank}!`, { id: "level-up" });
+        fireConfetti();
+      }
+    },
+    [roomCode, localUser.xp]
+  );
+
   // Sidebar, picker, dialog and navigation states
   const [showParticipants, setShowParticipants] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -598,6 +649,7 @@ function RoomUIInner({
     sendActivityEvent,
     registerEventListener,
     handleActivityEvent,
+    flushActivityState,
     postLocalMessage,
     toggleLock,
     handleKickParticipant,
@@ -692,6 +744,8 @@ function RoomUIInner({
       sendActivityEvent,
       registerEventListener,
       soundEnabled,
+      flushActivityState,
+      awardScore,
     }),
     [
       roomCode,
@@ -701,6 +755,8 @@ function RoomUIInner({
       sendActivityEvent,
       registerEventListener,
       soundEnabled,
+      flushActivityState,
+      awardScore,
     ]
   );
 

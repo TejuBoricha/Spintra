@@ -1511,3 +1511,42 @@
 **Outcome:** `npm run typecheck` + `npm run lint` clean; full Playwright suite **11/11** against local Docker Supabase; `npm run verify` clean. No migration change (schema already correct). Delivered as a follow-up branch/PR off `main`.
 
 **Risks:** None new — the changes narrow what Save writes and add error handling; existing propagation behavior is unchanged (proven by the same e2e).
+---
+
+## [2026-07-09] — Session 51: Visual Scoreboard + XP/Leveling (feature — analysis-first, ADR-008/009)
+
+**AI:** Claude Code (Opus 4.8)
+**Task:** Second net-new backlog feature built through the deliberate Business-Analysis-first process — deep decision-by-decision analysis for Scoreboard (5 decisions) and XP (2 decisions), recorded as ADR-008/ADR-009 including two design-refinement fixes found before implementation, then a fully-verified build.
+
+**Decisions (ADR-008 Scoreboard, ADR-009 XP):**
+- Scope: **Trivia + RPS + Bingo** only — the 2 other candidate activities (Name Draw, Tournament) carry only a display-name string, no `user_id`, and crown one terminal winner per run with no natural round to accumulate against.
+- Persistence: a **durable store** (`room_scores`), chosen deliberately against the lower-risk per-session-only recommendation — standings now survive an activity switch.
+- Reset: fully decoupled from activity lifecycle — only an explicit host "Reset Scoreboard" action clears it.
+- Scoring: **win + participation** (3pt/1pt; XP 15/5, a 5× multiple for a longer accumulation horizon).
+- XP identity: **both** — `localStorage` authoritative, synced into `room_participants.xp` on join (the same pattern already used for username/avatar).
+- XP trigger: mirrors Scoreboard's exactly — no broader hook into the other 11 activities.
+
+**Two real design-refinement fixes found before writing code (not hypothetical):**
+1. Bingo/RPS server-side verification reads `room_activity_state`, which is debounced up to 2s — a win claimed the instant it happens could race the persist and be server-rejected. Fixed with a new `flushActivityState()` the winning client calls before the award RPC.
+2. `trackSelf`'s reconnect path already unconditionally writes local `xp` back into `room_participants` on every reconnect — without the award RPC's result flowing back into local state immediately, a reconnect moments after a win would silently regress the DB to the pre-win value. Fixed: `awardScore()` applies the RPC's returned totals to `currentUser`/`localStorage` synchronously, never fire-and-forget.
+
+**Files Modified:**
+- `supabase/migrations/0050_room_scores_and_xp_awards.sql` (NEW) — `room_scores` ledger (participant-readable SELECT RLS, host-only reset DELETE, realtime publication entry), `award_score()` SECURITY DEFINER RPC (server-re-verifies every claim: Trivia via `trivia_questions.correct_index`, RPS by re-deriving the round winner from persisted `rps_choice` events, Bingo by re-checking the persisted `bingo_card` against persisted `bingo_call` events, then fanning participation out to other online participants), `tier_for_xp()` (mirrors `lib/xp.ts`), and rate-limit/host-participant-update trigger bypasses for this RPC's own writes.
+- `src/lib/types.ts` — `bingo_verified` gains optional `userId?: string` (optional so a pre-migration persisted event replays without crashing).
+- `src/lib/xp.ts` (NEW) — `tierOf()` (mirrors `tier_for_xp()`), `RANK_LABELS`.
+- `src/app/room/[code]/hooks/use-room-subscription.ts` — `flushActivityEventLog` now returns its promise; exposed as `flushActivityState`.
+- `src/app/room/[code]/room-client.tsx` — new `awardScore()` (calls the RPC, applies returned totals to local state/localStorage immediately, fires level-up toast + confetti on a tier crossing); both threaded into `stableContextValue`.
+- `src/app/room/[code]/context/room-activity-context.tsx` — `RoomActivityContextType` gains `flushActivityState`/`awardScore`.
+- `trivia-activity.tsx` / `rps-activity.tsx` / `bingo-activity.tsx` — wired to call the award RPC on their respective resolution points; RPS/Bingo call `flushActivityState()` first (Trivia doesn't need to — its verification is independent of the event log).
+- `src/app/room/[code]/components/scoreboard-panel.tsx` (NEW) — live standings (ties share a rank position), host-only reset. Deliberately self-fetches usernames rather than taking a `participants` prop, to avoid breaking `RoomHeader`'s existing `memo()` optimization against participant-churn re-renders.
+- `src/app/room/[code]/components/room-header.tsx` — renders `ScoreboardPanel` outside the host-only block (visible to all participants; only reset is host-gated internally).
+- `src/app/room/[code]/components/room-sidebar.tsx` — new `RankBadge`, shown only once a participant has xp > 0 (keeps the UI silent for the 11 activities that never touch this system).
+- `src/lib/supabase/database.types.ts` — regenerated from the local schema (`room_scores`, `award_score`, `tier_for_xp`).
+- `tests/multiplayer-loop.spec.ts` — 3 new e2e tests.
+
+**Outcome:** Migration applied fresh via `supabase db reset`. Full RPC verification via direct psql against local Docker Supabase in one consolidated pass: Trivia win/participation/idempotency; RPS winner-derivation/tie/offline-exclusion/idempotency; Bingo line-detection/spoofing-rejection/participation-fanout/idempotency; a raw client `INSERT` into `room_scores` correctly rejected by RLS. Found and fixed one real bug during this direct testing: the existing `restrict_host_participant_update()` trigger (0014) blocked the RPC's own participation fan-out to *other* participants' rows — fixed with the same bypass-flag pattern already used for the rate limiter. `npm run typecheck`/`lint` clean. Full Playwright suite **14/14** (11 prior + 3 new: Scoreboard live-update across 2 real clients, XP-survives-reconnect proving fix #2 actually works, Bingo 15-call stress re-test guarding the event listener touched a third time this session). `npm run verify` clean.
+
+**Risks:**
+- `room_scores` is a new table with a genuinely more involved trust model than prior migrations (server-side re-verification of 3 different game logics) — mitigated by the exhaustive direct-SQL verification pass before any client code was written, not just after.
+- Bingo's event-listener effect has now been touched three times this session (infinite-loop fix, win-verification-by-userId fix, this session's `userId` addition to `bingo_verified` + award call site) — the automated 15-call stress test formalizes what was previously only a manual check, closing a real coverage gap.
+- The XP reconnect-erasure bug (fix #2) would have been a genuinely difficult-to-diagnose intermittent data-loss bug in production (only manifesting on a reconnect shortly after a win) had it not been found during design analysis before any code was written.

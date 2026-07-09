@@ -381,6 +381,47 @@ export type Database = {
           },
         ]
       }
+      room_scores: {
+        Row: {
+          activity_type: string
+          award_kind: string
+          created_at: string
+          id: string
+          points: number
+          room_id: string
+          round_key: string
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          award_kind: string
+          created_at?: string
+          id?: string
+          points: number
+          room_id: string
+          round_key: string
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          award_kind?: string
+          created_at?: string
+          id?: string
+          points?: number
+          room_id?: string
+          round_key?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_scores_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       rooms: {
         Row: {
           code: string
@@ -455,6 +496,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      award_score: {
+        Args: {
+          p_activity_type: string
+          p_choice_index?: number
+          p_question_id?: string
+          p_room_id: string
+        }
+        Returns: {
+          awarded: boolean
+          new_rank: string
+          new_xp: number
+        }[]
+      }
       check_guess_number: {
         Args: { p_guess: number; p_room_code: string }
         Returns: string
@@ -481,6 +535,7 @@ export type Database = {
         Args: { p_room_code: string; p_secret: number }
         Returns: undefined
       }
+      tier_for_xp: { Args: { p_xp: number }; Returns: string }
       verify_trivia_answer: { Args: { p_question_id: string }; Returns: number }
     }
     Enums: {

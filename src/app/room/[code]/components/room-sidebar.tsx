@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Emoji, renderTextWithEmoji, EMOJI_UNICODE } from "@/components/emoji";
 import { getBlockedUsers, toggleBlockedUser } from "@/lib/blocked-users";
+import { RANK_LABELS } from "@/lib/xp";
 import type { User, ChatMessage, RoomParticipant } from "@/lib/types";
 
 const REACTION_NAMES = [
@@ -29,6 +30,19 @@ const REACTION_NAMES = [
   "eyes",
   "raising_hands",
 ] as const;
+
+// Only shown once a participant has actually earned XP (ADR-009) — most
+// rooms never touch the 3 Scoreboard-eligible activities (Trivia/RPS/Bingo),
+// so showing "Rookie" for everyone at 0xp would just be noise in the common
+// case of a room that never plays any of them.
+function RankBadge({ xp, rank }: { xp?: number; rank?: User["rank"] }) {
+  if (!xp || xp <= 0 || !rank) return null;
+  return (
+    <span className="text-[10px] font-semibold text-purple-400/90 bg-purple-500/10 border border-purple-500/20 rounded-full px-1.5 py-0 leading-4 shrink-0">
+      {RANK_LABELS[rank]}
+    </span>
+  );
+}
 
 const MAX_MESSAGE_LENGTH = 500;
 // Only the most recent messages get the enter/exit spring animation — a
@@ -445,6 +459,7 @@ export function RoomSidebar({
                                 </button>
                               </span>
                               {p.role === "host" && <Crown className="w-3 h-3 text-amber-400 shrink-0" />}
+                              <RankBadge xp={p.user?.xp} rank={p.user?.rank} />
                             </div>
                             <span className="text-xs text-muted-foreground capitalize">
                               {p.role} {!p.is_online && " • Offline"}
@@ -458,6 +473,7 @@ export function RoomSidebar({
                               {p.user?.username}
                             </span>
                             {p.role === "host" && <Crown className="w-3 h-3 text-amber-400 shrink-0" />}
+                            <RankBadge xp={p.user?.xp} rank={p.user?.rank} />
                           </div>
                           <span className="text-xs text-muted-foreground capitalize">
                             {p.role} {p.is_online ? " • Online" : " • Offline"}
