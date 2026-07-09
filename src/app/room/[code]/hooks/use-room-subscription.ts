@@ -53,6 +53,15 @@ export function useRoomSubscription({
     state: unknown;
   } | null>(null);
   const [maxParticipantsLimit, setMaxParticipantsLimit] = useState<number | null>(null);
+  // Realtime Broadcast/Presence channels use Supabase's Realtime
+  // Authorization (private:true + RLS on realtime.messages, migration 0036),
+  // which is evaluated ONCE at channel.subscribe() time and cached for the
+  // whole connection. That means we must not call subscribe() until our own
+  // room_participants row genuinely exists in the DB — otherwise this
+  // client would be denied and stay denied for the rest of the session, even
+  // after the row is created moments later. Set true only once trackSelf's
+  // upsert below has actually completed.
+  const [participantRowReady, setParticipantRowReady] = useState(false);
 
   // Realtime Status States
   const [isRealtimeReady, setIsRealtimeReady] = useState<boolean | null>(null);
@@ -81,6 +90,15 @@ export function useRoomSubscription({
   // "Trying to reconnect..." indefinitely either way with no further
   // guidance for the user.
   const realtimeReconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Latest loadParticipants closure, so the subscriptions effect below can
+  // trigger a one-time reconciliation fetch the moment its channel reaches
+  // SUBSCRIBED — closing the pre-existing race where a postgres_changes
+  // event (e.g. another participant's row INSERT) fires while this client's
+  // channel is still connecting and is missed (no redelivery guarantee).
+  // That race window grew with migration 0036's participantRowReady gate,
+  // since a channel now can't start subscribing until its own
+  // room_participants row exists, delaying when it starts listening.
+  const loadParticipantsRef = useRef<(() => Promise<void>) | null>(null);
 
   // Ordered log of this activity session's events, capped at 200. Replayed to
   // any listener the moment it registers (a fresh mount, a reconnect, or a
@@ -90,21 +108,42 @@ export function useRoomSubscription({
   // `room_activity_state` on initial load if it matches the current type.
   const activityEventLogRef = useRef<ActivityEvent[]>([]);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Forces a flush at least every 2s even under a continuous event burst —
+  // the 600ms debounce alone could be reset indefinitely by a fast-paced
+  // round (e.g. many participants answering/voting within the same 600ms
+  // window), starving the flush entirely and leaving a reconnecting client
+  // to recover a stale snapshot exactly when it matters most. Set once per
+  // burst (cleared whenever a flush actually runs), never reset by
+  // subsequent events the way persistTimerRef is.
+  const persistMaxWaitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ACTIVITY_EVENT_LOG_CAP = 200;
+
+  const flushActivityEventLog = useCallback(() => {
+    if (persistTimerRef.current) {
+      clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = null;
+    }
+    if (persistMaxWaitTimerRef.current) {
+      clearTimeout(persistMaxWaitTimerRef.current);
+      persistMaxWaitTimerRef.current = null;
+    }
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
+    const type = activeActivityRef.current?.type ?? null;
+    const payload = type ? { type, events: activityEventLogRef.current } : null;
+    supabase
+      .from("room_activity_state")
+      .upsert({ room_code: roomCode, activity_state: payload as unknown as Json }, { onConflict: "room_code" })
+      .then(() => {}, () => {});
+  }, [roomCode]);
 
   const persistActivityEventLog = useCallback(() => {
     if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
-    persistTimerRef.current = setTimeout(() => {
-      const supabase = getSupabaseBrowserClient();
-      if (!supabase) return;
-      const type = activeActivityRef.current?.type ?? null;
-      const payload = type ? { type, events: activityEventLogRef.current } : null;
-      supabase
-        .from("room_activity_state")
-        .upsert({ room_code: roomCode, activity_state: payload as unknown as Json }, { onConflict: "room_code" })
-        .then(() => {}, () => {});
-    }, 600);
-  }, [roomCode]);
+    persistTimerRef.current = setTimeout(flushActivityEventLog, 600);
+    if (!persistMaxWaitTimerRef.current) {
+      persistMaxWaitTimerRef.current = setTimeout(flushActivityEventLog, 2000);
+    }
+  }, [flushActivityEventLog]);
 
   // Derived Values
   // We determine isHost from roomHostId (database) or localCreatorId (local fallback)
@@ -274,6 +313,7 @@ export function useRoomSubscription({
     // recorded history must not leak into the new one.
     activityEventLogRef.current = [];
     if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    if (persistMaxWaitTimerRef.current) clearTimeout(persistMaxWaitTimerRef.current);
 
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
@@ -446,6 +486,7 @@ export function useRoomSubscription({
         console.error("Participant load failed:", cause);
       }
     };
+    loadParticipantsRef.current = loadParticipants;
 
     const trackSelf = async () => {
       try {
@@ -586,6 +627,12 @@ export function useRoomSubscription({
           }
           return;
         }
+
+        // The upsert/update above succeeded (no error), so our
+        // room_participants row genuinely exists now — safe to let the
+        // subscriptions effect below authorize and subscribe to the
+        // Realtime channel.
+        if (isMounted) setParticipantRowReady(true);
 
         const participantRow = data?.[0];
         if (participantRow && isMounted) {
@@ -905,8 +952,31 @@ export function useRoomSubscription({
     }
 
     // ──────────────── SUPABASE REALTIME MODE ────────────────
+    // Don't subscribe until our own room_participants row exists — see the
+    // participantRowReady comment above. Subscribing earlier would get this
+    // client denied by the realtime.messages RLS policies (migration 0036)
+    // and, since that authorization is cached for the connection's
+    // lifetime, denied for the rest of the session even after the row
+    // shows up moments later.
+    if (!participantRowReady) return;
+
+    // The crash-reconciliation write below (marking an absent participant
+    // is_online:false) must not run on this channel's FIRST presence sync.
+    // That first sync can legitimately be missing a peer who hasn't called
+    // track() yet — every client now waits on its own participantRowReady
+    // before subscribing (migration 0036), which widened the gap between
+    // different clients' subscribe times enough to make this a real,
+    // reproducible race: a peer's genuinely healthy row gets marked
+    // "crashed" and, since that then looks like "no online host" to
+    // whichever client is earliest online, cascades into an incorrect host
+    // re-election (observed live: two participants both ending up with
+    // role='host' for the same room). Subsequent syncs (peer joins/leaves
+    // after this channel is fully settled) are unaffected and still
+    // reconcile normally — this only skips the unreliable first snapshot.
+    let hasSyncedOnce = false;
+
     const channel = supabase
-      .channel(`room:${roomCode}`)
+      .channel(`room:${roomCode}`, { config: { private: true } })
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
         const onlineIds = new Set(
@@ -914,6 +984,9 @@ export function useRoomSubscription({
             .flat()
             .map((p) => (p as unknown as { user_id: string }).user_id)
         );
+        const isFirstSync = !hasSyncedOnce;
+        hasSyncedOnce = true;
+
         setParticipants((prev) => {
           const updated = prev.map((participant) => ({
             ...participant,
@@ -928,7 +1001,7 @@ export function useRoomSubscription({
           // also reconcile any stale row belonging to the current user's
           // own previous session (crashed singleton case).
           const supabaseClient = getSupabaseBrowserClient();
-          if (supabaseClient) {
+          if (supabaseClient && !isFirstSync) {
             const crashed = prev.filter(
               (p) =>
                 p.is_online &&
@@ -1131,6 +1204,17 @@ export function useRoomSubscription({
         setIsRealtimeReady(true);
         setRealtimeError(null);
         setNotification(null);
+        // Reconcile once against the DB right as we become ready: this
+        // channel could only start subscribing after our own
+        // participantRowReady flipped true (migration 0036's authorization
+        // requirement), which is later than before — during that gap,
+        // another participant could have joined/left and had their
+        // postgres_changes event fire before we were listening, with no
+        // redelivery guarantee. One fetch here closes that window cheaply,
+        // instead of waiting on the 20s reconciliation poll (which only
+        // re-fetches while realtime is still degraded, not for a gap that
+        // closed before its next tick).
+        loadParticipantsRef.current?.();
         channel.track({ user_id: currentUser.id });
         if (isHostRef.current && activeActivityRef.current) {
           channel.send({
@@ -1175,6 +1259,7 @@ export function useRoomSubscription({
     addIncomingMessage,
     authReady,
     handleActivityEvent,
+    participantRowReady,
   ]);
 
   useEffect(() => {
@@ -1185,6 +1270,10 @@ export function useRoomSubscription({
       if (persistTimerRef.current) {
         clearTimeout(persistTimerRef.current);
         persistTimerRef.current = null;
+      }
+      if (persistMaxWaitTimerRef.current) {
+        clearTimeout(persistMaxWaitTimerRef.current);
+        persistMaxWaitTimerRef.current = null;
       }
       const supabase = getSupabaseBrowserClient();
       if (supabase && currentUser?.id) {
