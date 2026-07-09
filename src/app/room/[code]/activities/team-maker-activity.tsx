@@ -15,7 +15,7 @@ export function TeamMakerActivity() {
 
   useEffect(() => {
     return registerEventListener((event) => {
-      if (event.kind === "tm_teams") {
+      if (event.kind === "team_maker_teams" || event.kind === "tm_teams") {
         setTmTeams(event.teams);
       } else if (event.kind === "activity_reset") {
         setTmTeams([]);
@@ -53,7 +53,7 @@ export function TeamMakerActivity() {
                   name: `Team ${i + 1}`,
                   members: shuffled.filter((_, j) => j % n === i),
                 }));
-                sendActivityEvent({ kind: "tm_teams", teams });
+                sendActivityEvent({ kind: "team_maker_teams", teams });
               }}
             >
               {n} Teams

@@ -19,13 +19,22 @@ type NhiePromptEvent      = { kind: "nhie_prompt"; text: string };
 type NhieConfessEvent     = { kind: "nhie_confess"; userId: string; username: string; choice: "have" | "never" };
 type RpsChoiceEvent       = { kind: "rps_choice"; userId: string; username: string; choice: string };
 type RpsResetEvent        = { kind: "rps_reset" };
-type TmTeamsEvent         = { kind: "tm_teams"; teams: { name: string; members: string[] }[] };
+type TmTeamsEvent         = { kind: "team_maker_teams"; teams: { name: string; members: string[] }[] };
+// `tm_teams` was renamed to `team_maker_teams` (Session 45 audit: the old
+// abbreviation was inconsistent with every other activity's full-word kind
+// prefix). Never written after that rename, but a room's room_activity_state
+// can have one already persisted (migration 0023/0035 replay) — kept here,
+// read-only, purely so old rows still replay instead of silently dropping
+// that event on reconnect.
+type TmTeamsLegacyEvent   = { kind: "tm_teams"; teams: { name: string; members: string[] }[] };
 type TournamentUpdateEvent = {
   kind: "tournament_update";
   tournament: Tournament;
   outcome?: "champion" | "grand-final-set" | "advanced";
 };
-type NdWinnerEvent        = { kind: "nd_winner"; winner: string };
+type NdWinnerEvent        = { kind: "name_draw_winner"; winner: string };
+// Same rename/replay-compat treatment as TmTeamsLegacyEvent above.
+type NdWinnerLegacyEvent  = { kind: "nd_winner"; winner: string };
 type TriviaQuestionEvent  = { kind: "trivia_question"; text: string; options: string[]; correctIndex: number; num: number; category: string; difficulty: "easy" | "medium" | "hard" };
 type TriviaAnswerEvent    = { kind: "trivia_answer"; userId: string; username: string; choiceIndex: number; correct: boolean };
 type ActivityResetEvent   = { kind: "activity_reset" };
@@ -57,7 +66,8 @@ export type ActivityEvent =
   | WyrPromptEvent    | WyrVoteEvent
   | NhiePromptEvent   | NhieConfessEvent
   | RpsChoiceEvent    | RpsResetEvent
-  | TmTeamsEvent      | NdWinnerEvent
+  | TmTeamsEvent      | TmTeamsLegacyEvent
+  | NdWinnerEvent     | NdWinnerLegacyEvent
   | TournamentUpdateEvent
   | TriviaQuestionEvent | TriviaAnswerEvent
   | WheelEntriesEvent | WheelSpinningEvent

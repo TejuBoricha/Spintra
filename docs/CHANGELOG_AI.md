@@ -1285,3 +1285,34 @@
 
 ---
 
+## [2026-07-09] — Session 46: All 5 remaining Session 45 findings fixed
+
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** User asked to fix the 5 items Session 45's audit had left open: 1 deliberately deferred (analytics/telemetry), 2 deliberately not fixed (Truth or Dare content fork, `tm_teams`/`nd_winner` naming), 2 deprioritized (homepage 3D hero unconditional load, departed-users'-chat-"Guest").
+
+**Files Modified:**
+- `supabase/migrations/0040_chat_messages_username_snapshot.sql` (NEW) — adds nullable `username` column to `chat_messages`, captured at send time; best-effort backfill against `room_participants` for existing rows still matchable.
+- `supabase/migrations/0041_analytics_events.sql` (NEW) — `analytics_events` table (3 event names only: `room_created`/`room_joined`/`activity_started`), insert-only RLS keyed to `auth.uid()`, no select policy, rate-limited (100/10min per actor, same pattern as migration 0038).
+- `src/lib/analytics.ts` (NEW) — `trackEvent()`, fire-and-forget, no-ops in demo mode.
+- `src/app/create/create-client.tsx` — fires `room_created` after a successful room insert.
+- `src/app/room/[code]/hooks/use-room-subscription.ts` — fires `room_joined` in `trackSelf` (gated to exclude the host's own creation and reconnects/refreshes), fires `activity_started` in `changeActivity`.
+- `src/app/page.tsx` — `HeroThreeScene` now gated on `useReducedMotion()` and an `IntersectionObserver` on the hero section; falls back to the static gradient placeholder when reduced-motion is set or the hero isn't visible, instead of running the WebGL render loop unconditionally for the component's entire lifetime.
+- `src/lib/utils.ts` — added `TRUTH_OR_DARE_CATEGORIES`/`TRUTH_OR_DARE_ALL_TRUTHS`/`TRUTH_OR_DARE_ALL_DARES`, extracted from the standalone tool page's richer categorized content.
+- `src/app/tools/truth-or-dare/page.tsx` — now imports `TRUTH_OR_DARE_CATEGORIES` instead of a local copy; behavior unchanged.
+- `src/app/room/[code]/activities/truth-or-dare-activity.tsx` — `BACKUP_TRUTHS`/`BACKUP_DARES` (the static fallback used when `activity_prompts` isn't fetched) now draw from the same shared, much larger content instead of a separately-hardcoded 5-item list.
+- `src/lib/types.ts` — `TmTeamsEvent`/`NdWinnerEvent` renamed to `team_maker_teams`/`name_draw_winner`; added read-only `TmTeamsLegacyEvent`/`NdWinnerLegacyEvent` (old kind strings) to the `ActivityEvent` union purely for replay compatibility.
+- `src/app/room/[code]/activities/team-maker-activity.tsx`, `name-draw-activity.tsx` — event listeners now accept both the new and legacy kind strings; only the new kind is ever written.
+- `src/lib/supabase/database.types.ts` — added `chat_messages.username`, `analytics_events` table types.
+- `docs/ARCHITECTURE.md`, `docs/TASKS.md`, `docs/AI_CONTEXT.md`, `docs/HANDOFF.md` — updated throughout.
+
+**Purpose:** Close out every item Session 45 had left open, resolving each without the specific risk originally cited for deferring/skipping it: analytics stayed first-party per the cookie banner's promise and scoped to 3 events rather than full instrumentation; the event-kind rename and content-fork unification were both done via backward-compatible/additive techniques (legacy union members, shared source extraction) rather than the riskier rewrites originally flagged.
+
+**Outcome:** All migrations (`0040`, `0041`) applied fresh via `supabase db reset` against a local Docker Supabase stack, full Playwright suite run against it (7/7 passing — one pre-existing, already-documented host-election flake self-recovered on retry, confirmed unrelated to any change this session by rerunning in isolation). Directly verified via `psql` that real app usage populates both new columns/tables correctly (not just schema-correct): `analytics_events` had 11 real rows from the test run with correct `event_name`/`activity_type`/`actor_id`; a manually-sent chat message correctly stored its sender's real username instead of leaving it null. `npm run verify`/`npm run build` clean, both with the local stack and again with production credentials restored afterward.
+
+**Risks:**
+- The `use-room-subscription.ts` demo-mode room-join tracking call adds a new `trackEvent` invocation inside `trackSelf`'s Supabase-mode-only success path — low risk (fire-and-forget, already-proven-safe pattern matching every other non-critical write in that file).
+- `analytics_events` has no FK to `rooms.code` (deliberate — aggregate counts should survive room deletion/cascade, not get wiped with the room); if a "which room did this event belong to" join is ever needed later, that'll require a schema addition, not something this session's scope covered.
+- Production credentials were briefly overwritten in `.env.local` mid-session while setting up local Docker testing — caught immediately, recovered via `supabase projects api-keys` (anon keys are retrievable/publishable, not a real loss), and confirmed correct before finishing. Worth noting for future sessions: back up `.env.local` before overwriting it for local testing, don't rely on being able to recover it after the fact.
+
+---
+

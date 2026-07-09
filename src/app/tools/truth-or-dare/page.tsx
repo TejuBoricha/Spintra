@@ -9,98 +9,15 @@ import { toast } from "sonner";
 import { Emoji, type EmojiName } from "@/components/emoji";
 import { playSwipe } from "@/lib/audio";
 import { getGameByType } from "@/lib/games";
+import { TRUTH_OR_DARE_CATEGORIES } from "@/lib/utils";
 
 const GameIcon = getGameByType("truth-or-dare")!.icon;
 
-const categories = [
-  {
-    name: "Friends",
-    icon: "busts_in_silhouette",
-    truths: [
-      "What's the most embarrassing thing you've done in public?",
-      "Who in this room would you swap lives with for a day?",
-      "What's your biggest fear?",
-      "What's the last lie you told?",
-      "What's a secret talent you have?",
-      "What's the weirdest food combination you enjoy?",
-    ],
-    dares: [
-      "Do your best impression of another person in the room",
-      "Let someone else post a status on your social media",
-      "Talk in an accent for the next 3 rounds",
-      "Do 10 push-ups right now",
-      "Show the last photo in your camera roll",
-      "Sing the chorus of any song",
-    ],
-  },
-  {
-    name: "Party",
-    icon: "party_popper",
-    truths: [
-      "What's the craziest thing you've done at a party?",
-      "Who here would you most want on your team in a zombie apocalypse?",
-      "What's your guilty pleasure?",
-      "What's the most trouble you've been in?",
-      "If you could be invisible for a day, what would you do?",
-    ],
-    dares: [
-      "Do your best dance move",
-      "Speak in rhymes for the next 5 minutes",
-      "Let the group choose your phone wallpaper",
-      "Do an impression of a celebrity",
-      "Eat a spoonful of a condiment chosen by the group",
-    ],
-  },
-  {
-    name: "Couples",
-    icon: "two_hearts",
-    truths: [
-      "What was your first impression of your partner?",
-      "What's your partner's most annoying habit?",
-      "What's the most romantic thing you've ever done?",
-      "What's your biggest relationship fear?",
-    ],
-    dares: [
-      "Recreate your first date",
-      "Write a short love poem in 30 seconds",
-      "Slow dance to no music for 1 minute",
-      "Say something you've never told your partner",
-    ],
-  },
-  {
-    name: "Funny",
-    icon: "face_with_tears_of_joy",
-    truths: [
-      "What's the dumbest thing you believed as a kid?",
-      "What's your most irrational fear?",
-      "What's the worst fashion choice you've ever made?",
-      "What's the most awkward date you've been on?",
-    ],
-    dares: [
-      "Try to make everyone laugh in 10 seconds",
-      "Act out a scene from your favorite movie",
-      "Do a dramatic reading of a text message",
-      "Make up a rap about someone in the group",
-    ],
-  },
-  {
-    name: "Extreme",
-    icon: "fire",
-    truths: [
-      "What's the most illegal thing you've ever done?",
-      "What's a secret you've never told anyone?",
-      "What's the biggest risk you've taken?",
-    ],
-    dares: [
-      "Call someone and tell them a secret",
-      "Post an embarrassing photo on your story for 1 hour",
-      "Let someone go through your phone for 30 seconds",
-    ],
-  },
-] satisfies { name: string; icon: EmojiName; truths: string[]; dares: string[] }[];
+const categories: readonly { name: string; icon: EmojiName; truths: readonly string[]; dares: readonly string[] }[] = TRUTH_OR_DARE_CATEGORIES;
+type TodCategory = (typeof categories)[number];
 
 export default function TruthOrDarePage() {
-  const [category, setCategory] = useState(categories[0]);
+  const [category, setCategory] = useState<TodCategory>(categories[0]);
   const [mode, setMode] = useState<"truth" | "dare" | null>(null);
   const [current, setCurrent] = useState<string | null>(null);
   const [used, setUsed] = useState<Set<string>>(new Set());

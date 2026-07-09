@@ -114,6 +114,7 @@ export interface Database {
           user_id: string
           content: string
           created_at: string
+          username: string | null
         }
         Insert: {
           id?: string
@@ -121,6 +122,7 @@ export interface Database {
           user_id: string
           content: string
           created_at?: string
+          username?: string | null
         }
         Update: {
           id?: string
@@ -128,6 +130,7 @@ export interface Database {
           user_id?: string
           content?: string
           created_at?: string
+          username?: string | null
         }
         Relationships: [
           {
@@ -265,6 +268,30 @@ export interface Database {
             referencedColumns: ["code"]
           }
         ]
+      }
+      analytics_events: {
+        Row: {
+          id: number
+          event_name: string
+          activity_type: string | null
+          actor_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          event_name: string
+          activity_type?: string | null
+          actor_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          event_name?: string
+          activity_type?: string | null
+          actor_id?: string
+          created_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {

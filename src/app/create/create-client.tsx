@@ -14,6 +14,7 @@ import type { RoomType } from "@/lib/types";
 import { GAMES } from "@/lib/games";
 import { getOrCreateRoomUser, setLocalRoomCreator } from "@/lib/room-user";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { trackEvent } from "@/lib/analytics";
 
 declare global {
   interface Window {
@@ -177,6 +178,7 @@ export default function CreateRoomClient() {
         );
 
         if (error) throw error;
+        trackEvent("room_created", hostId, selectedType);
       } catch (error) {
         console.error("Failed to persist room to Supabase:", error);
         const errMsg = (error as { message?: string })?.message || "";

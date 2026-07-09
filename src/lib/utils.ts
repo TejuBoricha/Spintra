@@ -135,3 +135,106 @@ export const BINGO_LINES: [number, number][][] = [
   [0, 1, 2, 3, 4].map((i) => [i, 4 - i] as [number, number]),
 ];
 
+// Single source of truth for Truth or Dare content — the standalone tool
+// page (src/app/tools/truth-or-dare/page.tsx) and the in-room activity
+// (src/app/room/[code]/activities/truth-or-dare-activity.tsx) used to
+// maintain two separate, inconsistent hardcoded prompt lists (Session 45
+// audit finding). Deliberately kept as plain static data, not a Supabase
+// fetch — the tool page's zero-network-dependency, always-available
+// behavior is intentional (see that page's history) and isn't worth
+// trading away just to unify with the much smaller DB-backed pool the
+// in-room activity separately layers on top when Supabase is configured.
+// `icon` is left as `string` here (not typed against EmojiName) to avoid a
+// circular import — components/emoji.tsx itself imports `cn` from this
+// file; the tool page re-asserts the icon type locally via `satisfies`.
+export const TRUTH_OR_DARE_CATEGORIES = [
+  {
+    name: "Friends",
+    icon: "busts_in_silhouette",
+    truths: [
+      "What's the most embarrassing thing you've done in public?",
+      "Who in this room would you swap lives with for a day?",
+      "What's your biggest fear?",
+      "What's the last lie you told?",
+      "What's a secret talent you have?",
+      "What's the weirdest food combination you enjoy?",
+    ],
+    dares: [
+      "Do your best impression of another person in the room",
+      "Let someone else post a status on your social media",
+      "Talk in an accent for the next 3 rounds",
+      "Do 10 push-ups right now",
+      "Show the last photo in your camera roll",
+      "Sing the chorus of any song",
+    ],
+  },
+  {
+    name: "Party",
+    icon: "party_popper",
+    truths: [
+      "What's the craziest thing you've done at a party?",
+      "Who here would you most want on your team in a zombie apocalypse?",
+      "What's your guilty pleasure?",
+      "What's the most trouble you've been in?",
+      "If you could be invisible for a day, what would you do?",
+    ],
+    dares: [
+      "Do your best dance move",
+      "Speak in rhymes for the next 5 minutes",
+      "Let the group choose your phone wallpaper",
+      "Do an impression of a celebrity",
+      "Eat a spoonful of a condiment chosen by the group",
+    ],
+  },
+  {
+    name: "Couples",
+    icon: "two_hearts",
+    truths: [
+      "What was your first impression of your partner?",
+      "What's your partner's most annoying habit?",
+      "What's the most romantic thing you've ever done?",
+      "What's your biggest relationship fear?",
+    ],
+    dares: [
+      "Recreate your first date",
+      "Write a short love poem in 30 seconds",
+      "Slow dance to no music for 1 minute",
+      "Say something you've never told your partner",
+    ],
+  },
+  {
+    name: "Funny",
+    icon: "face_with_tears_of_joy",
+    truths: [
+      "What's the dumbest thing you believed as a kid?",
+      "What's your most irrational fear?",
+      "What's the worst fashion choice you've ever made?",
+      "What's the most awkward date you've been on?",
+    ],
+    dares: [
+      "Try to make everyone laugh in 10 seconds",
+      "Act out a scene from your favorite movie",
+      "Do a dramatic reading of a text message",
+      "Make up a rap about someone in the group",
+    ],
+  },
+  {
+    name: "Extreme",
+    icon: "fire",
+    truths: [
+      "What's the most illegal thing you've ever done?",
+      "What's a secret you've never told anyone?",
+      "What's the biggest risk you've taken?",
+    ],
+    dares: [
+      "Call someone and tell them a secret",
+      "Post an embarrassing photo on your story for 1 hour",
+      "Let someone go through your phone for 30 seconds",
+    ],
+  },
+] as const;
+
+/** Every truth/dare across every category, flattened — used as the in-room activity's static fallback pool. */
+export const TRUTH_OR_DARE_ALL_TRUTHS = TRUTH_OR_DARE_CATEGORIES.flatMap((c) => c.truths);
+export const TRUTH_OR_DARE_ALL_DARES = TRUTH_OR_DARE_CATEGORIES.flatMap((c) => c.dares);
+

@@ -17,7 +17,7 @@ export function NameDrawActivity() {
 
   useEffect(() => {
     return registerEventListener((event) => {
-      if (event.kind === "nd_winner") {
+      if (event.kind === "name_draw_winner" || event.kind === "nd_winner") {
         setNdWinner(event.winner);
         fireConfetti();
       } else if (event.kind === "activity_reset") {
@@ -77,7 +77,7 @@ export function NameDrawActivity() {
             }
             const names = disambiguatedUsernames(online);
             const winner = names[Math.floor(Math.random() * names.length)];
-            sendActivityEvent({ kind: "nd_winner", winner });
+            sendActivityEvent({ kind: "name_draw_winner", winner });
           }}
           className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 text-white border-0 rounded-full h-11 font-bold shadow-lg shadow-pink-500/10"
         >

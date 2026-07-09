@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { useRef, useState, useCallback, useEffect } from "react";
+import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -76,16 +76,44 @@ export default function HomePage() {
   const heroOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
   const heroScale = useTransform(scrollYProgress, [0, 0.15], [1, 0.95]);
 
+  // The WebGL scene's render loop (useFrame) runs continuously for as long
+  // as the Canvas is mounted — with no visibility check, it kept animating
+  // (burning GPU/battery) even after the user scrolled past the hero
+  // entirely. Only mount it once the hero section actually scrolls into
+  // view, and unmount it again once it scrolls out — and skip it outright
+  // for prefers-reduced-motion, matching every other animation in this app
+  // (see globals.css's reduce-motion block).
+  const prefersReducedMotion = useReducedMotion();
+  const heroSectionRef = useRef<HTMLElement>(null);
+  const [isHeroVisible, setIsHeroVisible] = useState(false);
+
+  useEffect(() => {
+    if (prefersReducedMotion) return;
+    const el = heroSectionRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsHeroVisible(entry.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [prefersReducedMotion]);
+
   return (
     <div ref={containerRef} className="relative">
       {/* Aurora Gradient Background */}
       <AuroraBackground />
 
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
-        {/* 3D Scene Background */}
+      <section ref={heroSectionRef} className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
+        {/* 3D Scene Background — only mounted while visible and motion isn't reduced */}
         <div className="absolute inset-0 z-0">
-          <HeroThreeScene />
+          {!prefersReducedMotion && isHeroVisible ? (
+            <HeroThreeScene />
+          ) : (
+            <div className="h-full w-full bg-gradient-to-b from-purple-950/50 to-background" />
+          )}
         </div>
 
         {/* Gradient overlay */}

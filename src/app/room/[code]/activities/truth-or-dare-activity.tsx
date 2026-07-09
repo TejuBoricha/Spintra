@@ -10,22 +10,15 @@ import { useRoomActivity } from "../context/room-activity-context";
 
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { playSwipe } from "@/lib/audio";
+import { TRUTH_OR_DARE_ALL_TRUTHS, TRUTH_OR_DARE_ALL_DARES } from "@/lib/utils";
 
-const BACKUP_TRUTHS = [
-  "What's your biggest fear?",
-  "What's the most embarrassing thing you've done?",
-  "What's a secret you've never told anyone?",
-  "Who was your first crush?",
-  "What's the worst lie you've told?",
-];
-
-const BACKUP_DARES = [
-  "Do your best celebrity impression",
-  "Speak in an accent for the next 3 minutes",
-  "Text your crush right now",
-  "Do 10 jumping jacks",
-  "Sing a song for 30 seconds",
-];
+// Shared with the standalone tool page (src/app/tools/truth-or-dare/page.tsx)
+// instead of a separately-hardcoded, much smaller list — Session 45 audit
+// finding: the two used to drift out of sync as genuinely different content.
+// Still just the static fallback here: activity_prompts (fetched below when
+// Supabase is configured) remains the preferred source when available.
+const BACKUP_TRUTHS: readonly string[] = TRUTH_OR_DARE_ALL_TRUTHS;
+const BACKUP_DARES: readonly string[] = TRUTH_OR_DARE_ALL_DARES;
 
 const TOD_BUTTONS = [
   {
@@ -45,7 +38,7 @@ const TOD_BUTTONS = [
 export function TruthOrDareActivity() {
   const { isHost, sendActivityEvent, registerEventListener, soundEnabled } = useRoomActivity();
   const [todPrompt, setTodPrompt] = useState<{ type: string; text: string } | null>(null);
-  const [prompts, setPrompts] = useState<{ truths: string[]; dares: string[] }>({
+  const [prompts, setPrompts] = useState<{ truths: readonly string[]; dares: readonly string[] }>({
     truths: BACKUP_TRUTHS,
     dares: BACKUP_DARES,
   });

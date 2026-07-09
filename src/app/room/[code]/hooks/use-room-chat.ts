@@ -53,7 +53,7 @@ export function useRoomChat({
       try {
         const { data, error } = await supabase
           .from("chat_messages")
-          .select("id, room_id, user_id, content, created_at")
+          .select("id, room_id, user_id, content, created_at, username")
           .eq("room_id", roomCode)
           .order("created_at", { ascending: false })
           .limit(100);
@@ -69,7 +69,7 @@ export function useRoomChat({
             ...item,
             user: {
               id: item.user_id,
-              username: item.user_id === currentUser.id ? "You" : "Guest",
+              username: item.user_id === currentUser.id ? "You" : item.username || "Guest",
               avatar_url: "",
               xp: 0,
               rank: "rookie" as const,
@@ -113,7 +113,7 @@ export function useRoomChat({
       const oldestCreatedAt = messages[0].created_at;
       const { data, error } = await supabase
         .from("chat_messages")
-        .select("id, room_id, user_id, content, created_at")
+        .select("id, room_id, user_id, content, created_at, username")
         .eq("room_id", roomCode)
         .lt("created_at", oldestCreatedAt)
         .order("created_at", { ascending: false })
@@ -131,7 +131,7 @@ export function useRoomChat({
           ...item,
           user: {
             id: item.user_id,
-            username: item.user_id === currentUser.id ? "You" : "Guest",
+            username: item.user_id === currentUser.id ? "You" : item.username || "Guest",
             avatar_url: "",
             xp: 0,
             rank: "rookie" as const,
@@ -198,6 +198,7 @@ export function useRoomChat({
         user_id: currentUser.id,
         content: msg.content,
         created_at: msg.created_at,
+        username: currentUser.username,
       });
       if (error) throw error;
     } catch (error) {

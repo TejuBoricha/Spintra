@@ -5,6 +5,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { fireConfetti } from "@/components/celebration";
 import { banUserFromRoom } from "@/lib/room-bans";
+import { trackEvent } from "@/lib/analytics";
 import type { User, ChatMessage, RoomParticipant, RoomType, ActivityEvent } from "@/lib/types";
 import type { Json } from "@/lib/supabase/database.types";
 
@@ -308,6 +309,7 @@ export function useRoomSubscription({
   const changeActivity = useCallback((type: string | null) => {
     const nextActivity = type ? { type, state: null } : null;
     setActiveActivity(nextActivity);
+    if (type) trackEvent("activity_started", currentUser.id, type);
 
     // Switching games starts a fresh session — the previous activity's
     // recorded history must not leak into the new one.
@@ -328,7 +330,7 @@ export function useRoomSubscription({
       }
       supabase.from("room_activity_state").upsert({ room_code: roomCode, activity_state: null }, { onConflict: "room_code" }).then(() => {}, () => {});
     }
-  }, [postLocalMessage, roomCode]);
+  }, [postLocalMessage, roomCode, currentUser.id]);
 
   const sendActivityEvent = useCallback((event: ActivityEvent) => {
     const supabase = getSupabaseBrowserClient();
@@ -640,6 +642,12 @@ export function useRoomSubscription({
         // subscriptions effect below authorize and subscribe to the
         // Realtime channel.
         if (isMounted) setParticipantRowReady(true);
+
+        // Only a genuinely new guest join, not the host's own creation (that
+        // already fires room_created) or a reconnect/refresh (existingParticipant).
+        if (!existingParticipant && !isRoomHost) {
+          trackEvent("room_joined", currentUser.id);
+        }
 
         const participantRow = data?.[0];
         if (participantRow && isMounted) {
