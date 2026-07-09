@@ -68,11 +68,21 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
 
+      # This job deliberately builds/runs without Supabase env vars to
+      # exercise the app's demo-mode/BroadcastChannel fallback path (see
+      # the db-integration job's comment below for why a *separate* job
+      # covers the real-Supabase path instead). SKIP_ENV_VALIDATION opts
+      # out of next.config.ts's fail-fast check for that one intentional
+      # case only.
       - name: Production Build Validation
         run: npm run build
+        env:
+          SKIP_ENV_VALIDATION: "true"
 
       - name: Execute Playwright E2E Smoke Tests
         run: npm run test:smoke
+        env:
+          SKIP_ENV_VALIDATION: "true"
 
       - name: Upload Test Artifacts on Failure
         uses: actions/upload-artifact@v7

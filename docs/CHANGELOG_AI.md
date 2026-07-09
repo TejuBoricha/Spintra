@@ -1246,3 +1246,23 @@
 
 ---
 
+## [2026-07-09] — Post-Session-45 fix: `validate` CI job broken since 2026-07-06
+
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** Session 45's commits were pushed to `main` (`11bd44c..5ddd24c`); checking CI status afterward found the `validate` job failing (`db-integration` passed). Investigated rather than assumed a Session 45 regression.
+
+**Root cause (pre-existing, not introduced this session):** Commit `8086500` (2026-07-06, "add build-time env var assertion") added a hard `throw` in `next.config.ts` when `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` are missing at build time. But the `validate` CI job has always deliberately built the app **without** those vars, to exercise the demo-mode `BroadcastChannel` fallback path (as documented in `ci.yml` and `ARCHITECTURE.md` §9) — a design that predates the assertion and is also why `ProductionConfigWarningBanner` exists (graceful runtime degradation, not a build-time crash). The two designs directly conflicted: `validate` has failed on every commit since (`752295f`, `11bd44c`, `5ddd24c`), unnoticed because `db-integration` (which does set real local-Supabase env vars) stayed green.
+
+**Files Modified:**
+- `next.config.ts` — env var check now skippable via `SKIP_ENV_VALIDATION=true`, off by default (fail-fast preserved everywhere else)
+- `.github/workflows/ci.yml` — `validate` job's build + smoke-test steps set `SKIP_ENV_VALIDATION: "true"`
+- `docs/ARCHITECTURE.md` §9 — documented the flag and the conflict
+
+**Purpose:** Restore the `validate` job's intentional demo-mode test path without weakening the fail-fast protection against an accidentally misconfigured real production build — an explicit opt-in flag (same pattern as the T3 stack's `SKIP_ENV_VALIDATION`) rather than a blanket revert or duplicating `db-integration`'s real-Supabase setup.
+
+**Outcome:** Verified locally both ways — build fails without the flag when env vars are absent (protection intact), succeeds with the flag set (matches `validate`'s intent). `npm run verify` clean. Pushed as its own commit; watching CI to confirm `validate` goes green.
+
+**Risks:** None expected — `db-integration` and any real deploy are unaffected (they always set real env vars, so the flag is simply unset/false for them, same as before this fix).
+
+---
+

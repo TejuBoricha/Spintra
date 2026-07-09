@@ -1,9 +1,20 @@
 import type { NextConfig } from "next";
 
+// Skippable via SKIP_ENV_VALIDATION for builds that intentionally have no
+// Supabase backend — e.g. CI's `validate` job builds without these vars on
+// purpose, to exercise the app's demo-mode/BroadcastChannel fallback path
+// (see ci.yml's `validate` job and src/lib/supabase/client.ts). Everywhere
+// else (real deploys, db-integration's real-Supabase build) this still
+// fails fast on a missing var instead of silently shipping a broken build.
 const REQUIRED_ENV_VARS = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"] as const;
-for (const key of REQUIRED_ENV_VARS) {
-  if (!process.env[key]) {
-    throw new Error(`Missing required env var: ${key}. Set it in .env.local or the CI environment.`);
+if (!process.env.SKIP_ENV_VALIDATION) {
+  for (const key of REQUIRED_ENV_VARS) {
+    if (!process.env[key]) {
+      throw new Error(
+        `Missing required env var: ${key}. Set it in .env.local or the CI environment, ` +
+          `or set SKIP_ENV_VALIDATION=true for an intentional no-Supabase build (demo mode).`
+      );
+    }
   }
 }
 
