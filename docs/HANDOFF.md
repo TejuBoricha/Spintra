@@ -6,6 +6,30 @@ Portable session-continuity note for any AI assistant (Antigravity, Claude Code,
 
 ## Last Completed Task
 
+**Session 45: Full Product/UX/Engineering/Security/Production-Readiness Audit + fixed tier-by-tier — COMPLETE.**
+
+User asked for the most comprehensive audit yet (product, UX, UI, frontend, backend, database, security, performance, QA, production-readiness, hidden problems), explicitly re-verifying all 64 previously-fixed findings from Sessions 37-43 first (all confirmed still correctly in place — none re-reported). Result: 42 new findings (1 Critical, 4 High, 9 Medium, 28 Low), published as an artifact with scores/top-50/roadmap. User then asked to fix everything tier-by-tier, same pattern as Session 41. Full detail on every fix lives in `docs/TASKS.md`'s Session 45 section and `docs/CHANGELOG_AI.md`'s Session 45 entry — this is a summary.
+
+**Critical (1/1) — Realtime Broadcast/Presence had zero authorization.** Any anonymous session could subscribe to any room's channel, including private ones, and a banned/kicked user kept full realtime access (the ban only blocked a DB row insert, never the channel). Fixed via migration `0036` (Realtime Authorization — RLS on `realtime.messages`) + a client change creating the channel with `{ config: { private: true } }`, gated on a new `participantRowReady` flag. **This fix caught two of its own secondary bugs before shipping** — both only found via live testing against this project's own isolated ephemeral Supabase stack (installed Docker/WSL mid-session for this, after live testing against the production project proved confounded by rate-limit pressure from repeated test runs):
+1. Delaying the host's own subscribe widened a window where a fast guest-join event could be missed — closed with a one-time reconciliation fetch on `SUBSCRIBED`.
+2. More seriously, it widened a race in the pre-existing presence-reconciliation logic (migration 0019), causing a real, reproducible **duplicate-host bug** (confirmed via direct `psql` inspection: two `role='host'` rows in the same room) — fixed by skipping the crash-reconciliation DB write on each channel's first presence sync only.
+
+Confirmed via 6+ consecutive clean Playwright runs against a freshly-reset local instance, plus a direct DB query confirming exactly one host row per room.
+
+**High (4/4):** Tournament bracket username collision (now uses `disambiguatedUsernames()`), kick confirmation dialog, `RoomSidebar` double-mount fix, and 2 new e2e tests (kick+ban-rejoin, host-election) added to `multiplayer-loop.spec.ts`.
+
+**Medium (8/9):** message_reports consistency check (migration 0037), room_participants UPDATE rate limit (migration 0038), chat animation-count threshold, activity-state debounce max-wait ceiling, Bingo in-flight lock, chat Report button touch/keyboard reachability, fake "Activity score" badge removed, reset-activity confirmation dialog. **Analytics/telemetry deliberately deferred** — user explicitly chose to skip it this session (cookie banner already promises no third-party tracking; would need a first-party approach, left for a future deliberate session).
+
+**Low (26/28):** 3 new DB constraints (migration 0039), QR codes now generated client-side (new `qrcode` dep, no third-party leak), RPS stale-offline-choice fix, Guess Number double-submit guard, dead code removed (`zod`/`react-hook-form`/`@hookform/resolvers`, 3 unused shadcn components, 8 unused types), word-scramble and bingo logic deduplicated into `src/lib/utils.ts`, Message Reports panel now has a direct kick/ban action, `npm run ci` now includes the `npm audit` gate CI actually runs, stale `ARCHITECTURE.md` §2 migration sub-list deleted in favor of §4's table, a short operational runbook added, Lucky Wheel's native `confirm()` replaced with the shared `Dialog`. **2 items deliberately left as-is** (documented reasoning in `TASKS.md`): `tm_teams`/`nd_winner` event-kind naming (real risk of breaking persisted-event replay for purely cosmetic gain) and the Truth-or-Dare standalone-tool content fork (would require reworking a deliberately-static tool page into an async/DB-dependent one). 2 items left open (deprioritized, not forgotten): homepage 3D hero's unconditional load, departed-users'-chat-showing-"Guest".
+
+**Final state:** `npm run verify` clean, `npm run build` clean, 7/7 Playwright tests pass repeatably. Local Docker/Supabase stack stopped (`npx supabase stop`) after all verification completed — Docker itself is still installed and recommended to keep (matches the project's own CI verification path, see `ARCHITECTURE.md` §9).
+
+**Next recommended task:** the 3 net-new Medium-priority features that predate this audit (Visual Scoreboard, XP/Leveling System, Room Settings Panel — see below), or pick up any of the 2 deprioritized/2 deliberately-skipped Low items above if there's appetite for a smaller session first.
+
+---
+
+## Prior session (Session 41 summary)
+
 **Session 41: Production Readiness Audit + Critical Tier Fixes (in progress).** User asked for a comprehensive 8-perspective production-readiness audit (Production Engineering, QA, Security, Performance, Scalability, Reliability, UX, Accessibility) as if launching to real public traffic. Ran 5 parallel research agents (Security · Performance/Scalability · Reliability/Prod-Eng · QA/Functional · UX/Accessibility), synthesized 60 findings into a categorized report (4 Critical, 12 High, 16 Medium, 21 Low, 7 Nice-to-have), published as an artifact. User is rotating the one Critical security finding (a leaked DB password in git history) directly; asked to fix everything else tier by tier, starting with Critical.
 
 **Critical tier — done:**

@@ -103,7 +103,7 @@ fully secure setup; migrating to Supabase Anonymous Auth is the real fix.
 | `npm run verify` | typecheck + lint + docs:check |
 | `npm run verify:migration [name]` | Confirms a migration's objects actually exist live in the linked Supabase project (not just tracked as "applied") — run after every `supabase db push` |
 | `npm run test:smoke` | Playwright smoke test (room create/join flow) |
-| `npm run ci` | verify + build + test:smoke (full CI gate, locally) |
+| `npm run ci` | verify + npm audit + build + test:smoke (full CI gate, locally) |
 
 ## Project structure
 

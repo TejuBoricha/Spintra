@@ -1202,3 +1202,47 @@
 
 ---
 
+## [2026-07-09] — Session 45: Full Product/UX/Engineering/Security/Production-Readiness Audit + Fixes
+
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** User requested the most comprehensive audit yet (product, UX, UI, frontend, backend, database, security, performance, QA, production-readiness, hidden problems), then asked to fix everything found, tier by tier.
+
+**Audit method:** 5 parallel domain research agents, each briefed on and cross-checking against all 64 previously-fixed findings from Sessions 37-43 (all confirmed still correctly in place — none re-reported). Result: 42 new findings (1 Critical, 4 High, 9 Medium, 28 Low), published as an artifact with scores/top-50/roadmap.
+
+**Files Modified (highlights — see `git log`/`git diff` for the complete list):**
+- `supabase/migrations/0036_realtime_broadcast_presence_authorization.sql` (NEW) — Realtime Authorization (RLS on `realtime.messages`)
+- `supabase/migrations/0037_message_reports_consistency_check.sql` (NEW) — tightened insert policy
+- `supabase/migrations/0038_room_participants_update_rate_limit.sql` (NEW) — UPDATE rate limit
+- `supabase/migrations/0039_bound_remaining_columns_and_activity_state_size.sql` (NEW) — 3 missing CHECK constraints
+- `src/app/room/[code]/hooks/use-room-subscription.ts` — private channel + `participantRowReady` gating, reconciliation-on-subscribe fetch, presence-sync first-sync-skip fix, debounce max-wait ceiling
+- `src/app/room/[code]/activities/tournament-activity.tsx` — `disambiguatedUsernames()` fix
+- `src/app/room/[code]/components/room-sidebar.tsx` — kick confirm dialog, chat animation threshold, Report button touch/keyboard reachability
+- `src/app/room/[code]/room-client.tsx` — `RoomSidebar` double-mount fix (reactive `isDesktopSidebar`)
+- `src/app/room/[code]/components/room-header.tsx` — reset-activity confirm dialog, client-side QR generation, `currentUserId` prop
+- `src/app/room/[code]/components/message-reports-panel.tsx` — direct kick/ban action per report
+- `src/app/room/[code]/activities/{bingo,coin-flip,dice,rps,guess-number}-activity.tsx` — in-flight locks, timer cleanup, RPS online-only choice filtering
+- `src/lib/utils.ts` — shared `scramble()`/`WORD_SCRAMBLE_WORDS`, `generateBingoCard()`/`BINGO_LINES`/`BINGO_COLUMNS`
+- `src/lib/types.ts` — removed 8 unused exported types/event variants
+- `src/app/explore/page.tsx` — removed fake "Activity score" badge, memoized filters
+- `src/lib/room-join-check.ts` — parallelized independent checks
+- `src/lib/games.ts` — fixed Trivia's overpromising copy
+- `tests/multiplayer-loop.spec.ts` — added kick+ban-rejoin and host-election tests
+- Removed: `src/components/ui/{accordion,table,card}.tsx`; `zod`, `react-hook-form`, `@hookform/resolvers` dependencies
+- Added: `qrcode` dependency
+- `docs/ARCHITECTURE.md`, `docs/TASKS.md`, `docs/AI_CONTEXT.md`, `docs/HANDOFF.md`, `README.md`, `package.json` (`ci` script)
+
+**Purpose:** Close the Critical realtime-authorization gap and the High/Medium/most-Low findings from the audit, matching this project's own established tier-by-tier fix pattern (Sessions 41/43).
+
+**Outcome:**
+- **Critical fix caught and fixed 2 secondary bugs before shipping**, both only found via live testing against this project's own isolated ephemeral Supabase stack (Docker, matching the `db-integration` CI job) after live testing against the production project proved confounded by rate-limit pressure from repeated test runs: (1) the host's own channel subscribe delay widened a pre-existing miss-window for a fast guest's join event — closed with a one-time reconciliation fetch on `SUBSCRIBED`; (2) more seriously, it widened a race in the pre-existing presence-reconciliation logic (migration 0019) causing a real, reproducible duplicate-host bug (confirmed via direct DB inspection) — fixed by skipping the crash-reconciliation write on each channel's first presence sync only.
+- Critical + High (4/4) + Medium (8/9, analytics deliberately deferred per user's explicit choice) + Low (26/28, 2 deliberately not fixed with documented reasoning) tiers complete.
+- 7/7 Playwright tests (including 2 new ones) pass repeatably against a freshly-reset local instance; `npm run verify` and `npm run build` both clean throughout.
+- `npm run ci` now actually mirrors what CI runs (added the missing `npm audit` gate).
+
+**Risks:**
+- The Realtime Authorization change (migration 0036 + client sequencing) is the most architecturally significant change in this session — it touches the shared transport every one of the 14 activities depends on. Verified thoroughly (6+ consecutive clean test runs, direct DB inspection confirming no duplicate-host rows, full build/verify clean) but is exactly the kind of foundational change this project's own history shows can hide subtle races; monitor closely after any future deploy.
+- Homepage 3D hero's unconditional load and departed-users'-chat-showing-"Guest" findings were left unaddressed (deprioritized, not forgotten — both still open in `TASKS.md`).
+- Two Low findings (event-kind naming, Truth-or-Dare content fork) were deliberately left as-is with documented reasoning (real regression risk / behavior-change risk for purely cosmetic gains) rather than fixed for the sake of closing every line item.
+
+---
+

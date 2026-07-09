@@ -18,6 +18,7 @@
 | Animation | Framer Motion | ^12.40.0 | `AnimatePresence`, `motion.div`, `useAnimation` for game transitions |
 | 3D | Three.js + React Three Fiber | ^0.184 / ^9.6 | Physics-based lucky wheel rendering |
 | Confetti | canvas-confetti | ^1.9.4 | Win celebrations; wrapped in `src/components/celebration.tsx` |
+| QR Codes | qrcode | ^1.5 | Client-side room-invite QR generation in `room-header.tsx`, dynamically imported — replaced a third-party API call that sent every viewed room's URL (including private/locked ones) to an external service |
 | UI Components | shadcn/ui (Radix-based) | various | Accessible primitives: Button, Dialog, Sheet, Badge, Input, ScrollArea, Tooltip, Avatar |
 | Icons | lucide-react | ^1.21.0 | Consistent icon set |
 | State (global) | Zustand | ^5.0.14 | Installed; not yet used in room. Available for future game state if needed. |
@@ -103,16 +104,11 @@ spintra/
 │       └── supabase/
 │           └── client.ts           ← getSupabaseBrowserClient() — returns null if no .env.local
 ├── supabase/
-│   └── migrations/
-│       ├── 0001_init_schema_and_rls.sql
-│       ├── 0002_room_close_cascade.sql
-│       ├── 0003_disable_rls_for_realtime_delete.sql
-│       ├── 0004_add_foreign_keys_and_composite_indexes.sql
-│       ├── 0005_enable_anonymous_auth_rls.sql
-│       ├── 0006_allow_host_promotion_update.sql
-│       ├── 0007_allow_host_update_participants.sql
-│       ├── 0008_create_activity_prompts.sql
-│       └── 0009_backend_and_db_improvements.sql      ← Latest migration
+│   └── migrations/                 ← See §4's "Migrations Applied" table for the full,
+│                                      current list (that table is the one docs:check
+│                                      validates against the real files — this tree
+│                                      intentionally doesn't duplicate it, since a
+│                                      second hand-maintained list would drift silently)
 ├── tests/                          ← Playwright E2E tests
 └── public/                         ← Static assets
 ```
@@ -220,7 +216,7 @@ useEffect(() => registerEventListener((event) => {
 - **No custom server** — all backend is Supabase (BaaS)
 - **Database:** PostgreSQL with RLS on all tables
 - **Auth:** Anonymous sign-in (`auth.signInAnonymously()`). Each browser session gets a unique UUID.
-- **Realtime:** Broadcast channels per room (not DB replication — avoids RLS complications with realtime)
+- **Realtime:** Broadcast + Presence channel per room (`room:{code}`), created with `{ config: { private: true } }` — authorized via RLS policies on `realtime.messages` (migration 0036), scoped by `is_member_of_room()`. **Sequencing requirement:** Realtime Authorization is evaluated once at `channel.subscribe()` time and cached for the connection's lifetime, so a client must not subscribe until its own `room_participants` row already exists — `use-room-subscription.ts` gates the subscribe effect on a `participantRowReady` flag set only after the participant upsert (`trackSelf`) completes, to avoid a client being denied and staying denied for the rest of its session. `postgres_changes` subscriptions on the same channel object (`chat_messages`/`room_participants`/`rooms` changes) are unaffected — that mechanism is governed entirely by table-level RLS, not `realtime.messages`.
 - **Storage:** Not used
 
 ### Room Identification
@@ -275,13 +271,17 @@ useEffect(() => registerEventListener((event) => {
 | 0033 | `guess_number_rate_limit` | Adds a call-frequency limit to `check_guess_number` (15 guesses / 60 sec per room+user, via a new `guess_number_attempts` table) — migration 0028 moved the secret server-side but didn't rate-limit the RPC itself, letting a scripted client binary-search the 1-100 secret in ~7 rapid calls. Verified live: exactly 15 guesses succeeded, the 16th was rejected |
 | 0034 | `bound_text_column_lengths` | Adds `char_length()` CHECK constraints to previously-unbounded text columns: `rooms.name` (≤200), `room_participants.username`/`avatar_url` (≤100/≤2048), `message_reports.reason` (≤500) — generously above the client's own input limits, so no existing data was affected |
 | 0035 | `activity_state_participant_only` | Moves `activity_state` from the world-readable `rooms` table into a new `room_activity_state` table with participant-scoped RLS (only room participants can SELECT/INSERT/UPDATE). In-progress game data (trivia answers, confessions, votes, etc.) was previously readable by any authenticated user via the existing `rooms for select using (true)` policy. |
+| 0036 | `realtime_broadcast_presence_authorization` | Enables Supabase Realtime Authorization (RLS on `realtime.messages`) for the `room:{code}` Broadcast/Presence channel, scoped by the existing `is_member_of_room()` helper. Closes a gap where Broadcast/Presence had no authorization at all — any anonymous session could subscribe to any room's channel (including private rooms) with no trace, and a banned/kicked user kept full realtime access since the ban trigger only blocked `room_participants` inserts, never the channel. See §4's Realtime section for the client-side sequencing requirement this introduces. |
+| 0037 | `message_reports_consistency_check` | Tightens `message_reports`' insert policy to also require room membership (`is_member_of_room()`) and that `message_id`/`room_id`/`reported_user_id` are mutually consistent with the real `chat_messages` row — previously a crafted client could file a syntactically valid report against a real message but falsely attribute it to an arbitrary `reported_user_id`, surfacing as if legitimate in the host-facing reports panel. |
+| 0038 | `room_participants_update_rate_limit` | Adds a before-update rate limit on `room_participants` (30 updates / 60s per acting `auth.uid()` per room, new `room_participants_update_attempts` table) — the one major write path with no throttling; a client could otherwise spam `.update({ username })` on its own row at unlimited frequency, flooding every subscriber's realtime feed. Scoped generously so reconnects, host-election, and presence-reconciliation writes are unaffected. |
+| 0039 | `bound_remaining_columns_and_activity_state_size` | Adds three previously-missing bounds: `room_activity_state.activity_state` server-side size CHECK (<100KB, the 200-event cap was client-side only), `rooms.code` length CHECK (1–12 chars, despite being the FK target for 5 other tables), and `rooms.type` enum CHECK (the 16 known `RoomType` values — client-validated only before this). |
 
-**Current status:** all 34 applied; RLS enabled on all 10 tables (`rooms`, `room_participants`, `chat_messages`, `activity_prompts`, `trivia_questions`, `room_bans`, `message_reports`, `guess_number_secrets`, `guess_number_attempts`, `room_activity_state`); latest policy is `0035_activity_state_participant_only`; latest migration is `0035_activity_state_participant_only`. Note: 0008 and 0010 were re-applied in Session 37, and 0009 in Session 40, after discovering their tracked "applied" status didn't match reality (see `CHANGELOG_AI.md` Session 37/40) — the migration numbering itself didn't change, only their actual execution against the live database.
+**Current status:** all 39 applied; RLS enabled on all 10 `public` schema tables (`rooms`, `room_participants`, `chat_messages`, `activity_prompts`, `trivia_questions`, `room_bans`, `message_reports`, `guess_number_secrets`, `guess_number_attempts`, `room_activity_state`) plus `realtime.messages`; latest migration is `0039_bound_remaining_columns_and_activity_state_size`. Note: 0008 and 0010 were re-applied in Session 37, and 0009 in Session 40, after discovering their tracked "applied" status didn't match reality (see `CHANGELOG_AI.md` Session 37/40) — the migration numbering itself didn't change, only their actual execution against the live database.
 
 ### APIs / Integration Points
 No custom REST or GraphQL API exists for app functionality — every client talks directly to Supabase (or, unconfigured, the `BroadcastChannel` Web API). The one exception is a health check. The full set of integration points:
-- **Supabase Realtime — broadcast channel** (`room_{code}`): activity events (game state) and activity-type switching
-- **Supabase Realtime — presence channel**: participant online/offline tracking
+- **Supabase Realtime — broadcast channel** (`room:{code}`, private/authorized since migration 0036): activity events (game state) and activity-type switching
+- **Supabase Realtime — presence channel** (same private channel): participant online/offline tracking
 - **Supabase DB** (`@supabase/supabase-js`): `rooms`, `room_participants`, `chat_messages`, `activity_prompts` — see §12 for the full ER diagram
 - **`BroadcastChannel`** (Web API): same-browser-tab fallback for all of the above when Supabase env vars are absent
 - **`GET /api/health`** (`src/app/api/health/route.ts`): a stable, machine-readable liveness contract for external uptime monitors / a hosting platform's health check / deploy pipeline — found missing entirely in the Session 41 audit (no way to detect a silent outage). `force-dynamic`, never cached. Returns `200 {"status":"ok","database":"reachable"}` after a real (cheapest-possible, zero-row) query against `rooms`; `503 {"status":"error","database":"unreachable"|"not_configured"}` if the query fails or env vars are missing.
@@ -389,7 +389,7 @@ npm run lint       # eslint — linting only
 npm run docs:check # scripts/check-docs-drift.mjs — docs/ vs. real filesystem
 npm run verify     # typecheck + lint + docs:check — full local quality gate
 npm run test:smoke # npx playwright test — E2E smoke tests
-npm run ci         # verify + build + test:smoke — mirrors the CI pipeline locally
+npm run ci         # verify + npm audit + build + test:smoke — mirrors the CI pipeline locally
 npm run verify:migration [name] # queries the LIVE linked Supabase project to confirm a
                     # migration's functions/triggers/policies/tables/indexes/extensions/
                     # columns actually exist — not just that `supabase migration list`
@@ -427,6 +427,15 @@ npm run verify:migration [name] # queries the LIVE linked Supabase project to co
 
 ### Backup & Disaster Recovery
 **Not yet configured — flagged in the Session 41 audit, unresolved.** Every delete in the schema is a hard, cascading delete (no table has a `deleted_at`/soft-delete column); the one closest thing to an "admin" workflow — reviewing `message_reports` — happens by hand in the Supabase SQL editor (`ARCHITECTURE.md` §4's RLS Summary), which is a real fat-finger risk with no undo. What backup/point-in-time-recovery tier the live Supabase project actually has depends on its plan (Free tier historically has little to no automatic backup; Pro tier includes daily backups/PITR) — **this has not been confirmed and should be checked in the Supabase dashboard (Settings → Backups) before real user data accumulates.** If it's on a tier without adequate backups, the cheapest mitigation is a scheduled export (e.g., a GitHub Action running `pg_dump` against the project on a cron schedule) rather than upgrading the plan solely for this.
+
+### Runbook — "Something's wrong, where do I look first?"
+**Found missing in the Session 45 audit** — the pieces already existed (health check, Realtime ceiling note, backup note above), just scattered with no single starting point. In rough order:
+1. **`GET /api/health`** — is the database reachable at all? A `503` means env vars are missing or the DB is unreachable; start there before anything else.
+2. **Supabase Dashboard → Logs → Postgres Logs**, filter `MODERATION_EVENT` — every rate-limit/ban rejection is logged here (migration `0032`); a spike suggests abuse, not a bug.
+3. **Supabase Dashboard → Settings → Usage/Billing** — check the Realtime concurrent-connection count against the plan's limit (see above) if users report "stopped syncing" with no error.
+4. **`npx supabase migration list --linked`** vs. `docs/ARCHITECTURE.md` §4 — confirm the live project's applied migrations match what's documented; this repo has hit "tracked applied but never actually ran" three separate times (Sessions 37/38/40), so don't assume the tracking table is accurate without `npm run verify:migration`.
+5. **GitHub Actions** (`.github/workflows/ci.yml`) — check the most recent run on `main` for a regression that slipped through, especially around any DB migration or Realtime-touching change.
+6. **This doc's "Known Issues" section in `AI_CONTEXT.md`** — rule out an already-documented, accepted trade-off before treating something as a new bug.
 
 ---
 
