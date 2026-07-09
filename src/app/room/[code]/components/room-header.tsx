@@ -28,6 +28,7 @@ import {
 import { MessageReportsPanel } from "./message-reports-panel";
 import { UnbanPanel } from "./unban-panel";
 import { RoomSettingsPanel } from "./room-settings-panel";
+import { ScoreboardPanel } from "./scoreboard-panel";
 import type { RoomType } from "@/lib/types";
 
 interface RoomHeaderProps {
@@ -200,6 +201,7 @@ export const RoomHeader = memo(function RoomHeader({
             </TooltipTrigger>
             <TooltipContent>Show room QR Code</TooltipContent>
           </Tooltip>
+          <ScoreboardPanel roomCode={roomCode} isHost={isHost} />
           {isHost && (
             <>
               <MessageReportsPanel roomCode={roomCode} currentUserId={currentUserId} />

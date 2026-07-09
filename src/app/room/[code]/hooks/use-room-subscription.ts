@@ -120,7 +120,13 @@ export function useRoomSubscription({
   const persistMaxWaitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ACTIVITY_EVENT_LOG_CAP = 200;
 
-  const flushActivityEventLog = useCallback(() => {
+  // Returns the write's promise (rather than firing purely fire-and-forget)
+  // so a caller that needs the persisted state to be genuinely current —
+  // specifically, an activity about to call award_score() for Bingo/RPS,
+  // whose server-side verification reads room_activity_state directly, not
+  // a client's live in-memory state — can await it first. See
+  // flushActivityState below and ADR-008's design-refinement note.
+  const flushActivityEventLog = useCallback((): Promise<void> => {
     if (persistTimerRef.current) {
       clearTimeout(persistTimerRef.current);
       persistTimerRef.current = null;
@@ -130,13 +136,14 @@ export function useRoomSubscription({
       persistMaxWaitTimerRef.current = null;
     }
     const supabase = getSupabaseBrowserClient();
-    if (!supabase) return;
+    if (!supabase) return Promise.resolve();
     const type = activeActivityRef.current?.type ?? null;
     const payload = type ? { type, events: activityEventLogRef.current } : null;
-    supabase
-      .from("room_activity_state")
-      .upsert({ room_code: roomCode, activity_state: payload as unknown as Json }, { onConflict: "room_code" })
-      .then(() => {}, () => {});
+    return Promise.resolve(
+      supabase
+        .from("room_activity_state")
+        .upsert({ room_code: roomCode, activity_state: payload as unknown as Json }, { onConflict: "room_code" })
+    ).then(() => {}, () => {});
   }, [roomCode]);
 
   const persistActivityEventLog = useCallback(() => {
@@ -1470,6 +1477,7 @@ export function useRoomSubscription({
     sendActivityEvent,
     registerEventListener,
     handleActivityEvent,
+    flushActivityState: flushActivityEventLog,
     postLocalMessage,
     toggleLock,
     handleKickParticipant,

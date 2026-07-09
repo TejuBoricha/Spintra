@@ -566,3 +566,164 @@ test('host edits room name and capacity, and a guest sees both changes live', as
     await browser.close();
   }
 });
+
+// Scoreboard + XP (ADR-008/009) had zero e2e coverage on introduction. This
+// asserts the whole pipeline end to end: a guest's trivia answer triggers
+// the server-verified award_score RPC, which writes room_scores — and that
+// write must reach BOTH clients via room_scores' realtime publication entry
+// (the exact class of bug already found and fixed for room_bans in
+// migration 0043 — a table left out of the publication silently never
+// fires a single event), not just the guest's own optimistic view.
+test('trivia win updates the scoreboard live for both host and guest', async ({ page, baseURL }) => {
+  test.setTimeout(90_000);
+  page.on('pageerror', (err) => console.log('[browser:pageerror]', err.message));
+
+  await page.goto('/create?type=trivia');
+  await page.waitForSelector('[data-testid="create-room-button"]', { timeout: 30000 });
+  await page.click('[data-testid="create-room-button"]');
+  await page.waitForURL(/\/room\/[A-Z0-9]+/);
+  const roomCode = page.url().split('/room/')[1];
+
+  const startTriviaButton = page.getByRole('button', { name: /start trivia/i });
+  await startTriviaButton.waitFor({ timeout: 15000 }).catch(() => {});
+  if (!(await startTriviaButton.isVisible().catch(() => false))) {
+    test.skip(true, 'Host UI did not appear as expected — see earlier smoke test for the base host-detection check');
+  }
+
+  await Promise.race([
+    page.getByText(/this device only/i).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+    page.getByText('Live', { exact: true }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+  ]);
+  const isLocalOnlyMode = await page.getByText(/this device only/i).isVisible().catch(() => false);
+  if (isLocalOnlyMode) {
+    test.skip(true, 'App is running without Supabase configured — Scoreboard/XP require a real backend (award_score is a Supabase RPC)');
+  }
+
+  const browser = await chromium.launch();
+  const guestContext = await browser.newContext();
+  const guestPage = await guestContext.newPage();
+
+  try {
+    await guestPage.goto(`${baseURL}/room/${roomCode}`);
+    await expect(guestPage.getByText('Live', { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/People \(2\)/)).toBeVisible({ timeout: 30000 });
+
+    await startTriviaButton.click();
+    await expect(page.getByText(/^Question 1$/)).toBeVisible({ timeout: 10000 });
+    await expect(guestPage.getByText(/^Question 1$/)).toBeVisible({ timeout: 10000 });
+
+    // Guest answers — win or participation, either way award_score fires
+    // and a room_scores row should exist afterward.
+    await guestPage.locator('[data-testid="trivia-option"]').first().click();
+
+    // Guest's own Scoreboard view.
+    await guestPage.getByRole('button', { name: /scoreboard/i }).click();
+    await expect(guestPage.getByRole('dialog')).toBeVisible({ timeout: 5000 });
+    await expect(guestPage.getByText(/pts/)).toBeVisible({ timeout: 15000 });
+
+    // The host's Scoreboard — opened AFTER the guest's, but never told
+    // anything by the guest directly — must independently show the same
+    // row, proving this arrived via room_scores' own realtime feed.
+    await page.getByRole('button', { name: /scoreboard/i }).click();
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/pts/)).toBeVisible({ timeout: 15000 });
+  } finally {
+    await guestContext.close();
+    await browser.close();
+  }
+});
+
+// The specific bug this guards against (ADR-009's design-refinement note):
+// trackSelf's reconnect branch (use-room-subscription.ts) unconditionally
+// writes this client's local xp back into room_participants on every
+// reconnect. Without award_score's returned totals being applied to local
+// state immediately (not just fire-and-forget the DB write), a reconnect
+// moments after a win would silently regress the DB back to the pre-win
+// value — this test would have caught that regression before it shipped.
+test('XP earned from a trivia win survives an immediate reconnect', async ({ page }) => {
+  test.setTimeout(90_000);
+  page.on('pageerror', (err) => console.log('[browser:pageerror]', err.message));
+
+  await page.goto('/create?type=trivia');
+  await page.waitForSelector('[data-testid="create-room-button"]', { timeout: 30000 });
+  await page.click('[data-testid="create-room-button"]');
+  await page.waitForURL(/\/room\/[A-Z0-9]+/);
+
+  const startTriviaButton = page.getByRole('button', { name: /start trivia/i });
+  await startTriviaButton.waitFor({ timeout: 15000 }).catch(() => {});
+  if (!(await startTriviaButton.isVisible().catch(() => false))) {
+    test.skip(true, 'Host UI did not appear as expected — see earlier smoke test for the base host-detection check');
+  }
+
+  await Promise.race([
+    page.getByText(/this device only/i).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+    page.getByText('Live', { exact: true }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+  ]);
+  const isLocalOnlyMode = await page.getByText(/this device only/i).isVisible().catch(() => false);
+  if (isLocalOnlyMode) {
+    test.skip(true, 'App is running without Supabase configured — Scoreboard/XP require a real backend (award_score is a Supabase RPC)');
+  }
+
+  // Solo host answers their own question — trivia has no participant-count
+  // gate on answering (unlike RPS), so no second identity is needed here;
+  // the reconnect race this test targets is identity-local, not multiplayer.
+  await startTriviaButton.click();
+  await expect(page.getByText(/^Question 1$/)).toBeVisible({ timeout: 10000 });
+  await page.locator('[data-testid="trivia-option"]').first().click();
+
+  // Give the award_score round trip time to complete and apply its result
+  // to local state before reconnecting — reconnecting too early would just
+  // race the award itself, not exercise the bug this test targets.
+  await page.waitForTimeout(2000);
+
+  await page.getByRole('button', { name: /scoreboard/i }).click();
+  await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
+  await expect(page.getByText(/pts/)).toBeVisible({ timeout: 15000 });
+  await page.keyboard.press('Escape');
+
+  // Reconnect as the SAME identity (reload, not a new context/page) — this
+  // is exactly what exercises trackSelf's reconnect branch.
+  await page.reload();
+  await expect(page.getByText('Live', { exact: true })).toBeVisible({ timeout: 15000 });
+
+  // The rank badge (room-sidebar.tsx) only renders once xp > 0 — its mere
+  // presence after reconnect proves XP survived the round trip, regardless
+  // of the exact numeric value.
+  await page.getByRole('button', { name: /people \(1\)/i }).click();
+  await expect(page.getByText(/Rookie|Explorer|Challenger|Master|Legend/)).toBeVisible({ timeout: 15000 });
+});
+
+// Bingo's event-listener effect was the site of two real bugs fixed earlier
+// this session (an infinite loop from registerEventListener's full-log
+// replay on every dependency change, and win-verification matching the
+// wrong participant by username). This migration's changes (adding userId
+// to bingo_verified, the award_score call site) touch that same effect a
+// third time — this is the regression guard: rapid-fire calling should
+// never freeze the tab or throw, matching the manual stress test this
+// formalizes into an automated one. Runs in whatever mode the server under
+// test is in (works identically in demo mode, since it only exercises
+// client-side event handling, not the Supabase-only award RPC).
+test('bingo survives 15 rapid number calls without freezing or crashing', async ({ page }) => {
+  test.setTimeout(60_000);
+  const pageErrors: string[] = [];
+  page.on('pageerror', (err) => pageErrors.push(err.message));
+
+  await page.goto('/create?type=bingo');
+  await page.waitForSelector('[data-testid="create-room-button"]', { timeout: 30000 });
+  await page.click('[data-testid="create-room-button"]');
+  await page.waitForURL(/\/room\/[A-Z0-9]+/);
+
+  const callButton = page.getByRole('button', { name: /call next number/i });
+  await expect(callButton).toBeVisible({ timeout: 15000 });
+
+  for (let i = 0; i < 15; i++) {
+    await callButton.click();
+    // The button disables briefly between click and the corresponding
+    // bingo_call event round-tripping back (the in-flight lock fixed
+    // earlier this session) — wait for it to re-enable before the next
+    // call, matching real usage rather than racing ahead of the app.
+    await expect(callButton).toBeEnabled({ timeout: 10000 });
+  }
+
+  expect(pageErrors, `Browser threw errors during rapid bingo calls: ${pageErrors.join('; ')}`).toHaveLength(0);
+});

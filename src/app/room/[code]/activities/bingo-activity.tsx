@@ -50,7 +50,7 @@ async function verifyBingoWin(
 }
 
 export function BingoActivity() {
-  const { roomCode, isHost, sendActivityEvent, registerEventListener, currentUser } = useRoomActivity();
+  const { roomCode, isHost, sendActivityEvent, registerEventListener, currentUser, flushActivityState, awardScore } = useRoomActivity();
 
   const [bingoCalled, setBingoCalled] = useState<number[]>([]);
   const [bingoWinner, setBingoWinner] = useState<string | null>(null);
@@ -63,6 +63,13 @@ export function BingoActivity() {
 
   const [card, setCard] = useState<number[][]>(() => generateCard());
   const hasCalledBingoRef = useRef(false);
+  // Scoreboard/XP (ADR-008/009): guards this client's own award_score('bingo')
+  // call against firing again on a later replay of its own already-verified
+  // win (e.g. a reconnect within the same round) — award_score's own
+  // idempotency is the real correctness backstop, this just avoids a
+  // redundant RPC call. Separate from hasCalledBingoRef, which guards the
+  // bingo_win CLAIM broadcast, not the award call.
+  const hasAwardedBingoRef = useRef(false);
   const prevCalledLenRef = useRef(0);
 
   // registerEventListener replays the full event log on every call — the
@@ -78,11 +85,17 @@ export function BingoActivity() {
   const isHostRef = useRef(isHost);
   const bingoWinnerRef = useRef(bingoWinner);
   const bingoCalledRef = useRef(bingoCalled);
+  const currentUserIdRef = useRef(currentUser.id);
+  const flushActivityStateRef = useRef(flushActivityState);
+  const awardScoreRef = useRef(awardScore);
   useEffect(() => {
     isHostRef.current = isHost;
     bingoWinnerRef.current = bingoWinner;
     bingoCalledRef.current = bingoCalled;
-  }, [isHost, bingoWinner, bingoCalled]);
+    currentUserIdRef.current = currentUser.id;
+    flushActivityStateRef.current = flushActivityState;
+    awardScoreRef.current = awardScore;
+  }, [isHost, bingoWinner, bingoCalled, currentUser.id, flushActivityState, awardScore]);
 
   // Load card from localStorage to handle reconnect stability
   useEffect(() => {
@@ -127,7 +140,7 @@ export function BingoActivity() {
             verifyBingoWin(roomCode, event.userId, bingoCalledRef.current).then((valid) => {
               if (valid) {
                 setBingoWinner((prev) => prev ?? event.username);
-                sendActivityEvent({ kind: "bingo_verified", username: event.username });
+                sendActivityEvent({ kind: "bingo_verified", username: event.username, userId: event.userId });
               } else {
                 toast.info(`${event.username}'s Bingo claim could not be verified.`);
               }
@@ -137,17 +150,30 @@ export function BingoActivity() {
         }
         case "bingo_verified": {
           setBingoWinner((prev) => prev ?? event.username);
+          // Scoreboard/XP (ADR-008/009): the winning client's own award call,
+          // triggered once it sees its OWN win named here — the host's
+          // verification above is only a client-side trigger point, not a
+          // security boundary; award_score() independently re-verifies the
+          // claim server-side regardless of who calls it or why. Flush first
+          // since that server-side check reads the persisted call log
+          // directly (see flushActivityState's doc comment).
+          if (event.userId && event.userId === currentUserIdRef.current && !hasAwardedBingoRef.current) {
+            hasAwardedBingoRef.current = true;
+            flushActivityStateRef.current().then(() => awardScoreRef.current("bingo"));
+          }
           break;
         }
         case "bingo_reset":
           setBingoCalled([]);
           setBingoWinner(null);
           setIsCalling(false);
+          hasAwardedBingoRef.current = false;
           break;
         case "activity_reset":
           setBingoCalled([]);
           setBingoWinner(null);
           setIsCalling(false);
+          hasAwardedBingoRef.current = false;
           break;
       }
     });

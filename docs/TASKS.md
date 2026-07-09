@@ -4,6 +4,26 @@ This document tracks all active, remaining, and completed tasks for the Spintra 
 
 ---
 
+## Session 51: Visual Scoreboard + XP/Leveling — second backlog feature, analysis-first (COMPLETE, live push pending)
+
+Second net-new feature from the Session 48 backlog, built the same analysis-first way as Session 49's Room Settings: deep decision-by-decision analysis (5 decisions for Scoreboard, 2 for XP), recorded as **ADR-008**/**ADR-009**, plus 2 design-refinement fixes found before any code was written, then implementation scoped strictly to those decisions.
+
+- `[x]` **Scoreboard scope** — Trivia + RPS + Bingo only (Name Draw/Tournament deferred: no `user_id` on their winner event, and no natural round to accumulate across). Bingo's `bingo_verified` extended with optional `userId`.
+- `[x]` **Scoreboard persistence** — durable `room_scores` ledger (chosen over the lower-risk per-session recommendation), decoupled from activity lifecycle; only an explicit host "Reset Scoreboard" clears it.
+- `[x]` **Scoreboard scoring** — win (3pt) + participation (1pt); Bingo's participation derived from live `is_online` presence server-side, not a new event.
+- `[x]` **XP identity** — device-global (`localStorage`) authoritative, synced into `room_participants.xp` on join — the same pattern already used for username/avatar.
+- `[x]` **XP trigger** — mirrors Scoreboard's exactly (win=15xp/participation=5xp); no hook into the other 11 activities. Ranks at 0/100/300/700/1500.
+- `[x]` **Server-verified award RPC** (`award_score`) — never trusts a client-supplied "I won" claim; re-verifies Trivia against `trivia_questions`, re-derives RPS's winner from persisted choice events, re-checks Bingo's card against persisted called numbers. Idempotent via a unique ledger constraint; atomically writes Score + XP in one transaction so they can never drift apart.
+- `[x]` **Two real bugs found and fixed during design, before implementation** — a verification-timing race against the activity-state persist debounce (fixed with a new `flushActivityState()`), and a reconnect path that would have silently erased just-earned XP (fixed by having the award result flow back into local state immediately, not fire-and-forget).
+- `[x]` **One more real bug found during local RPC testing** — the existing host-participant-update restriction trigger (0014) blocked the award RPC's own participation fan-out to other participants; fixed with the same session-local bypass-flag pattern already used for the rate limiter.
+- `[x]` **UI** — Scoreboard panel (live standings, ties share a rank position, host reset) visible to all participants; rank badge in the participant list (shown only once xp > 0); level-up toast + confetti on a tier crossing.
+- `[x]` **e2e** — 3 new tests: Scoreboard live-update across 2 real clients, XP-survives-reconnect (proves the reconnect-erasure fix), Bingo 15-call stress re-test (its event listener was touched a third time this session). Full suite 14/14.
+- `[ ]` **Live migration push** and git commit/push — pending explicit user approval (matching Session 49's process).
+
+**Verification:** migration applied fresh via `supabase db reset`; full RPC correctness verified via direct psql against local Docker Supabase (win/participation/idempotency/spoofing-rejection for all 3 activities, in one consolidated pass) before any client code was written; `npm run verify` clean; full Playwright suite 14/14.
+
+---
+
 ## Session 49: Room Settings Panel — first backlog feature, analysis-first (COMPLETE)
 
 First net-new feature from the Session 48 backlog, built through a deliberate Business-Analysis-first process: a codebase-grounded BA on all four backlog items (Visual Scoreboard, XP/Leveling, Room Settings, Moderation Dashboard — published artifact), then decision-by-decision analysis for Room Settings, decisions recorded as **ADR-007**, then implementation. Scope strictly matches the decisions — nothing more.

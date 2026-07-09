@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import { Swords, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,9 +29,14 @@ function resolveRound(
 }
 
 export function RpsActivity() {
-  const { isHost, currentUser, sendActivityEvent, registerEventListener } = useRoomActivity();
+  const { isHost, currentUser, sendActivityEvent, registerEventListener, flushActivityState, awardScore } = useRoomActivity();
   const { participants } = useRoomParticipants();
   const [rpsChoices, setRpsChoices] = useState<Record<string, { username: string; choice: string }>>({});
+  // Scoreboard/XP (ADR-008/009): guards against re-awarding for the same
+  // round within this mount's lifetime — award_score's own idempotency
+  // (the unique constraint on room_scores) is the real correctness
+  // backstop regardless, this just avoids a redundant RPC call.
+  const hasAwardedRoundRef = useRef(false);
 
   useEffect(() => {
     return registerEventListener((event) => {
@@ -42,6 +47,7 @@ export function RpsActivity() {
         }));
       } else if (event.kind === "rps_reset" || event.kind === "activity_reset") {
         setRpsChoices({});
+        hasAwardedRoundRef.current = false;
       }
     });
   }, [registerEventListener]);
@@ -80,6 +86,20 @@ export function RpsActivity() {
     roundResult?.outcome === "decided"
       ? Object.values(decidingChoices).filter((r) => r.choice === roundResult.winningChoice).map((r) => r.username)
       : [];
+
+  // Scoreboard/XP (ADR-008/009): once this round resolves, the calling
+  // client's own award_score('rps') independently re-derives the winner
+  // server-side from the persisted choice events — never trusting a
+  // client-supplied "I won" claim. flushActivityState() is called first
+  // since that server-side check reads room_activity_state directly, which
+  // could otherwise lag behind this client's already-resolved local view by
+  // up to the persist debounce's 2s window.
+  useEffect(() => {
+    if (!roundResult || hasAwardedRoundRef.current) return;
+    if (!decidingChoices[currentUser.id]) return;
+    hasAwardedRoundRef.current = true;
+    flushActivityState().then(() => awardScore("rps"));
+  }, [roundResult, decidingChoices, currentUser.id, flushActivityState, awardScore]);
 
   return (
     <motion.div
