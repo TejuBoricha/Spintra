@@ -7,41 +7,19 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
-import { shuffleArray } from "@/lib/utils";
-
-const COLUMN_RANGES: Record<string, [number, number]> = {
-  B: [1, 15],
-  I: [16, 30],
-  N: [31, 45],
-  G: [46, 60],
-  O: [61, 75],
-};
-const COLUMNS = Object.keys(COLUMN_RANGES);
-
-function shuffle<T>(arr: T[]): T[] {
-  return shuffleArray(arr);
-}
-
-function generateCard(): number[][] {
-  return COLUMNS.map((col) => {
-    const [min, max] = COLUMN_RANGES[col];
-    const pool = Array.from({ length: max - min + 1 }, (_, i) => min + i);
-    return shuffle(pool).slice(0, 5);
-  });
-}
-
-const LINES: [number, number][][] = [
-  ...[0, 1, 2, 3, 4].map((r) => [0, 1, 2, 3, 4].map((c) => [c, r] as [number, number])),
-  ...[0, 1, 2, 3, 4].map((c) => [0, 1, 2, 3, 4].map((r) => [c, r] as [number, number])),
-  [0, 1, 2, 3, 4].map((i) => [i, i] as [number, number]),
-  [0, 1, 2, 3, 4].map((i) => [i, 4 - i] as [number, number]),
-];
+import { generateBingoCard as generateCard, BINGO_LINES as LINES, BINGO_COLUMNS as COLUMNS } from "@/lib/utils";
 
 export function BingoActivity() {
   const { isHost, sendActivityEvent, registerEventListener, currentUser } = useRoomActivity();
 
   const [bingoCalled, setBingoCalled] = useState<number[]>([]);
   const [bingoWinner, setBingoWinner] = useState<string | null>(null);
+  // Disables "Call Next Number" between click and the corresponding
+  // bingo_call event round-tripping back — unlike Lucky Wheel/Word Scramble,
+  // this button previously had no in-flight lock at all: a fast double-click
+  // could read the same "remaining numbers" snapshot twice and call a
+  // number twice, or otherwise race win-detection.
+  const [isCalling, setIsCalling] = useState(false);
 
   const [card, setCard] = useState<number[][]>(generateCard);
   const hasCalledBingoRef = useRef(false);
@@ -52,6 +30,7 @@ export function BingoActivity() {
       switch (event.kind) {
         case "bingo_call": {
           setBingoCalled((prev) => [...prev, event.number]);
+          setIsCalling(false);
           break;
         }
         case "bingo_win": {
@@ -67,10 +46,12 @@ export function BingoActivity() {
         case "bingo_reset":
           setBingoCalled([]);
           setBingoWinner(null);
+          setIsCalling(false);
           break;
         case "activity_reset":
           setBingoCalled([]);
           setBingoWinner(null);
+          setIsCalling(false);
           break;
       }
     });
@@ -189,12 +170,13 @@ export function BingoActivity() {
       {isHost && (
         <div className="flex gap-4 w-full justify-center">
           <Button
-            disabled={bingoCalled.length >= 75 || !!bingoWinner}
+            disabled={isCalling || bingoCalled.length >= 75 || !!bingoWinner}
             onClick={() => {
               const remaining = Array.from({ length: 75 }, (_, i) => i + 1).filter(
                 (n) => !bingoCalled.includes(n)
               );
               if (remaining.length === 0) return;
+              setIsCalling(true);
               const number = remaining[Math.floor(Math.random() * remaining.length)];
               sendActivityEvent({ kind: "bingo_call", number });
             }}

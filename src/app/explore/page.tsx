@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -9,7 +9,6 @@ import {
   Search,
   TrendingUp,
   Clock,
-  Zap,
   Sparkles,
   Users,
   Radar,
@@ -37,7 +36,6 @@ interface ExploreRoom {
   participants: number;
   maxParticipants: number;
   host: string;
-  hearts: number;
   isLocked: boolean;
   createdAt: string;
 }
@@ -161,13 +159,6 @@ export default function ExplorePage() {
                            participants.find((p) => p.role === "host")?.username ||
                            "Guest";
 
-          // Deterministic seed for decorative hearts (not engagement data)
-          let hash = 0;
-          for (let i = 0; i < room.id.length; i++) {
-            hash = room.id.charCodeAt(i) + ((hash << 5) - hash);
-          }
-          const seedHearts = Math.abs(hash % 180) + 12;
-
           return {
             id: room.id,
             code: room.code,
@@ -176,7 +167,6 @@ export default function ExplorePage() {
             participants: onlineCount,
             maxParticipants: room.max_participants,
             host: hostUser,
-            hearts: seedHearts,
             isLocked: !!room.is_locked,
             createdAt: room.created_at,
           };
@@ -290,7 +280,7 @@ export default function ExplorePage() {
     }
   }, [router, currentUser.id]);
 
-  const filteredRooms = rooms.filter((room) => {
+  const filteredRooms = useMemo(() => rooms.filter((room) => {
     // Search check
     const query = search.toLowerCase().trim();
     if (query) {
@@ -317,9 +307,9 @@ export default function ExplorePage() {
       return room.type === "classroom" || ["name-draw", "team-maker", "guess-number", "trivia", "bingo", "word-scramble", "tournament"].includes(room.type);
     }
     return true;
-  });
+  }), [rooms, search, activeCategory, cutoff24h]);
 
-  const filteredTemplates = featuredTemplates.filter((t) => {
+  const filteredTemplates = useMemo(() => featuredTemplates.filter((t) => {
     const query = search.toLowerCase().trim();
     if (query) {
       const matchLabel = t.label.toLowerCase().includes(query);
@@ -336,9 +326,9 @@ export default function ExplorePage() {
       return t.type === "classroom" || ["name-draw", "team-maker", "guess-number", "trivia", "bingo", "word-scramble", "tournament"].includes(t.type);
     }
     return true;
-  });
+  }), [search, activeCategory]);
 
-  const filteredActivities = recentActivities.filter((act) => {
+  const filteredActivities = useMemo(() => recentActivities.filter((act) => {
     const query = search.toLowerCase().trim();
     if (query) {
       const matchUser = act.user.toLowerCase().includes(query);
@@ -355,7 +345,7 @@ export default function ExplorePage() {
       return act.type === "classroom" || ["name-draw", "team-maker", "guess-number", "trivia", "bingo", "word-scramble", "tournament"].includes(act.type);
     }
     return true;
-  });
+  }), [recentActivities, search, activeCategory]);
 
   return (
     <div className="min-h-screen pt-24 pb-16 px-4">
@@ -535,9 +525,6 @@ export default function ExplorePage() {
                           </span>
                           <span className="flex items-center gap-1 text-sky-400/80">
                             <Globe className="w-3 h-3" /> Public
-                          </span>
-                          <span className="flex items-center gap-1 font-semibold text-amber-400" title="Activity score">
-                            <Zap className="w-3.5 h-3.5 fill-amber-500/20 text-amber-400" /> {room.hearts}
                           </span>
                         </div>
                         <span className="font-medium">by @{room.host}</span>

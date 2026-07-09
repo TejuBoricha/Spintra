@@ -1,4 +1,4 @@
-import { useState, memo } from "react";
+import { useState, useEffect, memo } from "react";
 import {
   Wifi,
   Lock,
@@ -16,7 +16,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { MessageReportsPanel } from "./message-reports-panel";
 import type { RoomType } from "@/lib/types";
 
@@ -35,6 +42,7 @@ interface RoomHeaderProps {
   copied: boolean;
   copyRoomLink: () => void;
   isHost: boolean;
+  currentUserId: string;
   toggleLock: () => void;
   onOpenCloseRoomDialog: () => void;
   roomType: RoomType;
@@ -60,6 +68,7 @@ export const RoomHeader = memo(function RoomHeader({
   copied,
   copyRoomLink,
   isHost,
+  currentUserId,
   toggleLock,
   onOpenCloseRoomDialog,
   roomType,
@@ -71,7 +80,37 @@ export const RoomHeader = memo(function RoomHeader({
 }: RoomHeaderProps) {
   const [isQrOpen, setIsQrOpen] = useState(false);
   const [qrLoadFailed, setQrLoadFailed] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const roomUrl = typeof window !== "undefined" ? window.location.href : "";
+
+  // Generated client-side (dynamically imported so the ~30KB library only
+  // loads for someone who actually opens this dialog) instead of the
+  // previous third-party API call — that sent every viewed room's URL,
+  // including private/locked ones, to an external service with every QR
+  // code request.
+  useEffect(() => {
+    if (!isQrOpen || !roomUrl) return;
+    let cancelled = false;
+    setQrLoadFailed(false);
+    import("qrcode")
+      .then(({ default: QRCode }) =>
+        QRCode.toDataURL(roomUrl, {
+          width: 200,
+          margin: 1,
+          color: { dark: "#07050e", light: "#ffffff" },
+        })
+      )
+      .then((url) => {
+        if (!cancelled) setQrDataUrl(url);
+      })
+      .catch(() => {
+        if (!cancelled) setQrLoadFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isQrOpen, roomUrl]);
 
   return (
     <div className="glass border-b border-white/5 px-6 py-4">
@@ -159,7 +198,7 @@ export const RoomHeader = memo(function RoomHeader({
           </Tooltip>
           {isHost && (
             <>
-              <MessageReportsPanel roomCode={roomCode} />
+              <MessageReportsPanel roomCode={roomCode} currentUserId={currentUserId} />
               <Tooltip>
                 <TooltipTrigger
                   render={
@@ -218,7 +257,7 @@ export const RoomHeader = memo(function RoomHeader({
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={onResetActivity}
+                        onClick={() => setIsResetConfirmOpen(true)}
                         aria-label="Reset current activity"
                         className="text-red-400"
                       />
@@ -289,23 +328,24 @@ export const RoomHeader = memo(function RoomHeader({
             {qrLoadFailed ? (
               <div className="w-[200px] h-[200px] rounded-2xl bg-muted flex flex-col items-center justify-center gap-2 text-center px-4">
                 <p className="text-xs text-muted-foreground">
-                  Couldn&apos;t load the QR code. Use the room code or copied link instead.
+                  Couldn&apos;t generate the QR code. Use the room code or copied link instead.
                 </p>
               </div>
-            ) : (
+            ) : qrDataUrl ? (
               <div className="p-3 bg-white rounded-2xl shadow-xl">
-                {/* Generate QR code using a high speed, reliable standard API */}
+                {/* Generated client-side (see the useEffect above) — no
+                    third party ever sees the room URL. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(roomUrl)}&color=07050e&margin=10`}
+                  src={qrDataUrl}
                   alt="Room QR Code"
                   width={200}
                   height={200}
-                  loading="lazy"
                   className="rounded-lg object-contain"
-                  onError={() => setQrLoadFailed(true)}
                 />
               </div>
+            ) : (
+              <div className="w-[200px] h-[200px] rounded-2xl bg-muted animate-pulse" />
             )}
             <div className="space-y-1">
               <p className="text-sm font-semibold text-foreground">Scan to join the room</p>
@@ -314,6 +354,32 @@ export const RoomHeader = memo(function RoomHeader({
               </p>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset the current activity?</DialogTitle>
+            <DialogDescription>
+              This wipes the in-progress game state for everyone in the room right now — scores,
+              answers, and votes so far will be lost. Everyone will see it reset immediately.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsResetConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                onResetActivity();
+                setIsResetConfirmOpen(false);
+              }}
+            >
+              Reset activity
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
