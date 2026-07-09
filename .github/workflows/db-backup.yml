@@ -1,0 +1,50 @@
+name: Daily Database Backup
+
+on:
+  schedule:
+    # Run daily at 03:00 UTC
+    - cron: "0 3 * * *"
+  workflow_dispatch: {}
+
+env:
+  PGDUMP_VERSION: "16"
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Install pg_dump
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-${{ env.PGDUMP_VERSION }}
+
+      - name: Run pg_dump
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          FILENAME="spintra_backup_${TIMESTAMP}.sql.gz"
+          pg_dump "$DATABASE_URL" \
+            --no-owner \
+            --no-privileges \
+            --clean \
+            --if-exists \
+            | gzip > "$FILENAME"
+          echo "BACKUP_FILE=$FILENAME" >> "$GITHUB_ENV"
+
+      - name: Upload to S3
+        if: env.BACKUP_FILE != ''
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_BACKUP_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_BACKUP_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_BACKUP_REGION || 'us-east-1' }}
+          S3_BUCKET: ${{ secrets.AWS_BACKUP_S3_BUCKET }}
+        run: |
+          aws s3 cp "$BACKUP_FILE" "s3://${S3_BUCKET}/spintra-db-backups/${BACKUP_FILE}" \
+            --storage-class STANDARD_IA
+
+      - name: Cleanup
+        if: always()
+        run: rm -f spintra_backup_*.sql.gz

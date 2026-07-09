@@ -8,6 +8,46 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
 import { generateBingoCard as generateCard, BINGO_LINES as LINES, BINGO_COLUMNS as COLUMNS } from "@/lib/utils";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
+
+/** Persist the card to the database so the host can verify win claims. */
+async function saveCardToDb(roomCode: string, userId: string, card: number[][]) {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) return;
+  await supabase
+    .from("room_participants")
+    .update({ bingo_card: card })
+    .eq("room_id", roomCode)
+    .eq("user_id", userId);
+}
+
+/** Host-side verification: fetch the claimer's card from the DB and check
+ *  that at least one winning line is fully covered by the called numbers.
+ *  Keyed on user_id, not username — usernames aren't guaranteed unique in
+ *  this app (the default "Guest" name, or two players who picked the same
+ *  custom name, would otherwise let a lookup match the wrong participant's
+ *  card, or error out on more than one row matching .maybeSingle()). */
+async function verifyBingoWin(
+  roomCode: string,
+  claimerUserId: string,
+  calledNumbers: number[],
+): Promise<boolean> {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) return true; // demo mode — trust the claim
+  const { data } = await supabase
+    .from("room_participants")
+    .select("bingo_card")
+    .eq("room_id", roomCode)
+    .eq("user_id", claimerUserId)
+    .maybeSingle();
+  if (!data?.bingo_card) return false;
+  const card = data.bingo_card as number[][];
+  const calledSet = new Set(calledNumbers);
+  return LINES.some((line) =>
+    line.every(([col, row]) => (col === 2 && row === 2) || calledSet.has(card[col][row])),
+  );
+}
 
 export function BingoActivity() {
   const { roomCode, isHost, sendActivityEvent, registerEventListener, currentUser } = useRoomActivity();
@@ -25,6 +65,25 @@ export function BingoActivity() {
   const hasCalledBingoRef = useRef(false);
   const prevCalledLenRef = useRef(0);
 
+  // registerEventListener replays the full event log on every call — the
+  // listener effect below must stay registered exactly once per mount
+  // (matching every other activity's identical effect), not re-run when
+  // isHost/bingoWinner/bingoCalled change, or each state change would
+  // re-subscribe, replay every past bingo_call event again, grow
+  // bingoCalled again, and trigger another re-run — an infinite loop that
+  // crashes the tab the moment a host calls the first number. Refs let the
+  // listener closure read current values without being a dependency;
+  // synced via effect (not assigned during render) per this project's
+  // React Compiler rules.
+  const isHostRef = useRef(isHost);
+  const bingoWinnerRef = useRef(bingoWinner);
+  const bingoCalledRef = useRef(bingoCalled);
+  useEffect(() => {
+    isHostRef.current = isHost;
+    bingoWinnerRef.current = bingoWinner;
+    bingoCalledRef.current = bingoCalled;
+  }, [isHost, bingoWinner, bingoCalled]);
+
   // Load card from localStorage to handle reconnect stability
   useEffect(() => {
     if (typeof window !== "undefined" && roomCode) {
@@ -32,8 +91,10 @@ export function BingoActivity() {
       const stored = localStorage.getItem(key);
       if (stored) {
         try {
+          const parsed = JSON.parse(stored) as number[][];
           // eslint-disable-next-line react-hooks/set-state-in-effect
-          setCard(JSON.parse(stored));
+          setCard(parsed);
+          saveCardToDb(roomCode, currentUser.id, parsed);
           return;
         } catch (e) {
           console.error("Failed to parse stored bingo card:", e);
@@ -42,8 +103,9 @@ export function BingoActivity() {
       const newCard = generateCard();
       localStorage.setItem(key, JSON.stringify(newCard));
       setCard(newCard);
+      saveCardToDb(roomCode, currentUser.id, newCard);
     }
-  }, [roomCode]);
+  }, [roomCode, currentUser.id]);
 
   useEffect(() => {
     return registerEventListener((event) => {
@@ -60,6 +122,20 @@ export function BingoActivity() {
           // per client — instead of always overwriting with whichever
           // arrived most recently — stops a client from flip-flopping which
           // name it shows as more of these events trickle in.
+          if (isHostRef.current && !bingoWinnerRef.current) {
+            // Host verifies the claim before accepting it
+            verifyBingoWin(roomCode, event.userId, bingoCalledRef.current).then((valid) => {
+              if (valid) {
+                setBingoWinner((prev) => prev ?? event.username);
+                sendActivityEvent({ kind: "bingo_verified", username: event.username });
+              } else {
+                toast.info(`${event.username}'s Bingo claim could not be verified.`);
+              }
+            });
+          }
+          break;
+        }
+        case "bingo_verified": {
           setBingoWinner((prev) => prev ?? event.username);
           break;
         }
@@ -75,6 +151,11 @@ export function BingoActivity() {
           break;
       }
     });
+    // roomCode/sendActivityEvent deliberately excluded — see the comment on
+    // isHostRef/bingoWinnerRef/bingoCalledRef above for why this effect
+    // must not re-run on every state change; both are stable for this
+    // component's lifetime, so the closure captured at mount stays valid.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [registerEventListener]);
 
   useEffect(() => {
@@ -84,10 +165,11 @@ export function BingoActivity() {
         localStorage.setItem(`spintra-bingo-card-${roomCode}`, JSON.stringify(newCard));
       }
       setCard(newCard);
+      saveCardToDb(roomCode, currentUser.id, newCard);
       hasCalledBingoRef.current = false;
     }
     prevCalledLenRef.current = bingoCalled.length;
-  }, [bingoCalled, roomCode]);
+  }, [bingoCalled, roomCode, currentUser.id]);
 
   const isMarked = useCallback(
     (col: number, row: number) => (col === 2 && row === 2) || bingoCalled.includes(card[col][row]),
@@ -99,9 +181,9 @@ export function BingoActivity() {
     const gotBingo = LINES.some((line) => line.every(([col, row]) => isMarked(col, row)));
     if (gotBingo) {
       hasCalledBingoRef.current = true;
-      sendActivityEvent({ kind: "bingo_win", username: currentUser.username });
+      sendActivityEvent({ kind: "bingo_win", username: currentUser.username, userId: currentUser.id });
     }
-  }, [bingoCalled, bingoWinner, isMarked, sendActivityEvent, currentUser.username]);
+  }, [bingoCalled, bingoWinner, isMarked, sendActivityEvent, currentUser.username, currentUser.id]);
 
   const lastCalled = bingoCalled[bingoCalled.length - 1];
   const columnFor = (n: number) => COLUMNS[Math.floor((n - 1) / 15)];

@@ -1404,4 +1404,34 @@
 
 **Risks:** None — all changes are backward-compatible, well-tested, and have been validated through the complete Playwright E2E integration suite.
 
+---
+
+## [2026-07-09] — Session 48 continued: reviewed and fixed Antigravity's uncommitted work
+
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** After the above Session 48 entry (Antigravity, a separate AI tool working concurrently on this repo), a further batch of uncommitted work was left in the working tree: Sentry error monitoring, migration `0047` (device-fingerprint ban evasion prevention), migration `0048` (Bingo win server-side verification), and a daily DB backup CI workflow. At the user's explicit direction ("review and finish it"), reviewed all of it for correctness before committing — found and fixed 3 real bugs, one of them severe.
+
+**Files Modified:**
+- `next.config.ts` — wrapped with `withSentryConfig`; the existing `sentry.*.config.ts` files were never actually being loaded (no wrapper, no `instrumentation.ts`) despite `@sentry/nextjs` being installed — Sentry was silently a no-op.
+- `src/instrumentation.ts` (NEW) — required for `sentry.server.config.ts`/`sentry.edge.config.ts` to load on Next.js 15+.
+- `.env.example` — documented the new `NEXT_PUBLIC_SENTRY_DSN`/`SENTRY_ORG`/`SENTRY_PROJECT`/`SENTRY_AUTH_TOKEN` vars.
+- `supabase/migrations/0047_fingerprint_and_ip_bans.sql` — fixed `copy_fingerprint_to_ban()` to only fall back to its own lookup when the client didn't already supply a `fingerprint_hash` (previously always overwrote with `null`, since the participant row is already deleted by the time this trigger runs in both real kick flows); corrected the filename-vs-content mismatch in the header comment (no IP address is actually involved, device-fingerprint only).
+- `src/app/room/[code]/hooks/use-room-subscription.ts`, `src/app/room/[code]/components/message-reports-panel.tsx` — both kick call sites now snapshot `fingerprint_hash` before deleting the participant row (same pattern already used for `username`, migration 0043).
+- `src/lib/types.ts` — added `userId` to `BingoWinEvent`.
+- `src/app/room/[code]/activities/bingo-activity.tsx` — two fixes (see Outcome below): verification now matches by `user_id` instead of `username`, and the event-listener effect's dependency array was restored to `[registerEventListener]` only (using refs for values the listener needs current-but-not-as-a-dependency), fixing a genuine infinite-loop bug.
+
+**Purpose:** Complete and correctly finish the uncommitted work rather than either blindly committing it as-is or discarding it — the user asked for a real review, not a rubber stamp.
+
+**3 bugs found and fixed, in order of severity:**
+1. **Bingo verification infinite loop (severe).** The listener-registration `useEffect` depended on `[registerEventListener, isHost, bingoWinner, bingoCalled, roomCode, sendActivityEvent]`. `registerEventListener` replays the *entire* accumulated event log on every call (by design — it's how a late joiner or reconnect recovers in-progress state). Including `bingoCalled` in the deps meant: host calls a number → `bingoCalled` changes → effect cleans up and re-registers → replay re-delivers every previous `bingo_call` event → `bingoCalled` grows further → effect re-runs again → repeat. This would have crashed or frozen the tab the instant a host called the first number in any room with Supabase configured. Would not have been caught by typecheck, lint (only a `react-hooks/exhaustive-deps` *warning*, non-blocking), or even a passing build — only by actually running the activity. Every other activity in this codebase already uses the correct `[registerEventListener]`-only pattern for exactly this reason; this file just hadn't matched it before this fix.
+2. **Bingo win verification matched by username, not user_id.** Usernames aren't unique in this app (default "Guest", or two players choosing the same custom name) — the host-side verification query (`.eq("username", claimerUsername).maybeSingle()`) could match the wrong participant's card, or fail outright if two online participants shared a name. Fixed by adding `userId` to the `bingo_win` event and querying by the room's actual unique key (`room_id`, `user_id`).
+3. **Fingerprint-based ban evasion prevention was silently non-functional.** `copy_fingerprint_to_ban()`'s trigger looked up the banned user's fingerprint from `room_participants` unconditionally — but both kick call sites (`handleKickParticipant`, `confirmKickReportedUser`) delete the participant row *before* inserting the ban, so the lookup always found zero rows and always overwrote with `null`, regardless of what the trigger was "supposed" to accomplish. The entire feature this migration exists for would never have actually worked. Fixed by having the client supply the value directly (already had it in scope) and making the trigger defer to that instead of unconditionally overwriting it.
+
+**Outcome:** All migrations (0040–0048 cumulative) applied fresh via `supabase db reset` against a local Docker Supabase stack. Full Playwright suite passing. Sentry wiring confirmed functional via `npm run build` (the `[@sentry/nextjs]` build plugin visibly activates). Bingo fix verified with a direct functional run: called numbers repeatedly with no freeze/crash, claimed a win, confirmed host-side verification correctly matched the claim by `user_id`. `npm run verify` clean. Migrations `0047`/`0048` pushed live and re-verified with `npm run verify:migration`.
+
+**Risks:**
+- Sentry requires the user's own setup (`NEXT_PUBLIC_SENTRY_DSN` at minimum) to report anything — currently a no-op in every environment until that's configured, by design (matches this project's established pattern of every third-party integration degrading gracefully without configuration).
+- `db-backup.yml` will fail on every scheduled run (daily, 03:00 UTC) until `SUPABASE_DB_URL` and the AWS secrets it references are set in the GitHub repo's secrets — this is unavoidable without access to configure those secrets from here; flagged clearly rather than silently left to fail with no explanation.
+- Fingerprint-based ban matching remains fundamentally a deterrent, not a hard guarantee (a motivated user can still change device signals) — same caveat already documented for the underlying anonymous-session-rotation gap this migration targets.
+
 

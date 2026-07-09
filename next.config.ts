@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 // Skippable via SKIP_ENV_VALIDATION for builds that intentionally have no
 // Supabase backend — e.g. CI's `validate` job builds without these vars on
@@ -97,4 +98,20 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Source-map upload (for readable production stack traces in Sentry) needs
+// org/project/authToken — all optional here since this app has no Sentry
+// project configured yet in most environments; the plugin skips the upload
+// step gracefully (a build-time warning, not a failure) when authToken is
+// unset, matching this project's existing pattern of every third-party
+// integration degrading gracefully rather than requiring configuration to
+// build at all (see isSupabaseConfigured()/SKIP_ENV_VALIDATION above).
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  // disableLogger is deprecated in favor of webpack.treeshake.removeDebugLogging,
+  // but neither option is supported under Turbopack (this app's build target,
+  // confirmed via `next build` output) — omitted rather than set either way.
+});

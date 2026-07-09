@@ -16,7 +16,7 @@ export default function ToolsLayout({ children }: { children: React.ReactNode })
         </Link>
         <span>to invite them!</span>
       </div>
-      <div className="flex-1 w-full -mt-16">
+      <div className="flex-1 w-full">
         {children}
       </div>
     </div>

@@ -52,7 +52,8 @@ type GuessResetEvent    = { kind: "guess_reset"; secret?: number };
 
 // bingo
 type BingoCallEvent     = { kind: "bingo_call"; number: number };
-type BingoWinEvent      = { kind: "bingo_win"; username: string };
+type BingoWinEvent      = { kind: "bingo_win"; username: string; userId: string };
+type BingoVerifiedEvent = { kind: "bingo_verified"; username: string };
 type BingoResetEvent    = { kind: "bingo_reset" };
 
 // word-scramble
@@ -72,7 +73,7 @@ export type ActivityEvent =
   | TriviaQuestionEvent | TriviaAnswerEvent
   | WheelEntriesEvent | WheelSpinningEvent
   | GuessSubmitEvent | GuessResetEvent
-  | BingoCallEvent | BingoWinEvent | BingoResetEvent
+  | BingoCallEvent | BingoWinEvent | BingoVerifiedEvent | BingoResetEvent
   | ScrambleWordEvent | ScrambleCorrectEvent
   | ActivityResetEvent;
 

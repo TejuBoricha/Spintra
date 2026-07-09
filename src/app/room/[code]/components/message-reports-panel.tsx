@@ -91,12 +91,15 @@ export function MessageReportsPanel({
     try {
       const supabase = getSupabaseBrowserClient();
       if (!supabase) return;
-      // Snapshot the username before deleting the participant row — once
-      // it's gone there's no other source, and room_bans needs it for the
-      // unban panel's list (migration 0043).
+      // Snapshot the username and device fingerprint before deleting the
+      // participant row — once it's gone there's no other source. username
+      // is for the unban panel's list (migration 0043); fingerprint_hash is
+      // for cross-identity ban matching (migration 0047) — the
+      // copy_fingerprint_to_ban trigger can only fall back to null once
+      // this row is deleted.
       const { data: participantRow } = await supabase
         .from("room_participants")
-        .select("username")
+        .select("username, fingerprint_hash")
         .eq("room_id", roomCode)
         .eq("user_id", kickTargetId)
         .maybeSingle();
@@ -110,6 +113,7 @@ export function MessageReportsPanel({
         user_id: kickTargetId,
         banned_by: currentUserId,
         username: participantRow?.username ?? null,
+        fingerprint_hash: participantRow?.fingerprint_hash ?? null,
       });
       if (banError) {
         console.error("Failed to record room ban:", banError);

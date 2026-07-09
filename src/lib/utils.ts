@@ -238,3 +238,32 @@ export const TRUTH_OR_DARE_CATEGORIES = [
 export const TRUTH_OR_DARE_ALL_TRUTHS = TRUTH_OR_DARE_CATEGORIES.flatMap((c) => c.truths);
 export const TRUTH_OR_DARE_ALL_DARES = TRUTH_OR_DARE_CATEGORIES.flatMap((c) => c.dares);
 
+/**
+ * Generates a stable device fingerprint hash from browser-observable signals.
+ *
+ * Uses screen dimensions, color depth, timezone, locale, platform, hardware
+ * concurrency, and device memory as inputs — these are stable across anonymous
+ * token rotations and incognito sessions on the same device.
+ *
+ * Returns a hex-encoded SHA-256 hash, or null if the Web Crypto API is
+ * unavailable (e.g. SSR or very old browsers).
+ */
+export async function getDeviceFingerprint(): Promise<string | null> {
+  if (typeof window === "undefined" || !crypto?.subtle) return null;
+  const signals = [
+    screen.width,
+    screen.height,
+    screen.colorDepth,
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+    navigator.language,
+    navigator.platform,
+    navigator.hardwareConcurrency ?? "unknown",
+    (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? "unknown",
+  ].join("|");
+
+  const buffer = new TextEncoder().encode(signals);
+  const hash = await crypto.subtle.digest("SHA-256", buffer);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
