@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Flag, Check } from "lucide-react";
+import { Flag, Check, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,9 +10,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
 interface MessageReport {
   id: string;
@@ -24,9 +26,17 @@ interface MessageReport {
   chat_messages: { content: string } | null;
 }
 
-export function MessageReportsPanel({ roomCode }: { roomCode: string }) {
+export function MessageReportsPanel({
+  roomCode,
+  currentUserId,
+}: {
+  roomCode: string;
+  currentUserId: string;
+}) {
   const [reports, setReports] = useState<MessageReport[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [kickTargetId, setKickTargetId] = useState<string | null>(null);
+  const [isKicking, setIsKicking] = useState(false);
 
   const loadReports = useCallback(async () => {
     const supabase = getSupabaseBrowserClient();
@@ -66,6 +76,42 @@ export function MessageReportsPanel({ roomCode }: { roomCode: string }) {
     if (!supabase) return;
     setReports((prev) => prev.map((r) => (r.id === reportId ? { ...r, reviewed: true } : r)));
     await supabase.from("message_reports").update({ reviewed: true }).eq("id", reportId);
+  };
+
+  // Previously a host had to close this panel and separately find the
+  // reported user in the participant list to act on a report — found in the
+  // Session 45 audit. Self-contained here (not threaded through
+  // handleKickParticipant/participants from room-client.tsx) specifically to
+  // avoid re-introducing the RoomHeader re-render regression an earlier
+  // session fixed: this only needs the host's own (stable) id, not the
+  // full, frequently-changing participants array.
+  const confirmKickReportedUser = async () => {
+    if (!kickTargetId) return;
+    setIsKicking(true);
+    try {
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) return;
+      await supabase
+        .from("room_participants")
+        .delete()
+        .eq("room_id", roomCode)
+        .eq("user_id", kickTargetId);
+      const { error: banError } = await supabase.from("room_bans").insert({
+        room_id: roomCode,
+        user_id: kickTargetId,
+        banned_by: currentUserId,
+      });
+      if (banError) {
+        console.error("Failed to record room ban:", banError);
+      }
+      toast.success("Participant removed from the room.");
+    } catch (error) {
+      console.error("Failed to remove reported participant:", error);
+      toast.error("Unable to remove participant.");
+    } finally {
+      setIsKicking(false);
+      setKickTargetId(null);
+    }
   };
 
   const unreviewedCount = reports.filter((r) => !r.reviewed).length;
@@ -124,20 +170,50 @@ export function MessageReportsPanel({ roomCode }: { roomCode: string }) {
                   <span className="text-[11px] text-muted-foreground">
                     {new Date(report.created_at).toLocaleString()}
                   </span>
-                  {!report.reviewed && (
+                  <div className="flex items-center gap-1.5">
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => markReviewed(report.id)}
-                      className="h-7 text-xs"
+                      onClick={() => setKickTargetId(report.reported_user_id)}
+                      className="h-7 text-xs text-rose-400 hover:text-rose-300"
                     >
-                      <Check className="w-3 h-3 mr-1" /> Dismiss
+                      <UserX className="w-3 h-3 mr-1" /> Remove
                     </Button>
-                  )}
+                    {!report.reviewed && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => markReviewed(report.id)}
+                        className="h-7 text-xs"
+                      >
+                        <Check className="w-3 h-3 mr-1" /> Dismiss
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!kickTargetId} onOpenChange={(open) => { if (!open) setKickTargetId(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove this participant?</DialogTitle>
+            <DialogDescription>
+              They&apos;ll be removed from the room immediately and blocked from rejoining, unless
+              they clear their browser data or use a different device.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setKickTargetId(null)} disabled={isKicking}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmKickReportedUser} disabled={isKicking}>
+              {isKicking ? "Removing..." : "Remove"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

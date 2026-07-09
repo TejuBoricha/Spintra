@@ -7,38 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Emoji } from "@/components/emoji";
 import { fireConfetti, CelebrationBanner } from "@/components/celebration";
 import { getGameByType } from "@/lib/games";
-import { shuffleArray } from "@/lib/utils";
+import { generateBingoCard as generateCard, BINGO_LINES as LINES, BINGO_COLUMNS as COLUMNS } from "@/lib/utils";
 import { playPop, playSuccess } from "@/lib/audio";
 
 const GameIcon = getGameByType("bingo")!.icon;
-
-const COLUMN_RANGES: Record<string, [number, number]> = {
-  B: [1, 15],
-  I: [16, 30],
-  N: [31, 45],
-  G: [46, 60],
-  O: [61, 75],
-};
-const COLUMNS = Object.keys(COLUMN_RANGES);
-
-function shuffle<T>(arr: T[]): T[] {
-  return shuffleArray(arr);
-}
-
-function generateCard(): number[][] {
-  return COLUMNS.map((col) => {
-    const [min, max] = COLUMN_RANGES[col];
-    const pool = Array.from({ length: max - min + 1 }, (_, i) => min + i);
-    return shuffle(pool).slice(0, 5);
-  });
-}
-
-const LINES: [number, number][][] = [
-  ...[0, 1, 2, 3, 4].map((r) => [0, 1, 2, 3, 4].map((c) => [c, r] as [number, number])),
-  ...[0, 1, 2, 3, 4].map((c) => [0, 1, 2, 3, 4].map((r) => [c, r] as [number, number])),
-  [0, 1, 2, 3, 4].map((i) => [i, i] as [number, number]),
-  [0, 1, 2, 3, 4].map((i) => [i, 4 - i] as [number, number]),
-];
 
 export default function BingoPage() {
   // Card is randomized client-side only — generating it during the initial

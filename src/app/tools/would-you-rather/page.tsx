@@ -116,8 +116,9 @@ export default function WouldYouRatherPage() {
                     {q.optionA}
                     {showResult && (
                       <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: total > 0 ? `${(aVotes / total) * 100}%` : "0%" }}
+                        initial={{ scaleX: 0 }}
+                        animate={{ scaleX: total > 0 ? aVotes / total : 0 }}
+                        style={{ transformOrigin: "left" }}
                         className="absolute inset-0 bg-purple-500/10 rounded-xl z-0"
                       />
                     )}
@@ -142,8 +143,9 @@ export default function WouldYouRatherPage() {
                     {q.optionB}
                     {showResult && (
                       <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: total > 0 ? `${(bVotes / total) * 100}%` : "0%" }}
+                        initial={{ scaleX: 0 }}
+                        animate={{ scaleX: total > 0 ? bVotes / total : 0 }}
+                        style={{ transformOrigin: "left" }}
                         className="absolute inset-0 bg-cyan-500/10 rounded-xl z-0"
                       />
                     )}

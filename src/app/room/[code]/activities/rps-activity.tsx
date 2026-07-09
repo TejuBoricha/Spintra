@@ -51,15 +51,28 @@ export function RpsActivity() {
   // independently and identically by each client — no server/host
   // arbitration needed (unlike a "who buzzed in first" race), since this is
   // a pure function of the final, already-synced set of choices.
-  const onlineCount = participants.filter((p) => p.is_online).length;
-  const allChosen = onlineCount > 0 && Object.keys(rpsChoices).length >= onlineCount;
+  const onlineUserIds = useMemo(
+    () => new Set(participants.filter((p) => p.is_online).map((p) => p.user_id)),
+    [participants]
+  );
+  const onlineCount = onlineUserIds.size;
+  // Only choices from currently-online participants count toward the
+  // round's resolution — a participant who chose and then went offline
+  // used to leave a stale entry in rpsChoices forever (no presence-based
+  // cleanup), which could make a round wait on someone who already left, or
+  // resolve using a choice from someone no longer present.
+  const decidingChoices = useMemo(
+    () => Object.fromEntries(Object.entries(rpsChoices).filter(([userId]) => onlineUserIds.has(userId))),
+    [rpsChoices, onlineUserIds]
+  );
+  const allChosen = onlineCount > 0 && Object.keys(decidingChoices).length >= onlineCount;
   const roundResult = useMemo(
-    () => (allChosen ? resolveRound(Object.values(rpsChoices).map((r) => r.choice)) : null),
-    [allChosen, rpsChoices]
+    () => (allChosen ? resolveRound(Object.values(decidingChoices).map((r) => r.choice)) : null),
+    [allChosen, decidingChoices]
   );
   const winners =
     roundResult?.outcome === "decided"
-      ? Object.values(rpsChoices).filter((r) => r.choice === roundResult.winningChoice).map((r) => r.username)
+      ? Object.values(decidingChoices).filter((r) => r.choice === roundResult.winningChoice).map((r) => r.username)
       : [];
 
   return (

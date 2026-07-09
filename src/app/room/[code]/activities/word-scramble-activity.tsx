@@ -7,23 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
-import { shuffleArray } from "@/lib/utils";
+import { WORD_SCRAMBLE_WORDS, scramble } from "@/lib/utils";
 import { toast } from "sonner";
 
-const WORDS = [
-  "PUZZLE", "GALAXY", "WIZARD", "CASTLE", "DRAGON", "PLANET", "GUITAR", "FOREST",
-  "ISLAND", "ROCKET", "TROPHY", "CANDLE",
-] as const;
-
-function scramble(word: string): string {
-  let letters = word.split("");
-  let attempt = letters.join("");
-  while (attempt === word) {
-    letters = shuffleArray(letters);
-    attempt = letters.join("");
-  }
-  return attempt;
-}
+const WORDS = WORD_SCRAMBLE_WORDS;
 
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { playSwipe, playSuccess, playFailure } from "@/lib/audio";

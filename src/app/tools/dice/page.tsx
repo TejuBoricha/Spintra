@@ -314,9 +314,10 @@ export default function DicePage() {
                           <span className="font-semibold w-4 text-right text-muted-foreground">{val}</span>
                           <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                             <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${pct}%` }}
-                              className={`h-full bg-gradient-to-r ${currentDice.color}`}
+                              initial={{ scaleX: 0 }}
+                              animate={{ scaleX: pct / 100 }}
+                              style={{ transformOrigin: "left" }}
+                              className={`h-full w-full bg-gradient-to-r ${currentDice.color}`}
                             />
                           </div>
                           <span className="w-8 text-right font-mono text-muted-foreground text-[10px]">

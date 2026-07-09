@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,16 @@ export function CoinFlipActivity() {
   const { isHost, sendActivityEvent, registerEventListener, soundEnabled } = useRoomActivity();
   const [coinResult, setCoinResult] = useState<"Heads" | "Tails" | null>(null);
   const [coinFlipping, setCoinFlipping] = useState(false);
+  // Unlike Lucky Wheel's spin, this deferred broadcast had no cleanup — if
+  // the host switched activities within the 1.3s window, the pending
+  // coin_flip event still fired afterward, broadcasting and persisting a
+  // stray event into whatever activity followed.
+  const flipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (flipTimerRef.current) clearTimeout(flipTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     return registerEventListener((event) => {
@@ -97,7 +107,7 @@ export function CoinFlipActivity() {
           disabled={coinFlipping}
           onClick={() => {
             sendActivityEvent({ kind: "coin_flipping" });
-            setTimeout(() => {
+            flipTimerRef.current = setTimeout(() => {
               const result = Math.random() < 0.5 ? "Heads" : "Tails";
               sendActivityEvent({ kind: "coin_flip", result });
             }, 1300);

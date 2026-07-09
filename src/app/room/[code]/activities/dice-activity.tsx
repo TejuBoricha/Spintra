@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -12,6 +12,15 @@ export function DiceActivity() {
   const { isHost, sendActivityEvent, registerEventListener, soundEnabled } = useRoomActivity();
   const [diceResults, setDiceResults] = useState<number[]>([]);
   const [diceRolling, setDiceRolling] = useState(false);
+  // Same unmount-cleanup gap as Coin Flip's flipTimerRef — without this, a
+  // pending roll broadcast could still fire after the host switched away
+  // from Dice, leaking a stray event into whatever activity followed.
+  const rollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (rollTimerRef.current) clearTimeout(rollTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     return registerEventListener((event) => {
@@ -84,7 +93,7 @@ export function DiceActivity() {
               disabled={diceRolling}
               onClick={() => {
                 sendActivityEvent({ kind: "dice_rolling" });
-                setTimeout(() => {
+                rollTimerRef.current = setTimeout(() => {
                   const results = Array.from({ length: count }, () => Math.ceil(Math.random() * 6));
                   sendActivityEvent({ kind: "dice_roll", results });
                 }, 900);

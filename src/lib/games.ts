@@ -165,7 +165,7 @@ export const GAMES: GameDefinition[] = [
     icon: Lightbulb,
     color: "from-yellow-400 to-orange-500",
     desc: "Test your knowledge",
-    featureDescription: "Answer multiple-choice trivia questions and race to the top of the scoreboard.",
+    featureDescription: "Answer multiple-choice trivia questions together and see who gets the most right.",
     stats: "Know-it-alls welcome",
     href: "/tools/trivia",
     classroomSafe: true,

@@ -45,11 +45,24 @@ async function runCheck(
   userId: string
 ): Promise<RoomJoinCheckResult> {
   try {
-    const { data: room, error: roomError } = await supabase
-      .from("rooms")
-      .select("is_locked, max_participants, host_id")
-      .eq("code", roomCode)
-      .maybeSingle();
+    // The room fetch and the existing-membership check don't depend on each
+    // other's result — both only need roomCode/userId — so they run in
+    // parallel instead of serially (Session 45 audit: this was still 2
+    // avoidable round trips even after Session 41's fix to the room page's
+    // own verifyAccess).
+    const [{ data: room, error: roomError }, { data: existingPart }] = await Promise.all([
+      supabase
+        .from("rooms")
+        .select("is_locked, max_participants, host_id")
+        .eq("code", roomCode)
+        .maybeSingle(),
+      supabase
+        .from("room_participants")
+        .select("id")
+        .eq("room_id", roomCode)
+        .eq("user_id", userId)
+        .maybeSingle(),
+    ]);
 
     // A real fetch error (network failure, outage) is not the same claim as
     // "this room doesn't exist" — conflating the two here was the same bug
@@ -64,25 +77,32 @@ async function runCheck(
 
     const isRoomHost = room.host_id === userId;
 
-    const { data: existingPart } = await supabase
-      .from("room_participants")
-      .select("id")
-      .eq("room_id", roomCode)
-      .eq("user_id", userId)
-      .maybeSingle();
-
     // Reconnecting members and the host bypass lock/capacity/ban checks —
     // those only gate *new* joins.
     if (isRoomHost || existingPart) {
       return { ok: true };
     }
 
-    const { data: ban } = await supabase
-      .from("room_bans")
-      .select("id")
-      .eq("room_id", roomCode)
-      .eq("user_id", userId)
-      .maybeSingle();
+    // Same reasoning: the ban check and the online-participant count are
+    // independent of each other.
+    const [{ data: ban }, { data: parts }] = await Promise.all([
+      supabase
+        .from("room_bans")
+        .select("id")
+        .eq("room_id", roomCode)
+        .eq("user_id", userId)
+        .maybeSingle(),
+      // Only count currently online participants — a disconnected
+      // participant's row is kept (is_online=false), not deleted, so
+      // counting every row regardless of status would let a room's
+      // effective capacity shrink permanently every time someone joins and
+      // leaves.
+      supabase
+        .from("room_participants")
+        .select("id")
+        .eq("room_id", roomCode)
+        .eq("is_online", true),
+    ]);
 
     if (ban) {
       return { ok: false, reason: "banned" };
@@ -91,16 +111,6 @@ async function runCheck(
     if (room.is_locked) {
       return { ok: false, reason: "locked" };
     }
-
-    // Only count currently online participants — a disconnected
-    // participant's row is kept (is_online=false), not deleted, so counting
-    // every row regardless of status would let a room's effective capacity
-    // shrink permanently every time someone joins and leaves.
-    const { data: parts } = await supabase
-      .from("room_participants")
-      .select("id")
-      .eq("room_id", roomCode)
-      .eq("is_online", true);
 
     if (parts && parts.length >= room.max_participants) {
       return { ok: false, reason: "full" };

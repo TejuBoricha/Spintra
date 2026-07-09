@@ -84,3 +84,54 @@ export function safeStorageSet(key: string, value: string): void {
   try { localStorage.setItem(key, value); } catch { /* private browsing */ }
 }
 
+// Shared between the standalone /tools/word-scramble page and the room
+// activity — both used to hardcode their own copy of this list, which had
+// already drifted apart (the room activity's fallback list was missing
+// MARBLE/JUNGLE/WHISKER/LANTERN/PENGUIN/VOLCANO/MEADOW). One shared list
+// closes that gap; both call sites use this as their demo-mode fallback
+// (word-scramble also has a database-backed path via `activity_prompts`).
+export const WORD_SCRAMBLE_WORDS = [
+  "PUZZLE", "GALAXY", "WIZARD", "CASTLE", "DRAGON", "PLANET", "GUITAR", "FOREST",
+  "ISLAND", "ROCKET", "TROPHY", "CANDLE", "BREEZE", "MARBLE", "JUNGLE", "WHISKER",
+  "LANTERN", "PENGUIN", "VOLCANO", "MEADOW",
+] as const;
+
+/** Scrambles a word's letters, guaranteed to differ from the original. */
+export function scramble(word: string): string {
+  let letters = word.split("");
+  let attempt = letters.join("");
+  while (attempt === word) {
+    letters = shuffleArray(letters);
+    attempt = letters.join("");
+  }
+  return attempt;
+}
+
+// Shared between the standalone /tools/bingo page and the room activity —
+// both used to hardcode identical copies of this logic.
+const BINGO_COLUMN_RANGES: Record<string, [number, number]> = {
+  B: [1, 15],
+  I: [16, 30],
+  N: [31, 45],
+  G: [46, 60],
+  O: [61, 75],
+};
+export const BINGO_COLUMNS = Object.keys(BINGO_COLUMN_RANGES);
+
+/** A 5x5 bingo card: 5 numbers per column, drawn from that column's standard range. */
+export function generateBingoCard(): number[][] {
+  return BINGO_COLUMNS.map((col) => {
+    const [min, max] = BINGO_COLUMN_RANGES[col];
+    const pool = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+    return shuffleArray(pool).slice(0, 5);
+  });
+}
+
+/** Every winning line (rows, columns, both diagonals) on a standard 5x5 bingo card, as [col, row] coordinate pairs. */
+export const BINGO_LINES: [number, number][][] = [
+  ...[0, 1, 2, 3, 4].map((r) => [0, 1, 2, 3, 4].map((c) => [c, r] as [number, number])),
+  ...[0, 1, 2, 3, 4].map((c) => [0, 1, 2, 3, 4].map((r) => [c, r] as [number, number])),
+  [0, 1, 2, 3, 4].map((i) => [i, i] as [number, number]),
+  [0, 1, 2, 3, 4].map((i) => [i, 4 - i] as [number, number]),
+];
+

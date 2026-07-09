@@ -11,25 +11,11 @@ import { fireConfetti } from "@/components/celebration";
 import { playPop, playSuccess } from "@/lib/audio";
 import { getGameByType } from "@/lib/games";
 import { toast } from "sonner";
-import { shuffleArray } from "@/lib/utils";
+import { WORD_SCRAMBLE_WORDS, scramble, shuffleArray } from "@/lib/utils";
 
 const GameIcon = getGameByType("word-scramble")!.icon;
 
-const WORDS = [
-  "PUZZLE", "GALAXY", "WIZARD", "CASTLE", "DRAGON", "PLANET", "GUITAR", "FOREST",
-  "ISLAND", "ROCKET", "TROPHY", "CANDLE", "BREEZE", "MARBLE", "JUNGLE", "WHISKER",
-  "LANTERN", "PENGUIN", "VOLCANO", "MEADOW",
-] as const;
-
-function scramble(word: string): string {
-  let letters = word.split("");
-  let attempt = letters.join("");
-  while (attempt === word) {
-    letters = shuffleArray(letters);
-    attempt = letters.join("");
-  }
-  return attempt;
-}
+const WORDS = WORD_SCRAMBLE_WORDS;
 
 export default function WordScramblePage() {
   // Word order and letter scrambling are randomized client-side only —

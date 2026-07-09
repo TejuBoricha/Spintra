@@ -3,7 +3,16 @@
 import { createContext, useContext } from "react";
 import type { User, RoomParticipant, ActivityEvent, RoomType } from "@/lib/types";
 
-// STABLE — memoized, never changes after mount
+// Memoized in room-client.tsx's `stableContextValue` — stable across the
+// high-frequency changes this split exists to isolate activities from
+// (participants joining/leaving, chat messages). It is NOT unconditionally
+// stable: `currentUser` is the full `User` object, and its reference changes
+// whenever the local profile is edited (username/avatar), which recreates
+// this whole context value and re-renders every mounted activity once.
+// That's a deliberate, accepted trade-off — profile edits are rare, and
+// activities that display the current user's name/avatar need the fresh
+// value anyway — not a bug, but worth knowing before assuming a consumer
+// here truly never re-renders (found via the Session 45 audit).
 export interface RoomActivityContextType {
   roomCode: string;
   roomType: RoomType;

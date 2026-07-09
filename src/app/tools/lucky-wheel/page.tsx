@@ -20,6 +20,14 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Emoji, type EmojiName } from "@/components/emoji";
 import { fireConfetti, CelebrationBanner } from "@/components/celebration";
 import { playTick } from "@/lib/audio";
@@ -144,6 +152,7 @@ export default function LuckyWheelPage() {
   const [newEntryLabel, setNewEntryLabel] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
+  const [pendingTemplate, setPendingTemplate] = useState<(typeof TEMPLATES)[0] | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -808,7 +817,10 @@ export default function LuckyWheelPage() {
                   <button
                     key={tpl.label}
                     onClick={() => {
-                      if (entries.length > 0 && !window.confirm(`Replace current entries with "${tpl.label}" template?`)) return;
+                      if (entries.length > 0) {
+                        setPendingTemplate(tpl);
+                        return;
+                      }
                       applyTemplate(tpl);
                     }}
                     aria-label={`Apply "${tpl.label}" template (replaces current entries)`}
@@ -867,6 +879,32 @@ export default function LuckyWheelPage() {
           </Link>
         </motion.div>
       </div>
+
+      <Dialog open={!!pendingTemplate} onOpenChange={(open) => { if (!open) setPendingTemplate(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Replace current entries?</DialogTitle>
+            <DialogDescription>
+              {pendingTemplate
+                ? `This replaces your current wheel entries with the "${pendingTemplate.label}" template. Your current entries will be lost.`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingTemplate(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (pendingTemplate) applyTemplate(pendingTemplate);
+                setPendingTemplate(null);
+              }}
+            >
+              Replace entries
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

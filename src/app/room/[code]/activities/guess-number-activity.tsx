@@ -18,6 +18,11 @@ export function GuessNumberActivity() {
   >([]);
   const [guessSecretNumber, setGuessSecretNumber] = useState(50);
   const [resetting, setResetting] = useState(false);
+  // submitGuess is a real network round-trip (awaits check_guess_number),
+  // unlike the other activities' synchronous local event-bus dispatch —
+  // with no guard, a fast double-click/double-Enter fired multiple
+  // concurrent RPC calls for the same guess.
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     return registerEventListener((event) => {
@@ -73,27 +78,32 @@ export function GuessNumberActivity() {
   };
 
   const submitGuess = async (val: number) => {
-    if (!val || val < 1 || val > 100) return;
+    if (!val || val < 1 || val > 100 || isSubmitting) return;
+    setIsSubmitting(true);
 
-    const supabase = getSupabaseBrowserClient();
-    let hint: string;
-    if (supabase) {
-      const { data, error } = await supabase.rpc("check_guess_number", {
-        p_room_code: roomCode,
-        p_guess: val,
-      });
-      if (error || !data) {
-        console.error("Failed to check guess:", error?.message);
-        toast.error("Couldn't check your guess. Please try again.");
-        return;
+    try {
+      const supabase = getSupabaseBrowserClient();
+      let hint: string;
+      if (supabase) {
+        const { data, error } = await supabase.rpc("check_guess_number", {
+          p_room_code: roomCode,
+          p_guess: val,
+        });
+        if (error || !data) {
+          console.error("Failed to check guess:", error?.message);
+          toast.error("Couldn't check your guess. Please try again.");
+          return;
+        }
+        hint = data;
+      } else {
+        hint =
+          val === guessSecretNumber ? "correct" : val > guessSecretNumber ? "too high" : "too low";
       }
-      hint = data;
-    } else {
-      hint =
-        val === guessSecretNumber ? "correct" : val > guessSecretNumber ? "too high" : "too low";
-    }
 
-    sendActivityEvent({ kind: "guess_submit", username: currentUser.username, guess: val, hint });
+      sendActivityEvent({ kind: "guess_submit", username: currentUser.username, guess: val, hint });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -188,6 +198,7 @@ export function GuessNumberActivity() {
             max={100}
             placeholder="1 – 100"
             aria-label="Enter your guess from 1 to 100"
+            disabled={isSubmitting}
             className="flex-1 rounded-full px-4 h-11"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -198,6 +209,7 @@ export function GuessNumberActivity() {
             }}
           />
           <Button
+            disabled={isSubmitting}
             onClick={() => {
               const input = document.getElementById("guess-input") as HTMLInputElement;
               const val = parseInt(input?.value);
