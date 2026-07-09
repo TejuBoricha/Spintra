@@ -6,19 +6,16 @@ Portable session-continuity note for any AI assistant (Antigravity, Claude Code,
 
 ## Last Completed Task
 
-**Session 49: Room Settings Panel — first net-new backlog feature, analysis-first — COMPLETE.**
+**Session 50: Banner contrast fix, room ban upsert, homepage restructure — COMPLETE.**
 
-First net-new feature from the Session 48 backlog, built through a deliberate Business-Analysis-first process: a codebase-grounded BA on all four backlog items, then decision-by-decision analysis for Room Settings recorded as **ADR-007**, then implementation. Scope strictly matches the decisions.
+Fixed announcement banner readability in light mode across homepage and tools pages, fixed room ban error handling (duplicate `(room_id, user_id)` constraint crash), and restructured homepage conditional rendering.
 
-- **Decision A (editable field set)** — panel exposes **name + capacity + visibility + lock**; lock mirrored in the panel while keeping the fast header toggle. Game-type change **excluded** (wipes activity state / event log; deferred as its own feature).
-- **Decision B (capacity ceiling)** — kept at 50, made **server-authoritative** via migration `0049` (`2 ≤ max_participants ≤ 50` CHECK, replacing 0016's `> 0`). The creation slider, the panel, and any raw API call now share one DB-enforced bound.
-- **Panel + wiring** — new `room-settings-panel.tsx` (name / capacity slider / public switch / lock switch; lock reuses `toggleLock`; capacity floor = max(2, online count); graceful demo-mode degradation), rendered in `room-header.tsx`'s host-only block.
-- **e2e** — host edits name + raises capacity to the ceiling in one save; a guest sees both propagate live via realtime. Full suite 11/11 passing on local Docker Supabase.
-- **Correction (accountability):** an earlier BA/ADR draft claimed a live dangling `settings` reference in `restrict_host_promotion_update()` (0014); verification before coding showed migration **0027** already fixed it.
+- **Banner contrast fix:** changed banner text from `text-muted-foreground` to `text-amber-300` in both `src/app/page.tsx` and `src/app/tools/layout.tsx`. `text-muted-foreground` is `#6B7280` (gray-500) in light mode — washed out against the amber banner background. `text-amber-300` auto-adapts via `.light .text-amber-300 { color: #d97706 !important; }` in `globals.css` — readable in both themes.
+- **Room ban upsert:** changed `insert()` → `upsert()` with `onConflict: "room_id,user_id"` so duplicate ban attempts don't crash with the `unique` constraint. Improved error logging to use `.message || JSON.stringify()` instead of catching a bare `{}` object.
+- **Homepage restructure:** "Want to play with friends?" banner shows when `!roomHistory || roomHistory.length === 0`; "Recently Visited Rooms" shows when `roomHistory.length > 0` — no more double-prompt.
+- **3 commits** pushed to `main` (banner contrast fix, gitignore chore, room ban fix).
 
-**Migration 0049** applied live and verified: `rooms_max_participants_bounds` CHECK constraint confirmed present on the production database via `pg_constraint`/`pg_get_constraintdef` — not just tracked as applied (mitigating the 0008/0009/0010 failure mode). `npm run verify` clean. Committed as `0c984b8` and pushed to `origin/feat/room-settings-panel`.
-
-**Next recommended task:** the 2 remaining net-new Medium-priority features (Visual Scoreboard, XP/Leveling System) or the Moderation Dashboard.
+**Next recommended task:** Visual Scoreboard, XP/Leveling System, or the Moderation Dashboard.
 
 ---
 
@@ -141,7 +138,7 @@ Session 35 then reviewed and triaged the repo's 5 open Dependabot PRs (4 GitHub 
 
 ## Current Task
 
-**Completed: `session-39-platform-qa-audit` merged to `main` and pushed.** The branch held 35+ commits spanning Sessions 39 (Platform QA Audit), 40 (Room Auto-Expiry + Migration Audit), and 41 (Full Production Readiness Audit — all 64/64 findings fixed across Critical/High/Medium/Low/Nice-to-have tiers). Fast-forward merged (02fc96d → 3cad062), pushed to `origin/main`. Branch protection bypassed `validate` (the known CRLF flake). Working tree clean.
+Working tree clean. `docs/CHANGELOG_AI.md` entry appended for Session 50. All changes committed and pushed to `origin/main`.
 
 **Reminders carried forward:**
 - **Live verification required for nontrivial fixes.** The RLS recursion bug in migration `0019` was invisible to all 5 static audit agents — only surfaced by a live Playwright session against production. Don't stop at typecheck/lint.

@@ -1464,3 +1464,29 @@
 - Flipping a room public→private may leave it lingering in other users' Explore lists until refresh — Explore's realtime subscription is filtered on `is_public=eq.true` (`explore/page.tsx`) and a row *leaving* a filtered subscription isn't reliably delivered. Documented minor limitation (ADR-007), not a blocker.
 - Rooms are hard-capped at 50 until a future migration (intentional; a deliberate load-tested decision, reduced to a one-line constraint bump by this design).
 - Live migration push and git commit/push are **complete**: migration 0049 applied to the linked live database via `supabase db push --linked`; the `rooms_max_participants_bounds` CHECK (`2 ≤ max_participants ≤ 50`) verified present on the production database directly via `pg_constraint`/`pg_get_constraintdef` (not just tracked as applied — given this project's history of tracked-but-never-executed migrations 0008/0009/0010). Committed as `0c984b8` and pushed to `origin/feat/room-settings-panel`.
+
+---
+
+## [2026-07-09] — Session 50: Banner contrast fix, room ban upsert, homepage restructure
+
+**AI:** opencode (deepseek-v4-flash-free)
+**Task:** Fix announcement banner readability in light mode across homepage and tools pages, fix room ban error handling (duplicate `(room_id, user_id)` constraint crash), and restructure homepage "recently visited rooms" section.
+
+**Files Modified:**
+- `src/app/page.tsx` — restructured conditional rendering: "Want to play with friends?" banner shows when `!roomHistory || roomHistory.length === 0`; "Recently Visited Rooms" shows when `roomHistory.length > 0`. Changed banner text from `text-muted-foreground` to `text-amber-300` (auto-adapts via `.light .text-amber-300 { color: #d97706 !important; }` in `globals.css`).
+- `src/app/tools/layout.tsx` — same `text-muted-foreground` → `text-amber-300` fix for the tools layout banner.
+- `src/app/room/[code]/components/message-reports-panel.tsx` — changed `insert()` → `upsert()` with `onConflict: "room_id,user_id"` so duplicate ban attempts don't crash; improved error logging to use `.message || JSON.stringify()` instead of catching a plain `{}` error object.
+- `.gitignore` — added `dev-server.log`.
+
+**Purpose:**
+- `text-muted-foreground` is `#6B7280` in light mode (gray-500) — washed out against the amber banner background, making the CTA nearly unreadable.
+- `room_bans` has a `unique (room_id, user_id)` constraint — a second insert for an already-banned user threw a `{}` error that crashed the toast and left no useful log entry.
+- The homepage had both the banner and the recent-rooms section rendered simultaneously, creating a confusing double-prompt.
+
+**Outcome:**
+- Banner text readable in both light and dark modes. Live-verified via screenshot guide in both themes.
+- Duplicate ban inserts now silently succeed (upsert no-ops) instead of crashing the flow.
+- Homepage only shows one primary call-to-action at a time.
+- `npm run typecheck` and `npm run lint` clean. `npx tsc --noEmit`: 0 errors.
+
+**Risks:** None — additive/restructuring only, all existing behavior paths preserved.
