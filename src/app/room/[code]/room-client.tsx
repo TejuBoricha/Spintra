@@ -503,7 +503,7 @@ function RoomUIInner({
   // demo/local-only mode (Scoreboard/XP are Supabase-only features, same
   // as Room Settings/moderation).
   const awardScore = useCallback(
-    async (activityType: "trivia" | "rps" | "bingo", questionId?: string, choiceIndex?: number) => {
+    async (activityType: "trivia" | "rps" | "bingo", questionId?: string, choiceIndex?: number, questionNum?: number) => {
       const supabase = getSupabaseBrowserClient();
       if (!supabase) return;
 
@@ -512,6 +512,7 @@ function RoomUIInner({
         p_activity_type: activityType,
         p_question_id: questionId ?? undefined,
         p_choice_index: choiceIndex ?? undefined,
+        p_question_num: questionNum ?? undefined,
       });
 
       if (error) {

@@ -98,7 +98,23 @@ export function RpsActivity() {
     if (!roundResult || hasAwardedRoundRef.current) return;
     if (!decidingChoices[currentUser.id]) return;
     hasAwardedRoundRef.current = true;
-    flushActivityState().then(() => awardScore("rps"));
+    flushActivityState()
+      .then((flushed) => {
+        // A failed flush means the persisted state this round's server-side
+        // verification would read may be stale — don't award against it.
+        // Reset the guard so a later re-run (e.g. the next choice event
+        // updating decidingChoices) gets another chance, rather than
+        // permanently skipping this round's award.
+        if (!flushed) {
+          hasAwardedRoundRef.current = false;
+          return;
+        }
+        return awardScore("rps");
+      })
+      .catch((err) => {
+        console.error("Failed to award RPS score:", err);
+        hasAwardedRoundRef.current = false;
+      });
   }, [roundResult, decidingChoices, currentUser.id, flushActivityState, awardScore]);
 
   return (

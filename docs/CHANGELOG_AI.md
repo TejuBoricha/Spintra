@@ -1565,3 +1565,29 @@
 **Outcome:** Verified via 4 direct psql tests against local Docker Supabase: non-host cannot flip false→true (rejected); non-host can flip true→false (0019's reconciliation path, allowed); host can flip either direction (allowed); `award_score()`'s Bingo participation fan-out still works via the bypass flag. Pushed to the linked live DB; verified live via `verify:migration 0051`. `npm run verify` clean.
 
 **Risk:** This was a real, live security regression for the window it was deployed (0050's push to 0051's push, same session) — not a hypothetical. Caught by code review before the PR merged to main, not by a user report.
+
+---
+
+## [2026-07-10] — Session 51 (continued): Remaining PR #20 review findings fixed (migration 0052)
+
+**AI:** Claude Code (Opus 4.8)
+**Task:** Fixed the remaining 9 findings from PR #20's code review (the critical one — the `restrict_host_participant_update` regression — was already fixed separately in migration 0051).
+
+**A second self-introduced bug found while fixing the first round:** the `_record_award()` helper extracted to deduplicate `award_score`'s copy-pasted award logic was, at first, directly callable by any authenticated client — Postgres grants `EXECUTE` to `PUBLIC` by default on function creation, and no `grant` statement being written does *not* mean "no access" the way it would for a table's default-deny RLS. Caught by testing this specifically (attempting to call the helper directly as a non-privileged client) before pushing, not after.
+
+**Fixes (migration 0052):**
+1. Trivia's `round_key` now folds in the question's sequence number, so a legitimately re-drawn question (after the shuffle bag exhausts) doesn't collide with its earlier occurrence and silently earn nothing.
+2. The insert-with-conflict + XP-update block, previously copy-pasted 4×, extracted into `_record_award()` — explicitly `revoke`d from `public` after the above was found.
+3. `room_scores`' SELECT policy now reuses `is_member_of_room()` instead of a hand-rolled duplicate membership check.
+4. RPS/Bingo's two redundant event-log scans (boundary index + reset count) combined into one.
+5. A migration comment inaccurately claiming `elect_room_host` uses an equivalent bypass mechanism (it doesn't) corrected.
+6. `flushActivityEventLog`/`flushActivityState` now resolves `true`/`false` for whether the persist actually succeeded, instead of always resolving success — RPS/Bingo's award-trigger effects now skip awarding (and reset their guard for a later retry) on a failed flush, instead of proceeding against possibly-stale state.
+7. Bingo/RPS's award-trigger promise chains gained `.catch()` handlers, logging and resetting their "already awarded" guard on failure instead of leaving it permanently set with an unhandled rejection.
+8. `scoreboard-panel.tsx`'s `room_scores` query gained an explicit `.limit(2000)` instead of relying on PostgREST's implicit default cap.
+9. `scoreboard-panel.tsx`'s realtime-triggered refetch is now debounced (300ms) — Bingo's participation fan-out can insert several `room_scores` rows in one win, each a separate realtime event; without this, one win could trigger as many full refetches as there are online participants.
+
+**Files Modified:** `supabase/migrations/0052_award_score_review_fixes.sql` (new), `use-room-subscription.ts`, `room-client.tsx`, `room-activity-context.tsx`, `trivia-activity.tsx`, `rps-activity.tsx`, `bingo-activity.tsx`, `scoreboard-panel.tsx`.
+
+**Outcome:** Migration `award_score` is dropped and recreated with a new parameter (a true signature change — `create or replace` alone would have left a stale 4-parameter overload live). Verified via a full direct-psql pass: trivia round_key fix (re-drawn question scores again, exact replay still rejected), `_record_award` correctly rejected for direct client calls after the revoke, RPS/Bingo winner-detection and fan-out unaffected by the refactor, `is_member_of_room()` reuse correctly scopes visibility. Migration 0051's fix re-confirmed intact. `npm run verify` clean. Full Playwright suite **14/14**. Pushed to the linked live DB; all 4 objects verified live via `verify:migration`.
+
+**Note:** mid-session, the Docker Desktop daemon and the local Supabase `rest` container both went down independently of any action taken here (likely a resource/host-level event) — recovered by restarting Docker Desktop and running a clean `supabase stop`/`start`/`db reset`, not a code or migration issue.

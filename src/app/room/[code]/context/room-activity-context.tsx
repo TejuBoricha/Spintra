@@ -22,16 +22,20 @@ export interface RoomActivityContextType {
   registerEventListener: (fn: (event: ActivityEvent) => void) => () => void;
   soundEnabled: boolean;
   // Forces the debounced room_activity_state persist (use-room-subscription.ts)
-  // to happen immediately. Required before calling awardScore for RPS/Bingo,
-  // whose server-side verification (ADR-008) reads that persisted state
-  // directly — without this, a win claimed the instant it happens can race
-  // the up-to-2s debounce and be server-rejected as unverifiable.
-  flushActivityState: () => Promise<void>;
+  // to happen immediately, resolving true/false for whether it actually
+  // succeeded. Required before calling awardScore for RPS/Bingo, whose
+  // server-side verification (ADR-008) reads that persisted state directly
+  // — without this, a win claimed the instant it happens can race the
+  // up-to-2s debounce and be server-rejected as unverifiable. Callers should
+  // skip awarding on `false` rather than proceed against state that may be
+  // stale.
+  flushActivityState: () => Promise<boolean>;
   // Calls the server-verified award_score RPC (ADR-008/009) and applies its
   // returned totals to local state immediately — never fire-and-forget, see
   // the comment on this function's definition in room-client.tsx for why.
-  // No-ops in demo/local-only mode.
-  awardScore: (activityType: "trivia" | "rps" | "bingo", questionId?: string, choiceIndex?: number) => Promise<void>;
+  // No-ops in demo/local-only mode. questionNum (Trivia only) disambiguates
+  // a legitimately re-drawn question from its earlier occurrence.
+  awardScore: (activityType: "trivia" | "rps" | "bingo", questionId?: string, choiceIndex?: number, questionNum?: number) => Promise<void>;
 }
 
 // DYNAMIC — only participants list

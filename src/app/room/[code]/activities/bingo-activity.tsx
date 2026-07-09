@@ -159,7 +159,23 @@ export function BingoActivity() {
           // directly (see flushActivityState's doc comment).
           if (event.userId && event.userId === currentUserIdRef.current && !hasAwardedBingoRef.current) {
             hasAwardedBingoRef.current = true;
-            flushActivityStateRef.current().then(() => awardScoreRef.current("bingo"));
+            flushActivityStateRef.current()
+              .then((flushed) => {
+                // A failed flush means the persisted called-numbers state
+                // this win's server-side verification would read may be
+                // stale — don't award against it. Reset the guard so a
+                // later bingo_verified replay (e.g. on reconnect) gets
+                // another chance, rather than permanently skipping this win.
+                if (!flushed) {
+                  hasAwardedBingoRef.current = false;
+                  return;
+                }
+                return awardScoreRef.current("bingo");
+              })
+              .catch((err) => {
+                console.error("Failed to award Bingo score:", err);
+                hasAwardedBingoRef.current = false;
+              });
           }
           break;
         }

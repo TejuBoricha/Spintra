@@ -284,8 +284,12 @@ export function TriviaActivity() {
                     // via the same trivia_questions lookup above — no flush
                     // needed first, unlike RPS/Bingo, since this doesn't depend
                     // on the persisted activity-state event log at all.
+                    // triviaQuestion.num disambiguates a legitimately re-drawn
+                    // question (the shuffle bag reshuffles from the full pool
+                    // once exhausted) from its earlier occurrence, so a second
+                    // correct answer to the "same" question still scores.
                     if (triviaQuestion.id) {
-                      awardScore("trivia", triviaQuestion.id, i);
+                      awardScore("trivia", triviaQuestion.id, i, triviaQuestion.num);
                     }
                   }}
                   className={`p-4 rounded-xl border text-left font-semibold transition-all duration-200 disabled:cursor-default flex items-center justify-between gap-2 ${btnStyle}`}

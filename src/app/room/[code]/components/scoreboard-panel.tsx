@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Trophy, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,8 +50,13 @@ export function ScoreboardPanel({ roomCode, isHost }: { roomCode: string; isHost
   const loadScores = useCallback(async () => {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) return;
+    // Explicit generous limit rather than relying on PostgREST's implicit
+    // default row cap — this room's ledger only grows across Trivia/RPS/
+    // Bingo rounds within one party, so 2000 rows is far beyond any
+    // realistic session, but it makes the bound visible and intentional
+    // instead of an invisible silent-truncation risk.
     const [{ data: scoreData, error: scoreError }, { data: nameData, error: nameError }] = await Promise.all([
-      supabase.from("room_scores").select("user_id, points").eq("room_id", roomCode),
+      supabase.from("room_scores").select("user_id, points").eq("room_id", roomCode).limit(2000),
       supabase.from("room_participants").select("user_id, username").eq("room_id", roomCode),
     ]);
     if (!scoreError && scoreData) setScores(scoreData);
@@ -59,6 +64,20 @@ export function ScoreboardPanel({ roomCode, isHost }: { roomCode: string; isHost
       setUsernames(Object.fromEntries(nameData.map((p) => [p.user_id, p.username ?? "Guest"])));
     }
   }, [roomCode]);
+
+  // Debounces the realtime-triggered refetch — Bingo's participation
+  // fan-out (award_score) can insert several room_scores rows for one win
+  // (the winner + every other online participant), each a separate
+  // postgres_changes event; without this, one Bingo win could otherwise
+  // trigger as many full refetches as there are online participants.
+  const reloadDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedLoadScores = useCallback(() => {
+    if (reloadDebounceRef.current) clearTimeout(reloadDebounceRef.current);
+    reloadDebounceRef.current = setTimeout(() => {
+      reloadDebounceRef.current = null;
+      loadScores();
+    }, 300);
+  }, [loadScores]);
 
   useEffect(() => {
     queueMicrotask(() => loadScores());
@@ -71,14 +90,15 @@ export function ScoreboardPanel({ roomCode, isHost }: { roomCode: string; isHost
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "room_scores", filter: `room_id=eq.${roomCode}` },
-        () => loadScores()
+        () => debouncedLoadScores()
       )
       .subscribe();
 
     return () => {
+      if (reloadDebounceRef.current) clearTimeout(reloadDebounceRef.current);
       supabase.removeChannel(channel);
     };
-  }, [roomCode, loadScores]);
+  }, [roomCode, loadScores, debouncedLoadScores]);
 
   // Ties share a rank position (standard competition ranking: 1,1,3 — not
   // 1,1,2) — a Business Rule from the original decision analysis, not an
