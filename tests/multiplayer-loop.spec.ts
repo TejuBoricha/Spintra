@@ -539,6 +539,10 @@ test('host edits room name and capacity, and a guest sees both changes live', as
     await page.getByRole('button', { name: /room settings/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
+    // The panel loads the room's current values (name/is_public/capacity) from
+    // the DB on open and keeps the fields disabled until that read resolves —
+    // wait for the name field to become editable before interacting.
+    await expect(page.getByLabel('Room name')).toBeEnabled({ timeout: 10000 });
     await page.getByLabel('Room name').fill('Renamed By Host');
 
     // Raise capacity to the ceiling via the slider's End key (Radix maps End

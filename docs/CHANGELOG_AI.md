@@ -1490,3 +1490,24 @@
 - `npm run typecheck` and `npm run lint` clean. `npx tsc --noEmit`: 0 errors.
 
 **Risks:** None — additive/restructuring only, all existing behavior paths preserved.
+---
+
+## [2026-07-09] — Session 49b: Room Settings panel — post-merge code-review fixes
+
+**AI:** Claude Code (Opus 4.8)
+**Task:** Address 3 findings from a `/code-review` of the merged Room Settings feature (PR #18). Two correctness bugs + one maintainability item.
+
+**Files Modified:**
+- `src/lib/room-config.ts` (NEW) — single source of truth for the capacity bounds (`ROOM_MIN_CAPACITY=2`, `ROOM_MAX_CAPACITY=50`, `ROOM_DEFAULT_CAPACITY=10`), inherited by the DB CHECK (migration 0049, in SQL), the creation slider, and the settings panel.
+- `src/app/room/[code]/components/room-settings-panel.tsx` — reworked load + save.
+- `src/app/create/create-client.tsx` — slider min/max + default now use the shared constants (were hardcoded `2`/`50`/`10`).
+- `tests/multiplayer-loop.spec.ts` — the settings test now waits for the name field to become enabled (panel loads current values on open before fields are editable).
+
+**Fixes:**
+1. **(correctness) Save clobbered untouched fields.** Save previously wrote `name` + `is_public` + `max_participants` together, so a field whose form value hadn't initialized to the true stored value got overwritten — e.g. renaming a room while `maxParticipantsLimit` was still `null` wrote capacity=10, or an errored `is_public` read flipped a public room private. Fixed: the panel now loads the authoritative current values (name/is_public/max_participants) from the DB into a `baseline` when the dialog opens, and Save writes **only the fields that differ from that baseline**. Save is disabled until the baseline loads.
+2. **(correctness) A failed `is_public` read bricked the panel.** The fetch had no rejection handler, so a rejected promise left `isLoading` stuck true and Save permanently disabled. Fixed: both settlement paths (resolve-with-error and rejection) now clear loading and surface a `loadError` state with a retry message; fields are disabled (not silently editable) when the load fails.
+3. **(maintainability) 2/50 bounds were duplicated** across the panel, create-client, and the migration. Extracted the client-side literals into `room-config.ts`; the migration keeps its SQL literals (can't import TS) with a cross-reference comment.
+
+**Outcome:** `npm run typecheck` + `npm run lint` clean; full Playwright suite **11/11** against local Docker Supabase; `npm run verify` clean. No migration change (schema already correct). Delivered as a follow-up branch/PR off `main`.
+
+**Risks:** None new — the changes narrow what Save writes and add error handling; existing propagation behavior is unchanged (proven by the same e2e).
