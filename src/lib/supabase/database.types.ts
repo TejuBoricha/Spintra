@@ -238,6 +238,47 @@ export type Database = {
           },
         ]
       }
+      moderation_actions: {
+        Row: {
+          action_kind: string
+          actor_id: string
+          created_at: string
+          detail: string | null
+          id: string
+          room_id: string
+          target_user_id: string
+          target_username: string | null
+        }
+        Insert: {
+          action_kind: string
+          actor_id: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          room_id: string
+          target_user_id: string
+          target_username?: string | null
+        }
+        Update: {
+          action_kind?: string
+          actor_id?: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          room_id?: string
+          target_user_id?: string
+          target_username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderation_actions_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       room_activity_state: {
         Row: {
           activity_state: Json | null
@@ -496,11 +537,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _record_award: {
+        Args: {
+          p_activity_type: string
+          p_award_kind: string
+          p_points: number
+          p_room_id: string
+          p_round_key: string
+          p_user_id: string
+          p_xp_delta: number
+        }
+        Returns: boolean
+      }
       award_score: {
         Args: {
           p_activity_type: string
           p_choice_index?: number
           p_question_id?: string
+          p_question_num?: number
           p_room_id: string
         }
         Returns: {

@@ -5,6 +5,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { fireConfetti } from "@/components/celebration";
 import { banUserFromRoom } from "@/lib/room-bans";
+import { logModerationAction } from "@/lib/moderation";
 import { getDeviceFingerprint } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
 import type { User, ChatMessage, RoomParticipant, RoomType, ActivityEvent } from "@/lib/types";
@@ -411,6 +412,7 @@ export function useRoomSubscription({
           if (banError) {
             console.error("Failed to record room ban:", banError);
           }
+          logModerationAction(roomCode, currentUser.id, "kick_ban", participant.user_id, participant.user?.username ?? null);
         } catch (error) {
           console.error("Failed to remove participant:", error);
           toast.error("Unable to remove participant.");

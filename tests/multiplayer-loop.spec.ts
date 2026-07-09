@@ -727,3 +727,142 @@ test('bingo survives 15 rapid number calls without freezing or crashing', async 
 
   expect(pageErrors, `Browser threw errors during rapid bingo calls: ${pageErrors.join('; ')}`).toHaveLength(0);
 });
+
+// Moderation Dashboard (ADR-010) merges MessageReportsPanel and UnbanPanel
+// into one tabbed surface and adds a History tab — none of this had e2e
+// coverage before (the existing kick test above exercises the separate
+// People-list kick path, not Reports/Bans/History at all). Report -> Dismiss
+// -> History exercises the dashboard's most common host action end to end.
+test('moderation dashboard: reporting and dismissing a message shows up in history', async ({ page, baseURL }) => {
+  test.setTimeout(90_000);
+  page.on('pageerror', (err) => console.log('[browser:pageerror]', err.message));
+
+  await page.goto('/create?type=trivia');
+  await page.waitForSelector('[data-testid="create-room-button"]', { timeout: 30000 });
+  await page.click('[data-testid="create-room-button"]');
+  await page.waitForURL(/\/room\/[A-Z0-9]+/);
+  const roomCode = page.url().split('/room/')[1];
+
+  await Promise.race([
+    page.getByText(/this device only/i).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+    page.getByText('Live', { exact: true }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+  ]);
+  const isLocalOnlyMode = await page.getByText(/this device only/i).isVisible().catch(() => false);
+  if (isLocalOnlyMode) {
+    test.skip(true, 'App is running without Supabase configured (demo-mode BroadcastChannel fallback) — a second browser context can never see this room');
+  }
+
+  const browser = await chromium.launch();
+  const guestContext = await browser.newContext();
+  const guestPage = await guestContext.newPage();
+
+  try {
+    await guestPage.goto(`${baseURL}/room/${roomCode}`);
+    await expect(guestPage.getByText('Live', { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/People \(2\)/)).toBeVisible({ timeout: 30000 });
+
+    // Guest sends a message; host reports it — the Report button only
+    // appears on messages that aren't your own, so the host reporting the
+    // guest's message is the natural direction here. Chat is the default
+    // active sidebar tab (not People) at this desktop viewport — no tab
+    // click needed to see it on either side.
+    await guestPage.getByPlaceholder(/message/i).fill('hello from the guest');
+    await guestPage.getByPlaceholder(/message/i).press('Enter');
+
+    await expect(page.getByText('hello from the guest')).toBeVisible({ timeout: 10000 });
+    await page.getByRole('button', { name: 'Report message' }).click();
+
+    // Open the merged dashboard (single icon replaces the old Flag+ShieldOff pair).
+    await page.getByRole('button', { name: /moderation dashboard/i }).click();
+    await expect(page.getByRole('dialog').filter({ hasText: 'Moderation' })).toBeVisible({ timeout: 5000 });
+
+    // Reports tab is the default; the report should already be visible.
+    await expect(page.getByText('hello from the guest')).toBeVisible({ timeout: 10000 });
+    await page.getByRole('button', { name: 'Dismiss' }).click();
+
+    // History tab shows the dismiss action against the guest's username.
+    await page.getByRole('tab', { name: /history/i }).click();
+    await expect(page.getByText(/Dismissed a report against/i)).toBeVisible({ timeout: 10000 });
+  } finally {
+    await guestContext.close();
+    await browser.close();
+  }
+});
+
+// Kick-from-report -> Bans tab -> Unban -> History, all in one dashboard.
+// Unban specifically had never been e2e tested at all before this (the
+// existing UnbanPanel shipped in Session 47 with only manual verification)
+// — this proves the unban button, the realtime-driven Bans tab update, the
+// History entry, AND that the unbanned identity can actually rejoin.
+test('moderation dashboard: kick, ban list, unban, and rejoin all work end to end', async ({ page, baseURL }) => {
+  test.setTimeout(90_000);
+  page.on('pageerror', (err) => console.log('[browser:pageerror]', err.message));
+
+  await page.goto('/create?type=trivia');
+  await page.waitForSelector('[data-testid="create-room-button"]', { timeout: 30000 });
+  await page.click('[data-testid="create-room-button"]');
+  await page.waitForURL(/\/room\/[A-Z0-9]+/);
+  const roomCode = page.url().split('/room/')[1];
+
+  await Promise.race([
+    page.getByText(/this device only/i).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+    page.getByText('Live', { exact: true }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+  ]);
+  const isLocalOnlyMode = await page.getByText(/this device only/i).isVisible().catch(() => false);
+  if (isLocalOnlyMode) {
+    test.skip(true, 'App is running without Supabase configured (demo-mode BroadcastChannel fallback) — a second browser context can never see this room');
+  }
+
+  const browser = await chromium.launch();
+  const guestContext = await browser.newContext();
+  const guestPage = await guestContext.newPage();
+
+  try {
+    await guestPage.goto(`${baseURL}/room/${roomCode}`);
+    await expect(guestPage.getByText('Live', { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/People \(2\)/)).toBeVisible({ timeout: 30000 });
+
+    await guestPage.getByPlaceholder(/message/i).fill('please remove me');
+    await guestPage.getByPlaceholder(/message/i).press('Enter');
+
+    await expect(page.getByText('please remove me')).toBeVisible({ timeout: 10000 });
+    await page.getByRole('button', { name: 'Report message' }).click();
+
+    await page.getByRole('button', { name: /moderation dashboard/i }).click();
+    await expect(page.getByRole('dialog').filter({ hasText: 'Moderation' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('please remove me')).toBeVisible({ timeout: 10000 });
+
+    // Remove (kick+ban) from the report.
+    await page.getByRole('button', { name: 'Remove' }).click();
+    await expect(page.getByRole('dialog').filter({ hasText: 'Remove this participant?' })).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: 'Remove', exact: true }).click();
+    await guestPage.waitForURL(/\/explore/, { timeout: 15000 });
+
+    // Bans tab shows the ban; History shows the kick_ban entry.
+    await page.getByRole('tab', { name: /bans/i }).click();
+    await expect(page.getByRole('button', { name: 'Unban' })).toBeVisible({ timeout: 15000 });
+    await page.getByRole('tab', { name: /history/i }).click();
+    await expect(page.getByText(/Removed and banned/i)).toBeVisible({ timeout: 10000 });
+
+    // Confirm the ban actually blocks a rejoin (the enforcement mechanism
+    // this whole dashboard exists to manage).
+    await guestPage.goto(`${baseURL}/room/${roomCode}`);
+    await expect(guestPage.getByRole('heading', { name: /you've been removed/i })).toBeVisible({ timeout: 15000 });
+
+    // Unban, then confirm the Bans tab empties and History gains the unban entry.
+    await page.getByRole('tab', { name: /bans/i }).click();
+    await page.getByRole('button', { name: 'Unban' }).click();
+    await expect(page.getByRole('dialog').filter({ hasText: 'Unban this participant?' })).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: 'Unban', exact: true }).click();
+    await expect(page.getByText('No one is banned from this room.')).toBeVisible({ timeout: 15000 });
+    await page.getByRole('tab', { name: /history/i }).click();
+    await expect(page.getByText(/^Unbanned/i)).toBeVisible({ timeout: 10000 });
+
+    // The unbanned identity can rejoin.
+    await guestPage.goto(`${baseURL}/room/${roomCode}`);
+    await expect(guestPage.getByText('Live', { exact: true })).toBeVisible({ timeout: 15000 });
+  } finally {
+    await guestContext.close();
+    await browser.close();
+  }
+});

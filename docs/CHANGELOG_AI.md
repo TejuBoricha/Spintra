@@ -1591,3 +1591,28 @@
 **Outcome:** Migration `award_score` is dropped and recreated with a new parameter (a true signature change — `create or replace` alone would have left a stale 4-parameter overload live). Verified via a full direct-psql pass: trivia round_key fix (re-drawn question scores again, exact replay still rejected), `_record_award` correctly rejected for direct client calls after the revoke, RPS/Bingo winner-detection and fan-out unaffected by the refactor, `is_member_of_room()` reuse correctly scopes visibility. Migration 0051's fix re-confirmed intact. `npm run verify` clean. Full Playwright suite **14/14**. Pushed to the linked live DB; all 4 objects verified live via `verify:migration`.
 
 **Note:** mid-session, the Docker Desktop daemon and the local Supabase `rest` container both went down independently of any action taken here (likely a resource/host-level event) — recovered by restarting Docker Desktop and running a clean `supabase stop`/`start`/`db reset`, not a code or migration issue.
+
+---
+
+## [2026-07-10] — Session 52: Moderation Dashboard (feature — analysis-first, ADR-010)
+
+**AI:** Claude Code (Opus 4.8)
+**Task:** Third and final net-new backlog feature, built through the same analysis-first process: decision analysis for the merge scope and action history (ADR-010), then a fully-verified implementation.
+
+**Decisions (ADR-010):**
+- Full merge of `MessageReportsPanel` and `UnbanPanel` into one tabbed `ModerationDashboard` (Reports / Bans / History) behind a single header icon — the two panels were already structurally identical (confirmed by re-reading both in full before deciding), making the merge an extraction, not a redesign.
+- A genuine new `moderation_actions` table for History, not derived from existing tables — `room_bans` rows are hard-deleted on unban, so a derived-only history could never show a past unban at all, which would read as broken rather than incomplete the first time a host noticed.
+
+**Files Modified:**
+- `supabase/migrations/0053_moderation_actions.sql` (new) — append-only `moderation_actions` table, host-scoped SELECT+INSERT RLS (matching `message_reports_select_host`/`room_bans_select_host`'s exact pattern — no server-verifying RPC needed, since a host's own action doesn't need adversarial verification the way a participant's game-win claim does), added to the realtime publication in the same migration.
+- `src/lib/moderation.ts` (new) — shared `logModerationAction()` helper, used by all 3 write call sites (avoiding the exact "duplicated across files" pattern PR #20's review caught).
+- `src/app/room/[code]/components/moderation-dashboard.tsx` (new) — extracts both former panels' internals into tab bodies verbatim (same realtime subscriptions, same queries, same confirm-dialog structure as siblings of the main dialog, not nested), plus the new History tab.
+- `message-reports-panel.tsx`, `unban-panel.tsx` — deleted; fully superseded by the merged dashboard.
+- `use-room-subscription.ts` — `handleKickParticipant` (the People-list kick path) gains one `logModerationAction` call; otherwise unchanged.
+- `room-header.tsx` — single `ModerationDashboard` icon replaces the two old ones.
+- `database.types.ts` — regenerated for `moderation_actions`.
+- `tests/multiplayer-loop.spec.ts` — 2 new e2e tests, closing a real gap (neither the Reports/Bans panels nor the unban flow had ANY prior e2e coverage — only the separate People-list kick path did).
+
+**Outcome:** Migration verified via direct psql (host insert succeeds; non-host insert rejected; spoofed `actor_id` rejected; non-host SELECT sees 0 rows, host sees all). `npm run verify` clean. Full Playwright suite **16/16** (14 prior + 2 new: report→dismiss→history, and the full kick→ban→history→rejoin-blocked→unban→history→rejoin-allowed loop — the first-ever e2e proof that unban actually works end to end). Pushed to the linked live DB; all 4 objects verified live.
+
+**Bug found and fixed during test-writing (not the app):** the new e2e tests initially clicked the "People" sidebar tab to check for the reported message, which actually hides the Chat tab (the default, and the only place messages/report buttons appear) — a test-authoring mistake, not a product bug, caught and fixed before these tests were considered passing.
