@@ -1550,3 +1550,18 @@
 - `room_scores` is a new table with a genuinely more involved trust model than prior migrations (server-side re-verification of 3 different game logics) — mitigated by the exhaustive direct-SQL verification pass before any client code was written, not just after.
 - Bingo's event-listener effect has now been touched three times this session (infinite-loop fix, win-verification-by-userId fix, this session's `userId` addition to `bingo_verified` + award call site) — the automated 15-call stress test formalizes what was previously only a manual check, closing a real coverage gap.
 - The XP reconnect-erasure bug (fix #2) would have been a genuinely difficult-to-diagnose intermittent data-loss bug in production (only manifesting on a reconnect shortly after a win) had it not been found during design analysis before any code was written.
+
+---
+
+## [2026-07-10] — Session 51 (continued): Fixed a security regression found in code review of PR #20
+
+**AI:** Claude Code (Opus 4.8)
+**Task:** Code review of the Scoreboard+XP PR (#20) found that migration 0050's `restrict_host_participant_update()` was written from an outdated copy of that function, silently reverting a security fix from migration 0019.
+
+**Root cause:** Migration 0019 added a host/non-host distinction to this trigger (host may flip any participant's `is_online` in either direction; a non-host participant may only flip another's from `true` to `false`, never the reverse). Migration 0050's rewrite (adding a server-verified-write bypass flag) was based on migration 0014's original version of the function, predating 0019's fix — collapsing both cases into one generic rule with no host distinction and no direction check. Live in production between 0050 and 0051's pushes, any participant could flip any other participant's `is_online` in either direction.
+
+**Fix:** Migration `0051_fix_participant_restriction_regression.sql` restores 0019's exact logic, with 0050's bypass flag layered on top of it (not in place of it).
+
+**Outcome:** Verified via 4 direct psql tests against local Docker Supabase: non-host cannot flip false→true (rejected); non-host can flip true→false (0019's reconciliation path, allowed); host can flip either direction (allowed); `award_score()`'s Bingo participation fan-out still works via the bypass flag. Pushed to the linked live DB; verified live via `verify:migration 0051`. `npm run verify` clean.
+
+**Risk:** This was a real, live security regression for the window it was deployed (0050's push to 0051's push, same session) — not a hypothetical. Caught by code review before the PR merged to main, not by a user report.
