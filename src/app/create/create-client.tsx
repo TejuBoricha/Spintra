@@ -12,6 +12,7 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import type { RoomType } from "@/lib/types";
 import { GAMES } from "@/lib/games";
+import { ROOM_MIN_CAPACITY, ROOM_MAX_CAPACITY, ROOM_DEFAULT_CAPACITY } from "@/lib/room-config";
 import { getOrCreateRoomUser, setLocalRoomCreator } from "@/lib/room-user";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { trackEvent } from "@/lib/analytics";
@@ -111,7 +112,7 @@ export default function CreateRoomClient() {
   }, []);
   const [roomName, setRoomName] = useState("");
   const [isPublic, setIsPublic] = useState(false);
-  const [maxParticipants, setMaxParticipants] = useState(10);
+  const [maxParticipants, setMaxParticipants] = useState(ROOM_DEFAULT_CAPACITY);
   const [isCreating, setIsCreating] = useState(false);
   const [createdRoom, setCreatedRoom] = useState<{ code: string; url: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -305,8 +306,8 @@ export default function CreateRoomClient() {
               </div>
               <Slider
                 id="max-participants-slider"
-                min={2}
-                max={50}
+                min={ROOM_MIN_CAPACITY}
+                max={ROOM_MAX_CAPACITY}
                 value={[maxParticipants]}
                 onValueChange={(v) => setMaxParticipants(Array.isArray(v) ? v[0] : v)}
                 className="mt-2"
