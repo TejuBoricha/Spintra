@@ -73,7 +73,7 @@ Then, at the user's request, the 5 items Session 45 had left open (1 deliberatel
 - `[x]` Truth or Dare standalone-tool content fork — unified without the risk originally flagged: extracted the tool page's richer categorized content (`TRUTH_OR_DARE_CATEGORIES`) into `src/lib/utils.ts` as the single source; the in-room activity's static fallback pool (used when Supabase/`activity_prompts` isn't available) now draws from the same flattened content instead of a separate, much smaller hardcoded list. Tool page's zero-network-dependency behavior unchanged.
 - `[x]` `tm_teams`/`nd_winner` event-kind naming — renamed to `team_maker_teams`/`name_draw_winner` without the replay risk originally flagged: both old kind strings kept as read-only legacy members in the `ActivityEvent` union (`types.ts`) purely so an already-persisted `room_activity_state` row still replays; only new writes use the renamed kind.
 
-**Verification:** `npm run verify` clean throughout. All 3 new/changed migrations (`0040`, `0041`) applied and verified against a freshly-reset local Docker Supabase stack alongside a full Playwright run — see `CHANGELOG_AI.md` Session 46 for the full writeup.
+**Verification:** `npm run verify` clean throughout. Both new migrations (`0040`, `0041`) applied and verified against a freshly-reset local Docker Supabase stack alongside a full Playwright run, then pushed live and re-verified with `npm run verify:migration` — see `CHANGELOG_AI.md` Session 46 for the full writeup.
 
 ---
 
