@@ -25,8 +25,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { MessageReportsPanel } from "./message-reports-panel";
-import { UnbanPanel } from "./unban-panel";
+import { ModerationDashboard } from "./moderation-dashboard";
 import { RoomSettingsPanel } from "./room-settings-panel";
 import { ScoreboardPanel } from "./scoreboard-panel";
 import type { RoomType } from "@/lib/types";
@@ -204,8 +203,7 @@ export const RoomHeader = memo(function RoomHeader({
           <ScoreboardPanel roomCode={roomCode} isHost={isHost} />
           {isHost && (
             <>
-              <MessageReportsPanel roomCode={roomCode} currentUserId={currentUserId} />
-              <UnbanPanel roomCode={roomCode} />
+              <ModerationDashboard roomCode={roomCode} currentUserId={currentUserId} />
               <RoomSettingsPanel
                 roomCode={roomCode}
                 roomName={roomName}
