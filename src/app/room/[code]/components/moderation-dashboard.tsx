@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { listBannedUserIdsFromRoom, unbanUserFromRoom } from "@/lib/room-bans";
 import { logModerationAction, type ModerationActionKind } from "@/lib/moderation";
 import { toast } from "sonner";
 
@@ -95,7 +96,11 @@ export function ModerationDashboard({
 
   const loadBans = useCallback(async () => {
     const supabase = getSupabaseBrowserClient();
-    if (!supabase) return;
+    if (!supabase) {
+      const ids = listBannedUserIdsFromRoom(roomCode);
+      setBans(ids.map((user_id) => ({ id: user_id, user_id, username: null, created_at: "" })));
+      return;
+    }
     const { data, error } = await supabase
       .from("room_bans")
       .select("id, user_id, username, created_at")
@@ -171,6 +176,12 @@ export function ModerationDashboard({
     try {
       const supabase = getSupabaseBrowserClient();
       if (!supabase) return;
+      // Snapshot the username and device fingerprint before deleting the
+      // participant row — once it's gone there's no other source. username
+      // is for the Bans tab's list (migration 0043); fingerprint_hash is
+      // for cross-identity ban matching (migration 0047) — the
+      // copy_fingerprint_to_ban trigger can only fall back to null once
+      // this row is deleted.
       const { data: participantRow } = await supabase
         .from("room_participants")
         .select("username, fingerprint_hash")
@@ -218,6 +229,8 @@ export function ModerationDashboard({
         if (ban) {
           logModerationAction(roomCode, currentUserId, "unban", ban.user_id, ban.username);
         }
+      } else {
+        if (ban) unbanUserFromRoom(roomCode, ban.user_id);
       }
       setBans((prev) => prev.filter((b) => b.id !== unbanTargetId));
       toast.success("Participant unbanned.");
