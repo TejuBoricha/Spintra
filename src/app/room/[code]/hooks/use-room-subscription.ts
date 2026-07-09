@@ -436,11 +436,18 @@ export function useRoomSubscription({
     router.push("/explore");
   }, [isHost, roomCode, router, postLocalMessage]);
 
-  // Load room details, participants list, and register self in database
+  // Load room details, participants list, and register self in database.
+  // Runs in demo mode too — loadRoomDetails() below has its own demo-mode
+  // branch (reads the room type from localStorage to auto-activate the
+  // room's activity) that was dead code prior to this fix: an earlier
+  // session added that branch but this effect still bailed out one line
+  // above it whenever Supabase wasn't configured, so it could never run.
+  // loadParticipants/trackSelf (also defined below) already no-op safely
+  // via their own internal `if (!supabaseClient) return;` checks, so
+  // letting the effect proceed in demo mode doesn't change their behavior.
   useEffect(() => {
     if (!authReady) return;
     const supabase = getSupabaseBrowserClient();
-    if (!supabase) return;
 
     let isMounted = true;
 

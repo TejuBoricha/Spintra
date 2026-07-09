@@ -44,6 +44,16 @@ test('two participants join, play trivia, and see each other\'s presence', async
   // signal rather than inferred from what the guest sees, since demo mode
   // doesn't show any of the Supabase-mode "blocked" messages either — the
   // guest would just render an inert, un-synced room shell.
+  // The status badge starts as "Connecting..." and only resolves to "Live"
+  // or "Live (this device only)" once isRealtimeReady flips — a bare
+  // isVisible() check right after waitForURL races that transition and can
+  // read false before the badge has settled. Wait for either final state
+  // (bounded, since "this device only" never appears in real-Supabase mode)
+  // before reading which one actually showed up.
+  await Promise.race([
+    page.getByText(/this device only/i).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+    page.getByText('Live', { exact: true }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+  ]);
   const isLocalOnlyMode = await page.getByText(/this device only/i).isVisible().catch(() => false);
   if (isLocalOnlyMode) {
     test.skip(true, 'App is running without Supabase configured (demo-mode BroadcastChannel fallback) — a second browser context can never see this room');
@@ -105,6 +115,16 @@ test('tournament bracket generates, scores, and crowns a champion', async ({ pag
   await page.waitForURL(/\/room\/[A-Z0-9]+/);
   const roomCode = page.url().split('/room/')[1];
 
+  // The status badge starts as "Connecting..." and only resolves to "Live"
+  // or "Live (this device only)" once isRealtimeReady flips — a bare
+  // isVisible() check right after waitForURL races that transition and can
+  // read false before the badge has settled. Wait for either final state
+  // (bounded, since "this device only" never appears in real-Supabase mode)
+  // before reading which one actually showed up.
+  await Promise.race([
+    page.getByText(/this device only/i).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+    page.getByText('Live', { exact: true }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+  ]);
   const isLocalOnlyMode = await page.getByText(/this device only/i).isVisible().catch(() => false);
   if (isLocalOnlyMode) {
     test.skip(true, 'App is running without Supabase configured (demo-mode BroadcastChannel fallback) — a second browser context can never see this room');
@@ -154,6 +174,16 @@ test('lucky wheel spins, lands on a winner, and does not spin again on its own',
   await page.waitForURL(/\/room\/[A-Z0-9]+/);
   const roomCode = page.url().split('/room/')[1];
 
+  // The status badge starts as "Connecting..." and only resolves to "Live"
+  // or "Live (this device only)" once isRealtimeReady flips — a bare
+  // isVisible() check right after waitForURL races that transition and can
+  // read false before the badge has settled. Wait for either final state
+  // (bounded, since "this device only" never appears in real-Supabase mode)
+  // before reading which one actually showed up.
+  await Promise.race([
+    page.getByText(/this device only/i).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+    page.getByText('Live', { exact: true }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+  ]);
   const isLocalOnlyMode = await page.getByText(/this device only/i).isVisible().catch(() => false);
   if (isLocalOnlyMode) {
     test.skip(true, 'App is running without Supabase configured (demo-mode BroadcastChannel fallback) — a second browser context can never see this room');
@@ -209,6 +239,16 @@ test('host kicks a participant, and the kicked participant is blocked from rejoi
   await page.waitForURL(/\/room\/[A-Z0-9]+/);
   const roomCode = page.url().split('/room/')[1];
 
+  // The status badge starts as "Connecting..." and only resolves to "Live"
+  // or "Live (this device only)" once isRealtimeReady flips — a bare
+  // isVisible() check right after waitForURL races that transition and can
+  // read false before the badge has settled. Wait for either final state
+  // (bounded, since "this device only" never appears in real-Supabase mode)
+  // before reading which one actually showed up.
+  await Promise.race([
+    page.getByText(/this device only/i).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+    page.getByText('Live', { exact: true }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+  ]);
   const isLocalOnlyMode = await page.getByText(/this device only/i).isVisible().catch(() => false);
   if (isLocalOnlyMode) {
     test.skip(true, 'App is running without Supabase configured (demo-mode BroadcastChannel fallback) — a second browser context can never see this room');
@@ -259,6 +299,16 @@ test('guest is promoted to host after the original host disconnects', async ({ p
   await page.waitForURL(/\/room\/[A-Z0-9]+/);
   const roomCode = page.url().split('/room/')[1];
 
+  // The status badge starts as "Connecting..." and only resolves to "Live"
+  // or "Live (this device only)" once isRealtimeReady flips — a bare
+  // isVisible() check right after waitForURL races that transition and can
+  // read false before the badge has settled. Wait for either final state
+  // (bounded, since "this device only" never appears in real-Supabase mode)
+  // before reading which one actually showed up.
+  await Promise.race([
+    page.getByText(/this device only/i).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+    page.getByText('Live', { exact: true }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+  ]);
   const isLocalOnlyMode = await page.getByText(/this device only/i).isVisible().catch(() => false);
   if (isLocalOnlyMode) {
     test.skip(true, 'App is running without Supabase configured (demo-mode BroadcastChannel fallback) — a second browser context can never see this room');

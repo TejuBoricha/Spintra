@@ -1266,3 +1266,22 @@
 
 ---
 
+## [2026-07-09] — Post-Session-45 fix #2: demo-mode room never auto-activates (dead code since 2026-07-04)
+
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** With the `SKIP_ENV_VALIDATION` fix above, `validate`'s build step finally succeeded for the first time since 2026-07-06 — which then let its Playwright smoke tests actually *run* against a real demo-mode server for the first time in a while, immediately surfacing a second, unrelated, pre-existing bug: `tests/smoke.spec.ts` failed because a freshly-created room stayed on the idle "Choose Activity" screen instead of auto-loading the room's chosen game type.
+
+**Root cause (pre-existing, dating to `c0f1798`, 2026-07-04):** That commit added a demo-mode branch inside `loadRoomDetails()` (in `use-room-subscription.ts`) to read `spintra-room-type-{code}` from `localStorage` and auto-activate the room — but missed that the *enclosing* `useEffect` already bailed out one line earlier via `if (!supabase) return;` whenever Supabase isn't configured. That guard made the entire effect — including `loadRoomDetails`, `loadParticipants`, and `trackSelf` — unreachable in demo mode, so the new branch was dead code from the moment it was written. Confirmed via direct reproduction (build without Supabase env vars, run Playwright against it, inspect `localStorage` and rendered DOM) that `spintra-room-type-{code}` was correctly populated but never read.
+
+**Files Modified:**
+- `src/app/room/[code]/hooks/use-room-subscription.ts` — removed the outer `if (!supabase) return;` guard; the effect's own inner functions (`loadParticipants`, `trackSelf`) already have correct, independent `if (!supabaseClient) return;` no-ops, so this only unblocks `loadRoomDetails`'s existing demo-mode branch, no other behavior change.
+- `tests/multiplayer-loop.spec.ts` — its 5 tests each self-skip when running against a demo-mode server (a second Playwright browser context can never see a `BroadcastChannel`-only room), detected via checking for "this device only" in the room header. That check ran immediately after `waitForURL`, before the header's "Connecting..." → "Live"/"Live (this device only)" transition had necessarily settled — a real race that (masked until now by the build being broken) surfaced as 4 flat failures instead of clean skips once the room started rendering correctly. Fixed by waiting for either final state before reading which one showed up.
+
+**Purpose:** Fix the underlying demo-mode bug (real product bug: any visitor using the app without a configured Supabase backend — intentional demo/offline mode — got stuck on an empty room shell) and the test race it exposed, both surfaced only because the CI env-var fix above let this code path actually execute for the first time in days.
+
+**Outcome:** Verified locally end-to-end in demo mode (build without `.env.local`, `CI=true SKIP_ENV_VALIDATION=true npx playwright test`): `smoke.spec.ts` now passes (team-maker room auto-activates, shows "Choose how many teams to create" immediately), all 5 `multiplayer-loop.spec.ts` tests now cleanly self-skip instead of failing, `tournament-double-elimination.spec.ts` passes. Re-verified `npm run verify` and `npm run build` clean with the real Supabase env restored — the hook change is a pure removal of a guard that never fired when Supabase is configured, so the already-twice-green `db-integration` path is provably unaffected.
+
+**Risks:** None expected for the real-Supabase path (see above). The demo-mode UX itself is now materially different for real visitors without configured Supabase (rooms auto-activate instead of sitting idle) — this matches the originally-intended behavior from `c0f1798`'s commit message, not a new design decision.
+
+---
+
