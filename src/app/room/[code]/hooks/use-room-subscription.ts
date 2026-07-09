@@ -262,8 +262,13 @@ export function useRoomSubscription({
         p_user_id: currentUser.id,
       });
 
-      if (electError || !success) {
-        console.error("Host election RPC failed or was rejected:", electError?.message || "Conflict or room not found");
+      if (electError) {
+        console.error("Host election RPC error:", electError.message);
+        return;
+      }
+      if (!success) {
+        // Expected: another client promoted itself first, or the room was
+        // deleted — in either case the local participant state is stale.
         return;
       }
 
