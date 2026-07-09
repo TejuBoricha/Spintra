@@ -91,6 +91,15 @@ export function MessageReportsPanel({
     try {
       const supabase = getSupabaseBrowserClient();
       if (!supabase) return;
+      // Snapshot the username before deleting the participant row — once
+      // it's gone there's no other source, and room_bans needs it for the
+      // unban panel's list (migration 0043).
+      const { data: participantRow } = await supabase
+        .from("room_participants")
+        .select("username")
+        .eq("room_id", roomCode)
+        .eq("user_id", kickTargetId)
+        .maybeSingle();
       await supabase
         .from("room_participants")
         .delete()
@@ -100,6 +109,7 @@ export function MessageReportsPanel({
         room_id: roomCode,
         user_id: kickTargetId,
         banned_by: currentUserId,
+        username: participantRow?.username ?? null,
       });
       if (banError) {
         console.error("Failed to record room ban:", banError);

@@ -25,6 +25,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { MessageReportsPanel } from "./message-reports-panel";
+import { UnbanPanel } from "./unban-panel";
 import type { RoomType } from "@/lib/types";
 
 interface RoomHeaderProps {
@@ -199,6 +200,7 @@ export const RoomHeader = memo(function RoomHeader({
           {isHost && (
             <>
               <MessageReportsPanel roomCode={roomCode} currentUserId={currentUserId} />
+              <UnbanPanel roomCode={roomCode} />
               <Tooltip>
                 <TooltipTrigger
                   render={

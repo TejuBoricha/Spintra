@@ -392,6 +392,7 @@ export function useRoomSubscription({
             room_id: roomCode,
             user_id: participant.user_id,
             banned_by: currentUser.id,
+            username: participant.user?.username ?? null,
           });
           if (banError) {
             console.error("Failed to record room ban:", banError);
@@ -686,7 +687,7 @@ export function useRoomSubscription({
           // spintra-room-name-{code}), since nothing else populates
           // activeActivity in this mode and the room would otherwise be
           // stuck on the idle "choose an activity" screen forever.
-          if (!isMounted) return;
+          if (!isMounted) return null;
           const storedType = window.localStorage.getItem(`spintra-room-type-${roomCode}`) as RoomType | null;
           const storedName = window.localStorage.getItem(`spintra-room-name-${roomCode}`);
           if (storedName) setRoomName(storedName);
@@ -696,7 +697,7 @@ export function useRoomSubscription({
               setActiveActivity((prev) => prev || { type: storedType, state: null });
             }
           }
-          return;
+          return null;
         }
         // Reuse room-client.tsx's verifyAccess fetch (which already selects
         // every column below) instead of re-querying the same rooms row a
@@ -710,7 +711,7 @@ export function useRoomSubscription({
             .maybeSingle();
           if (result.error) {
             console.error("Failed to load room details:", result.error);
-            return;
+            return null;
           }
           data = result.data;
         }
@@ -720,10 +721,35 @@ export function useRoomSubscription({
           setIsLocked(!!data.is_locked);
           setRoomHostId(data.host_id);
           if (typeof data.max_participants === "number") setMaxParticipantsLimit(data.max_participants);
-          if (data.type !== "party" && data.type !== "classroom") {
-            setActiveActivity((prev) => prev || { type: data.type, state: null });
-          }
-          // Fetch activity state from the participant-only table.
+          return { type: data.type as RoomType };
+        }
+        return null;
+      } catch (e) {
+        console.error("Failed to load room details:", e);
+        return null;
+      }
+    };
+
+    // room_activity_state's select policy (migration 0035) requires an
+    // existing room_participants row for the caller — but that row is only
+    // created by trackSelf() below. Reading this before trackSelf() has run
+    // (as this used to, inside loadRoomDetails, called before trackSelf in
+    // runSetup) silently returns nothing under RLS for any FIRST-TIME
+    // joiner of an already-in-progress room: reconnects were never affected
+    // (their row already exists from a prior session), which is exactly why
+    // this stayed invisible until a new e2e test specifically checked a
+    // fresh join's in-progress-state replay and found it silently empty —
+    // confirmed via direct DB inspection that room_activity_state genuinely
+    // had the right payload the whole time. Also intentionally sets
+    // activeActivity here (not in loadRoomDetails) rather than earlier: an
+    // earlier setActiveActivity would mount the activity component (and its
+    // registerEventListener snapshot-replay, which only ever fires once, at
+    // registration) before this fetch resolves, dropping the event log even
+    // if the RLS read itself succeeds.
+    const loadActivityStateAndActivate = async (roomType: RoomType) => {
+      const supabaseClient = getSupabaseBrowserClient();
+      if (supabaseClient) {
+        try {
           const stateResult = await supabaseClient
             .from("room_activity_state")
             .select("activity_state")
@@ -731,13 +757,16 @@ export function useRoomSubscription({
             .maybeSingle();
           if (stateResult.data?.activity_state) {
             const persisted = stateResult.data.activity_state as { type?: string; events?: ActivityEvent[] } | null;
-            if (persisted?.type === data.type && Array.isArray(persisted.events)) {
+            if (persisted?.type === roomType && Array.isArray(persisted.events)) {
               activityEventLogRef.current = persisted.events.slice(-ACTIVITY_EVENT_LOG_CAP);
             }
           }
+        } catch (e) {
+          console.error("Failed to load activity state:", e);
         }
-      } catch (e) {
-        console.error("Failed to load room details:", e);
+      }
+      if (isMounted && roomType !== "party" && roomType !== "classroom") {
+        setActiveActivity((prev) => prev || { type: roomType, state: null });
       }
     };
 
@@ -747,8 +776,11 @@ export function useRoomSubscription({
       // on each other's results, so they run concurrently instead of
       // serially — part of the Session 41 fix for 9 redundant serial round
       // trips on every room join.
-      await loadRoomDetails();
+      const roomInfo = await loadRoomDetails();
       await Promise.all([loadParticipants(), trackSelf()]);
+      if (roomInfo) {
+        await loadActivityStateAndActivate(roomInfo.type);
+      }
     };
 
     runSetup();
@@ -1103,15 +1135,52 @@ export function useRoomSubscription({
           filter: `room_id=eq.${roomCode}`,
         },
         (payload) => {
-          // The raw row (unlike the app-level RoomParticipant type) has a
-          // flat `username` column, not a nested `user` object.
-          const newParticipant = payload.new as RoomParticipant & { username?: string };
+          // The raw row (unlike the app-level RoomParticipant type) has flat
+          // username/avatar_url/xp/rank columns, not a nested `user` object
+          // — this used to push the raw row straight into `participants`
+          // as if it were already shaped correctly, leaving `.user`
+          // undefined for any participant who joined while another client
+          // was already live-subscribed (the common "guest joins after
+          // host" case). Silently broke that participant's name/avatar in
+          // the sidebar (and anything else reading `.user`, like the ban
+          // insert's username snapshot) until a full page reload re-ran
+          // loadParticipants(), which has always nested this correctly.
+          // Found live while manually testing the new unban panel's
+          // username capture. Mirrors loadParticipants()'s exact mapping.
+          const raw = payload.new as {
+            id: string;
+            room_id: string;
+            user_id: string;
+            role: RoomParticipant["role"];
+            is_online: boolean;
+            joined_at: string;
+            username?: string;
+            avatar_url?: string;
+            xp?: number;
+            rank?: string;
+          };
+          const newParticipant: RoomParticipant = {
+            id: raw.id,
+            room_id: raw.room_id,
+            user_id: raw.user_id,
+            role: raw.role,
+            is_online: raw.is_online,
+            joined_at: raw.joined_at,
+            user: {
+              id: raw.user_id,
+              username: raw.username ?? "Guest",
+              avatar_url: raw.avatar_url ?? undefined,
+              xp: raw.xp ?? 0,
+              rank: raw.rank as User["rank"],
+              created_at: raw.joined_at,
+            },
+          };
           setParticipants((prev) => {
             if (prev.some((participant) => participant.id === newParticipant.id)) {
               return prev;
             }
             if (newParticipant.user_id !== currentUser.id) {
-              setRoomAnnouncement(`${newParticipant.username || "A participant"} joined the room.`);
+              setRoomAnnouncement(`${newParticipant.user?.username || "A participant"} joined the room.`);
             }
             const next = [...prev, newParticipant];
             electHostIfNeeded(supabase, next);

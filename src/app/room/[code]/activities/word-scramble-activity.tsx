@@ -161,7 +161,7 @@ export function WordScrambleActivity() {
             <Emoji name="thinking_face" size={48} />
           </p>
           <p className="text-muted-foreground font-medium">
-            {isHost ? "Press Start to reveal a word" : "Waiting for host…"}
+            {isHost ? "Press Start to reveal a word" : "Waiting for host to start…"}
           </p>
         </div>
       )}

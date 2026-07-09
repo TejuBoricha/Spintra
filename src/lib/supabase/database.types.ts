@@ -203,6 +203,7 @@ export interface Database {
           user_id: string
           banned_by: string
           created_at: string
+          username: string | null
         }
         Insert: {
           id?: string
@@ -210,6 +211,7 @@ export interface Database {
           user_id: string
           banned_by: string
           created_at?: string
+          username?: string | null
         }
         Update: {
           id?: string
@@ -217,6 +219,7 @@ export interface Database {
           user_id?: string
           banned_by?: string
           created_at?: string
+          username?: string | null
         }
         Relationships: [
           {

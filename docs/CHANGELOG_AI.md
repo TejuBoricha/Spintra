@@ -1335,3 +1335,35 @@
 
 ---
 
+## [2026-07-09] — Session 47: Unban UI, empty-state copy pass, expanded e2e coverage
+
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** User asked to close the 3 remaining smaller items from the audit's UX×10/Product×10 lists (host-facing unban list, empty-state copy consistency, reconnect/presence-reconciliation e2e coverage) — explicitly scoped away from the 4 larger net-new features and 2 user-action-only items. Planned via 3 parallel Explore agents + a Plan agent (ban schema/UI research, 14-activity copy audit, e2e test structure/gap analysis), reviewed and approved before implementation.
+
+**Files Modified:**
+- `supabase/migrations/0043_room_bans_unban_support.sql` (NEW) — host-scoped select/delete policies on `room_bans`, nullable `username` snapshot column (same pattern as `0040`), and adds `room_bans` to the `supabase_realtime` publication.
+- `src/app/room/[code]/components/unban-panel.tsx` (NEW) — clones `MessageReportsPanel`'s icon+badge/Dialog/realtime-list/nested-confirm pattern.
+- `src/app/room/[code]/components/room-header.tsx` — wires in `UnbanPanel` next to `MessageReportsPanel`.
+- `src/app/room/[code]/components/message-reports-panel.tsx`, `src/app/room/[code]/hooks/use-room-subscription.ts` — both `room_bans` insert sites now capture the banned user's username.
+- `src/lib/room-bans.ts` — added `listBannedUserIdsFromRoom`/`unbanUserFromRoom` for local-only/demo mode.
+- `src/lib/supabase/database.types.ts` — added `room_bans.username`.
+- 14 activity files under `src/app/room/[code]/activities/` — standardized "waiting for host" copy, added host-idle captions to 7 activities that had none, added participant-count guards to `team-maker-activity.tsx` and `rps-activity.tsx`.
+- `tests/multiplayer-loop.spec.ts` — added a reconnect test and a presence-reconciliation (non-crash) test.
+- `src/app/room/[code]/hooks/use-room-subscription.ts` — two additional fixes found via testing the above (see below), independent of the unban/copy/test work itself.
+
+**Purpose:** Close every remaining smaller item from the original audit's UX/Product lists without the scope creep of the 4 larger net-new features, which stay tracked separately.
+
+**3 real, previously-unknown bugs found and fixed along the way** (all via actually running the new code against a local Docker Supabase stack, not just reading it):
+1. **First-time joiners of an in-progress room never saw the in-progress activity state.** `room_activity_state`'s select RLS (migration `0035`) requires an existing `room_participants` row, but `loadRoomDetails()` (which reads it) ran before `trackSelf()` (which creates that row) in `runSetup`'s sequencing — silently returning nothing under RLS for any first-time joiner (reconnects were unaffected since their row already existed from a prior session). Surfaced by the new reconnect test's own pre-reload baseline assertion failing; confirmed via direct DB inspection that `room_activity_state` genuinely had the correct persisted payload the whole time — a pure client-side read-ordering bug, not a data problem. Fixed by restructuring `runSetup` into `loadRoomDetails()` → `Promise.all([loadParticipants(), trackSelf()])` → a new `loadActivityStateAndActivate()` step, so the RLS-gated read (and the `setActiveActivity` that mounts the activity component and its one-shot event-log replay) only runs once the caller is guaranteed to already be a participant.
+2. **`room_bans` was never added to the `supabase_realtime` publication.** Unlike `message_reports` (migration `0018`), nothing ever did this for `room_bans` — so `postgres_changes` could never deliver a single event for it, no matter how correct the RLS policies or REST API were (both independently confirmed correct via a direct authenticated REST call returning the row fine). Left the new unban panel's list silently stale after a kick until a manual reload. Fixed in migration `0043`.
+3. **Realtime-joined participants got a malformed entry in `participants` state.** The `postgres_changes` INSERT handler for `room_participants` pushed the raw DB row straight into state — flat `username`/`avatar_url`/`xp`/`rank` columns, not the nested `user` object every other consumer expects (the handler's own pre-existing comment even flagged this shape mismatch without fixing it). Any participant who joined while another client was already live-subscribed (the ordinary "guest joins after host" case) ended up with `.user === undefined`, breaking their displayed name/avatar in the sidebar — and, as originally surfaced here, the new ban's username snapshot — until a full page reload re-fetched everyone via `loadParticipants()` (which has always nested this correctly). Fixed by constructing the same properly-shaped object inline, matching `loadParticipants()`'s exact mapping.
+
+**Outcome:** All migrations (`0040`–`0043` cumulative) applied fresh via `supabase db reset` against a local Docker stack; full Playwright suite (9/9, including the 2 new tests) run twice for stability, both clean. The unban feature was manually smoke-tested end-to-end via a scripted browser flow (kick → confirm blocked from rejoining → open panel → confirm correct username listed → unban → confirm can rejoin) — this manual pass is what caught bugs #2 and #3 above; neither would have been caught by the automated suite alone, since no existing test exercises the unban panel or asserts on a live-joined participant's displayed name specifically. `npm run verify` clean throughout. Migration `0043` pushed live (`npx supabase db push --linked --yes`) and re-verified with `npm run verify:migration` — all 8 expected objects (1 column, 2 policies, publication membership counted separately via direct psql check) confirmed genuinely live.
+
+**Risks:**
+- The `runSetup` reordering (bug #1's fix) is a real change to a foundational, shared code path every room join goes through — mitigated by the fact that it's a pure reordering (no new logic), each individual piece already existed and was independently tested, and the full 9-test suite (covering join/reconnect/kick/host-election/presence flows) passed twice afterward.
+- The `participants` state shape fix (bug #3) only changes how a *newly-inserted-via-realtime* participant's initial entry is constructed — existing `loadParticipants()`-sourced entries and reconnect/update paths were already correctly shaped and are untouched.
+- Team Maker/RPS participant-count guards are new user-facing behavior (a toast/message where previously there was silent degenerate output) — low risk since both only trigger in a scenario (0 or 1 online participant attempting to start) that previously produced a broken or misleading result anyway.
+
+---
+

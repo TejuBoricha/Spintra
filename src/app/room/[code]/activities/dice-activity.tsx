@@ -86,7 +86,11 @@ export function DiceActivity() {
       )}
 
       {isHost && (
-        <div className="flex gap-3 flex-wrap justify-center w-full">
+        <div className="flex flex-col items-center gap-2 w-full">
+          {diceResults.length === 0 && !diceRolling && (
+            <p className="text-xs text-muted-foreground">Press Roll to see the result</p>
+          )}
+          <div className="flex gap-3 flex-wrap justify-center w-full">
           {[1, 2, 4].map((count) => (
             <Button
               key={count}
@@ -104,6 +108,7 @@ export function DiceActivity() {
               Roll {count}d6
             </Button>
           ))}
+          </div>
         </div>
       )}
       {!isHost && diceResults.length === 0 && !diceRolling && (

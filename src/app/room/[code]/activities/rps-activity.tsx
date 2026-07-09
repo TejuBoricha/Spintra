@@ -65,7 +65,13 @@ export function RpsActivity() {
     () => Object.fromEntries(Object.entries(rpsChoices).filter(([userId]) => onlineUserIds.has(userId))),
     [rpsChoices, onlineUserIds]
   );
-  const allChosen = onlineCount > 0 && Object.keys(decidingChoices).length >= onlineCount;
+  // Requires at least 2 online participants before resolving a round — with
+  // only 1, that single choice alone used to satisfy `>= onlineCount` and
+  // resolveRound() would return "tie" (its <=1-distinct-choice branch),
+  // rendering a false "Everyone picked the same" claim about a round that
+  // never had a second competing choice (e.g. a solo host testing, or a
+  // duo where only one has joined so far).
+  const allChosen = onlineCount >= 2 && Object.keys(decidingChoices).length >= onlineCount;
   const roundResult = useMemo(
     () => (allChosen ? resolveRound(Object.values(decidingChoices).map((r) => r.choice)) : null),
     [allChosen, decidingChoices]
@@ -110,6 +116,12 @@ export function RpsActivity() {
             </p>
           )}
         </motion.div>
+      )}
+
+      {isHost && !rpsChoices[currentUser.id] && !roundResult && (
+        <p className="text-xs text-muted-foreground text-center">
+          Pick Rock, Paper, or Scissors below — as host, you can start a new round anytime
+        </p>
       )}
 
       {!rpsChoices[currentUser.id] ? (
@@ -157,7 +169,9 @@ export function RpsActivity() {
           </div>
           {!roundResult && (
             <p aria-live="polite" className="text-xs text-muted-foreground mt-3">
-              Waiting for everyone to lock in…
+              {onlineCount < 2
+                ? "Need at least one more player online to resolve a round…"
+                : "Waiting for everyone to lock in…"}
             </p>
           )}
         </div>

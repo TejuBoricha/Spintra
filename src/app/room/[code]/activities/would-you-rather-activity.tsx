@@ -198,7 +198,7 @@ export function WouldYouRatherActivity() {
             <Emoji name="thinking_face" size={48} />
           </p>
           <p className="text-muted-foreground font-medium">
-            {isHost ? "Press New Question to start" : "Waiting for host…"}
+            {isHost ? "Press New Question to start" : "Waiting for host to ask a question…"}
           </p>
         </div>
       )}

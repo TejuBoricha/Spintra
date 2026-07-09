@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity, useRoomParticipants } from "../context/room-activity-context";
 import { shuffleArray, disambiguatedUsernames } from "@/lib/utils";
+import { toast } from "sonner";
 
 export function TeamMakerActivity() {
   const { isHost, sendActivityEvent, registerEventListener } = useRoomActivity();
@@ -47,7 +48,17 @@ export function TeamMakerActivity() {
               disabled={tmTeams.length > 0}
               className="h-10 px-5 text-sm font-semibold border-cyan-500/30 hover:bg-cyan-500/10 text-cyan-300 rounded-full transition-all"
               onClick={() => {
-                const names = disambiguatedUsernames(participants.filter((p) => p.is_online));
+                const online = participants.filter((p) => p.is_online);
+                // Without this, 0 online silently produced N teams each
+                // with an empty members array — a broken result the
+                // per-team "No members" fallback below only papered over
+                // instead of preventing. Matches Name Draw's identical
+                // guard for the same class of gap.
+                if (online.length === 0) {
+                  toast.error("Nobody is online to split into teams right now.");
+                  return;
+                }
+                const names = disambiguatedUsernames(online);
                 const shuffled = shuffleArray(names);
                 const teams = Array.from({ length: n }, (_, i) => ({
                   name: `Team ${i + 1}`,

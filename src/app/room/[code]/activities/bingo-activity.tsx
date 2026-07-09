@@ -168,7 +168,11 @@ export function BingoActivity() {
       </div>
 
       {isHost && (
-        <div className="flex gap-4 w-full justify-center">
+        <div className="flex flex-col items-center gap-2 w-full">
+          {bingoCalled.length === 0 && !bingoWinner && (
+            <p className="text-xs text-muted-foreground">Press Call Next Number to start the game</p>
+          )}
+          <div className="flex gap-4 w-full justify-center">
           <Button
             disabled={isCalling || bingoCalled.length >= 75 || !!bingoWinner}
             onClick={() => {
@@ -196,6 +200,7 @@ export function BingoActivity() {
               <RotateCcw className="w-4 h-4 mr-2" /> Reset
             </Button>
           )}
+          </div>
         </div>
       )}
     </motion.div>

@@ -103,19 +103,24 @@ export function CoinFlipActivity() {
       )}
 
       {isHost && (
-        <Button
-          disabled={coinFlipping}
-          onClick={() => {
-            sendActivityEvent({ kind: "coin_flipping" });
-            flipTimerRef.current = setTimeout(() => {
-              const result = Math.random() < 0.5 ? "Heads" : "Tails";
-              sendActivityEvent({ kind: "coin_flip", result });
-            }, 1300);
-          }}
-          className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-white border-0 w-full"
-        >
-          {coinFlipping ? "Flipping…" : "Flip Coin"}
-        </Button>
+        <div className="flex flex-col items-center gap-2 w-full">
+          {!coinResult && !coinFlipping && (
+            <p className="text-xs text-muted-foreground">Press Flip Coin to see Heads or Tails</p>
+          )}
+          <Button
+            disabled={coinFlipping}
+            onClick={() => {
+              sendActivityEvent({ kind: "coin_flipping" });
+              flipTimerRef.current = setTimeout(() => {
+                const result = Math.random() < 0.5 ? "Heads" : "Tails";
+                sendActivityEvent({ kind: "coin_flip", result });
+              }, 1300);
+            }}
+            className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-white border-0 w-full"
+          >
+            {coinFlipping ? "Flipping…" : "Flip Coin"}
+          </Button>
+        </div>
       )}
       {!isHost && !coinResult && !coinFlipping && (
         <EmptyState icon={<Emoji name="coin" size={48} />} description="Waiting for host to flip…" />

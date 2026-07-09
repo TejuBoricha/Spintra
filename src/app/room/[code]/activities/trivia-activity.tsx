@@ -151,7 +151,8 @@ export function TriviaActivity() {
       {isHost && !triviaQuestion && (
         <div className="w-full space-y-4 glass-card p-6 rounded-2xl border border-white/10">
           <h3 className="text-lg font-bold text-yellow-400">Host Settings</h3>
-          
+          <p className="text-xs text-muted-foreground -mt-2">Pick a category and difficulty, then press Start Trivia</p>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground font-semibold">Category</label>

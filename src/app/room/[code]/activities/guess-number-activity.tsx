@@ -123,6 +123,11 @@ export function GuessNumberActivity() {
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2 font-bold">
             Secret Number (Host Only):
           </p>
+          {guessHistory.length === 0 && (
+            <p className="text-xs text-muted-foreground mb-2">
+              Share the range 1–100, then wait for guesses to come in
+            </p>
+          )}
           <div className="flex gap-4 items-center">
             <span className="text-4xl font-black text-cyan-400">{guessSecretNumber}</span>
             <Button

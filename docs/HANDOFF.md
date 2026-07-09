@@ -6,6 +6,27 @@ Portable session-continuity note for any AI assistant (Antigravity, Claude Code,
 
 ## Last Completed Task
 
+**Session 47: Unban UI, empty-state copy pass, expanded e2e coverage — COMPLETE.**
+
+Closed the 3 remaining smaller items from the audit's UX×10/Product×10 lists (host-facing unban list Session 45 deferred, "consistent empty-state copy across 14 activities" never addressed, reconnect/presence-reconciliation e2e gaps Session 45 left open) — explicitly scoped away from the 4 larger net-new features (Scoreboard, XP, Room Settings, Moderation Dashboard) and 2 items requiring the user's own action. Planned via 3 parallel Explore agents + a Plan agent before implementation.
+
+- **Unban UI** — migration `0043` (host-scoped select/delete policies on `room_bans`, `username` snapshot column), new `unban-panel.tsx` (clones `MessageReportsPanel`'s pattern), wired into `room-header.tsx`.
+- **Empty-state copy standardized** across all 14 activities; added a genuine "not enough players" guard only where 0/1 online participants produced a broken result (Team Maker, RPS) — the other 9 activities work correctly solo and were left untouched.
+- **2 new e2e tests**: reconnect (same identity via `page.reload()` in the same browser context) and presence-reconciliation-without-a-crash (3rd participant joins then leaves cleanly). Coverage: 9/9 passing.
+
+**3 real, previously-unknown bugs found and fixed along the way** (via actually running the new code, not just reading it):
+1. First-time joiners of an in-progress room never saw the in-progress activity state — `room_activity_state`'s RLS requires an existing participant row, but the read ran before that row was created. Fixed by reordering `runSetup`.
+2. `room_bans` was never added to the `supabase_realtime` publication (unlike `message_reports`) — the new unban panel's list could never live-update. Fixed in migration `0043`.
+3. Realtime-joined participants got a malformed `participants` entry (missing the nested `user` object) — broke their displayed name/avatar until a page reload. Fixed by matching `loadParticipants()`'s shape in the `postgres_changes` INSERT handler.
+
+**Verification:** all migrations applied fresh via local Docker Supabase, full Playwright suite (9/9) run twice for stability. Unban feature manually smoke-tested end-to-end via a scripted browser flow — this is what caught bugs #2 and #3, neither of which any automated test covers. `npm run verify` clean; migration `0043` pushed live and re-verified. Full detail: `docs/TASKS.md`'s Session 47 section, `docs/CHANGELOG_AI.md`'s Session 47 entry.
+
+**Next recommended task:** the 3 net-new Medium-priority features (Visual Scoreboard, XP/Leveling System, Room Settings Panel) or the Moderation Dashboard (Product×10 item, also net-new) — see below.
+
+---
+
+## Prior session (Session 46 summary)
+
 **Session 46: Post-Session-45 CI fixes + all 5 remaining Session 45 findings — COMPLETE.**
 
 Started by checking CI status on Session 45's push and finding `validate` failing — investigation (not assumption) found two unrelated, pre-existing bugs, both fixed and pushed as their own commits before the fix-everything work below:

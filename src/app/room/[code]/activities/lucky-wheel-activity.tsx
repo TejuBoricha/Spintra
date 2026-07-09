@@ -380,6 +380,9 @@ export function LuckyWheelActivity() {
 
       {isHost && (
         <div className="w-full space-y-3">
+          {!wheelSpinning && !wheelWinner && (
+            <p className="text-xs text-muted-foreground">Press Spin the Wheel to pick a winner</p>
+          )}
           <div className="flex flex-wrap gap-2">
             {wheelEntries.map((e, i) => {
               const isEditing = editingIndex === i;

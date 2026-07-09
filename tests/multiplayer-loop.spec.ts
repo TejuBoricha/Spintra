@@ -339,3 +339,164 @@ test('guest is promoted to host after the original host disconnects', async ({ p
     await browser.close();
   }
 });
+
+// Reconnect (the same identity rejoining the same room, e.g. a page
+// refresh) had zero e2e coverage — exercises trackSelf's existing-
+// participant branch (an UPDATE, not an INSERT, so it must not double-count
+// against room capacity) and the activity-state replay path that recovers
+// in-progress game state after a full remount.
+test('same participant reconnecting sees no duplicate row and recovers in-progress state', async ({ page, baseURL }) => {
+  test.setTimeout(90_000);
+  page.on('pageerror', (err) => console.log('[browser:pageerror]', err.message));
+
+  await page.goto('/create?type=trivia');
+  await page.waitForSelector('[data-testid="create-room-button"]', { timeout: 30000 });
+  await page.click('[data-testid="create-room-button"]');
+  await page.waitForURL(/\/room\/[A-Z0-9]+/);
+  const roomCode = page.url().split('/room/')[1];
+
+  const startTriviaButton = page.getByRole('button', { name: /start trivia/i });
+  await startTriviaButton.waitFor({ timeout: 15000 }).catch(() => {});
+  if (!(await startTriviaButton.isVisible().catch(() => false))) {
+    test.skip(true, 'Host UI did not appear as expected — see earlier smoke test for the base host-detection check');
+  }
+
+  await Promise.race([
+    page.getByText(/this device only/i).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+    page.getByText('Live', { exact: true }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+  ]);
+  const isLocalOnlyMode = await page.getByText(/this device only/i).isVisible().catch(() => false);
+  if (isLocalOnlyMode) {
+    test.skip(true, 'App is running without Supabase configured (demo-mode BroadcastChannel fallback) — a second browser context can never see this room');
+  }
+
+  const browser = await chromium.launch();
+  const guestContext = await browser.newContext();
+  const guestPage = await guestContext.newPage();
+
+  try {
+    await startTriviaButton.click();
+    await expect(page.getByText(/^Question 1$/)).toBeVisible({ timeout: 10000 });
+    // The activity-state persist debounces 600ms (use-room-subscription.ts)
+    // before the question is actually written to room_activity_state — the
+    // guest below only ever sees it via that persisted-row replay (they
+    // weren't subscribed yet to catch the original broadcast), so joining
+    // before the debounce flushes would race a write that hasn't happened.
+    await page.waitForTimeout(1000);
+
+    await guestPage.goto(`${baseURL}/room/${roomCode}`);
+    await expect(guestPage.getByText('Live', { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/People \(2\)/)).toBeVisible({ timeout: 30000 });
+    // Establish the baseline before reload: activity-state replay already
+    // works on a fresh join, so a failure to see this after reload below is
+    // specifically a reconnect-path issue, not a general replay issue.
+    await expect(guestPage.getByText(/^Question 1$/)).toBeVisible({ timeout: 10000 });
+
+    // Reconnect as the SAME identity — reusing this context's storage
+    // (anon-auth session), not minting a new browser context, which would
+    // create a fresh identity and defeat the point of this test entirely.
+    await guestPage.reload();
+
+    // Guest reaches Live again — not stuck on Connecting…, not shown a
+    // removed/locked/full screen.
+    await expect(guestPage.getByText('Live', { exact: true })).toBeVisible({ timeout: 15000 });
+
+    // Host still shows exactly 2, not 3 — proves the reconnect resolved via
+    // an UPDATE of the existing room_participants row (trackSelf's
+    // existingParticipant branch), not a duplicate INSERT.
+    await expect(page.getByText(/People \(2\)/)).toBeVisible({ timeout: 15000 });
+
+    // In-progress activity state survived the full remount via the
+    // persisted event-log replay path, not just the initial join.
+    await expect(guestPage.getByText(/^Question 1$/)).toBeVisible({ timeout: 10000 });
+
+    // Functional confirmation the reconnected session is fully live, not
+    // just visually settled.
+    await guestPage.locator('[data-testid="trivia-option"]').first().click();
+    await expect(page.getByText(/answered correctly/i)).toBeVisible({ timeout: 10000 });
+  } finally {
+    await guestContext.close();
+    await browser.close();
+  }
+});
+
+// Presence reconciliation's normal (non-crash) path had zero e2e coverage —
+// only the crash-detection branch is exercised by the host-election test
+// above. A third participant joining after the first two have already
+// settled is the most direct way to hit the handler's crashed.length === 0
+// branch (nobody previously known-online is missing from the new sync),
+// and that same participant's later clean departure exercises the
+// crashed.length > 0 branch for a NON-host — distinct from the host-crash
+// scenario, since nobody should ever be promoted when the host never left.
+test('presence reconciliation settles cleanly as a third participant joins and leaves', async ({ page, baseURL }) => {
+  test.setTimeout(90_000);
+  page.on('pageerror', (err) => console.log('[browser:pageerror]', err.message));
+
+  await page.goto('/create?type=trivia');
+  await page.waitForSelector('[data-testid="create-room-button"]', { timeout: 30000 });
+  await page.click('[data-testid="create-room-button"]');
+  await page.waitForURL(/\/room\/[A-Z0-9]+/);
+  const roomCode = page.url().split('/room/')[1];
+
+  await Promise.race([
+    page.getByText(/this device only/i).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+    page.getByText('Live', { exact: true }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+  ]);
+  const isLocalOnlyMode = await page.getByText(/this device only/i).isVisible().catch(() => false);
+  if (isLocalOnlyMode) {
+    test.skip(true, 'App is running without Supabase configured (demo-mode BroadcastChannel fallback) — a second browser context can never see this room');
+  }
+
+  const browser = await chromium.launch();
+  const guestContext1 = await browser.newContext();
+  const guestPage1 = await guestContext1.newPage();
+  const guestContext2 = await browser.newContext();
+  const guestPage2 = await guestContext2.newPage();
+
+  try {
+    await guestPage1.goto(`${baseURL}/room/${roomCode}`);
+    await expect(guestPage1.getByText('Live', { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/People \(2\)/)).toBeVisible({ timeout: 30000 });
+
+    // This join's presence sync only ADDS a participant nobody previously
+    // saw as missing — necessarily exercises the reconciliation handler's
+    // crashed.length === 0 branch on both the host's and guestPage1's
+    // channels (no is_online write should fire for this sync).
+    await guestPage2.goto(`${baseURL}/room/${roomCode}`);
+    await expect(guestPage2.getByText('Live', { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/People \(3\)/)).toBeVisible({ timeout: 30000 });
+    await expect(guestPage1.getByText(/People \(3\)/)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/promoted to host/i)).not.toBeVisible();
+    await expect(guestPage1.getByText(/promoted to host/i)).not.toBeVisible();
+
+    // People (N) counts every participant ROW ever created for the room,
+    // not just currently-online ones (a disconnected row is marked
+    // is_online: false, never deleted — see migration 0026's header) — it
+    // does not decrease on a clean departure, only a kick/removal. Open the
+    // People list and read the per-row "• Online"/"• Offline" status text
+    // instead, which is what actually reflects presence reconciliation.
+    await page.getByRole('button', { name: /people \(3\)/i }).click();
+    await expect(page.getByText(/• Online/)).toHaveCount(2, { timeout: 15000 });
+
+    // Non-host, clean departure — no page.close() crash simulation, just a
+    // context closing normally.
+    await guestContext2.close();
+
+    // Proves the crashed.length > 0 reconciliation write correctly fires
+    // for a non-host's stale row: their row is still listed (People (3)
+    // never changes) but now shown offline, while the host and guest1
+    // remain online.
+    await expect(page.getByText(/• Offline/)).toHaveCount(1, { timeout: 30000 });
+    await expect(page.getByText(/• Online/)).toHaveCount(1);
+    await expect(page.getByText(/People \(3\)/)).toBeVisible();
+
+    // The key assertion distinguishing this from the host-crash test above:
+    // the host never left, so no promotion should ever be considered,
+    // regardless of how another participant's presence churns.
+    await expect(page.getByText(/promoted to host/i)).not.toBeVisible();
+    await expect(guestPage1.getByText(/promoted to host/i)).not.toBeVisible();
+  } finally {
+    await guestContext1.close();
+    await browser.close();
+  }
+});

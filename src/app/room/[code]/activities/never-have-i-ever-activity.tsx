@@ -182,7 +182,7 @@ export function NeverHaveIEverActivity() {
             <Emoji name="see_no_evil_monkey" size={48} />
           </p>
           <p className="text-muted-foreground font-medium">
-            {isHost ? "Press Next Statement to start" : "Waiting for host…"}
+            {isHost ? "Press Next Statement to start" : "Waiting for host to reveal the next statement…"}
           </p>
         </div>
       )}
