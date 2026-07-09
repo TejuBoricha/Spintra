@@ -500,3 +500,65 @@ test('presence reconciliation settles cleanly as a third participant joins and l
     await browser.close();
   }
 });
+
+// Room Settings Panel (ADR-007) had zero e2e coverage on introduction. A host
+// editing name/capacity after creation writes discrete `rooms` columns that
+// the existing rooms-UPDATE realtime handler is supposed to fan out to every
+// client — this asserts that propagation end to end (the whole point of the
+// feature), and that capacity is bounded to the DB-enforced ceiling (migration
+// 0049, CHECK 2..50).
+test('host edits room name and capacity, and a guest sees both changes live', async ({ page, baseURL }) => {
+  test.setTimeout(90_000);
+  page.on('pageerror', (err) => console.log('[browser:pageerror]', err.message));
+
+  await page.goto('/create?type=trivia');
+  await page.waitForSelector('[data-testid="create-room-button"]', { timeout: 30000 });
+  await page.click('[data-testid="create-room-button"]');
+  await page.waitForURL(/\/room\/[A-Z0-9]+/);
+  const roomCode = page.url().split('/room/')[1];
+
+  await Promise.race([
+    page.getByText(/this device only/i).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+    page.getByText('Live', { exact: true }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+  ]);
+  const isLocalOnlyMode = await page.getByText(/this device only/i).isVisible().catch(() => false);
+  if (isLocalOnlyMode) {
+    test.skip(true, 'App is running without Supabase configured (demo-mode BroadcastChannel fallback) — a second browser context can never see this room');
+  }
+
+  const browser = await chromium.launch();
+  const guestContext = await browser.newContext();
+  const guestPage = await guestContext.newPage();
+
+  try {
+    await guestPage.goto(`${baseURL}/room/${roomCode}`);
+    await expect(guestPage.getByText('Live', { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/People \(2\)/)).toBeVisible({ timeout: 30000 });
+
+    // Open the host-only settings panel and edit two fields in one save.
+    await page.getByRole('button', { name: /room settings/i }).click();
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
+
+    await page.getByLabel('Room name').fill('Renamed By Host');
+
+    // Raise capacity to the ceiling via the slider's End key (Radix maps End
+    // to max) — deterministic, unlike a pixel drag. The DB CHECK from 0049
+    // caps this at 50, so this also confirms the ceiling round-trips.
+    const slider = page.getByRole('slider');
+    await slider.focus();
+    await slider.press('End');
+    await expect(page.getByText('50 people')).toBeVisible({ timeout: 5000 });
+
+    await page.getByRole('button', { name: /save changes/i }).click();
+    await expect(page.getByText('Room settings updated.')).toBeVisible({ timeout: 10000 });
+
+    // Both changes propagate to the host's own header and — the real point —
+    // to the guest, purely via the rooms-UPDATE realtime handler.
+    await expect(page.getByRole('heading', { name: 'Renamed By Host' })).toBeVisible({ timeout: 10000 });
+    await expect(guestPage.getByRole('heading', { name: 'Renamed By Host' })).toBeVisible({ timeout: 15000 });
+    await expect(guestPage.getByText(/\/\s*50\s*online/)).toBeVisible({ timeout: 15000 });
+  } finally {
+    await guestContext.close();
+    await browser.close();
+  }
+});

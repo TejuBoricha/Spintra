@@ -1435,3 +1435,32 @@
 - Fingerprint-based ban matching remains fundamentally a deterrent, not a hard guarantee (a motivated user can still change device signals) — same caveat already documented for the underlying anonymous-session-rotation gap this migration targets.
 
 
+---
+
+## [2026-07-09] — Session 49: Room Settings Panel (feature — analysis-first)
+
+**AI:** Claude Code (Opus 4.8)
+**Task:** First net-new backlog feature built through the deliberate Business-Analysis-first process: deep BA on all four backlog items, then decision-by-decision analysis for Room Settings, decisions recorded as ADR-007, then implementation.
+
+**Decisions (ADR-007):**
+- Editable field set = **name + capacity + visibility + lock** (lock mirrored in the panel while keeping the fast header toggle). Game-type change deliberately **excluded** (it wipes activity state / the event log — its own scoped feature).
+- Capacity ceiling kept at **50** and made **server-authoritative**: `2 ≤ max_participants ≤ 50` enforced by a DB CHECK, so the creation slider, the panel, and any raw API call share one source of truth. Previously the ceiling was browser-only (DB enforced just `> 0`, migration 0016).
+
+**Files Modified:**
+- `supabase/migrations/0049_room_max_participants_bounds.sql` (NEW) — clamps any out-of-range rows into `[2,50]`, then replaces the `> 0` check (0016) with the bounded `2..50` CHECK.
+- `src/app/room/[code]/components/room-settings-panel.tsx` (NEW) — host-only dialog (name / capacity slider / public switch / lock switch). Commits name+capacity+visibility together via an explicit Save (discrete `rooms` columns → existing rooms-UPDATE realtime propagation); lock reuses the parent's `toggleLock`. Capacity floor = max(2, online count). Graceful demo-mode degradation (name/capacity/visibility disabled, lock still works). Form initialized in the open handler (not an effect) to satisfy the React Compiler's set-state-in-effect rule.
+- `src/app/room/[code]/components/room-header.tsx` — imports + renders `<RoomSettingsPanel>` in the existing host-only block; header lock toggle retained.
+- `tests/multiplayer-loop.spec.ts` — new e2e: host edits name + raises capacity to the ceiling in one save; a guest sees both propagate live via realtime.
+- `docs/DECISIONS.md` — ADR-007 (incl. a correction, below).
+- `docs/ARCHITECTURE.md`, `docs/TASKS.md`, `docs/CHANGELOG_AI.md` — migration table → 0049, task tracking.
+
+**Correction recorded (accountability):** the BA report / an earlier ADR-007 draft claimed a live dangling `settings`-column reference in `restrict_host_promotion_update()` (migration 0014). On verification before writing code, migration **0027** had already recreated that function without the reference — no cleanup was needed. Caught by the "verify before implement" step; the record was corrected in ADR-007, the BA artifact, and confirmed against the applied DB (`pg_get_functiondef` shows no `settings`).
+
+**Purpose:** Rooms were configured once at creation and frozen thereafter (only lock was mutable). Hosts can now fix a name, adjust capacity, and change visibility after creation — and the capacity ceiling is finally enforced where it belongs.
+
+**Outcome:** Migration 0049 applied fresh via `supabase db reset` on local Docker Supabase; CHECK verified directly (accepts 2/50, rejects 1/51; old `> 0` constraint cleanly replaced). `npm run typecheck` + `npm run lint` clean. Full Playwright suite **11/11 passing** against the local stack (10 prior + the new settings test), confirming no header regression. `npm run verify` clean.
+
+**Risks:**
+- Flipping a room public→private may leave it lingering in other users' Explore lists until refresh — Explore's realtime subscription is filtered on `is_public=eq.true` (`explore/page.tsx`) and a row *leaving* a filtered subscription isn't reliably delivered. Documented minor limitation (ADR-007), not a blocker.
+- Rooms are hard-capped at 50 until a future migration (intentional; a deliberate load-tested decision, reduced to a one-line constraint bump by this design).
+- Live migration push (`supabase db push --linked`) + `verify:migration 0049` and the git commit/push are pending explicit user approval — not yet applied to the live database or committed at time of writing.

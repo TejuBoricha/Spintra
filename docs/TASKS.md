@@ -4,6 +4,21 @@ This document tracks all active, remaining, and completed tasks for the Spintra 
 
 ---
 
+## Session 49: Room Settings Panel — first backlog feature, analysis-first (COMPLETE, live push pending)
+
+First net-new feature from the Session 48 backlog, built through a deliberate Business-Analysis-first process: a codebase-grounded BA on all four backlog items (Visual Scoreboard, XP/Leveling, Room Settings, Moderation Dashboard — published artifact), then decision-by-decision analysis for Room Settings, decisions recorded as **ADR-007**, then implementation. Scope strictly matches the decisions — nothing more.
+
+- `[x]` **Decision A (editable field set)** — panel exposes **name + capacity + visibility + lock**; lock mirrored in the panel while keeping the fast header toggle. Game-type change **excluded** (wipes activity state / event log; deferred as its own feature). Recorded in ADR-007.
+- `[x]` **Decision B (capacity ceiling)** — kept at 50, made **server-authoritative** via migration `0049` (`2 ≤ max_participants ≤ 50` CHECK, replacing 0016's `> 0`), clamping any out-of-range rows first. The creation slider, the panel, and any raw API call now share one DB-enforced bound.
+- `[x]` **Panel + wiring** — new `room-settings-panel.tsx` (name / capacity slider / public switch / lock switch, explicit Save for name+capacity+visibility via discrete `rooms` columns; lock reuses `toggleLock`; capacity floor = max(2, online count); graceful demo-mode degradation), rendered in `room-header.tsx`'s host-only block.
+- `[x]` **e2e** — new `multiplayer-loop.spec.ts` test: host edits name + raises capacity to the ceiling in one save, a guest sees both propagate live via realtime. Full suite 11/11 passing on local Docker Supabase.
+- `[x]` **Correction (accountability)** — an earlier BA/ADR draft claimed a live dangling `settings` reference in `restrict_host_promotion_update()` (0014); verification before coding showed migration **0027** already fixed it. Corrected in ADR-007 + the BA artifact; confirmed against the applied DB. No cleanup was needed.
+- `[ ]` **Live migration push** (`supabase db push --linked` + `verify:migration 0049`) and git commit/push — pending explicit user approval.
+
+**Verification:** migration 0049 applied fresh via `supabase db reset` on local Docker; CHECK verified directly (accepts 2/50, rejects 1/51); `npm run verify` clean; full Playwright suite 11/11.
+
+---
+
 ## Session 48: Comprehensive Platform Readiness Audit (Audit only — COMPLETE)
 
 - `[x]` Run a complete 15-phase audit of the entire Spintra repository to evaluate launch readiness, architecture, performance, security, and UX.

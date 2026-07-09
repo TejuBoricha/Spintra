@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { MessageReportsPanel } from "./message-reports-panel";
 import { UnbanPanel } from "./unban-panel";
+import { RoomSettingsPanel } from "./room-settings-panel";
 import type { RoomType } from "@/lib/types";
 
 interface RoomHeaderProps {
@@ -203,6 +204,14 @@ export const RoomHeader = memo(function RoomHeader({
             <>
               <MessageReportsPanel roomCode={roomCode} currentUserId={currentUserId} />
               <UnbanPanel roomCode={roomCode} />
+              <RoomSettingsPanel
+                roomCode={roomCode}
+                roomName={roomName}
+                isLocked={isLocked}
+                maxParticipantsLimit={maxParticipantsLimit}
+                onlineCount={onlineCount}
+                toggleLock={toggleLock}
+              />
               <Tooltip>
                 <TooltipTrigger
                   render={
