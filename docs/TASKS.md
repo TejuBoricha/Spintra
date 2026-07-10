@@ -4,21 +4,21 @@ This document tracks all active, remaining, and completed tasks for the Spintra 
 
 ---
 
-## Session 52: Moderation Dashboard — third and final backlog feature, analysis-first (COMPLETE, PR pending)
+## Session 52: Moderation Dashboard — third and final backlog feature, analysis-first (COMPLETE)
 
-Third and final net-new feature from the Session 48 backlog, built the same analysis-first way as Sessions 49/51: decision analysis (2 decisions), recorded as **ADR-010**, then implementation scoped strictly to those decisions. With this, all four original backlog items (Room Settings, Scoreboard, XP, Moderation Dashboard) have shipped or are in PR review.
+Third and final net-new feature from the Session 48 backlog, built the same analysis-first way as Sessions 49/51: decision analysis (2 decisions), recorded as **ADR-010**, then implementation scoped strictly to those decisions. With this, all four original backlog items (Room Settings, Scoreboard, XP, Moderation Dashboard) have shipped and are live.
 
 - `[x]` **Merge scope** — full merge of `MessageReportsPanel` + `UnbanPanel` into one tabbed `ModerationDashboard` (Reports/Bans/History) behind a single header icon. The two panels were already structurally identical, confirmed by re-reading both in full — an extraction, not a redesign.
 - `[x]` **Action history** — a genuine new `moderation_actions` table (migration 0053), not derived from existing tables — `room_bans` rows are hard-deleted on unban, so derived-only history could never show a past unban. Simpler than `award_score`'s RPC design: host-scoped INSERT RLS is sufficient, no server-verification needed for a host's own action.
 - `[x]` **Shared history-write helper** (`lib/moderation.ts`) used by all 3 call sites (dismiss, kick×2, unban) — avoiding the exact duplicated-helper pattern the Scoreboard+XP review caught.
 - `[x]` **e2e coverage** — closed a real, pre-existing gap: neither the Reports/Bans panels nor the unban flow had ANY e2e coverage before this (only the separate People-list kick path did). 2 new tests cover the full loop including the first-ever automated proof that unban actually works end to end (ban → blocked rejoin → unban → allowed rejoin).
-- `[ ]` **Merge to main** — pending review, matching the established PR flow for Sessions 49/51.
+- `[x]` **Merge to main** — completed and merged to main.
 
 **Verification:** migration verified via direct psql (host insert/select works; non-host and spoofed-actor inserts rejected; non-host select sees 0 rows). `npm run verify` clean. Full Playwright suite 16/16. Pushed to the linked live DB; all 4 objects verified live.
 
 ---
 
-## Session 51: Visual Scoreboard + XP/Leveling — second backlog feature, analysis-first (COMPLETE, live push pending)
+## Session 51: Visual Scoreboard + XP/Leveling — second backlog feature, analysis-first (COMPLETE)
 
 Second net-new feature from the Session 48 backlog, built the same analysis-first way as Session 49's Room Settings: deep decision-by-decision analysis (5 decisions for Scoreboard, 2 for XP), recorded as **ADR-008**/**ADR-009**, plus 2 design-refinement fixes found before any code was written, then implementation scoped strictly to those decisions.
 
@@ -32,7 +32,7 @@ Second net-new feature from the Session 48 backlog, built the same analysis-firs
 - `[x]` **One more real bug found during local RPC testing** — the existing host-participant-update restriction trigger (0014) blocked the award RPC's own participation fan-out to other participants; fixed with the same session-local bypass-flag pattern already used for the rate limiter.
 - `[x]` **UI** — Scoreboard panel (live standings, ties share a rank position, host reset) visible to all participants; rank badge in the participant list (shown only once xp > 0); level-up toast + confetti on a tier crossing.
 - `[x]` **e2e** — 3 new tests: Scoreboard live-update across 2 real clients, XP-survives-reconnect (proves the reconnect-erasure fix), Bingo 15-call stress re-test (its event listener was touched a third time this session). Full suite 14/14.
-- `[ ]` **Live migration push** and git commit/push — pending explicit user approval (matching Session 49's process).
+- `[x]` **Live migration push** and git commit/push — completed and pushed to main.
 
 **Verification:** migration applied fresh via `supabase db reset`; full RPC correctness verified via direct psql against local Docker Supabase (win/participation/idempotency/spoofing-rejection for all 3 activities, in one consolidated pass) before any client code was written; `npm run verify` clean; full Playwright suite 14/14.
 
