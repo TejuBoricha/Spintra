@@ -56,8 +56,8 @@ export default function GlobalError({
                 fontWeight: 700,
                 border: "none",
                 cursor: "pointer",
-                background: "linear-gradient(to right, #a855f7, #6366f1)",
-                color: "#fff",
+                background: "var(--gradient-brand, linear-gradient(to right, #e2f72a, #eefb6e))",
+                color: "var(--text-on-lime, #0c0d05)",
               }}
             >
               Try again

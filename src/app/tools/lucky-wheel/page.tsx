@@ -45,15 +45,15 @@ interface WheelEntry {
 
 // ── Constants ──────────────────────────────────────────────
 const DEFAULT_ENTRIES: WheelEntry[] = [
-  { id: "1", label: "Prize 1", color: "#8b5cf6", weight: 1 },
-  { id: "2", label: "Prize 2", color: "#06b6d4", weight: 1 },
+  { id: "1", label: "Prize 1", color: "#6d3ee0", weight: 1 },
+  { id: "2", label: "Prize 2", color: "#3ddaee", weight: 1 },
   { id: "3", label: "Prize 3", color: "#f59e0b", weight: 1 },
   { id: "4", label: "Free Spin", color: "#10b981", weight: 1 },
   { id: "5", label: "Try Again", color: "#ef4444", weight: 1 },
 ];
 
 const PALETTE = [
-  "#8b5cf6", "#06b6d4", "#f59e0b", "#10b981", "#ef4444",
+  "#6d3ee0", "#3ddaee", "#f59e0b", "#10b981", "#ef4444",
   "#ec4899", "#6366f1", "#14b8a6", "#f97316", "#84cc16",
   "#3b82f6", "#a855f7", "#22c55e", "#e11d48", "#eab308",
   "#0ea5e9", "#d946ef", "#34d399", "#fb923c", "#a3e635",
@@ -65,8 +65,8 @@ const TEMPLATES: { label: string; icon: EmojiName; entries: WheelEntry[] }[] = [
     icon: "wrapped_gift",
     entries: [
       { id: "g1", label: "Grand Prize", color: "#f59e0b", weight: 1 },
-      { id: "g2", label: "Gift Card $50", color: "#8b5cf6", weight: 2 },
-      { id: "g3", label: "T-Shirt", color: "#06b6d4", weight: 3 },
+      { id: "g2", label: "Gift Card $50", color: "#6d3ee0", weight: 2 },
+      { id: "g3", label: "T-Shirt", color: "#3ddaee", weight: 3 },
       { id: "g4", label: "Sticker Pack", color: "#10b981", weight: 4 },
       { id: "g5", label: "Try Again", color: "#ef4444", weight: 5 },
       { id: "g6", label: "Free Spin", color: "#ec4899", weight: 2 },
@@ -77,7 +77,7 @@ const TEMPLATES: { label: string; icon: EmojiName; entries: WheelEntry[] }[] = [
     icon: "pizza",
     entries: [
       { id: "d1", label: "Pizza", color: "#ef4444", weight: 2 },
-      { id: "d2", label: "Sushi", color: "#06b6d4", weight: 2 },
+      { id: "d2", label: "Sushi", color: "#3ddaee", weight: 2 },
       { id: "d3", label: "Burgers", color: "#f59e0b", weight: 2 },
       { id: "d4", label: "Tacos", color: "#10b981", weight: 2 },
       { id: "d5", label: "Indian", color: "#f97316", weight: 1 },
@@ -91,7 +91,7 @@ const TEMPLATES: { label: string; icon: EmojiName; entries: WheelEntry[] }[] = [
       { id: "m1", label: "Action", color: "#ef4444", weight: 1 },
       { id: "m2", label: "Comedy", color: "#f59e0b", weight: 1 },
       { id: "m3", label: "Horror", color: "#6366f1", weight: 1 },
-      { id: "m4", label: "Sci-Fi", color: "#06b6d4", weight: 1 },
+      { id: "m4", label: "Sci-Fi", color: "#3ddaee", weight: 1 },
       { id: "m5", label: "Rom-Com", color: "#ec4899", weight: 1 },
       { id: "m6", label: "Documentary", color: "#10b981", weight: 1 },
     ],
@@ -100,8 +100,8 @@ const TEMPLATES: { label: string; icon: EmojiName; entries: WheelEntry[] }[] = [
     label: "Chores",
     icon: "broom",
     entries: [
-      { id: "c1", label: "Dishes", color: "#06b6d4", weight: 1 },
-      { id: "c2", label: "Vacuum", color: "#8b5cf6", weight: 1 },
+      { id: "c1", label: "Dishes", color: "#3ddaee", weight: 1 },
+      { id: "c2", label: "Vacuum", color: "#6d3ee0", weight: 1 },
       { id: "c3", label: "Trash", color: "#f59e0b", weight: 1 },
       { id: "c4", label: "Laundry", color: "#ec4899", weight: 1 },
       { id: "c5", label: "Lucky! Skip", color: "#10b981", weight: 1 },
@@ -317,11 +317,11 @@ export default function LuckyWheelPage() {
         ctx.save();
         if (diff === 0) {
           ctx.fillStyle = "#ffffff";
-          ctx.shadowColor = "#06b6d4";
+          ctx.shadowColor = "#3ddaee";
           ctx.shadowBlur = 12;
         } else if (diff === 1 || diff === 2) {
-          ctx.fillStyle = "#06b6d4";
-          ctx.shadowColor = "#06b6d4";
+          ctx.fillStyle = "#3ddaee";
+          ctx.shadowColor = "#3ddaee";
           ctx.shadowBlur = 6;
         } else {
           ctx.fillStyle = "#2a2a3c";
@@ -444,7 +444,7 @@ export default function LuckyWheelPage() {
       ctx.beginPath();
       ctx.arc(0, 1, 5, 0, Math.PI * 2);
       ctx.fillStyle = "#22d3ee";
-      ctx.shadowColor = "#06b6d4";
+      ctx.shadowColor = "#3ddaee";
       ctx.shadowBlur = 8;
       ctx.fill();
 

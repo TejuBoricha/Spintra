@@ -41,8 +41,8 @@ function adjustBrightness(hex: string, percent: number): string {
 }
 
 const PALETTE = [
-  "#8b5cf6", "#06b6d4", "#f59e0b", "#10b981", "#ef4444",
-  "#ec4899", "#6366f1", "#14b8a6", "#f97316", "#84cc16",
+  "#e2f72a", "#3ddaee", "#e43c20", "#6d3ee0", "#f728a0",
+  "#eefb6e", "#9d63e8", "#f54452", "#5ef0ff", "#a8bb18",
 ];
 
 export function LuckyWheelActivity() {
@@ -154,7 +154,7 @@ export function LuckyWheelActivity() {
     // Outer Rim Border
     ctx.beginPath();
     ctx.arc(cx, cy, radius + 4, 0, Math.PI * 2);
-    ctx.strokeStyle = "#12121a";
+    ctx.strokeStyle = "#010105";
     ctx.lineWidth = 8;
     ctx.stroke();
 
@@ -181,14 +181,14 @@ export function LuckyWheelActivity() {
       ctx.save();
       if (diff === 0) {
         ctx.fillStyle = "#ffffff";
-        ctx.shadowColor = "#06b6d4";
+        ctx.shadowColor = "#e2f72a";
         ctx.shadowBlur = 8;
       } else if (diff === 1 || diff === 2) {
-        ctx.fillStyle = "#06b6d4";
-        ctx.shadowColor = "#06b6d4";
+        ctx.fillStyle = "#e2f72a";
+        ctx.shadowColor = "#e2f72a";
         ctx.shadowBlur = 4;
       } else {
-        ctx.fillStyle = "#2a2a3c";
+        ctx.fillStyle = "#24252b";
       }
       ctx.fill();
       ctx.restore();
@@ -264,8 +264,15 @@ export function LuckyWheelActivity() {
             const winnerIndex = entries.indexOf(event.winner);
             const sliceAngle = (2 * Math.PI) / entries.length;
 
-            // Deterministic calculation to stop exactly on the winning segment at 12 o'clock position
-            const offsetAngle = 1.5 * Math.PI - (winnerIndex + 0.5) * sliceAngle;
+            // Deterministic calculation to stop exactly on the winning segment at
+            // the 12 o'clock pointer. drawWheel lays segment i out (unrotated) at
+            // [i*sliceAngle - PI/2, (i+1)*sliceAngle - PI/2], i.e. its midpoint
+            // sits at -PI/2 + (i+0.5)*sliceAngle — so the total rotation needed to
+            // bring that midpoint back to the pointer (fixed at -PI/2) is just
+            // -(i+0.5)*sliceAngle. This previously had a spurious extra 1.5*PI
+            // (quarter-turn) term that made the wheel visually stop one segment
+            // away from whichever name was actually announced as the winner.
+            const offsetAngle = -(winnerIndex + 0.5) * sliceAngle;
             targetRotationRef.current = 6 * Math.PI + offsetAngle;
             spinStartTimeRef.current = Date.now();
 
