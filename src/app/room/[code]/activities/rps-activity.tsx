@@ -166,7 +166,7 @@ export function RpsActivity() {
             const config = {
               Rock: { border: "hover:border-rose-500/50 hover:bg-rose-500/10", text: "text-rose-400" },
               Paper: { border: "hover:border-cyan-500/50 hover:bg-cyan-500/10", text: "text-cyan-400" },
-              Scissors: { border: "hover:border-purple-500/50 hover:bg-purple-500/10", text: "text-purple-400" },
+              Scissors: { border: "hover:border-(--violet-500)/50 hover:bg-(--violet-500)/10", text: "text-(--violet-400)" },
             }[choice];
 
             return (
@@ -220,7 +220,7 @@ export function RpsActivity() {
             className="flex items-center gap-3 px-4 py-3 bg-muted/30 border border-border rounded-xl shadow-sm"
           >
             <span className="font-semibold text-sm text-muted-foreground">{r.username}</span>
-            <span className="text-[10px] text-purple-400/80 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/10">
+            <span className="text-[10px] text-(--brand-primary-strong)/80 bg-primary/10 px-2 py-0.5 rounded-full border border-primary/10">
               Locked In
             </span>
             <span className="ml-auto flex items-center gap-2">

@@ -16,8 +16,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Emoji, renderTextWithEmoji, EMOJI_UNICODE } from "@/components/emoji";
+import { RankBadge } from "@/components/ui/rank-badge";
 import { getBlockedUsers, toggleBlockedUser } from "@/lib/blocked-users";
-import { RANK_LABELS } from "@/lib/xp";
 import type { User, ChatMessage, RoomParticipant } from "@/lib/types";
 
 const REACTION_NAMES = [
@@ -30,19 +30,6 @@ const REACTION_NAMES = [
   "eyes",
   "raising_hands",
 ] as const;
-
-// Only shown once a participant has actually earned XP (ADR-009) — most
-// rooms never touch the 3 Scoreboard-eligible activities (Trivia/RPS/Bingo),
-// so showing "Rookie" for everyone at 0xp would just be noise in the common
-// case of a room that never plays any of them.
-function RankBadge({ xp, rank }: { xp?: number; rank?: User["rank"] }) {
-  if (!xp || xp <= 0 || !rank) return null;
-  return (
-    <span className="text-[10px] font-semibold text-purple-400/90 bg-purple-500/10 border border-purple-500/20 rounded-full px-1.5 py-0 leading-4 shrink-0">
-      {RANK_LABELS[rank]}
-    </span>
-  );
-}
 
 const MAX_MESSAGE_LENGTH = 500;
 // Only the most recent messages get the enter/exit spring animation — a
@@ -109,7 +96,7 @@ const ChatMessageItem = memo(function ChatMessageItem({
       className="flex gap-3 group"
     >
       <Avatar className="w-8 h-8 shrink-0">
-        <AvatarFallback className="text-xs bg-gradient-to-br from-purple-500 to-cyan-500 text-white">
+        <AvatarFallback className="text-xs bg-(image:--gradient-avatar) text-white">
           {initials}
         </AvatarFallback>
       </Avatar>
@@ -223,7 +210,7 @@ export function RoomSidebar({
           }}
           className={`relative flex-1 py-3 text-sm font-medium transition-colors ${
             !showParticipants
-              ? "text-foreground font-semibold border-b-2 border-purple-500"
+              ? "text-foreground font-semibold border-b-2 border-primary"
               : "text-muted-foreground"
           }`}
         >
@@ -231,7 +218,7 @@ export function RoomSidebar({
             <MessageCircle className="w-4 h-4" />
             {hasUnreadMessages && (
               <span
-                className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-purple-500"
+                className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-primary"
                 aria-hidden="true"
               />
             )}
@@ -243,7 +230,7 @@ export function RoomSidebar({
           onClick={() => setShowParticipants(true)}
           className={`flex-1 py-3 text-sm font-medium transition-colors ${
             showParticipants
-              ? "text-foreground font-semibold border-b-2 border-purple-500"
+              ? "text-foreground font-semibold border-b-2 border-primary"
               : "text-muted-foreground"
           }`}
         >
@@ -365,7 +352,7 @@ export function RoomSidebar({
                       <Button
                         size="icon"
                         onClick={sendMessage}
-                        className="bg-purple-600 hover:bg-purple-500"
+                        className="bg-primary text-primary-foreground hover:brightness-95"
                         aria-label="Send message"
                       />
                     }
@@ -401,7 +388,7 @@ export function RoomSidebar({
                     >
                       <div className="relative">
                         <Avatar className="w-9 h-9">
-                          <AvatarFallback className="text-xs bg-gradient-to-br from-purple-500 to-cyan-500 text-white">
+                          <AvatarFallback className="text-xs bg-(image:--gradient-avatar) text-white">
                             {p.user?.username?.slice(0, 2).toUpperCase() || "??"}
                           </AvatarFallback>
                         </Avatar>
@@ -425,7 +412,7 @@ export function RoomSidebar({
                               // Still blocks control characters and emoji.
                               onChange={(e) => setEditValue(e.target.value.replace(/[^\p{L}\p{N} _.'-]/gu, ""))}
                               maxLength={15}
-                              className="text-xs bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded px-1.5 py-0.5 font-medium text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-purple-500/50 w-24"
+                              className="text-xs bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded px-1.5 py-0.5 font-medium text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/50 w-24"
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") handleSaveUsername();
                                 if (e.key === "Escape") setIsEditingUsername(false);

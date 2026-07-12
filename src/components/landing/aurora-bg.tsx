@@ -29,10 +29,10 @@ export function AuroraBackground() {
 
       // Large blobs
       const blobs = [
-        { x: canvas.width * 0.3, y: canvas.height * 0.3, radius: 300, color: "rgba(139, 92, 246, 0.08)", speed: 1 },
-        { x: canvas.width * 0.7, y: canvas.height * 0.4, radius: 250, color: "rgba(6, 182, 212, 0.06)", speed: 0.7 },
-        { x: canvas.width * 0.5, y: canvas.height * 0.6, radius: 350, color: "rgba(16, 185, 129, 0.05)", speed: 0.5 },
-        { x: canvas.width * 0.6, y: canvas.height * 0.2, radius: 200, color: "rgba(245, 158, 11, 0.04)", speed: 0.8 },
+        { x: canvas.width * 0.3, y: canvas.height * 0.3, radius: 300, color: "rgba(109, 62, 224, 0.08)", speed: 1 },
+        { x: canvas.width * 0.7, y: canvas.height * 0.4, radius: 250, color: "rgba(61, 218, 238, 0.06)", speed: 0.7 },
+        { x: canvas.width * 0.5, y: canvas.height * 0.6, radius: 350, color: "rgba(226, 247, 42, 0.05)", speed: 0.5 },
+        { x: canvas.width * 0.6, y: canvas.height * 0.2, radius: 200, color: "rgba(228, 60, 32, 0.04)", speed: 0.8 },
       ];
 
       blobs.forEach((blob) => {

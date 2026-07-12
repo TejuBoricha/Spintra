@@ -366,8 +366,8 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
     return (
       <div role="status" aria-live="polite" className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
         <div className="relative w-16 h-16">
-          <div className="absolute inset-0 rounded-full border-4 border-purple-500/20" />
-          <div className="absolute inset-0 rounded-full border-4 border-t-purple-500 animate-spin" />
+          <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
+          <div className="absolute inset-0 rounded-full border-4 border-t-primary animate-spin" />
         </div>
         <p className="text-muted-foreground text-sm font-semibold tracking-wider animate-pulse uppercase">
           Verifying Access...
@@ -407,25 +407,25 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
 
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="glass-card max-w-md w-full p-8 rounded-3xl border border-white/10 text-center shadow-2xl space-y-6">
+        <div className="max-w-md w-full p-8 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) text-center shadow-3 space-y-6">
           <div className="flex justify-center">
             <Emoji name={errorDetails.emoji} size={64} pop />
           </div>
           <div className="space-y-2">
-            <h1 tabIndex={-1} ref={(el) => el?.focus()} className="text-2xl font-black text-white">{errorDetails.title}</h1>
+            <h1 tabIndex={-1} ref={(el) => el?.focus()} className="font-display text-2xl font-black text-foreground">{errorDetails.title}</h1>
             <p className="text-muted-foreground text-sm leading-relaxed">{errorDetails.desc}</p>
           </div>
           {accessError === "error" ? (
             <button
               onClick={() => window.location.reload()}
-              className="w-full h-11 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white rounded-full font-bold shadow-lg shadow-purple-500/10 transition-all"
+              className="w-full h-11 rounded-pill border-2 border-(--border-strong) bg-primary text-primary-foreground font-body font-bold hover:brightness-95 transition-all"
             >
               Try Again
             </button>
           ) : (
             <button
               onClick={() => router.push("/explore")}
-              className="w-full h-11 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white rounded-full font-bold shadow-lg shadow-purple-500/10 transition-all"
+              className="w-full h-11 rounded-pill border-2 border-(--border-strong) bg-primary text-primary-foreground font-body font-bold hover:brightness-95 transition-all"
             >
               Back to Explore
             </button>

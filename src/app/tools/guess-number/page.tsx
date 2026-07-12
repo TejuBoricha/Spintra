@@ -73,7 +73,7 @@ export default function GuessNumberPage() {
       <div className="max-w-2xl mx-auto text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
-            <GameIcon className="w-4 h-4 text-purple-400" />
+            <GameIcon className="w-4 h-4 text-(--brand-primary-strong)" />
             <span className="text-sm text-muted-foreground">Pick a mode to start</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Guess The Number</h1>
@@ -90,7 +90,7 @@ export default function GuessNumberPage() {
               aria-pressed={mode.name === m.name}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50 ${
                 mode.name === m.name
-                  ? "bg-purple-600 text-white"
+                  ? "bg-primary text-primary-foreground"
                   : "glass-card hover:border-white/10"
               }`}
             >
@@ -123,9 +123,9 @@ export default function GuessNumberPage() {
               onChange={(e) => setGuess(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && makeGuess()}
               placeholder={`Enter 1-${mode.range}`}
-              className="w-32 px-4 py-3 rounded-xl bg-black/20 border border-white/10 text-center text-lg font-bold focus:border-purple-500 outline-none"
+              className="w-32 px-4 py-3 rounded-xl bg-black/20 border border-white/10 text-center text-lg font-bold focus:border-primary outline-none"
             />
-            <Button onClick={makeGuess} className="bg-purple-600 hover:bg-purple-500">
+            <Button onClick={makeGuess} className="bg-primary text-primary-foreground hover:brightness-95">
               <Target className="w-4 h-4 mr-2" /> Guess
             </Button>
             <Button

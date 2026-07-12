@@ -21,6 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ChipGroup } from "@/components/ui/chip-group";
 import { Emoji, type EmojiName } from "@/components/emoji";
 import type { RoomType } from "@/lib/types";
 import { GAMES } from "@/lib/games";
@@ -56,9 +57,11 @@ const featuredTemplates = GAMES.map((game) => ({
   icon: game.icon,
   href: game.href,
   users: game.stats,
+  gradient: game.color,
 }));
 
 const categories = ["All", "Trending", "New", "Popular", "Teams", "Party", "Classroom"];
+const categoryOptions = categories.map((cat) => ({ value: cat, label: cat }));
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -347,7 +350,7 @@ export default function ExplorePage() {
           className="text-center space-y-6"
         >
           <div className="space-y-2">
-            <h1 className="text-4xl sm:text-5xl font-bold">
+            <h1 className="font-display text-4xl sm:text-5xl font-black">
               Explore <span className="gradient-text">Spintra</span>
             </h1>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
@@ -365,7 +368,7 @@ export default function ExplorePage() {
                 aria-label="Search rooms and templates"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 h-12 bg-muted/50 border-border rounded-2xl"
+                className="pl-10 h-12"
               />
             </div>
 
@@ -379,12 +382,13 @@ export default function ExplorePage() {
                 onKeyDown={(e) => e.key === "Enter" && handleJoinRoom(joinCode)}
                 placeholder="JOIN BY CODE (EX: 89PB5T)"
                 aria-label="Join room by code"
-                className="flex-1 px-4 h-12 bg-muted/50 border-border rounded-2xl text-center text-sm font-mono font-bold uppercase tracking-wider text-purple-300"
+                className="flex-1 h-12 text-center text-sm font-mono font-bold uppercase tracking-wider text-(--brand-primary-strong)"
               />
               <Button
                 onClick={() => handleJoinRoom(joinCode)}
                 disabled={joinCode.length !== 6 || joining}
-                className="h-12 px-5 bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white rounded-2xl font-bold shadow-lg disabled:opacity-50"
+                variant="brand"
+                className="h-12"
               >
                 {joining ? "..." : "Join"}
               </Button>
@@ -393,29 +397,20 @@ export default function ExplorePage() {
         </motion.div>
 
         {/* Categories Navigation */}
-        <div className="flex flex-wrap justify-center gap-2">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              aria-pressed={activeCategory === cat}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition-all focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none ${
-                activeCategory === cat
-                  ? "bg-purple-600 text-white shadow-lg shadow-purple-500/25"
-                  : "glass-card hover:border-border text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
+        <ChipGroup
+          options={categoryOptions}
+          value={activeCategory}
+          onChange={setActiveCategory}
+          ariaLabel="Filter rooms by category"
+          className="justify-center"
+        />
 
         {/* Live Trending Rooms Section */}
         <section>
           <div className="flex items-center gap-2 mb-6">
-            <TrendingUp className="w-5 h-5 text-purple-400" />
-            <h2 className="text-2xl font-black text-foreground">Live Trending Rooms</h2>
-            <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/25 ml-2 font-mono uppercase text-[10px] tracking-widest animate-pulse">
+            <TrendingUp className="w-5 h-5 text-(--brand-primary-strong)" />
+            <h2 className="font-display text-2xl font-black text-foreground">Live Trending Rooms</h2>
+            <Badge variant="success" className="ml-2 font-mono uppercase text-[10px] tracking-widest animate-pulse">
               Live Feed
             </Badge>
           </div>
@@ -426,7 +421,7 @@ export default function ExplorePage() {
               {[...Array(6)].map((_, i) => (
                 <div
                   key={i}
-                  className="glass-card p-5 border border-border rounded-3xl space-y-4 animate-pulse bg-muted/30"
+                  className="p-5 border border-(--border-hairline) bg-(--surface-panel) rounded-2xl space-y-4 animate-pulse"
                 >
                   <div className="flex justify-between items-start">
                     <div className="space-y-2 flex-1">
@@ -452,10 +447,10 @@ export default function ExplorePage() {
               animate={{ opacity: 1 }}
               role="status"
               aria-live="polite"
-              className="glass-card p-12 text-center border border-border rounded-3xl flex flex-col items-center justify-center gap-6 max-w-lg mx-auto"
+              className="p-12 text-center border border-(--border-hairline) bg-(--surface-panel) rounded-2xl flex flex-col items-center justify-center gap-6 max-w-lg mx-auto shadow-1"
             >
-              <div className="w-16 h-16 rounded-full bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
-                <Radar className="w-8 h-8 text-purple-400 animate-pulse" />
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
+                <Radar className="w-8 h-8 text-(--brand-primary-strong) animate-pulse" />
               </div>
               <div className="space-y-2">
                 <h3 className="text-lg font-bold text-foreground">No Public Rooms Active</h3>
@@ -464,8 +459,8 @@ export default function ExplorePage() {
                 </p>
               </div>
               <Link href="/create">
-                <Button className="bg-gradient-to-r from-purple-600 to-cyan-500 text-white rounded-2xl font-bold h-11 px-6 shadow-lg shadow-purple-500/20">
-                  <Plus className="w-4 h-4 mr-2" />
+                <Button variant="brand">
+                  <Plus className="w-4 h-4" />
                   Create Public Room
                 </Button>
               </Link>
@@ -483,23 +478,23 @@ export default function ExplorePage() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ delay: i * 0.05 }}
-                    className="glass-card p-5 group cursor-pointer hover:border-purple-500/30 card-3d rounded-3xl transition-all w-full text-left"
+                    className="p-5 group cursor-pointer border border-(--border-hairline) bg-(--surface-panel) hover:border-primary/40 rounded-2xl shadow-1 transition-all w-full text-left"
                   >
                       <div className="flex items-start justify-between mb-3">
                         <div className="min-w-0 flex-1 pr-2">
-                          <h3 className="font-bold text-foreground group-hover:text-purple-400 transition-colors line-clamp-1">
+                          <h3 className="font-bold text-foreground group-hover:text-(--brand-primary-strong) transition-colors line-clamp-1">
                             {room.name}
                           </h3>
-                          <p className="text-xs font-mono text-purple-400/80 uppercase font-semibold tracking-wider mt-0.5">
+                          <p className="text-xs font-mono text-(--brand-primary-strong)/80 uppercase font-semibold tracking-wider mt-0.5">
                             CODE: {room.code}
                           </p>
                         </div>
                         <div className="flex flex-col items-end gap-1 shrink-0">
-                          <Badge variant="secondary" className="capitalize text-[10px] tracking-wider font-semibold bg-muted border-border text-muted-foreground">
+                          <Badge variant="secondary" className="capitalize text-[10px] tracking-wider font-semibold">
                             {room.type.replace(/-/g, " ")}
                           </Badge>
                           {room.isLocked && (
-                            <Badge className="text-[10px] bg-amber-500/10 text-amber-400 border-amber-500/25 flex items-center gap-0.5">
+                            <Badge variant="warn" className="text-[10px] flex items-center gap-0.5">
                               <Lock className="w-2.5 h-2.5" /> Locked
                             </Badge>
                           )}
@@ -513,7 +508,7 @@ export default function ExplorePage() {
                             {room.participants}
                             {room.maxParticipants ? `/${room.maxParticipants}` : ""}
                           </span>
-                          <span className="flex items-center gap-1 text-sky-400/80">
+                          <span className="flex items-center gap-1 text-(--cyan-400)/80">
                             <Globe className="w-3 h-3" /> Public
                           </span>
                         </div>
@@ -529,12 +524,12 @@ export default function ExplorePage() {
         {/* Featured Templates */}
         <section>
           <div className="flex items-center gap-2 mb-6">
-            <Sparkles className="w-5 h-5 text-amber-400" />
-            <h2 className="text-2xl font-black text-foreground">Featured Templates</h2>
+            <Sparkles className="w-5 h-5 text-(--coral-400)" />
+            <h2 className="font-display text-2xl font-black text-foreground">Featured Templates</h2>
           </div>
           {filteredTemplates.length === 0 ? (
-            <div className="glass-card p-12 text-center text-muted-foreground text-sm flex flex-col items-center gap-3 rounded-3xl">
-              <LayoutGrid className="w-8 h-8 text-amber-400/60" />
+            <div className="p-12 text-center text-muted-foreground text-sm flex flex-col items-center gap-3 rounded-2xl border border-(--border-hairline) bg-(--surface-panel)">
+              <LayoutGrid className="w-8 h-8 text-(--coral-400)/60" />
               No matching templates found.
             </div>
           ) : (
@@ -547,12 +542,12 @@ export default function ExplorePage() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.05 }}
-                      className="glass-card p-5 text-center group cursor-pointer card-3d rounded-3xl"
+                      className="p-5 text-center group cursor-pointer rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 hover:border-primary/30 transition-colors"
                     >
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform shadow-lg shadow-purple-500/10">
+                      <div className={`w-12 h-12 rounded-control border-2 border-(--border-strong) bg-gradient-to-br ${t.gradient} flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform`}>
                         <Icon className="w-6 h-6 text-white" />
                       </div>
-                      <h3 className="font-bold text-foreground text-sm group-hover:text-purple-300 transition-colors">
+                      <h3 className="font-bold text-foreground text-sm group-hover:text-(--brand-primary-strong) transition-colors">
                         {t.label}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-1">{t.users} active uses</p>
@@ -567,12 +562,12 @@ export default function ExplorePage() {
         {/* Recent Activity */}
         <section>
           <div className="flex items-center gap-2 mb-6">
-            <Clock className="w-5 h-5 text-purple-400" />
-            <h2 className="text-2xl font-black text-foreground">Recent Activity</h2>
+            <Clock className="w-5 h-5 text-(--brand-primary-strong)" />
+            <h2 className="font-display text-2xl font-black text-foreground">Recent Activity</h2>
           </div>
           {filteredActivities.length === 0 ? (
-            <div className="glass-card p-8 text-center text-muted-foreground text-sm flex flex-col items-center gap-3 rounded-3xl">
-              <History className="w-8 h-8 text-purple-400/60" />
+            <div className="p-8 text-center text-muted-foreground text-sm flex flex-col items-center gap-3 rounded-2xl border border-(--border-hairline) bg-(--surface-panel)">
+              <History className="w-8 h-8 text-(--brand-primary-strong)/60" />
               No recent activity matching your filters.
             </div>
           ) : (
@@ -586,13 +581,13 @@ export default function ExplorePage() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.04 }}
-                  className="glass-card p-4 flex items-center gap-4 rounded-2xl hover:border-purple-500/30 transition-all cursor-pointer bg-muted/30 w-full text-left"
+                  className="p-4 flex items-center gap-4 rounded-xl border border-(--border-hairline) bg-(--surface-panel) hover:border-primary/30 transition-all cursor-pointer w-full text-left"
                 >
                   <Emoji name={activity.emoji} size={28} />
                   <div className="flex-1 text-sm">
                     <span className="font-bold text-foreground">@{activity.user}</span>{" "}
                     <span className="text-muted-foreground">{activity.action}</span>{" "}
-                    <span className="font-bold text-purple-300">{activity.item}</span>
+                    <span className="font-bold text-(--brand-primary-strong)">{activity.item}</span>
                   </div>
                   <span className="text-xs text-muted-foreground font-semibold">{activity.time}</span>
                 </motion.button>

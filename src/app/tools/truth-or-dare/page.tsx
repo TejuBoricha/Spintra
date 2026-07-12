@@ -62,7 +62,7 @@ export default function TruthOrDarePage() {
               onClick={() => { setCategory(c); setMode(null); setCurrent(null); setUsed(new Set()); }}
               aria-pressed={category.name === c.name}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                category.name === c.name ? "bg-purple-600 text-white" : "glass-card hover:border-white/10"
+                category.name === c.name ? "bg-primary text-primary-foreground" : "glass-card hover:border-white/10"
               }`}
             >
               <Emoji name={c.icon} size={18} animated={false} className="mr-1" /> {c.name}

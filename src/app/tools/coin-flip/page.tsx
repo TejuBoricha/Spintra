@@ -135,7 +135,7 @@ export default function CoinFlipPage() {
           >
             <h3 className="text-lg font-semibold mb-4 flex items-center justify-between w-full">
               <span className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-purple-400" />
+                <TrendingUp className="w-5 h-5 text-(--brand-primary-strong)" />
                 Statistics
               </span>
               <Button
@@ -167,7 +167,7 @@ export default function CoinFlipPage() {
           </motion.div>
         ) : (
           <div className="glass-card p-6 max-w-md mx-auto text-center text-muted-foreground text-sm flex flex-col items-center gap-2">
-            <TrendingUp className="w-6 h-6 text-purple-400/60" />
+            <TrendingUp className="w-6 h-6 text-(--brand-primary-strong)/60" />
             Flip to start tracking stats.
           </div>
         )}

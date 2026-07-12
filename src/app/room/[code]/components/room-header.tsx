@@ -117,17 +117,17 @@ export const RoomHeader = memo(function RoomHeader({
   }, [isQrOpen, roomUrl]);
 
   return (
-    <div className="glass border-b border-white/5 px-6 py-4">
+    <div className="border-b border-(--border-hairline) bg-(--surface-glass-strong) backdrop-blur-(--blur-glass) px-6 py-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="min-w-0">
           <div className="flex items-center gap-3 min-w-0">
-            <h1 className="text-xl font-bold truncate">{roomName}</h1>
+            <h1 className="font-display text-xl font-bold truncate">{roomName}</h1>
             <Badge className={`text-xs ${realtimeStatusClass}`}>
               <Wifi className="w-3 h-3 mr-1" />
               {realtimeStatusLabel}
             </Badge>
             {isLocked && (
-              <Badge className="text-xs bg-amber-500/10 text-amber-300">
+              <Badge variant="warn" className="text-xs">
                 <Lock className="w-3 h-3 mr-1" />
                 Locked
               </Badge>
@@ -136,7 +136,7 @@ export const RoomHeader = memo(function RoomHeader({
           <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
             <span>
               Code:{" "}
-              <span className="font-mono text-purple-400 select-all font-semibold uppercase">
+              <span className="font-mono text-(--brand-primary-strong) select-all font-semibold uppercase">
                 {roomCode}
               </span>
             </span>
@@ -148,7 +148,7 @@ export const RoomHeader = memo(function RoomHeader({
             {activeActivityType && (
               <>
                 <span>·</span>
-                <span className="text-purple-400 capitalize">
+                <span className="text-(--brand-primary-strong) capitalize">
                   {activeActivityType.replace(/-/g, " ")}
                 </span>
               </>
@@ -196,7 +196,7 @@ export const RoomHeader = memo(function RoomHeader({
                 />
               }
             >
-              <QrCode className="w-4 h-4 text-purple-400" />
+              <QrCode className="w-4 h-4 text-(--brand-primary-strong)" />
             </TooltipTrigger>
             <TooltipContent>Show room QR Code</TooltipContent>
           </Tooltip>
@@ -254,7 +254,7 @@ export const RoomHeader = memo(function RoomHeader({
                         size="icon"
                         onClick={onOpenPicker}
                         aria-label="Switch game activity"
-                        className="text-purple-400"
+                        className="text-(--brand-primary-strong)"
                       />
                     }
                   >
@@ -311,7 +311,7 @@ export const RoomHeader = memo(function RoomHeader({
               }
             >
               {soundEnabled ? (
-                <Volume2 className="w-4 h-4 text-purple-400" />
+                <Volume2 className="w-4 h-4 text-(--brand-primary-strong)" />
               ) : (
                 <VolumeX className="w-4 h-4" />
               )}
@@ -341,7 +341,7 @@ export const RoomHeader = memo(function RoomHeader({
         <DialogContent className="text-center">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-center gap-2">
-              <QrCode className="w-5 h-5 text-purple-400" />
+              <QrCode className="w-5 h-5 text-(--brand-primary-strong)" />
               Room QR Code
             </DialogTitle>
           </DialogHeader>

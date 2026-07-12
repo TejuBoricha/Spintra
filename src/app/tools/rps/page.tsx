@@ -144,7 +144,7 @@ export default function RPSPage() {
                     animate={{ rotate: [0, 360] }}
                     transition={{ repeat: Infinity, duration: 0.3, ease: "linear" }}
                   >
-                    <Swords className="w-12 h-12 text-purple-400" />
+                    <Swords className="w-12 h-12 text-(--brand-primary-strong)" />
                   </motion.div>
                 ) : aiChoice ? (
                   <Emoji name={choices.find((c) => c.name === aiChoice)!.emoji} size={56} pop />
@@ -179,7 +179,7 @@ export default function RPSPage() {
               whileTap={{ scale: 0.9 }}
               onClick={() => play(choice.name)}
               disabled={playing}
-              className="w-24 h-24 rounded-2xl glass-card flex flex-col items-center justify-center gap-2 hover:border-purple-500/30 transition-all disabled:opacity-50"
+              className="w-24 h-24 rounded-2xl glass-card flex flex-col items-center justify-center gap-2 hover:border-primary/30 transition-all disabled:opacity-50"
             >
               <Emoji name={choice.emoji} size={40} animated={false} />
               <span className="text-xs text-muted-foreground">{choice.name}</span>

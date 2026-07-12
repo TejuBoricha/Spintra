@@ -45,7 +45,7 @@ function FloatingGeometry() {
           {item.type === "sphere" ? (
             <Sphere args={[item.scale, 32, 32]} position={item.position}>
               <MeshDistortMaterial
-                color={i % 3 === 0 ? "#8b5cf6" : i % 3 === 1 ? "#06b6d4" : "#f59e0b"}
+                color={i % 3 === 0 ? "#6d3ee0" : i % 3 === 1 ? "#3ddaee" : "#e2f72a"}
                 roughness={0.3}
                 metalness={0.2}
                 distort={0.3}
@@ -57,7 +57,7 @@ function FloatingGeometry() {
           ) : (
             <Torus args={[item.scale * 1.5, item.scale * 0.2, 16, 32]} position={item.position}>
               <meshStandardMaterial
-                color={i % 3 === 0 ? "#06b6d4" : i % 3 === 1 ? "#8b5cf6" : "#10b981"}
+                color={i % 3 === 0 ? "#3ddaee" : i % 3 === 1 ? "#6d3ee0" : "#e43c20"}
                 roughness={0.4}
                 metalness={0.3}
                 transparent
@@ -93,7 +93,7 @@ function ParticleField() {
           itemSize={3}
         />
       </bufferGeometry>
-      <pointsMaterial size={0.03} color="#8b5cf6" transparent opacity={0.5} sizeAttenuation />
+      <pointsMaterial size={0.03} color="#6d3ee0" transparent opacity={0.5} sizeAttenuation />
     </points>
   );
 }
@@ -106,8 +106,8 @@ export function HeroThreeScene() {
       style={{ background: "transparent" }}
     >
       <ambientLight intensity={0.3} />
-      <pointLight position={[5, 5, 5]} intensity={0.5} color="#8b5cf6" />
-      <pointLight position={[-5, -3, -3]} intensity={0.3} color="#06b6d4" />
+      <pointLight position={[5, 5, 5]} intensity={0.5} color="#6d3ee0" />
+      <pointLight position={[-5, -3, -3]} intensity={0.3} color="#3ddaee" />
       <FloatingGeometry />
       <ParticleField />
       <Environment preset="city" />

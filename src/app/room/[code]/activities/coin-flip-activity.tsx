@@ -67,7 +67,7 @@ export function CoinFlipActivity() {
               ? "from-yellow-500 to-amber-600 shadow-yellow-500/20"
               : coinResult === "Tails"
               ? "from-slate-400 to-slate-600 shadow-slate-500/20"
-              : "from-purple-500/30 to-cyan-500/30 border border-white/10"
+              : "from-primary/30 to-(--cyan-500)/30 border border-white/10"
           } flex items-center justify-center shadow-2xl`}
         >
           <AnimatePresence mode="wait">

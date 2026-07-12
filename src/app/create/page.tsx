@@ -7,7 +7,7 @@ export default function Page() {
     <div>
       <main className="min-h-screen pt-24 pb-16 px-4">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-4xl sm:text-5xl font-bold mb-4">Create a <span className="gradient-text">Room</span></h1>
+          <h1 className="font-display text-4xl sm:text-5xl font-black mb-4">Create a <span className="gradient-text">Room</span></h1>
           <p className="text-muted-foreground text-lg mb-8">Pick a game type, set up your room, and invite people in seconds.</p>
 
           {/* Server-rendered button so production builds expose it for E2E tests.
@@ -19,7 +19,7 @@ export default function Page() {
           </div>
 
           {/* Client interactive UI mounts here - wrapped in Suspense for CSR hooks */}
-          <Suspense fallback={<div className="min-h-20 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-purple-400" /></div>}>
+          <Suspense fallback={<div className="min-h-20 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-(--brand-primary-strong)" /></div>}>
             <CreateRoomClient />
           </Suspense>
         </div>

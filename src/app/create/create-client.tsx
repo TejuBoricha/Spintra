@@ -250,7 +250,7 @@ export default function CreateRoomClient() {
     <div className="grid lg:grid-cols-3 gap-8">
       {/* Room Types */}
       <div className="lg:col-span-2 space-y-4">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Choose Game Type</h2>
+        <h2 className="font-body text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Choose Game Type</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {GAMES.map((rt, i) => (
             <motion.button
@@ -262,11 +262,11 @@ export default function CreateRoomClient() {
               aria-pressed={selectedType === rt.type}
               className={`text-left p-4 rounded-xl border transition-all duration-200 ${
                 selectedType === rt.type
-                  ? "glass-card border-purple-500/50 bg-purple-500/10 shadow-lg shadow-purple-500/10"
-                  : "glass-card border-border hover:border-foreground/20"
+                  ? "border-primary/50 bg-primary/10 shadow-glow-primary-sm"
+                  : "border-(--border-hairline) bg-(--surface-panel) hover:border-foreground/20"
               }`}
             >
-              <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${rt.color} flex items-center justify-center mb-2`}>
+              <div className={`w-9 h-9 rounded-control border-2 border-(--border-strong) bg-gradient-to-br ${rt.color} flex items-center justify-center mb-2`}>
                 <rt.icon className="w-5 h-5 text-white" />
               </div>
               <div className="text-sm font-semibold">{rt.label}</div>
@@ -278,8 +278,8 @@ export default function CreateRoomClient() {
 
       {/* Settings Panel */}
       <div className="space-y-6">
-        <div className="glass-card p-6">
-          <h2 className="text-lg font-semibold mb-6">Room Settings</h2>
+        <div className="rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 p-6">
+          <h2 className="font-display text-lg font-bold mb-6">Room Settings</h2>
 
           <div className="space-y-4">
             <div>
@@ -302,7 +302,7 @@ export default function CreateRoomClient() {
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <Label htmlFor="max-participants-slider">Max Participants</Label>
-                <span className="text-sm font-semibold text-purple-400">{maxParticipants} people</span>
+                <span className="text-sm font-semibold text-(--brand-primary-strong)">{maxParticipants} people</span>
               </div>
               <Slider
                 id="max-participants-slider"
@@ -319,9 +319,9 @@ export default function CreateRoomClient() {
                 Selected Game
               </Label>
               {selectedGame && SelectedGameIcon && (
-                <div aria-live="polite" className="mt-2 flex items-center gap-3 rounded-xl border border-purple-500/30 bg-purple-500/10 p-3">
+                <div aria-live="polite" className="mt-2 flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 p-3">
                   <div
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${selectedGame.color}`}
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-control border-2 border-(--border-strong) bg-gradient-to-br ${selectedGame.color}`}
                   >
                     <SelectedGameIcon className="h-5 w-5 text-white" />
                   </div>
@@ -338,7 +338,8 @@ export default function CreateRoomClient() {
                 onClick={handleCreate}
                 data-testid="create-room-button-client"
                 disabled={isCreating || !authReady}
-                className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white border-0 h-12"
+                variant="brand"
+                className="w-full h-12"
               >
                 {isCreating ? (
                   <motion.div
@@ -349,7 +350,7 @@ export default function CreateRoomClient() {
                   </motion.div>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4 mr-2" />
+                    <Sparkles className="w-4 h-4" />
                     Create Room
                   </>
                 )}
@@ -362,23 +363,24 @@ export default function CreateRoomClient() {
               >
                 <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                   <p data-testid="created-room-badge" className="text-sm font-medium text-emerald-400 mb-1">Room Created!</p>
-                  <p className="text-2xl font-bold tracking-wider text-foreground">{createdRoom.code}</p>
+                  <p className="font-mono text-2xl font-bold tracking-wider text-foreground">{createdRoom.code}</p>
                 </div>
 
                 <Button
                   onClick={copyToClipboard}
                   data-testid="copy-link-button"
-                  variant="outline"
-                  className="w-full border-border"
+                  variant="secondary"
+                  className="w-full"
                 >
-                  {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   {copied ? "Copied!" : "Copy Link"}
                 </Button>
 
                 <Button
                   onClick={joinRoom}
                   data-testid="join-room-button"
-                  className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white border-0"
+                  variant="brand"
+                  className="w-full"
                 >
                   Join Room
                 </Button>

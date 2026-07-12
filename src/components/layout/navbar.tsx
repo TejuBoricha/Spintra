@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect, useSyncExternalStore, useCallback } from "react";
+import { useState, useEffect, useSyncExternalStore, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/components/theme-provider";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { checkCanJoinRoom, ROOM_JOIN_ERROR_MESSAGES } from "@/lib/room-join-check";
 import { getOrCreateRoomUser } from "@/lib/room-user";
+import { fireConfetti } from "@/components/celebration";
 import {
   Sun,
   Moon,
@@ -20,6 +21,7 @@ import {
   Gamepad2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -37,6 +39,24 @@ const subscribeToClient = () => () => {};
 const getClientSnapshot = () => true;
 const getServerSnapshot = () => false;
 
+// Letter-wave hover: each character staggers a small bounce, matching the
+// design system's nav-link interaction spec (~30ms stagger, --ease-toy).
+function WaveLabel({ text }: { text: string }) {
+  return (
+    <span className="inline-flex">
+      {text.split("").map((ch, i) => (
+        <span
+          key={i}
+          className="inline-block transition-transform duration-150 ease-toy group-hover:-translate-y-0.5"
+          style={{ transitionDelay: `${i * 30}ms` }}
+        >
+          {ch === " " ? " " : ch}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -44,8 +64,10 @@ export function Navbar() {
   const [joinCode, setJoinCode] = useState("");
   const [joining, setJoining] = useState(false);
   const [currentUser] = useState(getOrCreateRoomUser);
+  const createBtnRef = useRef<HTMLAnchorElement>(null);
 
   const router = useRouter();
+  const pathname = usePathname();
   const mounted = useSyncExternalStore(
     subscribeToClient,
     getClientSnapshot,
@@ -86,12 +108,14 @@ export function Navbar() {
     }
   }, [joinCode, router, currentUser.id]);
 
+  const isExploreActive = pathname === "/explore";
+
   return (
     <nav
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
         scrolled
-          ? "glass shadow-lg shadow-purple-500/5"
+          ? "border-b border-(--border-glass) bg-(--surface-glass-strong) shadow-1 backdrop-blur-(--blur-glass)"
           : "bg-transparent"
       )}
     >
@@ -100,9 +124,9 @@ export function Navbar() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 group">
             <motion.div
-              whileHover={{ scale: 1.08 }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0"
+              whileHover={{ scale: 1.08, rotate: 4 }}
+              transition={{ type: "spring", stiffness: 300, damping: 15 }}
+              className="w-8 h-8 rounded-control overflow-hidden flex-shrink-0 border-2 border-(--border-strong)"
             >
               <Image
                 src="/icons/logo.png"
@@ -113,22 +137,23 @@ export function Navbar() {
                 priority
               />
             </motion.div>
-            <span className="text-xl font-bold tracking-tight">
-              <span className="gradient-text">Spin</span>
-              <span className="text-foreground">tra</span>
+            <span className="font-display text-xl font-black tracking-tight text-foreground">
+              <span className="text-(--brand-primary-strong)">Spin</span>tra
             </span>
           </Link>
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-1.5">
-            <Link href="/explore">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="border border-border/70 bg-background/35 text-muted-foreground shadow-sm hover:bg-muted/60 hover:text-foreground"
-              >
-                Explore
-              </Button>
+            <Link
+              href="/explore"
+              className={cn(
+                "group inline-flex items-center rounded-pill px-3.5 py-2 font-body text-sm font-semibold transition-colors",
+                isExploreActive
+                  ? "bg-primary/10 text-(--brand-primary-strong)"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <WaveLabel text="Explore" />
             </Link>
 
             <DropdownMenu>
@@ -137,7 +162,7 @@ export function Navbar() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="border border-border/70 bg-background/35 text-muted-foreground shadow-sm hover:bg-muted/60 hover:text-foreground"
+                    className="rounded-pill text-muted-foreground hover:text-foreground"
                   >
                     <Gamepad2 className="w-4 h-4 mr-2" />
                     Games
@@ -177,12 +202,12 @@ export function Navbar() {
                 size="icon"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-                className="text-muted-foreground"
+                className="rounded-full border border-(--border-hairline) bg-(--surface-sunken) text-foreground"
               >
                 {theme === "dark" ? (
-                  <Sun className="w-5 h-5" />
+                  <Sun className="w-4 h-4" />
                 ) : (
-                  <Moon className="w-5 h-5" />
+                  <Moon className="w-4 h-4" />
                 )}
               </Button>
             )}
@@ -191,17 +216,13 @@ export function Navbar() {
               variant="outline"
               size="sm"
               onClick={() => setIsJoinOpen(true)}
-              className="hidden sm:flex border-purple-500/30 text-purple-300 hover:bg-purple-500/10 rounded-xl font-semibold shadow-sm transition-all"
+              className="hidden sm:flex"
             >
               Join Room
             </Button>
 
-            <Link href="/create">
-              <Button
-                size="sm"
-                className="hidden sm:flex bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white border-0 rounded-xl"
-              >
-                <Sparkles className="w-4 h-4 mr-2" />
+            <Link href="/create" ref={createBtnRef} onClick={() => fireConfetti()} className="hidden sm:block">
+              <Button variant="brand" size="sm" icon={<Sparkles className="w-4 h-4" />}>
                 Create Room
               </Button>
             </Link>
@@ -226,17 +247,17 @@ export function Navbar() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden glass border-t border-white/5 overflow-hidden"
+            className="md:hidden border-t border-(--border-hairline) bg-(--surface-glass-strong) backdrop-blur-(--blur-glass) overflow-hidden"
           >
             <div className="px-4 py-4 space-y-2 max-h-[70vh] overflow-y-auto">
               <Link
                 href="/explore"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground"
+                className="flex items-center gap-3 px-3 py-2 rounded-control hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
               >
                 Explore
               </Link>
-              <p className="px-3 pt-2 pb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <p className="px-3 pt-2 pb-1 font-body text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Games
               </p>
               {GAMES.map((game) => (
@@ -244,27 +265,30 @@ export function Navbar() {
                   key={game.type}
                   href={game.href}
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground"
+                  className="flex items-center gap-3 px-3 py-2 rounded-control hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                 >
                   <game.icon className="w-5 h-5" />
                   {game.label}
                 </Link>
               ))}
-              
+
               <button
                 onClick={() => {
                   setMobileOpen(false);
                   setIsJoinOpen(true);
                 }}
-                className="flex items-center justify-center gap-3 px-3 py-2 rounded-lg border border-purple-500/30 text-purple-300 hover:bg-purple-500/10 w-full mt-2 font-semibold text-sm transition-all h-10"
+                className="flex items-center justify-center gap-3 px-3 py-2 rounded-pill border-2 border-(--border-strong) bg-(--surface-contrast) text-(--text-on-contrast) w-full mt-2 font-body font-semibold text-sm transition-all h-10"
               >
                 Join Room
               </button>
 
               <Link
                 href="/create"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-cyan-500 text-white mt-2 h-10 justify-center font-semibold text-sm"
+                onClick={() => {
+                  setMobileOpen(false);
+                  fireConfetti();
+                }}
+                className="flex items-center gap-3 px-3 py-2 rounded-pill border-2 border-(--border-strong) bg-primary text-primary-foreground mt-2 h-10 justify-center font-body font-semibold text-sm"
               >
                 <Sparkles className="w-5 h-5" />
                 Create Room
@@ -278,16 +302,16 @@ export function Navbar() {
         <DialogContent className="text-center">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-center gap-2">
-              <Gamepad2 className="w-5 h-5 text-purple-400" />
+              <Gamepad2 className="w-5 h-5 text-(--brand-primary-strong)" />
               Join Room
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
-            <p className="text-xs text-muted-foreground text-left uppercase tracking-wider font-semibold">
+            <p className="font-body text-xs text-muted-foreground text-left uppercase tracking-wider font-semibold">
               Enter 6-Character Room Code:
             </p>
-            <input
+            <Input
               type="text"
               maxLength={6}
               value={joinCode}
@@ -295,7 +319,7 @@ export function Navbar() {
               onKeyDown={(e) => e.key === "Enter" && handleJoinRoomSubmit()}
               placeholder="EX: 89PB5T"
               aria-label="Enter 6-character room code"
-              className="w-full h-12 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl text-center text-2xl font-mono text-purple-600 dark:text-purple-300 font-bold focus:outline-none focus:border-cyan-500/50 uppercase tracking-widest"
+              className="h-13 text-center text-2xl font-mono font-bold uppercase tracking-widest text-(--brand-primary-strong)"
               autoFocus
             />
           </div>
@@ -303,7 +327,8 @@ export function Navbar() {
           <Button
             disabled={joinCode.length !== 6 || joining}
             onClick={handleJoinRoomSubmit}
-            className="w-full h-11 bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white rounded-xl font-bold shadow-lg shadow-purple-500/10 disabled:opacity-50"
+            variant="brand"
+            className="w-full"
           >
             {joining ? "Verifying..." : "Join Game"}
           </Button>

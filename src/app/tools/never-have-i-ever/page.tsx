@@ -160,7 +160,7 @@ export default function NeverHaveIEverPage() {
               )}
             </p>
             <div className="mt-4 flex justify-center items-center gap-3">
-              <Button onClick={next} className="bg-gradient-to-r from-purple-600 to-cyan-500 border-0">
+              <Button onClick={next} className="bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">
                 Next <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
               <Button

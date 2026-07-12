@@ -569,7 +569,7 @@ export default function LuckyWheelPage() {
       <div className="fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-background" />
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-500/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px]" />
       </div>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
@@ -628,7 +628,7 @@ export default function LuckyWheelPage() {
                 onClick={spin}
                 disabled={spinning || entries.length === 0}
                 size="lg"
-                className="h-14 px-10 text-lg font-bold bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 text-white border-0 rounded-full shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className="h-14 px-10 text-lg font-bold bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95 rounded-full shadow-lg shadow-glow-primary-sm hover:shadow-glow-primary-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Play className="w-5 h-5 mr-2" />
                 {spinning ? "Spinning..." : "Spin!"}
@@ -705,7 +705,7 @@ export default function LuckyWheelPage() {
                           className="absolute inset-0 w-5 h-5 opacity-0 cursor-pointer z-10"
                         />
                         <div
-                          className="w-5 h-5 rounded-full ring-1 ring-white/10 shrink-0 group-focus-within/entry:ring-2 group-focus-within/entry:ring-purple-500"
+                          className="w-5 h-5 rounded-full ring-1 ring-white/10 shrink-0 group-focus-within/entry:ring-2 group-focus-within/entry:ring-primary"
                           style={{ backgroundColor: entry.color }}
                         />
                       </div>
@@ -737,7 +737,7 @@ export default function LuckyWheelPage() {
                           autoFocus
                           maxLength={40}
                           disabled={spinning}
-                          className="flex-1 h-6 px-1.5 text-xs bg-purple-500/10 border border-purple-500/40 text-purple-200 rounded-lg shrink-0 outline-none"
+                          className="flex-1 h-6 px-1.5 text-xs bg-primary/10 border border-primary/40 text-(--brand-primary-strong) rounded-lg shrink-0 outline-none"
                         />
                       ) : (
                         <span
@@ -748,7 +748,7 @@ export default function LuckyWheelPage() {
                             }
                           }}
                           title="Click to edit"
-                          className="flex-1 text-sm truncate cursor-pointer hover:text-purple-300 transition-colors"
+                          className="flex-1 text-sm truncate cursor-pointer hover:text-(--brand-primary-strong) transition-colors"
                         >
                           {entry.label}
                         </span>
@@ -871,7 +871,7 @@ export default function LuckyWheelPage() {
             Perfect for giveaways, game nights, and decision-making.
           </p>
           <Link href="/create?type=lucky-wheel">
-            <Button className="gap-2 bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 text-white border-0">
+            <Button className="gap-2 bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">
               <Disc3 className="w-4 h-4" />
               Create Room
               <ArrowRight className="w-4 h-4" />

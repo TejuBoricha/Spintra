@@ -363,9 +363,9 @@ export function LuckyWheelActivity() {
       </div>
 
       {wheelWinner && (
-        <div className="text-center p-4 glass-card rounded-xl">
+        <div className="text-center p-4 rounded-xl border border-(--border-hairline) bg-(--surface-panel)">
           <p className="text-sm text-muted-foreground mb-1">Winner!</p>
-          <p className="text-2xl font-bold text-purple-400 flex items-center justify-center gap-2">
+          <p className="text-2xl font-bold text-(--brand-primary-strong) flex items-center justify-center gap-2">
             {wheelWinner} <Emoji name="party_popper" size={28} pop />
           </p>
         </div>
@@ -414,7 +414,7 @@ export function LuckyWheelActivity() {
                     autoFocus
                     maxLength={40}
                     disabled={wheelSpinning}
-                    className="h-6 py-0 px-2 text-xs w-28 bg-purple-500/10 border-purple-500/40 text-purple-200 rounded-lg shrink-0"
+                    className="h-6 py-0 px-2 text-xs w-28 bg-primary/10 border-primary/40 text-(--brand-primary-strong) rounded-lg shrink-0"
                   />
                 );
               }
@@ -422,7 +422,7 @@ export function LuckyWheelActivity() {
               return (
                 <Badge
                   key={i}
-                  className="bg-purple-500/20 text-purple-300 pr-1 gap-1 cursor-pointer select-none"
+                  className="bg-primary/20 text-(--brand-primary-strong) pr-1 gap-1 cursor-pointer select-none"
                   onClick={() => {
                     if (!wheelSpinning) {
                       setEditingIndex(i);
@@ -472,7 +472,7 @@ export function LuckyWheelActivity() {
               const winner = wheelEntries[Math.floor(Math.random() * wheelEntries.length)];
               sendActivityEvent({ kind: "wheel_spinning", winner });
             }}
-            className="w-full bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white border-0"
+            className="w-full bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95"
           >
             {wheelSpinning ? "Spinning…" : "Spin the Wheel!"}
           </Button>

@@ -77,7 +77,7 @@ export function TeamMakerActivity() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
           {tmTeams.map((team, i) => {
             const colors = [
-              "border-purple-500/40 bg-gradient-to-br from-purple-500/5 to-indigo-500/5 shadow-purple-500/5",
+              "border-(--violet-500)/40 bg-gradient-to-br from-(--violet-500)/5 to-(--violet-800)/5 shadow-(--violet-500)/5",
               "border-cyan-500/40 bg-gradient-to-br from-cyan-500/5 to-blue-500/5 shadow-cyan-500/5",
               "border-amber-500/40 bg-gradient-to-br from-amber-500/5 to-orange-500/5 shadow-amber-500/5",
               "border-emerald-500/40 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 shadow-emerald-500/5",
