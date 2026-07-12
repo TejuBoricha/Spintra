@@ -450,7 +450,10 @@ test.describe('Tournament UI E2E & Edge Cases Spec', () => {
     await expect(page.locator('.text-3xl.font-bold')).toContainText('Alpha');
   });
 
-  // Test UI 10: Negative scores inputs are saved in state and processed (engine defect demonstration)
+  // Test UI 10: Negative scores are compared correctly (recordMatchResult's
+  // `s1 > s2 ? player1 : s2 > s1 ? player2 : null` is plain numeric
+  // comparison, so -3 > -5 correctly picks Bravo — verified directly against
+  // src/lib/tournament-engine.ts, no defect found there).
   test('E2E: Score editor accepts negative integers and processes them', async ({ page }) => {
     await page.goto('/tools/tournament', { waitUntil: 'networkidle' });
 
@@ -463,9 +466,20 @@ test.describe('Tournament UI E2E & Edge Cases Spec', () => {
 
     await match.click();
     const scoreInputs = page.locator('input[type="number"]');
+    await expect(scoreInputs).toHaveCount(2);
+
+    // Bracket generation shuffles participant order into the player1/player2
+    // slots when no seeds are given (generateSingleElimination -> applySeeds
+    // -> shuffleArray), so which score input belongs to "Bravo" isn't fixed
+    // at index 1 — read the on-screen name labels to find it, rather than
+    // assuming a slot order that doesn't actually exist.
+    const names = await page.locator('div.flex-1.text-center > p').allTextContents();
+    const bravoIndex = names.findIndex((n) => n.trim() === 'Bravo');
+    expect(bravoIndex).toBeGreaterThanOrEqual(0);
+
     // Input negative scores: -5 vs -3 (-3 is larger than -5, so Bravo wins!)
-    await scoreInputs.nth(0).fill('-5');
-    await scoreInputs.nth(1).fill('-3');
+    await scoreInputs.nth(bravoIndex).fill('-3');
+    await scoreInputs.nth(1 - bravoIndex).fill('-5');
     await page.getByRole('button', { name: 'Save' }).click();
 
     // Verify Bravo is crowned champion (since -3 > -5)
