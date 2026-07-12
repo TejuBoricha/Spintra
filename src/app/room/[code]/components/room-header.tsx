@@ -169,7 +169,7 @@ export const RoomHeader = memo(function RoomHeader({
           )}
         </div>
 
-        <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end w-full sm:w-auto sm:shrink-0">
           <Tooltip>
             <TooltipTrigger
               render={
