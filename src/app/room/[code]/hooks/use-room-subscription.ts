@@ -889,9 +889,25 @@ export function useRoomSubscription({
         }, 20_000)
       : null;
 
+    // Separate, more frequent, *unconditional* reconciliation for the room's
+    // own row (name/lock/capacity). Unlike participants, a silently dropped
+    // single postgres_changes UPDATE here doesn't necessarily flip
+    // isRealtimeReadyRef/realtimeErrorRef at all (the channel still reports
+    // healthy) — gating this the same way as loadParticipants would leave a
+    // stale room name/capacity forever with no self-heal. The room row
+    // changes far less often than participants do, so unconditional polling
+    // isn't the cost concern the participant gate exists for; the read
+    // itself is a single cheap lookup by unique indexed `code`.
+    const roomDetailsInterval = supabase
+      ? setInterval(() => {
+          loadRoomDetails();
+        }, 6_000)
+      : null;
+
     return () => {
       isMounted = false;
       if (reconciliationInterval) clearInterval(reconciliationInterval);
+      if (roomDetailsInterval) clearInterval(roomDetailsInterval);
     };
   }, [roomCode, currentUser.id, electHostIfNeeded, router, authReady, prefetchedRoom, prefetchedExistingParticipant]);
 

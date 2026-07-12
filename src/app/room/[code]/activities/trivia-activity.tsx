@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import { Lightbulb, Shuffle, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -63,6 +63,16 @@ export function TriviaActivity() {
     }
   }, [isHost]);
 
+  // Mirrors triviaAnswers so the event listener below (a long-lived
+  // subscription that intentionally doesn't depend on triviaAnswers, to
+  // avoid resubscribing the channel on every answer) can still tell a
+  // genuinely new answer apart from an idempotent resend of one already
+  // known — see the periodic resend effect further down.
+  const triviaAnswersRef = useRef(triviaAnswers);
+  useEffect(() => {
+    triviaAnswersRef.current = triviaAnswers;
+  }, [triviaAnswers]);
+
   useEffect(() => {
     return registerEventListener((event) => {
       if (event.kind === "trivia_question") {
@@ -78,6 +88,12 @@ export function TriviaActivity() {
         setTriviaAnswers({});
         playSwipe(soundEnabled);
       } else if (event.kind === "trivia_answer") {
+        // Answers are resent a few times after the initial broadcast (see
+        // below) so a peer whose channel missed the first delivery still
+        // catches it — that resend is otherwise indistinguishable from a
+        // brand-new answer, so only play the reveal sound the first time
+        // this userId is seen for the current question.
+        const alreadyKnown = !!triviaAnswersRef.current[event.userId];
         setTriviaAnswers((prev) => ({
           ...prev,
           [event.userId]: { username: event.username, choiceIndex: event.choiceIndex, correct: event.correct },
@@ -85,14 +101,16 @@ export function TriviaActivity() {
         if (typeof event.correctIndex === "number") {
           setTriviaQuestion((prev) => prev ? { ...prev, correctIndex: event.correctIndex } : null);
         }
-        if (event.userId === currentUser.id) {
-          if (event.correct) {
-            playSuccess(soundEnabled);
+        if (!alreadyKnown) {
+          if (event.userId === currentUser.id) {
+            if (event.correct) {
+              playSuccess(soundEnabled);
+            } else {
+              playFailure(soundEnabled);
+            }
           } else {
-            playFailure(soundEnabled);
+            playPop(soundEnabled);
           }
-        } else {
-          playPop(soundEnabled);
         }
       } else if (event.kind === "activity_reset") {
         setTriviaQuestion(null);
@@ -141,6 +159,38 @@ export function TriviaActivity() {
 
   const myAnswer = triviaQuestion ? triviaAnswers[currentUser.id] : undefined;
   const correctCount = Object.values(triviaAnswers).filter((a) => a.correct).length;
+
+  // trivia_answer is a fire-and-forget broadcast (no delivery guarantee) —
+  // if a peer's realtime channel briefly hiccups right as this fires, that
+  // peer never learns this answer happened, with nothing to self-heal it
+  // (unlike postgres_changes-backed state, there's no row to re-fetch).
+  // Resending a few times over the following seconds gives any peer who
+  // missed the first delivery another chance to catch it; the listener
+  // above only reacts to the first delivery it actually receives per userId
+  // (see alreadyKnown), so repeats are inert once every peer has it.
+  useEffect(() => {
+    if (!myAnswer || !triviaQuestion) return;
+    let resends = 0;
+    const interval = setInterval(() => {
+      resends += 1;
+      if (resends > 5) {
+        clearInterval(interval);
+        return;
+      }
+      sendActivityEvent({
+        kind: "trivia_answer",
+        userId: currentUser.id,
+        username: currentUser.username,
+        choiceIndex: myAnswer.choiceIndex,
+        correctIndex: triviaQuestion.correctIndex,
+        correct: myAnswer.correct,
+      });
+    }, 3000);
+    return () => clearInterval(interval);
+    // Re-broadcasts only need to restart when the answer/question identity
+    // actually changes, not on every unrelated re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myAnswer?.choiceIndex, triviaQuestion?.num]);
 
   return (
     <motion.div
