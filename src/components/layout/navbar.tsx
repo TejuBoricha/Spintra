@@ -22,7 +22,6 @@ import {
   Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -62,10 +61,12 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
-  const [joinCode, setJoinCode] = useState("");
+  const [codeDigits, setCodeDigits] = useState<string[]>(() => Array(6).fill(""));
   const [joining, setJoining] = useState(false);
   const [currentUser] = useState(getOrCreateRoomUser);
   const createBtnRef = useRef<HTMLAnchorElement>(null);
+  const codeInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const joinCode = codeDigits.join("");
 
   const router = useRouter();
   const pathname = usePathname();
@@ -83,7 +84,7 @@ export function Navbar() {
   }, []);
 
   const handleJoinRoomSubmit = useCallback(async () => {
-    if (joinCode.length !== 6) return;
+    if (codeDigits.some((d) => !d)) return;
     setJoining(true);
 
     try {
@@ -99,7 +100,7 @@ export function Navbar() {
 
       toast.success("Joining room...");
       setIsJoinOpen(false);
-      setJoinCode("");
+      setCodeDigits(Array(6).fill(""));
       router.push(`/room/${joinCode}`);
     } catch (err) {
       console.error("Failed to join room:", err);
@@ -107,7 +108,57 @@ export function Navbar() {
     } finally {
       setJoining(false);
     }
-  }, [joinCode, router, currentUser.id]);
+  }, [codeDigits, joinCode, router, currentUser.id]);
+
+  const handleDigitChange = useCallback((index: number, raw: string) => {
+    const clean = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!clean) {
+      setCodeDigits((prev) => {
+        const next = [...prev];
+        next[index] = "";
+        return next;
+      });
+      return;
+    }
+    // Handles both a single keystroke and a full paste landing in one box.
+    setCodeDigits((prev) => {
+      const next = [...prev];
+      for (let i = 0; i < clean.length && index + i < 6; i += 1) {
+        next[index + i] = clean[i];
+      }
+      return next;
+    });
+    const lastFilledIndex = Math.min(index + clean.length, 5);
+    codeInputRefs.current[lastFilledIndex]?.focus();
+  }, []);
+
+  const handleDigitKeyDown = useCallback(
+    (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        handleJoinRoomSubmit();
+        return;
+      }
+      if (e.key === "Backspace" && !codeDigits[index] && index > 0) {
+        e.preventDefault();
+        codeInputRefs.current[index - 1]?.focus();
+        setCodeDigits((prev) => {
+          const next = [...prev];
+          next[index - 1] = "";
+          return next;
+        });
+        return;
+      }
+      if (e.key === "ArrowLeft" && index > 0) {
+        e.preventDefault();
+        codeInputRefs.current[index - 1]?.focus();
+      }
+      if (e.key === "ArrowRight" && index < 5) {
+        e.preventDefault();
+        codeInputRefs.current[index + 1]?.focus();
+      }
+    },
+    [codeDigits, handleJoinRoomSubmit]
+  );
 
   const isExploreActive = pathname === "/explore";
 
@@ -332,17 +383,26 @@ export function Navbar() {
             <p className="font-body text-xs text-muted-foreground text-left uppercase tracking-wider font-semibold">
               Enter 6-Character Room Code:
             </p>
-            <Input
-              type="text"
-              maxLength={6}
-              value={joinCode}
-              onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-              onKeyDown={(e) => e.key === "Enter" && handleJoinRoomSubmit()}
-              placeholder="EX: 89PB5T"
-              aria-label="Enter 6-character room code"
-              className="h-13 text-center text-2xl font-mono font-bold uppercase tracking-widest text-(--brand-primary-strong)"
-              autoFocus
-            />
+            <div className="flex items-center justify-center gap-2" role="group" aria-label="6-character room code">
+              {codeDigits.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={(el) => {
+                    codeInputRefs.current[index] = el;
+                  }}
+                  type="text"
+                  inputMode="text"
+                  maxLength={6}
+                  value={digit}
+                  onChange={(e) => handleDigitChange(index, e.target.value)}
+                  onKeyDown={(e) => handleDigitKeyDown(index, e)}
+                  onFocus={(e) => e.target.select()}
+                  aria-label={`Room code character ${index + 1}`}
+                  className="h-13 w-11 rounded-control border border-(--border-hairline) bg-(--surface-sunken) text-center text-xl font-mono font-bold uppercase text-(--brand-primary-strong) outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  autoFocus={index === 0}
+                />
+              ))}
+            </div>
           </div>
 
           <Button
