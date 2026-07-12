@@ -84,13 +84,6 @@ export default function HomePage() {
   }, [homeCode, router, currentUser.id]);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"],
-  });
-
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
-  const heroScale = useTransform(scrollYProgress, [0, 0.15], [1, 0.95]);
 
   // The WebGL scene's render loop (useFrame) runs continuously for as long
   // as the Canvas is mounted — with no visibility check, it kept animating
@@ -102,6 +95,23 @@ export default function HomePage() {
   const prefersReducedMotion = useReducedMotion();
   const heroSectionRef = useRef<HTMLElement>(null);
   const [isHeroVisible, setIsHeroVisible] = useState(false);
+
+  // Scoped to the hero section's own scroll distance (top of hero hitting
+  // the viewport top, through its bottom hitting the viewport top) rather
+  // than the whole page's scrollYProgress — the hero's content column can
+  // run taller than one viewport (e.g. once "Recently Visited Rooms" is
+  // showing), and tying the fade to a fixed fraction of the *entire* page
+  // (badge through footer) meant opacity could already be near 0 while
+  // the lower half of the hero — Recently Visited Rooms included — was
+  // still the thing actually on screen, making it unreadable rather than
+  // gone. Scoping to the hero itself keeps the fade proportional to how
+  // much of the hero has actually scrolled past.
+  const { scrollYProgress: heroScrollProgress } = useScroll({
+    target: heroSectionRef,
+    offset: ["start start", "end start"],
+  });
+  const heroOpacity = useTransform(heroScrollProgress, [0, 1], [1, 0]);
+  const heroScale = useTransform(heroScrollProgress, [0, 1], [1, 0.95]);
 
   useEffect(() => {
     if (prefersReducedMotion) return;
