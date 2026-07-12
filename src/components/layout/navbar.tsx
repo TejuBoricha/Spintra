@@ -19,6 +19,7 @@ import {
   Sparkles,
   ChevronDown,
   Gamepad2,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -196,6 +197,17 @@ export function Navbar() {
 
           {/* Right side */}
           <div className="flex items-center gap-2">
+            <Link href="/settings" className="hidden sm:block">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Settings"
+                className="rounded-full border border-(--border-hairline) bg-(--surface-sunken) text-foreground"
+              >
+                <Settings className="w-4 h-4" />
+              </Button>
+            </Link>
+
             {mounted && (
               <Button
                 variant="ghost"
@@ -292,6 +304,15 @@ export function Navbar() {
               >
                 <Sparkles className="w-5 h-5" />
                 Create Room
+              </Link>
+
+              <Link
+                href="/settings"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 px-3 py-2 rounded-control hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+              >
+                <Settings className="w-5 h-5" />
+                Settings
               </Link>
             </div>
           </motion.div>

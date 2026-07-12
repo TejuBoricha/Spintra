@@ -84,6 +84,10 @@ export function safeStorageSet(key: string, value: string): void {
   try { localStorage.setItem(key, value); } catch { /* private browsing */ }
 }
 
+export function safeStorageRemove(key: string): void {
+  try { localStorage.removeItem(key); } catch { /* private browsing */ }
+}
+
 // Shared between the standalone /tools/word-scramble page and the room
 // activity — both used to hardcode their own copy of this list, which had
 // already drifted apart (the room activity's fallback list was missing
