@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { checkCanJoinRoom, ROOM_JOIN_ERROR_MESSAGES } from "@/lib/room-join-check";
-import { ArrowRight, Sparkles, Zap, Globe, MessageCircle, Star } from "lucide-react";
+import { ArrowRight, Sparkles, Zap, Globe, MessageCircle, Star, DownloadCloud, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getOrCreateRoomUser } from "@/lib/room-user";
@@ -29,6 +29,8 @@ const heroFeatures = GAMES.map((game) => ({
   gradient: game.color,
   stats: game.stats,
 }));
+
+const socialProofGames = GAMES.filter((g) => !g.createOnly).slice(0, 4);
 
 const perks = [
   { icon: Zap, label: "Instant Rooms", desc: "Create in seconds, join in milliseconds" },
@@ -310,19 +312,27 @@ export default function HomePage() {
           >
             <div className="flex items-center gap-2">
               <div className="flex -space-x-2">
-                {[...Array(4)].map((_, i) => (
+                {socialProofGames.map((game) => (
                   <div
-                    key={i}
-                    className="w-7 h-7 rounded-full bg-(image:--gradient-avatar) border-2 border-background"
-                  />
+                    key={game.href}
+                    className="w-7 h-7 rounded-full bg-(image:--gradient-avatar) border-2 border-background flex items-center justify-center"
+                  >
+                    <game.icon className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
+                  </div>
                 ))}
               </div>
               <span>{GAMES.filter((g) => !g.createOnly).length} games to play</span>
             </div>
             <div className="hidden sm:block w-px h-4 bg-border" />
-            <span className="hidden sm:inline">No download required</span>
+            <span className="hidden sm:flex items-center gap-1.5">
+              <DownloadCloud className="w-4 h-4 text-(--brand-primary-strong)" />
+              No download required
+            </span>
             <div className="hidden sm:block w-px h-4 bg-border" />
-            <span className="hidden sm:inline">Free to start</span>
+            <span className="hidden sm:flex items-center gap-1.5">
+              <Gift className="w-4 h-4 text-(--brand-primary-strong)" />
+              Free to start
+            </span>
           </motion.div>
 
           {/* Scroll indicator */}
