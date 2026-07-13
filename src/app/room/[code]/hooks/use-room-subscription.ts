@@ -402,13 +402,21 @@ export function useRoomSubscription({
           // Best-effort: prevents the kicked user from immediately rejoining.
           // Kick itself has already succeeded above, so a failure here doesn't
           // block the primary action — just logged for visibility.
-          const { error: banError } = await supabase.from("room_bans").insert({
-            room_id: roomCode,
-            user_id: participant.user_id,
-            banned_by: currentUser.id,
-            username: participant.user?.username ?? null,
-            fingerprint_hash: participantRow?.fingerprint_hash ?? null,
-          });
+          // ignoreDuplicates (ON CONFLICT DO NOTHING): a ban row may already
+          // exist from an earlier kick, and room_bans has no UPDATE policy
+          // (insert-once, delete-to-unban — migrations 0012/0043), so both a
+          // plain insert (duplicate key) and an upsert's DO UPDATE half (RLS)
+          // would error here. An existing row already means "banned".
+          const { error: banError } = await supabase.from("room_bans").upsert(
+            {
+              room_id: roomCode,
+              user_id: participant.user_id,
+              banned_by: currentUser.id,
+              username: participant.user?.username ?? null,
+              fingerprint_hash: participantRow?.fingerprint_hash ?? null,
+            },
+            { onConflict: "room_id,user_id", ignoreDuplicates: true }
+          );
           if (banError) {
             console.error("Failed to record room ban:", banError);
           }

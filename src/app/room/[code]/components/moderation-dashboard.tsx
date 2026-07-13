@@ -196,6 +196,11 @@ export function ModerationDashboard({
         .delete()
         .eq("room_id", roomCode)
         .eq("user_id", kickTargetId);
+      // ignoreDuplicates (ON CONFLICT DO NOTHING) is load-bearing: room_bans
+      // deliberately has no UPDATE policy (insert-once, delete-to-unban —
+      // migrations 0012/0043), so an upsert's DO UPDATE half is rejected by
+      // RLS whenever a ban row already exists (e.g. kicking the same user
+      // from a second report). An existing row already means "banned".
       const { error: banError } = await supabase.from("room_bans").upsert(
         {
           room_id: roomCode,
@@ -204,7 +209,7 @@ export function ModerationDashboard({
           username: participantRow?.username ?? null,
           fingerprint_hash: participantRow?.fingerprint_hash ?? null,
         },
-        { onConflict: "room_id,user_id", ignoreDuplicates: false }
+        { onConflict: "room_id,user_id", ignoreDuplicates: true }
       );
       if (banError) {
         console.error("Failed to record room ban:", banError.message || JSON.stringify(banError));
