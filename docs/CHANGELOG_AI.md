@@ -1689,3 +1689,32 @@
  -   T h e   \ g e t _ g u e s s _ n u m b e r _ s e c r e t \   R P C   i s   s e c u r e d   s t r i c t l y   t o   t h e   c u r r e n t   r o o m   h o s t ,   p r e v e n t i n g   u n a u t h o r i z e d   r e a d s . 
   
  
+
+## [2026-07-13] — Session 56: Tournament Engine & Layout Fixes
+**AI:** Antigravity IDE (Google DeepMind)
+**Task:** Fix tournament bracket deadlocks, UI bugs, E2E tests, and homepage layout issues.
+**Files Modified:**
+- `src/app/room/[code]/activities/tournament-activity.tsx`
+- `src/lib/tournament-engine.ts`
+- `supabase/migrations/0059_tournament_fixes.sql`
+- `tests/comprehensive-tournament-audit.spec.ts`
+- `src/app/page.tsx`
+- `src/components/landing/feature-card.tsx`
+- `.github/workflows/deploy.yml`
+
+**Purpose:**
+- Resolve BYE lock progression defect by implementing auto-completion rules in tournament engine.
+- Prevent score corruption via robust guardrails in the tournament activity UI.
+- Increase realtime limit constraints for larger bracket payloads.
+- Fix broken E2E tests and add CI migration deployment.
+- Remove redundant floating banner from the homepage.
+- Fix laggy animation pop-in for feature tiles on the homepage.
+
+**Outcome:**
+- Tournament Engine correctly handles BYE advancements without deadlocking.
+- Playwright tests run successfully.
+- Migration `0059` handles large 500KB tournament brackets.
+- UI components load snappily on the homepage without redundant elements.
+
+**Risks:**
+- Bracket editing is now strictly guarded. Re-editing completed matches that have cascading side-effects is blocked to prevent bracket corruption.

@@ -4,10 +4,22 @@ This document tracks all active, remaining, and completed tasks for the Spintra 
 
 ---
 
+---
+
+## Session 56: Tournament Engine & Layout Fixes (COMPLETE)
+
+Performed a comprehensive fix to the tournament engine, Playwright E2E tests, and homepage UI layout.
+- `[x]` **Tournament Engine Fixes:** Fixed deadlocks in `generateBracketForType` and `recordMatchResult` caused by BYE advancements locking future rounds.
+- `[x]` **UI Edit Guards:** Added robust defensive programming to `MatchCard` to prevent negative scores, and to prevent re-editing completed matches that already advanced players in the bracket.
+- `[x]` **Realtime Scalability:** Added migration `0059` to increase realtime JSON payload constraints to 500KB to support larger Swiss/Round Robin tournament states.
+- `[x]` **CI/CD Fixes:** Corrected testing environment URLs and syntax errors in `tests/comprehensive-tournament-audit.spec.ts`, and added `.github/workflows/deploy.yml` to automatically apply migrations on merge to `main`.
+- `[x]` **Homepage UI Polishing:** Removed a redundant promotional banner from the page footer, and fixed laggy scrolling issues by correctly limiting framer-motion delay timers.
+
 ## Session 55: Host Migration Analysis & Fixes (by Antigravity IDE) (COMPLETE)
 
 Performed a comprehensive analysis of the host migration scenario across the entire multiplayer suite (14 games).
-- [x] **Host Election & Security:** Fixed "phantom host" false presence claim and restored security regression in trigger estrict_host_participant_update.
+- [x] **Host Election & Security:** Fixed "phantom host" false presence claim and restored security regression in trigger 
+estrict_host_participant_update.
 - [x] **Data Privacy:** Implemented get_guess_number_secret secure RPC to prevent new hosts from seeing Guess The Number secrets without explicit fetch.
 - [x] **Soft-Locks:** Re-architected Coin Flip and Dice Roller to compute locally instead of relying on host setTimeout.
 - [x] **Frozen States:** Unlocked disabled states in Truth or Dare, Would You Rather, Never Have I Ever, Team Maker, Name Draw, and Word Scramble.
