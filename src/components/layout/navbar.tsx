@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/components/theme-provider";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { checkCanJoinRoom, ROOM_JOIN_ERROR_MESSAGES } from "@/lib/room-join-check";
@@ -17,7 +17,9 @@ import {
   Menu,
   X,
   Sparkles,
-  ChevronDown,
+  Grip,
+  Globe,
+  Wrench,
   Gamepad2,
   Settings,
 } from "lucide-react";
@@ -33,29 +35,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { GAMES } from "@/lib/games";
 
 const subscribeToClient = () => () => {};
 const getClientSnapshot = () => true;
 const getServerSnapshot = () => false;
-
-// Letter-wave hover: each character staggers a small bounce, matching the
-// design system's nav-link interaction spec (~30ms stagger, --ease-toy).
-function WaveLabel({ text }: { text: string }) {
-  return (
-    <span className="inline-flex">
-      {text.split("").map((ch, i) => (
-        <span
-          key={i}
-          className="inline-block transition-transform duration-150 ease-toy group-hover:-translate-y-0.5"
-          style={{ transitionDelay: `${i * 30}ms` }}
-        >
-          {ch === " " ? " " : ch}
-        </span>
-      ))}
-    </span>
-  );
-}
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -64,12 +47,10 @@ export function Navbar() {
   const [codeDigits, setCodeDigits] = useState<string[]>(() => Array(6).fill(""));
   const [joining, setJoining] = useState(false);
   const [currentUser] = useState(getOrCreateRoomUser);
-  const createBtnRef = useRef<HTMLAnchorElement>(null);
   const codeInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const joinCode = codeDigits.join("");
 
   const router = useRouter();
-  const pathname = usePathname();
   const mounted = useSyncExternalStore(
     subscribeToClient,
     getClientSnapshot,
@@ -120,7 +101,6 @@ export function Navbar() {
       });
       return;
     }
-    // Handles both a single keystroke and a full paste landing in one box.
     setCodeDigits((prev) => {
       const next = [...prev];
       for (let i = 0; i < clean.length && index + i < 6; i += 1) {
@@ -160,102 +140,126 @@ export function Navbar() {
     [codeDigits, handleJoinRoomSubmit]
   );
 
-  const isExploreActive = pathname === "/explore";
-
   return (
-    <nav
-      className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-        scrolled
-          ? "border-b border-(--border-glass) bg-(--surface-glass-strong) shadow-1 backdrop-blur-(--blur-glass)"
-          : "bg-transparent"
-      )}
+    <motion.nav
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      className="fixed top-4 inset-x-4 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 z-50 md:min-w-[600px] md:max-w-4xl w-[calc(100%-2rem)] transition-all duration-500"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 group">
+      <div
+        className={cn(
+          "mx-auto flex flex-col overflow-hidden transition-all duration-500 rounded-[2rem]",
+          "border border-(--border-glass) bg-(--surface-glass-strong)/80 backdrop-blur-2xl",
+          scrolled || mobileOpen
+            ? "shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5)] bg-(--surface-glass-strong)/95"
+            : "shadow-xl"
+        )}
+      >
+        <div className="flex items-center justify-between gap-4 px-3 py-2">
+          {/* Left: Logo */}
+          <Link href="/" className="flex items-center gap-2 group shrink-0">
             <motion.div
-              whileHover={{ scale: 1.08, rotate: 4 }}
-              transition={{ type: "spring", stiffness: 300, damping: 15 }}
-              className="w-8 h-8 rounded-control overflow-hidden flex-shrink-0 border-2 border-(--border-strong)"
+              whileHover={{ scale: 1.1, rotate: 8 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 400, damping: 10 }}
+              className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-(--brand-primary-strong) shadow-[0_0_15px_-3px_var(--color-brand-primary-strong)] relative"
             >
               <Image
                 src="/icons/logo.png"
-                alt=""
-                width={32}
-                height={32}
+                alt="Spintra Logo"
+                width={40}
+                height={40}
                 className="w-full h-full object-cover"
                 priority
               />
+              <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             </motion.div>
-            <span className="font-display text-xl font-black tracking-tight text-foreground">
+            <span className="hidden sm:block font-display text-xl font-black tracking-tight text-foreground">
               <span className="text-(--brand-primary-strong)">Spin</span>tra
             </span>
           </Link>
 
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-1.5">
-            <Link
-              href="/explore"
-              className={cn(
-                "group inline-flex items-center rounded-pill px-3.5 py-2 font-body text-sm font-semibold transition-colors",
-                isExploreActive
-                  ? "bg-primary/10 text-(--brand-primary-strong)"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
+          {/* Center: Funky Actions (Desktop Only) */}
+          <div className="hidden md:flex items-center p-1 rounded-[1.5rem] bg-gradient-to-b from-(--surface-sunken)/80 to-transparent border border-(--border-hairline) shadow-inner gap-1 backdrop-blur-md">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsJoinOpen(true)}
+              className="rounded-full px-6 font-bold tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
             >
-              <WaveLabel text="Explore" />
+              JOIN
+            </Button>
+            <Link href="/create" onClick={() => fireConfetti()}>
+              <Button
+                variant="brand"
+                size="sm"
+                className="rounded-full px-6 font-bold tracking-widest text-xs shadow-lg shadow-primary/25 relative overflow-hidden group border border-white/20 h-9"
+              >
+                <span className="relative z-10 flex items-center gap-2">
+                  HOST
+                  <Sparkles className="w-3.5 h-3.5 group-hover:animate-spin-slow" />
+                </span>
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-shimmer" />
+              </Button>
             </Link>
+          </div>
 
+          {/* Right: Icons & Menus */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Grid Mega Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
                   <Button
                     variant="ghost"
-                    size="sm"
-                    className="rounded-pill text-muted-foreground hover:text-foreground"
+                    size="icon"
+                    className="rounded-full text-muted-foreground hover:text-foreground hover:bg-(--surface-sunken) transition-colors h-10 w-10"
+                    aria-label="Navigation Menu"
                   >
-                    <Gamepad2 className="w-4 h-4 mr-2" />
-                    Games
-                    <ChevronDown className="w-4 h-4 ml-1 opacity-60" />
+                    <Grip className="w-5 h-5" />
                   </Button>
                 }
               />
-              <DropdownMenuContent align="start" className="w-64 max-h-80 overflow-y-auto">
+              <DropdownMenuContent
+                align="end"
+                sideOffset={12}
+                className="w-56 rounded-[1.5rem] p-2 border-(--border-glass) bg-(--surface-glass-strong) backdrop-blur-3xl shadow-2xl"
+              >
                 <DropdownMenuGroup>
-                  <DropdownMenuLabel>All Games</DropdownMenuLabel>
-                  {GAMES.filter((game) => !game.createOnly).map((game) => (
-                    <DropdownMenuItem key={game.type} render={<Link href={game.href} />}>
-                      <game.icon className="w-4 h-4" />
-                      {game.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>Room Modes</DropdownMenuLabel>
-                  {GAMES.filter((game) => game.createOnly).map((game) => (
-                    <DropdownMenuItem key={game.type} render={<Link href={game.href} />}>
-                      <game.icon className="w-4 h-4" />
-                      {game.label}
-                    </DropdownMenuItem>
-                  ))}
+                  <DropdownMenuLabel className="px-2 py-1.5 text-xs text-muted-foreground uppercase tracking-widest font-semibold">
+                    Discover
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem render={<Link href="/explore" className="cursor-pointer rounded-xl p-2.5 transition-colors focus:bg-primary/10" />}>
+                    <Globe className="w-4 h-4 mr-2 text-blue-400" />
+                    <span className="font-semibold text-sm">Public Rooms</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem render={<Link href="/tools" className="cursor-pointer rounded-xl p-2.5 transition-colors focus:bg-primary/10" />}>
+                    <Wrench className="w-4 h-4 mr-2 text-orange-400" />
+                    <span className="font-semibold text-sm">Standalone Tools</span>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator className="bg-(--border-hairline) my-1" />
+                  
+                  <DropdownMenuLabel className="px-2 py-1.5 text-xs text-muted-foreground uppercase tracking-widest font-semibold">
+                    Create
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem render={<Link href="/create" className="cursor-pointer rounded-xl p-2.5 transition-colors focus:bg-primary/10" />}>
+                    <Gamepad2 className="w-4 h-4 mr-2 text-green-400" />
+                    <span className="font-semibold text-sm">Game Templates</span>
+                  </DropdownMenuItem>
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
 
-          {/* Right side */}
-          <div className="flex items-center gap-2">
             <Link href="/settings" className="hidden sm:block">
               <Button
                 variant="ghost"
                 size="icon"
+                className="rounded-full text-muted-foreground hover:text-foreground hover:bg-(--surface-sunken) transition-colors h-10 w-10"
                 aria-label="Settings"
-                className="rounded-full border border-(--border-hairline) bg-(--surface-sunken) text-foreground"
               >
-                <Settings className="w-4 h-4" />
+                <Settings className="w-5 h-5" />
               </Button>
             </Link>
 
@@ -265,123 +269,91 @@ export function Navbar() {
                 size="icon"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-                className="rounded-full border border-(--border-hairline) bg-(--surface-sunken) text-foreground"
+                className="rounded-full text-muted-foreground hover:text-foreground hover:bg-(--surface-sunken) transition-colors h-10 w-10"
               >
-                {theme === "dark" ? (
-                  <Sun className="w-4 h-4" />
-                ) : (
-                  <Moon className="w-4 h-4" />
-                )}
+                {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </Button>
             )}
 
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsJoinOpen(true)}
-              className="hidden sm:flex"
-            >
-              Join Room
-            </Button>
-
-            <Link href="/create" ref={createBtnRef} onClick={() => fireConfetti()} className="hidden sm:block">
-              <Button variant="brand" size="sm" icon={<Sparkles className="w-4 h-4" />}>
-                Create Room
-              </Button>
-            </Link>
-
-            <Button
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              className="md:hidden rounded-full text-foreground hover:bg-(--surface-sunken) h-10 w-10"
               onClick={() => setMobileOpen(!mobileOpen)}
-              aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
+              aria-label={mobileOpen ? "Close menu" : "Open menu"}
             >
               {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </Button>
           </div>
         </div>
+
+        {/* Mobile Expanding Menu */}
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden border-t border-(--border-hairline) bg-transparent"
+            >
+              <div className="px-4 py-4 flex flex-col gap-2">
+                <Button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    setIsJoinOpen(true);
+                  }}
+                  variant="outline"
+                  className="w-full rounded-full h-12 font-bold tracking-widest text-sm"
+                >
+                  JOIN ROOM
+                </Button>
+
+                <Link
+                  href="/create"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    fireConfetti();
+                  }}
+                  className="w-full"
+                >
+                  <Button variant="brand" className="w-full rounded-full h-12 font-bold tracking-widest text-sm shadow-lg shadow-primary/25">
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    HOST GAME
+                  </Button>
+                </Link>
+
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <Link href="/explore" onClick={() => setMobileOpen(false)}>
+                    <Button variant="ghost" className="w-full rounded-2xl h-12 bg-(--surface-sunken)/50">
+                      <Globe className="w-4 h-4 mr-2 text-blue-400" />
+                      Explore
+                    </Button>
+                  </Link>
+                  <Link href="/tools" onClick={() => setMobileOpen(false)}>
+                    <Button variant="ghost" className="w-full rounded-2xl h-12 bg-(--surface-sunken)/50">
+                      <Wrench className="w-4 h-4 mr-2 text-orange-400" />
+                      Tools
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Mobile Menu */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden border-t border-(--border-hairline) bg-(--surface-glass-strong) backdrop-blur-(--blur-glass) overflow-hidden"
-          >
-            <div className="px-4 py-4 space-y-2 max-h-[70vh] overflow-y-auto">
-              <Link
-                href="/explore"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-3 py-2 rounded-control hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-              >
-                Explore
-              </Link>
-              <p className="px-3 pt-2 pb-1 font-body text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Games
-              </p>
-              {GAMES.map((game) => (
-                <Link
-                  key={game.type}
-                  href={game.href}
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2 rounded-control hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                >
-                  <game.icon className="w-5 h-5" />
-                  {game.label}
-                </Link>
-              ))}
-
-              <button
-                onClick={() => {
-                  setMobileOpen(false);
-                  setIsJoinOpen(true);
-                }}
-                className="flex items-center justify-center gap-3 px-3 py-2 rounded-pill border-2 border-(--border-strong) bg-(--surface-contrast) text-(--text-on-contrast) w-full mt-2 font-body font-semibold text-sm transition-all h-10"
-              >
-                Join Room
-              </button>
-
-              <Link
-                href="/create"
-                onClick={() => {
-                  setMobileOpen(false);
-                  fireConfetti();
-                }}
-                className="flex items-center gap-3 px-3 py-2 rounded-pill border-2 border-(--border-strong) bg-primary text-primary-foreground mt-2 h-10 justify-center font-body font-semibold text-sm"
-              >
-                <Sparkles className="w-5 h-5" />
-                Create Room
-              </Link>
-
-              <Link
-                href="/settings"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-3 py-2 rounded-control hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-              >
-                <Settings className="w-5 h-5" />
-                Settings
-              </Link>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <Dialog open={isJoinOpen} onOpenChange={setIsJoinOpen}>
-        <DialogContent className="text-center">
+        <DialogContent className="text-center rounded-[2rem] border-(--border-glass) bg-(--surface-glass-strong) backdrop-blur-2xl shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-center gap-2">
-              <Gamepad2 className="w-5 h-5 text-(--brand-primary-strong)" />
+            <DialogTitle className="flex items-center justify-center gap-2 font-display text-2xl font-black">
+              <Gamepad2 className="w-6 h-6 text-(--brand-primary-strong)" />
               Join Room
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <p className="font-body text-xs text-muted-foreground text-left uppercase tracking-wider font-semibold">
-              Enter 6-Character Room Code:
+          <div className="space-y-6 my-4">
+            <p className="font-body text-xs text-muted-foreground text-center uppercase tracking-widest font-bold">
+              Enter 6-Character Code
             </p>
             <div className="flex items-center justify-center gap-2" role="group" aria-label="6-character room code">
               {codeDigits.map((digit, index) => (
@@ -398,7 +370,7 @@ export function Navbar() {
                   onKeyDown={(e) => handleDigitKeyDown(index, e)}
                   onFocus={(e) => e.target.select()}
                   aria-label={`Room code character ${index + 1}`}
-                  className="h-13 w-11 rounded-control border border-(--border-hairline) bg-(--surface-sunken) text-center text-xl font-mono font-bold uppercase text-(--brand-primary-strong) outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  className="h-14 w-12 sm:h-16 sm:w-14 rounded-xl border-2 border-(--border-strong) bg-(--surface-sunken) text-center text-2xl font-mono font-black uppercase text-(--brand-primary-strong) outline-none transition-all focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20 shadow-inner"
                   autoFocus={index === 0}
                 />
               ))}
@@ -409,12 +381,12 @@ export function Navbar() {
             disabled={joinCode.length !== 6 || joining}
             onClick={handleJoinRoomSubmit}
             variant="brand"
-            className="w-full"
+            className="w-full rounded-full h-14 font-bold tracking-widest text-lg shadow-lg shadow-primary/25"
           >
-            {joining ? "Verifying..." : "Join Game"}
+            {joining ? "VERIFYING..." : "ENTER GAME"}
           </Button>
         </DialogContent>
       </Dialog>
-    </nav>
+    </motion.nav>
   );
 }
