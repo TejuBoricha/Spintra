@@ -343,19 +343,27 @@ export function Navbar() {
       </div>
 
       <Dialog open={isJoinOpen} onOpenChange={setIsJoinOpen}>
-        <DialogContent className="text-center rounded-[2rem] border-(--border-glass) bg-(--surface-glass-strong) backdrop-blur-2xl shadow-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-center gap-2 font-display text-2xl font-black">
-              <Gamepad2 className="w-6 h-6 text-(--brand-primary-strong)" />
-              Join Room
+        <DialogContent className="text-center rounded-[2.5rem] border-0 bg-white/70 dark:bg-black/70 backdrop-blur-3xl shadow-[0_0_80px_-15px_rgba(100,255,100,0.3)] overflow-hidden p-8 sm:p-10">
+          {/* Funky Background Blob */}
+          <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
+          
+          <DialogHeader className="relative z-10">
+            <DialogTitle className="flex flex-col items-center justify-center gap-3 font-display text-4xl sm:text-5xl font-black tracking-tight mb-2">
+              <div className="p-4 rounded-3xl bg-gradient-to-br from-primary to-green-400 text-white shadow-xl shadow-primary/20 rotate-[-5deg] hover:rotate-0 transition-transform">
+                <Gamepad2 className="w-8 h-8" />
+              </div>
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500">
+                Join a Room
+              </span>
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-6 my-4">
-            <p className="font-body text-xs text-muted-foreground text-center uppercase tracking-widest font-bold">
+          <div className="space-y-8 my-6 relative z-10">
+            <p className="font-display text-sm text-muted-foreground text-center uppercase tracking-[0.2em] font-bold">
               Enter 6-Character Code
             </p>
-            <div className="flex items-center justify-center gap-2" role="group" aria-label="6-character room code">
+            <div className="flex items-center justify-center gap-2 sm:gap-3" role="group" aria-label="6-character room code">
               {codeDigits.map((digit, index) => (
                 <input
                   key={index}
@@ -370,7 +378,7 @@ export function Navbar() {
                   onKeyDown={(e) => handleDigitKeyDown(index, e)}
                   onFocus={(e) => e.target.select()}
                   aria-label={`Room code character ${index + 1}`}
-                  className="h-12 w-12 sm:h-14 sm:w-14 p-0 rounded-full border-2 border-(--border-strong) bg-(--surface-sunken) text-center text-2xl font-mono font-black uppercase text-(--brand-primary-strong) outline-none transition-all focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20 shadow-inner"
+                  className="h-14 w-12 sm:h-16 sm:w-14 p-0 rounded-2xl border border-white/20 dark:border-white/10 bg-white/50 dark:bg-black/50 text-center text-3xl font-display font-black uppercase text-foreground outline-none transition-all focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/30 focus-visible:-translate-y-1 focus-visible:bg-white dark:focus-visible:bg-white/10 shadow-[inset_0_2px_10px_rgba(0,0,0,0.05)]"
                   autoFocus={index === 0}
                 />
               ))}
@@ -380,10 +388,23 @@ export function Navbar() {
           <Button
             disabled={joinCode.length !== 6 || joining}
             onClick={handleJoinRoomSubmit}
-            variant="brand"
-            className="w-full rounded-full h-14 font-bold tracking-widest text-lg shadow-lg shadow-primary/25"
+            className="relative z-10 w-full rounded-[1.5rem] h-16 font-display font-black tracking-widest text-xl bg-gradient-to-r from-primary via-green-400 to-blue-500 hover:from-primary hover:to-primary text-white border-none shadow-xl shadow-primary/30 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:hover:scale-100 group"
           >
-            {joining ? "VERIFYING..." : "ENTER GAME"}
+            {joining ? (
+              <span className="animate-pulse">VERIFYING...</span>
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                ENTER GAME
+                <motion.span
+                  initial={{ x: -5, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                  className="inline-block"
+                >
+                  &rarr;
+                </motion.span>
+              </span>
+            )}
           </Button>
         </DialogContent>
       </Dialog>
