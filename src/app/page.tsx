@@ -244,19 +244,6 @@ export default function HomePage() {
             </div>
            </motion.div>
 
-           {(!roomHistory || roomHistory.length === 0) && (
-             <div className="mt-8"> 
-                <div className="w-full bg-(--coral-500)/10 border-b border-(--coral-500)/20 px-4 py-2.5 text-center text-xs sm:text-sm text-(--coral-400) flex items-center justify-center gap-2 shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 shrink-0 text-(--coral-500)">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <path d="M12 16v-4"></path>
-                    <path d="M12 8h.01"></path>
-                  </svg>
-                  <span>Want to play with friends? <Link href="/create" className="underline font-bold text-(--coral-400) transition-colors mx-1">Create a Multiplayer Room</Link> to invite them!</span>
-               </div>
-             </div>
-           )}
-
            {roomHistory.length > 0 && (
              <motion.div
                initial={{ opacity: 0, y: 10 }}
