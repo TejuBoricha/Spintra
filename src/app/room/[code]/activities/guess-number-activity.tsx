@@ -47,6 +47,24 @@ export function GuessNumberActivity() {
     });
   }, [registerEventListener]);
 
+  useEffect(() => {
+    if (isHost && guessSecretNumber === null && roomCode) {
+      const fetchSecret = async () => {
+        const supabase = getSupabaseBrowserClient();
+        if (supabase) {
+          const { data, error } = await supabase.rpc("get_guess_number_secret", {
+            p_room_code: roomCode,
+          });
+          // Note: if the secret hasn't been set at all, the DB will return null.
+          if (!error && data !== null) {
+            setGuessSecretNumber(data);
+          }
+        }
+      };
+      void fetchSecret();
+    }
+  }, [isHost, guessSecretNumber, roomCode]);
+
   // Real Supabase mode: the secret is set/checked server-side (migration
   // 0028's RPCs) so it's never known to any client but the host's own, and a
   // guess's hint can't be forged by broadcasting a fabricated result. Demo

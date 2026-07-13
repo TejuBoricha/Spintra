@@ -100,7 +100,7 @@ export function TeamMakerActivity() {
                       className="text-sm font-semibold text-muted-foreground flex items-center gap-2"
                     >
                       <Emoji name="busts_in_silhouette" size={14} animated={false} />
-                      <span className="text-neutral-200">{m}</span>
+                      <span className="text-foreground">{m}</span>
                     </p>
                   ))}
                   {team.members.length === 0 && (
