@@ -13,6 +13,7 @@ Performed a comprehensive UI overhaul to align with the core green/white Spintra
 - **Floating Navbar & Navigation Consolidation:** Rebuilt the primary Navbar into a stunning floating glassmorphic pill (`fixed`, `backdrop-blur`). Removed redundant dropdown menus and relocated Quick Tools directly into easily accessible center-pill and mobile drawer slots.
 - **Terminology Cleanup:** Updated Discover -> Browse, Explore -> Live Rooms, and Standalone Tools -> Quick Tools for conceptual clarity.
 - **Button Contrast Bugfix:** Globally fixed a major UI visibility issue across all 50+ `variant="outline"` usages (including Team Maker, RPS, Bingo, and Cancel buttons) by correcting the core Spintra Button variant to use a transparent background instead of a harsh solid white surface.
+- **Local History Pruning:** Added logic to actively sweep `localStorage` so "Recently Visited" rooms automatically disappear from the user's dashboard if the room is closed by the host, or if the user is kicked or banned.
 - **Join Room Modal Redesign:** Updated the Join Room modal to match the Spintra brand identity (green/white), replacing the previous purple cyberpunk theme.
 - **Layout Re-architecture:** Stripped hacky hardcoded top-paddings (`pt-16`/`pt-24`) from 18 individual page layouts and consolidated into a single `<main>` wrapper in `layout.tsx` to uniformly handle the floating navbar bleed. Fixed an SSR hydration mismatch on the Settings page.
 

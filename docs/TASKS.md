@@ -15,6 +15,7 @@ Performed a comprehensive UI overhaul for navigation elements and globally resol
 - `[x]` **Layout Re-architecture:** Stripped hacky hardcoded top-paddings (`pt-16`/`pt-24`) from 18 individual page layouts and consolidated into a single `<main>` wrapper in `layout.tsx` to uniformly handle the floating navbar bleed.
 - `[x]` **Button Contrast Bugfix:** Globally fixed a major UI visibility issue across all 50+ `variant="outline"` usages (including Team Maker, RPS, Bingo, and Cancel buttons) by correcting the core Spintra Button variant to use a transparent background instead of a harsh solid white surface.
 - `[x]` **Hydration Repair:** Fixed an SSR hydration mismatch on the Settings page caused by early synchronous theme reads.
+- `[x]` **Local History Pruning:** Added logic to actively sweep `localStorage` so "Recently Visited" rooms automatically disappear from the user's dashboard if the room is closed by the host, or if the user is kicked or banned.
 
 ## Session 56: Tournament Engine & Layout Fixes (COMPLETE)
 

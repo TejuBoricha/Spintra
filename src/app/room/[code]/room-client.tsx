@@ -265,6 +265,15 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
             setAccessError("not_found");
             setCheckingAccess(false);
           }
+          if (typeof window !== "undefined") {
+            try {
+              const stored = window.localStorage.getItem("spintra-room-history");
+              if (stored) {
+                const history = JSON.parse(stored).filter((h: any) => h.code !== roomCode);
+                window.localStorage.setItem("spintra-room-history", JSON.stringify(history));
+              }
+            } catch (e) {}
+          }
           return;
         }
 
@@ -289,6 +298,15 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           if (isMounted) {
             setAccessError("banned");
             setCheckingAccess(false);
+          }
+          if (typeof window !== "undefined") {
+            try {
+              const stored = window.localStorage.getItem("spintra-room-history");
+              if (stored) {
+                const history = JSON.parse(stored).filter((h: any) => h.code !== roomCode);
+                window.localStorage.setItem("spintra-room-history", JSON.stringify(history));
+              }
+            } catch (e) {}
           }
           return;
         }

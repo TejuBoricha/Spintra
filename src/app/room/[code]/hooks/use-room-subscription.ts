@@ -985,6 +985,15 @@ export function useRoomSubscription({
 
           case "KICKED":
             if (payload === currentUser.id) {
+              if (typeof window !== "undefined") {
+                try {
+                  const stored = window.localStorage.getItem("spintra-room-history");
+                  if (stored) {
+                    const history = JSON.parse(stored).filter((h: any) => h.code !== roomCode);
+                    window.localStorage.setItem("spintra-room-history", JSON.stringify(history));
+                  }
+                } catch (e) {}
+              }
               toast.error("You were removed from the room by the host.", { id: "kicked-toast" });
               router.push("/explore");
               return;
@@ -993,6 +1002,15 @@ export function useRoomSubscription({
             break;
 
           case "ROOM_CLOSED":
+            if (typeof window !== "undefined") {
+              try {
+                const stored = window.localStorage.getItem("spintra-room-history");
+                if (stored) {
+                  const history = JSON.parse(stored).filter((h: any) => h.code !== roomCode);
+                  window.localStorage.setItem("spintra-room-history", JSON.stringify(history));
+                }
+              } catch (e) {}
+            }
             toast.error("The host closed this room.", { id: "room-closed-toast" });
             router.push("/explore");
             break;
