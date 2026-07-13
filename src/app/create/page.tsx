@@ -1,11 +1,20 @@
 import React, { Suspense } from "react";
+import type { Metadata } from "next";
 import { Loader2 } from "lucide-react";
 import CreateRoomClient from "./create-client";
+
+export const metadata: Metadata = {
+  title: "Create a Room — Spintra",
+  description:
+    "Pick a game type, set up your multiplayer room, and invite friends with a 6-character code in seconds.",
+  alternates: { canonical: "/create" },
+};
 
 export default function Page() {
   return (
     <div>
-      <main className="min-h-screen pt-24 pb-16 px-4">
+      {/* Not <main>: the root layout already renders the page's single main landmark. */}
+      <div className="min-h-screen pt-24 pb-16 px-4">
         <div className="max-w-4xl mx-auto">
           <h1 className="font-display text-4xl sm:text-5xl font-black mb-4">Create a <span className="gradient-text">Room</span></h1>
           <p className="text-muted-foreground text-lg mb-8">Pick a game type, set up your room, and invite people in seconds.</p>
@@ -23,7 +32,7 @@ export default function Page() {
             <CreateRoomClient />
           </Suspense>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
