@@ -27,11 +27,25 @@ export function DiceActivity() {
       if (event.kind === "dice_rolling") {
         setDiceRolling(true);
         playDiceRoll(soundEnabled);
+        
+        if (rollTimerRef.current) clearTimeout(rollTimerRef.current);
+        
+        // Host migration fix: compute instantly, delay the UI locally.
+        if (event.results) {
+          rollTimerRef.current = setTimeout(() => {
+            setDiceResults(event.results!); // Use non-null assertion since we checked it
+            setDiceRolling(false);
+            playTick(soundEnabled);
+          }, 900);
+        }
       } else if (event.kind === "dice_roll") {
+        // Kept for backward compatibility with pre-migration event logs
+        if (rollTimerRef.current) clearTimeout(rollTimerRef.current);
         setDiceResults(event.results);
         setDiceRolling(false);
         playTick(soundEnabled);
       } else if (event.kind === "activity_reset") {
+        if (rollTimerRef.current) clearTimeout(rollTimerRef.current);
         setDiceResults([]);
         setDiceRolling(false);
       }
@@ -96,12 +110,9 @@ export function DiceActivity() {
               key={count}
               disabled={diceRolling}
               onClick={() => {
-                sendActivityEvent({ kind: "dice_rolling" });
-                rollTimerRef.current = setTimeout(() => {
-                  const results = Array.from({ length: count }, () => Math.ceil(Math.random() * 6));
-                  sendActivityEvent({ kind: "dice_roll", results });
-                }, 900);
-              }}
+              const results = Array.from({ length: count }, () => Math.ceil(Math.random() * 6));
+              sendActivityEvent({ kind: "dice_rolling", results });
+            }}
               variant="outline"
               className="h-10 px-5 text-sm font-semibold border-primary/30 hover:bg-primary/10 text-(--brand-primary-strong) rounded-full transition-all"
             >

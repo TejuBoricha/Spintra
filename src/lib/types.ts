@@ -8,9 +8,9 @@ export type UserRole = "host" | "participant";
 
 // Room activity events carry different fields per game kind (coin flip, dice
 // roll, guess submit, ...) — structured as a discriminated union for strict type safety.
-type CoinFlippingEvent    = { kind: "coin_flipping" };
+type CoinFlippingEvent    = { kind: "coin_flipping"; result?: "Heads" | "Tails" };
 type CoinFlipEvent        = { kind: "coin_flip"; result: "Heads" | "Tails" };
-type DiceRollingEvent     = { kind: "dice_rolling" };
+type DiceRollingEvent     = { kind: "dice_rolling"; results?: number[] };
 type DiceRollEvent        = { kind: "dice_roll"; results: number[] };
 type TodPromptEvent       = { kind: "tod_prompt"; promptType: "truth" | "dare"; text: string };
 type WyrPromptEvent       = { kind: "wyr_prompt"; a: string; b: string };

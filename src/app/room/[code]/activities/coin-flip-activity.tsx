@@ -31,11 +31,25 @@ export function CoinFlipActivity() {
         setCoinFlipping(true);
         setCoinResult(null);
         playCoinFlip(soundEnabled);
+        
+        if (flipTimerRef.current) clearTimeout(flipTimerRef.current);
+        
+        // Host migration fix: compute instantly, delay the UI locally.
+        if (event.result) {
+          flipTimerRef.current = setTimeout(() => {
+            setCoinResult(event.result);
+            setCoinFlipping(false);
+            playTick(soundEnabled);
+          }, 1300);
+        }
       } else if (event.kind === "coin_flip") {
+        // Kept for backward compatibility with pre-migration event logs
+        if (flipTimerRef.current) clearTimeout(flipTimerRef.current);
         setCoinResult(event.result);
         setCoinFlipping(false);
         playTick(soundEnabled);
       } else if (event.kind === "activity_reset") {
+        if (flipTimerRef.current) clearTimeout(flipTimerRef.current);
         setCoinResult(null);
         setCoinFlipping(false);
       }
@@ -110,11 +124,8 @@ export function CoinFlipActivity() {
           <Button
             disabled={coinFlipping}
             onClick={() => {
-              sendActivityEvent({ kind: "coin_flipping" });
-              flipTimerRef.current = setTimeout(() => {
-                const result = Math.random() < 0.5 ? "Heads" : "Tails";
-                sendActivityEvent({ kind: "coin_flip", result });
-              }, 1300);
+              const result = Math.random() < 0.5 ? "Heads" : "Tails";
+              sendActivityEvent({ kind: "coin_flipping", result });
             }}
             className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-white border-0 w-full"
           >

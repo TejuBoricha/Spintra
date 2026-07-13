@@ -16,7 +16,7 @@ export function GuessNumberActivity() {
   const [guessHistory, setGuessHistory] = useState<
     { username: string; guess: number; hint: string }[]
   >([]);
-  const [guessSecretNumber, setGuessSecretNumber] = useState(50);
+  const [guessSecretNumber, setGuessSecretNumber] = useState<number | null>(null);
   const [resetting, setResetting] = useState(false);
   // submitGuess is a real network round-trip (awaits check_guess_number),
   // unlike the other activities' synchronous local event-bus dispatch —
@@ -37,6 +37,7 @@ export function GuessNumberActivity() {
         case "guess_reset": {
           setGuessHistory([]);
           if (typeof event.secret === "number") setGuessSecretNumber(event.secret);
+          else setGuessSecretNumber(null);
           break;
         }
         case "activity_reset":
@@ -96,8 +97,8 @@ export function GuessNumberActivity() {
         }
         hint = data;
       } else {
-        hint =
-          val === guessSecretNumber ? "correct" : val > guessSecretNumber ? "too high" : "too low";
+        const secret = guessSecretNumber ?? 50; // Fallback only ever hit if demo mode and somehow null
+        hint = val === secret ? "correct" : val > secret ? "too high" : "too low";
       }
 
       sendActivityEvent({ kind: "guess_submit", username: currentUser.username, guess: val, hint });
@@ -129,7 +130,7 @@ export function GuessNumberActivity() {
             </p>
           )}
           <div className="flex gap-4 items-center">
-            <span className="text-4xl font-black text-cyan-400">{guessSecretNumber}</span>
+            <span className="text-4xl font-black text-cyan-400">{guessSecretNumber !== null ? guessSecretNumber : "??"}</span>
             <Button
               size="sm"
               variant="outline"

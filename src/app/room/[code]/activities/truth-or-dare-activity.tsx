@@ -102,7 +102,6 @@ export function TruthOrDareActivity() {
             return (
               <Button
                 key={btn.type}
-                disabled={!!todPrompt}
                 onClick={() => {
                   const text = list[Math.floor(Math.random() * list.length)];
                   sendActivityEvent({
