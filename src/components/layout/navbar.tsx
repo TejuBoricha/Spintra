@@ -353,64 +353,78 @@ export function Navbar() {
           if (!open) setCodeDigits(Array(6).fill(""));
         }}
       >
-        <DialogContent className="max-w-md sm:max-w-md text-center rounded-[2rem] border border-(--border-glass) bg-(--surface-glass-strong) backdrop-blur-3xl shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden p-8 sm:p-10">
-          <DialogHeader className="relative z-10 space-y-4">
-            <div className="mx-auto w-20 h-20 rounded-[1.5rem] bg-(--surface-sunken) border-2 border-(--border-strong) shadow-inner flex items-center justify-center relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-tr from-(--brand-primary-strong)/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <Gamepad2 className="w-10 h-10 text-(--brand-primary-strong) relative z-10 transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-300" />
-            </div>
-            <DialogTitle className="font-display text-4xl sm:text-5xl font-black tracking-tight text-foreground uppercase">
-              JOIN ROOM
-            </DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-md sm:max-w-[420px] p-0 border-0 bg-transparent shadow-none overflow-visible">
+          {/* Animated gradient border wrapper */}
+          <div className="relative p-[2px] rounded-[2.5rem] overflow-hidden group">
+            {/* Rotating gradient background */}
+            <div className="absolute inset-0 bg-[conic-gradient(from_0deg,transparent_0_340deg,rgba(255,255,255,0.5)_360deg)] animate-[spin_4s_linear_infinite] opacity-100" />
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 opacity-30" />
+            
+            {/* Inner Glass Container */}
+            <div className="relative bg-[#0a0a0a]/95 backdrop-blur-3xl rounded-[calc(2.5rem-2px)] p-8 overflow-hidden flex flex-col items-center shadow-[0_0_40px_rgba(139,92,246,0.2)]">
+              
+              {/* Decorative ambient light */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-1/2 bg-purple-500/20 blur-[80px] pointer-events-none rounded-full" />
 
-          <div className="space-y-6 my-8 relative z-10">
-            <p className="font-body text-xs text-muted-foreground text-center uppercase tracking-[0.3em] font-bold">
-              Enter 6-Character Code
-            </p>
-            <div className="flex items-center justify-center gap-2 sm:gap-3" role="group" aria-label="6-character room code">
-              {codeDigits.map((digit, index) => (
-                <input
-                  key={index}
-                  ref={(el) => {
-                    codeInputRefs.current[index] = el;
-                  }}
-                  type="text"
-                  inputMode="text"
-                  maxLength={6}
-                  value={digit}
-                  onChange={(e) => handleDigitChange(index, e.target.value)}
-                  onKeyDown={(e) => handleDigitKeyDown(index, e)}
-                  onFocus={(e) => e.target.select()}
-                  aria-label={`Room code character ${index + 1}`}
-                  className="h-14 w-12 sm:h-16 sm:w-14 p-0 rounded-2xl border-2 border-(--border-strong) bg-(--surface-sunken) text-center text-3xl font-display font-black uppercase text-foreground outline-none transition-all focus-visible:border-(--brand-primary-strong) focus-visible:ring-4 focus-visible:ring-primary/20 focus-visible:-translate-y-1 hover:border-primary/50 shadow-inner"
-                  autoFocus={index === 0}
-                />
-              ))}
+              {/* Header */}
+              <div className="relative z-10 flex flex-col items-center mb-8">
+                <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-5 shadow-[0_0_20px_rgba(255,255,255,0.05)] backdrop-blur-md relative overflow-hidden group-hover:border-white/20 transition-colors duration-500">
+                  <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/30 to-pink-500/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <Gamepad2 className="w-8 h-8 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
+                </div>
+                <h2 className="text-3xl font-display font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-white via-white/90 to-white/50 uppercase">
+                  Join Room
+                </h2>
+                <p className="text-xs font-mono text-purple-300/60 uppercase tracking-[0.3em] mt-3">
+                  Initialize Connection
+                </p>
+              </div>
+
+              {/* Inputs */}
+              <div className="relative z-10 flex gap-2 sm:gap-3 w-full justify-center mb-10">
+                {codeDigits.map((digit, index) => (
+                  <div key={index} className="relative group/input">
+                    <input
+                      ref={(el) => { codeInputRefs.current[index] = el; }}
+                      type="text"
+                      inputMode="text"
+                      maxLength={6}
+                      value={digit}
+                      onChange={(e) => handleDigitChange(index, e.target.value)}
+                      onKeyDown={(e) => handleDigitKeyDown(index, e)}
+                      onFocus={(e) => e.target.select()}
+                      className="peer w-10 h-14 sm:w-12 sm:h-16 p-0 bg-white/[0.03] border border-white/10 rounded-xl text-center text-2xl font-mono font-bold uppercase text-white outline-none transition-all focus:bg-white/[0.08] focus:border-purple-500 focus:shadow-[0_0_20px_rgba(168,85,247,0.4)] focus:-translate-y-1 placeholder:text-white/10"
+                      placeholder="-"
+                      autoFocus={index === 0}
+                    />
+                    {/* Input glow effect */}
+                    <div className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-purple-500 to-transparent opacity-0 peer-focus:opacity-100 transition-opacity" />
+                  </div>
+                ))}
+              </div>
+
+              {/* Action Button */}
+              <Button
+                disabled={joinCode.length !== 6 || joining}
+                onClick={handleJoinRoomSubmit}
+                className="relative z-10 w-full h-14 rounded-xl bg-white text-black hover:bg-white/90 font-display font-black tracking-widest text-lg overflow-hidden transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:hover:scale-100 group/btn border-0 shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)]"
+              >
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  {joining ? "CONNECTING..." : "ENTER GAME"}
+                  {!joining && (
+                    <motion.span
+                      animate={{ x: [0, 4, 0] }}
+                      transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                    >
+                      &rarr;
+                    </motion.span>
+                  )}
+                </span>
+                {/* Button hover gradient sweep */}
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-black/10 to-transparent group-hover/btn:animate-[shimmer_1.5s_infinite]" />
+              </Button>
             </div>
           </div>
-
-          <Button
-            disabled={joinCode.length !== 6 || joining}
-            onClick={handleJoinRoomSubmit}
-            className="relative z-10 w-full rounded-[1.25rem] h-16 font-display font-black tracking-widest text-xl bg-(--brand-primary-strong) hover:bg-primary text-primary-foreground border-b-4 border-black/20 hover:border-black/30 hover:translate-y-px active:translate-y-1 active:border-b-0 shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:border-b-4 group"
-          >
-            {joining ? (
-              <span className="animate-pulse">VERIFYING...</span>
-            ) : (
-              <span className="flex items-center justify-center gap-2">
-                ENTER GAME
-                <motion.span
-                  initial={{ x: -5, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-                  className="inline-block group-hover:translate-x-1 transition-transform"
-                >
-                  &rarr;
-                </motion.span>
-              </span>
-            )}
-          </Button>
         </DialogContent>
       </Dialog>
     </motion.nav>
