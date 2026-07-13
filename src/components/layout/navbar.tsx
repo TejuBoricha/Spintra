@@ -274,7 +274,7 @@ export function Navbar() {
                     setMobileOpen(false);
                     setIsJoinOpen(true);
                   }}
-                  variant="outline"
+                  variant="brand"
                   className="w-full rounded-full h-12 font-bold tracking-widest text-sm"
                 >
                   JOIN ROOM

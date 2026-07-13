@@ -13,6 +13,7 @@ Performed a comprehensive UI overhaul for navigation elements and globally resol
 - `[x]` **Navigation Consolidation:** Removed redundant dropdown menus and relocated Quick Tools/Settings links directly into easily accessible center-pill and mobile drawer slots.
 - `[x]` **Terminology Cleanup:** Updated Discover -> Browse, Explore -> Live Rooms, and Standalone Tools -> Quick Tools for conceptual clarity.
 - `[x]` **Layout Re-architecture:** Stripped hacky hardcoded top-paddings (`pt-16`/`pt-24`) from 18 individual page layouts and consolidated into a single `<main>` wrapper in `layout.tsx` to uniformly handle the floating navbar bleed.
+- `[x]` **Button Contrast Bugfix:** Globally fixed a major UI visibility issue across all 50+ `variant="outline"` usages (including Team Maker, RPS, Bingo, and Cancel buttons) by correcting the core Spintra Button variant to use a transparent background instead of a harsh solid white surface.
 - `[x]` **Hydration Repair:** Fixed an SSR hydration mismatch on the Settings page caused by early synchronous theme reads.
 
 ## Session 56: Tournament Engine & Layout Fixes (COMPLETE)
