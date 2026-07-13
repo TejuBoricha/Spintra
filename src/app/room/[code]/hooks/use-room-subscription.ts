@@ -569,7 +569,7 @@ export function useRoomSubscription({
             .upsert({
               room_id: roomCode,
               user_id: currentUser.id,
-              role,
+              role: (roomRow.host_id === currentUser.id) ? "host" : "participant",
               is_online: true,
               joined_at,
               username: currentUserRef.current.username,

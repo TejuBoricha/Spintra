@@ -37,7 +37,7 @@ export function CoinFlipActivity() {
         // Host migration fix: compute instantly, delay the UI locally.
         if (event.result) {
           flipTimerRef.current = setTimeout(() => {
-            setCoinResult(event.result);
+            setCoinResult(event.result ?? null);
             setCoinFlipping(false);
             playTick(soundEnabled);
           }, 1300);
