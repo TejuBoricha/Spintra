@@ -412,7 +412,7 @@ export function RoomSidebar({
                               // Still blocks control characters and emoji.
                               onChange={(e) => setEditValue(e.target.value.replace(/[^\p{L}\p{N} _.'-]/gu, ""))}
                               maxLength={15}
-                              className="text-xs bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded px-1.5 py-0.5 font-medium text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/50 w-24"
+                              className="text-xs bg-black/5 dark:bg-(--surface-sunken) border border-black/10 dark:border-(--border-hairline) rounded px-1.5 py-0.5 font-medium text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/50 w-24"
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") handleSaveUsername();
                                 if (e.key === "Escape") setIsEditingUsername(false);

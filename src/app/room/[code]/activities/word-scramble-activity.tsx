@@ -167,7 +167,7 @@ export function WordScrambleActivity() {
           )}
         </>
       ) : (
-        <div className="glass-card p-12 rounded-3xl text-center w-full border border-white/10 shadow-xl">
+        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-3xl p-12 text-center w-full shadow-xl">
           <p className="mb-4 flex justify-center">
             <Emoji name="thinking_face" size={48} />
           </p>

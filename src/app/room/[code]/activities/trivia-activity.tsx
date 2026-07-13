@@ -205,7 +205,7 @@ export function TriviaActivity() {
       </h2>
 
       {isHost && !triviaQuestion && (
-        <div className="w-full space-y-4 glass-card p-6 rounded-2xl border border-white/10">
+        <div className="w-full space-y-4 border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6">
           <h3 className="text-lg font-bold text-yellow-400">Host Settings</h3>
           <p className="text-xs text-muted-foreground -mt-2">Pick a category and difficulty, then press Start Trivia</p>
 
@@ -218,7 +218,7 @@ export function TriviaActivity() {
                   setSelectedCategory(e.target.value);
                   setRemainingIndices([]);
                 }}
-                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus-visible:border-yellow-500/50 focus-visible:ring-2 focus-visible:ring-yellow-500/20 focus-visible:outline-none w-full"
+                className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-sm text-white focus-visible:border-yellow-500/50 focus-visible:ring-2 focus-visible:ring-yellow-500/20 focus-visible:outline-none w-full"
               >
                 <option value="All" className="bg-neutral-950 text-white">All Categories</option>
                 <option value="General Knowledge" className="bg-neutral-950 text-white">General Knowledge</option>
@@ -238,7 +238,7 @@ export function TriviaActivity() {
                   setSelectedDifficulty(e.target.value);
                   setRemainingIndices([]);
                 }}
-                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus-visible:border-yellow-500/50 focus-visible:ring-2 focus-visible:ring-yellow-500/20 focus-visible:outline-none w-full"
+                className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-sm text-white focus-visible:border-yellow-500/50 focus-visible:ring-2 focus-visible:ring-yellow-500/20 focus-visible:outline-none w-full"
               >
                 <option value="All" className="bg-neutral-950 text-white">All Difficulties</option>
                 <option value="easy" className="bg-neutral-950 text-white">Easy</option>
@@ -276,7 +276,7 @@ export function TriviaActivity() {
             </Badge>
           </div>
           
-          <div className="glass-card p-6 rounded-2xl text-center w-full border border-yellow-500/30">
+          <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 rounded-2xl text-center w-full border border-yellow-500/30">
             <p className="text-lg font-semibold">{triviaQuestion.text}</p>
           </div>
           
@@ -286,14 +286,14 @@ export function TriviaActivity() {
               const hasAnswered = !!myAnswer;
               const isCorrectOption = typeof triviaQuestion.correctIndex === "number" && i === triviaQuestion.correctIndex;
 
-              let btnStyle = "border-white/10 hover:border-yellow-500/50 hover:bg-yellow-500/10";
+              let btnStyle = "border-(--border-hairline) hover:border-yellow-500/50 hover:bg-yellow-500/10";
               if (hasAnswered) {
                 if (isCorrectOption) {
                   btnStyle = "border-emerald-500 bg-emerald-500/15 text-emerald-300 shadow-emerald-500/10 font-bold";
                 } else if (isPicked) {
                   btnStyle = "border-rose-500 bg-rose-500/15 text-rose-300 shadow-rose-500/10 font-bold";
                 } else {
-                  btnStyle = "border-white/5 opacity-40";
+                  btnStyle = "border-(--border-hairline) opacity-40";
                 }
               }
 

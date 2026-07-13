@@ -85,7 +85,7 @@ export default function BingoPage() {
               onClick={() => setSoundEnabled(!soundEnabled)}
               title={soundEnabled ? "Sound On" : "Sound Off"}
               aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-              className="p-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+              className="p-1.5 rounded-lg border border-(--border-hairline) bg-(--surface-sunken) hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
             >
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
@@ -113,7 +113,7 @@ export default function BingoPage() {
           </motion.p>
         )}
 
-        <div className="glass-card p-4 mb-6 inline-block">
+        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 mb-6 inline-block">
           <div className="grid grid-cols-5 gap-1 mb-1">
             {COLUMNS.map((col) => (
               <div key={col} className="w-14 h-8 flex items-center justify-center font-black text-teal-400">
@@ -131,7 +131,7 @@ export default function BingoPage() {
                     <div
                       key={col}
                       className={`w-14 h-14 flex items-center justify-center rounded-lg text-sm font-semibold border transition-colors ${
-                        marked ? "bg-teal-500/30 border-teal-500 text-teal-200" : "border-white/10 text-muted-foreground"
+                        marked ? "bg-teal-500/30 border-teal-500 text-teal-200" : "border-(--border-hairline) text-muted-foreground"
                       }`}
                     >
                       {isFree ? <Emoji name="trophy" size={20} animated={false} /> : card[col][row]}
@@ -144,7 +144,7 @@ export default function BingoPage() {
             [0, 1, 2, 3, 4].map((row) => (
               <div key={row} className="grid grid-cols-5 gap-1">
                 {COLUMNS.map((_, col) => (
-                  <div key={col} className="w-14 h-14 rounded-lg border border-white/5 bg-white/5 animate-pulse" />
+                  <div key={col} className="w-14 h-14 rounded-lg border border-(--border-hairline) bg-(--surface-sunken) animate-pulse" />
                 ))}
               </div>
             ))

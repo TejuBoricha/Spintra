@@ -112,7 +112,7 @@ export function TeamMakerActivity() {
           })}
         </div>
       ) : (
-        <div className="glass-card p-12 rounded-3xl text-center w-full border border-border shadow-xl">
+        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-12 rounded-3xl text-center w-full border border-border shadow-xl">
           <p className="mb-4 flex justify-center">
             <Emoji name="busts_in_silhouette" size={48} />
           </p>

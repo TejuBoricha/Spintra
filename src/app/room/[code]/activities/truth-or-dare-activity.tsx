@@ -153,7 +153,7 @@ export function TruthOrDareActivity() {
           <p className="text-xl font-bold leading-normal text-white">{todPrompt.text}</p>
         </motion.div>
       ) : (
-        <div className="glass-card p-12 rounded-3xl text-center w-full border border-white/10 shadow-xl">
+        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-3xl p-12 text-center w-full shadow-xl">
           <p className="mb-4 flex justify-center">
             <Emoji name="performing_arts" size={48} />
           </p>

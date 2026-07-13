@@ -274,7 +274,7 @@ export function BingoActivity() {
       )}
 
       {/* Bingo card layout matching standalone premium grid style */}
-      <div className="glass-card p-5 rounded-3xl border border-border shadow-2xl bg-gradient-to-br from-white/[0.01] to-white/[0.03]">
+      <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-5 rounded-3xl border border-border shadow-2xl bg-gradient-to-br from-white/[0.01] to-white/[0.03]">
         <div className="grid grid-cols-5 gap-2 mb-2">
           {COLUMNS.map((col) => (
             <div

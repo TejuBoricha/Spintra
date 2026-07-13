@@ -135,7 +135,7 @@ export function RpsActivity() {
           animate={{ opacity: 1, scale: 1 }}
           role="status"
           aria-live="polite"
-          className="glass-card p-4 rounded-2xl text-center w-full max-w-xs border border-rose-500/20"
+          className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 rounded-2xl text-center w-full max-w-xs border border-rose-500/20"
         >
           {roundResult.outcome === "decided" ? (
             <p className="text-lg font-bold text-emerald-400 flex items-center justify-center gap-2 flex-wrap">
@@ -191,7 +191,7 @@ export function RpsActivity() {
           })}
         </div>
       ) : (
-        <div className="glass-card p-6 rounded-2xl text-center w-full max-w-xs border border-border shadow-xl bg-gradient-to-br from-white/[0.01] to-white/[0.03]">
+        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 rounded-2xl text-center w-full max-w-xs border border-border shadow-xl bg-gradient-to-br from-white/[0.01] to-white/[0.03]">
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Your pick</p>
           <div className="flex flex-col items-center gap-2">
             <Emoji

@@ -98,7 +98,7 @@ export default function WouldYouRatherPage() {
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
-            className="glass-card p-8 mb-6 max-w-lg mx-auto"
+            className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-8 mb-6 max-w-lg mx-auto"
           >
             <p className="text-xl font-medium mb-6">Would you rather...</p>
             <div className="space-y-4">
@@ -109,8 +109,8 @@ export default function WouldYouRatherPage() {
                     disabled={showResult}
                     className={`w-full p-5 rounded-xl text-lg font-semibold transition-all relative overflow-hidden ${
                       showResult
-                        ? "glass-card cursor-default"
-                        : "glass-card hover:border-primary/30 hover:bg-primary/5 cursor-pointer"
+                        ? "border border-(--border-hairline) bg-(--surface-panel) rounded-2xl cursor-default"
+                        : "border border-(--border-hairline) bg-(--surface-panel) rounded-2xl hover:border-primary/30 hover:bg-primary/5 cursor-pointer"
                     }`}
                   >
                     {q.optionA}
@@ -136,8 +136,8 @@ export default function WouldYouRatherPage() {
                     disabled={showResult}
                     className={`w-full p-5 rounded-xl text-lg font-semibold transition-all relative overflow-hidden ${
                       showResult
-                        ? "glass-card cursor-default"
-                        : "glass-card hover:border-cyan-500/30 hover:bg-cyan-500/5 cursor-pointer"
+                        ? "border border-(--border-hairline) bg-(--surface-panel) rounded-2xl cursor-default"
+                        : "border border-(--border-hairline) bg-(--surface-panel) rounded-2xl hover:border-cyan-500/30 hover:bg-cyan-500/5 cursor-pointer"
                     }`}
                   >
                     {q.optionB}

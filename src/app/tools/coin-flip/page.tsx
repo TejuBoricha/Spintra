@@ -116,7 +116,7 @@ export default function CoinFlipPage() {
             onClick={() => setSoundEnabled(!soundEnabled)}
             title={soundEnabled ? "Sound On" : "Sound Off"}
             aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-            className="h-12 w-12 rounded-full border-white/10"
+            className="h-12 w-12 rounded-full border-(--border-hairline)"
           >
             {soundEnabled ? (
               <Volume2 className="w-5 h-5" />
@@ -131,7 +131,7 @@ export default function CoinFlipPage() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="glass-card p-6 max-w-md mx-auto"
+            className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 max-w-md mx-auto"
           >
             <h3 className="text-lg font-semibold mb-4 flex items-center justify-between w-full">
               <span className="flex items-center gap-2">
@@ -166,7 +166,7 @@ export default function CoinFlipPage() {
             </div>
           </motion.div>
         ) : (
-          <div className="glass-card p-6 max-w-md mx-auto text-center text-muted-foreground text-sm flex flex-col items-center gap-2">
+          <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 max-w-md mx-auto text-center text-muted-foreground text-sm flex flex-col items-center gap-2">
             <TrendingUp className="w-6 h-6 text-(--brand-primary-strong)/60" />
             Flip to start tracking stats.
           </div>

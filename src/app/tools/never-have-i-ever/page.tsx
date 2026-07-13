@@ -101,7 +101,7 @@ export default function NeverHaveIEverPage() {
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: -20 }}
-            className="glass-card p-8 mb-6 max-w-lg mx-auto relative overflow-hidden"
+            className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-8 mb-6 max-w-lg mx-auto relative overflow-hidden"
           >
             {revealed && (
               <motion.div
@@ -141,7 +141,7 @@ export default function NeverHaveIEverPage() {
               onClick={() => setSoundEnabled(!soundEnabled)}
               title={soundEnabled ? "Sound On" : "Sound Off"}
               aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-              className="h-12 w-12 border-white/10 rounded-lg"
+              className="h-12 w-12 border-(--border-hairline) rounded-lg"
             >
               {soundEnabled ? (
                 <Volume2 className="w-5 h-5" />
@@ -169,7 +169,7 @@ export default function NeverHaveIEverPage() {
                 onClick={() => setSoundEnabled(!soundEnabled)}
                 title={soundEnabled ? "Sound On" : "Sound Off"}
                 aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-                className="h-10 w-10 border-white/10 rounded-lg"
+                className="h-10 w-10 border-(--border-hairline) rounded-lg"
               >
                 {soundEnabled ? (
                   <Volume2 className="w-4 h-4" />

@@ -446,7 +446,7 @@ export function LuckyWheelActivity() {
                     }}
                     disabled={wheelSpinning}
                     aria-label={`Remove ${e}`}
-                    className="rounded-full hover:bg-white/10 disabled:opacity-50"
+                    className="rounded-full hover:bg-muted disabled:opacity-50"
                   >
                     <X className="w-3 h-3" />
                   </button>

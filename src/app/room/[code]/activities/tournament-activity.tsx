@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Swords, Trophy, Crown, RotateCcw, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ChipGroup } from "@/components/ui/chip-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import type { TournamentType } from "@/lib/types";
@@ -126,7 +126,7 @@ function ScoreEditor({
           </div>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" onClick={onClose} className="flex-1 glass border-border">
+          <Button variant="outline" onClick={onClose} className="flex-1">
             Cancel
           </Button>
           <Button
@@ -281,21 +281,24 @@ export function TournamentActivity() {
       </h2>
 
       {!tournament && isHost && (
-        <div className="glass-card p-4 space-y-3">
+        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 space-y-3">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Format</p>
-          <Tabs value={tournamentType} onValueChange={(v) => setTournamentType(v as TournamentType)}>
-            <TabsList className="w-full">
-              <TabsTrigger value="single-elimination" className="flex-1 text-xs">Single Elim</TabsTrigger>
-              <TabsTrigger value="double-elimination" className="flex-1 text-xs">Double Elim</TabsTrigger>
-              <TabsTrigger value="round-robin" className="flex-1 text-xs">Round Robin</TabsTrigger>
-              <TabsTrigger value="swiss" className="flex-1 text-xs">Swiss</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <ChipGroup
+            ariaLabel="Tournament format"
+            value={tournamentType}
+            onChange={(v) => setTournamentType(v as TournamentType)}
+            options={[
+              { value: "single-elimination", label: "Single Elim" },
+              { value: "double-elimination", label: "Double Elim" },
+              { value: "round-robin", label: "Round Robin" },
+              { value: "swiss", label: "Swiss" },
+            ]}
+          />
         </div>
       )}
 
       {!tournament ? (
-        <div className="glass-card p-12 rounded-3xl text-center w-full border border-border shadow-xl">
+        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-3xl p-12 text-center w-full shadow-xl">
           <p className="mb-4 flex justify-center">
             <Emoji name="trophy" size={48} />
           </p>
@@ -316,7 +319,7 @@ export function TournamentActivity() {
             />
           )}
 
-          <div className="glass-card p-4 overflow-x-auto">
+          <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 overflow-x-auto">
             {tournament.type === "single-elimination" && (
               <BracketColumns
                 rounds={tournament.rounds}
@@ -430,7 +433,7 @@ export function TournamentActivity() {
             <Button
               variant="outline"
               onClick={() => sendActivityEvent({ kind: "activity_reset" })}
-              className="w-full glass border-border"
+              className="w-full"
             >
               <RotateCcw className="w-4 h-4 mr-2" /> Start a New Bracket
             </Button>

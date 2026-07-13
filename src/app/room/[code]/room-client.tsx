@@ -111,7 +111,7 @@ const RoomGameArea = memo(function RoomGameArea({
                 <ErrorBoundary
                   key={activeActivity.type}
                   fallback={
-                    <div className="glass-card p-8 rounded-2xl text-center border border-red-500/20 max-w-md mx-auto mt-8">
+                    <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-8 rounded-2xl text-center border border-red-500/20 max-w-md mx-auto mt-8">
                       <p className="text-xl font-bold text-red-400 mb-2">Something went wrong</p>
                       <p className="text-sm text-muted-foreground">
                         The activity crashed or failed to load. Try picking a different activity.
@@ -855,7 +855,7 @@ function RoomUIInner({
       </div>
 
       {/* Desktop Sidebar - Chat & Participants */}
-      <div className="hidden md:flex md:w-80 md:border-l md:border-white/5 md:flex-col md:bg-background/50 md:backdrop-blur-sm">
+      <div className="hidden md:flex md:w-80 md:border-l md:border-(--border-hairline) md:flex-col md:bg-background/50 md:backdrop-blur-sm">
         {isDesktopSidebar && sidebarContent}
       </div>
 
@@ -863,7 +863,7 @@ function RoomUIInner({
       <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
         <SheetContent
           side="right"
-          className="p-0 w-80 bg-background border-l border-white/5 flex flex-col h-full"
+          className="p-0 w-80 bg-background border-l border-(--border-hairline) flex flex-col h-full"
         >
           {!isDesktopSidebar && sidebarContent}
         </SheetContent>

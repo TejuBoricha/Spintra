@@ -73,7 +73,7 @@ export default function RPSPage() {
               onClick={() => setSoundEnabled(!soundEnabled)}
               title={soundEnabled ? "Sound On" : "Sound Off"}
               aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-              className="p-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+              className="p-1.5 rounded-lg border border-(--border-hairline) bg-(--surface-sunken) hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
             >
               {soundEnabled ? (
                 <Volume2 className="w-4 h-4" />
@@ -101,7 +101,7 @@ export default function RPSPage() {
         </motion.div>
 
         {/* Battle Area */}
-        <div className="glass-card p-8 mb-8">
+        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-8 mb-8">
           <div className="flex items-center justify-center gap-8 sm:gap-16">
             {/* Player */}
             <div className="text-center">
@@ -110,7 +110,7 @@ export default function RPSPage() {
                 key={playerChoice}
                 initial={{ scale: 0.5 }}
                 animate={{ scale: 1 }}
-                className="w-24 h-24 rounded-2xl glass-card flex items-center justify-center"
+                className="w-24 h-24 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) rounded-2xl flex items-center justify-center"
               >
                 {playerChoice ? (
                   <Emoji name={choices.find((c) => c.name === playerChoice)!.emoji} size={56} pop />
@@ -137,7 +137,7 @@ export default function RPSPage() {
                 initial={aiChoice ? { scale: 0.5 } : {}}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.3 }}
-                className="w-24 h-24 rounded-2xl glass-card flex items-center justify-center"
+                className="w-24 h-24 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) rounded-2xl flex items-center justify-center"
               >
                 {playing ? (
                   <motion.div
@@ -179,7 +179,7 @@ export default function RPSPage() {
               whileTap={{ scale: 0.9 }}
               onClick={() => play(choice.name)}
               disabled={playing}
-              className="w-24 h-24 rounded-2xl glass-card flex flex-col items-center justify-center gap-2 hover:border-primary/30 transition-all disabled:opacity-50"
+              className="w-24 h-24 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) rounded-2xl flex flex-col items-center justify-center gap-2 hover:border-primary/30 transition-all disabled:opacity-50"
             >
               <Emoji name={choice.emoji} size={40} animated={false} />
               <span className="text-xs text-muted-foreground">{choice.name}</span>

@@ -106,7 +106,7 @@ export function WouldYouRatherActivity() {
                         myVote === opt
                           ? "border-rose-500 bg-rose-500/10 shadow-rose-500/10"
                           : myVote
-                          ? "border-white/5 opacity-40"
+                          ? "border-(--border-hairline) opacity-40"
                           : "border-rose-500/20 hover:border-rose-500/50 hover:bg-rose-500/[0.03]",
                       badge: "bg-rose-500/15 text-rose-300 border border-rose-500/20",
                       countColor: "text-rose-400",
@@ -117,7 +117,7 @@ export function WouldYouRatherActivity() {
                         myVote === opt
                           ? "border-cyan-500 bg-cyan-500/10 shadow-cyan-500/10"
                           : myVote
-                          ? "border-white/5 opacity-40"
+                          ? "border-(--border-hairline) opacity-40"
                           : "border-cyan-500/20 hover:border-cyan-500/50 hover:bg-cyan-500/[0.03]",
                       badge: "bg-cyan-500/15 text-cyan-300 border border-cyan-500/20",
                       countColor: "text-cyan-400",
@@ -172,7 +172,7 @@ export function WouldYouRatherActivity() {
             })}
 
             {/* Central VS Divider */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden sm:flex items-center justify-center w-10 h-10 rounded-full bg-slate-900 border border-white/10 shadow-xl z-10">
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden sm:flex items-center justify-center w-10 h-10 rounded-full bg-slate-900 border border-(--border-hairline) shadow-xl z-10">
               <span className="text-xs font-black text-white tracking-widest">VS</span>
             </div>
           </div>
@@ -193,7 +193,7 @@ export function WouldYouRatherActivity() {
           </div>
         </>
       ) : (
-        <div className="glass-card p-12 rounded-3xl text-center w-full border border-white/10 shadow-xl">
+        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-3xl p-12 text-center w-full shadow-xl">
           <p className="mb-4 flex justify-center">
             <Emoji name="thinking_face" size={48} />
           </p>

@@ -224,7 +224,7 @@ export default function TeamMakerPage() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1, duration: 0.4 }}
-            className="lg:col-span-2 glass-card p-6 space-y-5"
+            className="lg:col-span-2 border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 space-y-5"
           >
             <div>
               <Label className="text-sm font-medium mb-2 block">
@@ -266,7 +266,7 @@ export default function TeamMakerPage() {
             </div>
 
             {/* Auto-balance toggle */}
-            <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-(--surface-sunken) border border-white/[0.04]">
               <div className="space-y-0.5">
                 <Label htmlFor="auto-balance-switch" className="text-sm font-medium cursor-pointer">Auto-Balance</Label>
                 <p className="text-xs text-muted-foreground">Distribute names evenly across teams</p>
@@ -275,7 +275,7 @@ export default function TeamMakerPage() {
             </div>
  
             {/* Sound toggle */}
-            <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-(--surface-sunken) border border-white/[0.04]">
               <div className="space-y-0.5">
                 <Label htmlFor="sound-effects-switch" className="text-sm font-medium cursor-pointer">Sound Effects</Label>
                 <p className="text-xs text-muted-foreground">Play sounds when shuffling or adding players</p>
@@ -300,7 +300,7 @@ export default function TeamMakerPage() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2, duration: 0.4 }}
-            className="glass-card p-6 space-y-4"
+            className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 space-y-4"
           >
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
               Quick Templates
@@ -389,7 +389,7 @@ export default function TeamMakerPage() {
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: teamIdx * 0.08, duration: 0.3 }}
                       className={cn(
-                        "glass-card p-4 space-y-3 ring-1",
+                        "border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 space-y-3 ring-1",
                         color.ring
                       )}
                     >
@@ -437,7 +437,7 @@ export default function TeamMakerPage() {
                                 initial={{ opacity: 0, x: -10 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: 10, height: 0 }}
-                                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.03] group/member hover:bg-white/[0.04] transition-colors"
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-(--surface-sunken) border border-white/[0.03] group/member hover:bg-white/[0.04] transition-colors"
                               >
                                 <span className="flex-1 text-sm truncate">
                                   {member}
@@ -511,7 +511,7 @@ export default function TeamMakerPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.6 }}
-                className="glass-card p-6 text-center space-y-4"
+                className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 text-center space-y-4"
               >
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-(--brand-primary-strong) text-xs font-medium">
                   <Sparkles className="w-3.5 h-3.5" />

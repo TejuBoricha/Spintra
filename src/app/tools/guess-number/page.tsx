@@ -91,7 +91,7 @@ export default function GuessNumberPage() {
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50 ${
                 mode.name === m.name
                   ? "bg-primary text-primary-foreground"
-                  : "glass-card hover:border-white/10"
+                  : "border border-(--border-hairline) bg-(--surface-panel) rounded-2xl hover:border-(--border-hairline)"
               }`}
             >
               {m.name}
@@ -102,11 +102,11 @@ export default function GuessNumberPage() {
 
         {/* Game Info */}
         <div className="flex justify-center gap-6 mb-8 text-sm">
-          <div className="glass-card px-4 py-2">
+          <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl px-4 py-2">
             <span className="text-muted-foreground">Attempts: </span>
             <span className="font-bold text-white">{remaining}</span>
           </div>
-          <div className="glass-card px-4 py-2">
+          <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl px-4 py-2">
             <span className="text-muted-foreground">Range: </span>
             <span className="font-bold text-white">1–{mode.range}</span>
           </div>
@@ -123,7 +123,7 @@ export default function GuessNumberPage() {
               onChange={(e) => setGuess(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && makeGuess()}
               placeholder={`Enter 1-${mode.range}`}
-              className="w-32 px-4 py-3 rounded-xl bg-black/20 border border-white/10 text-center text-lg font-bold focus:border-primary outline-none"
+              className="w-32 px-4 py-3 rounded-xl bg-black/20 border border-(--border-hairline) text-center text-lg font-bold focus:border-primary outline-none"
             />
             <Button onClick={makeGuess} className="bg-primary text-primary-foreground hover:brightness-95">
               <Target className="w-4 h-4 mr-2" /> Guess
@@ -134,7 +134,7 @@ export default function GuessNumberPage() {
               onClick={() => setSoundEnabled(!soundEnabled)}
               title={soundEnabled ? "Sound On" : "Sound Off"}
               aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-              className="h-12 w-12 rounded-xl border-white/10"
+              className="h-12 w-12 rounded-xl border-(--border-hairline)"
             >
               {soundEnabled ? (
                 <Volume2 className="w-5 h-5" />
@@ -168,7 +168,7 @@ export default function GuessNumberPage() {
                 : `The number was ${target}.`}
             </p>
             <div className="flex justify-center gap-3">
-              <Button onClick={() => reset()} variant="outline" className="border-white/10">
+              <Button onClick={() => reset()} variant="outline" className="border-(--border-hairline)">
                 <RotateCcw className="w-4 h-4 mr-2" /> Play Again
               </Button>
               <Button
@@ -177,7 +177,7 @@ export default function GuessNumberPage() {
                 onClick={() => setSoundEnabled(!soundEnabled)}
                 title={soundEnabled ? "Sound On" : "Sound Off"}
                 aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-                className="h-10 w-10 border-white/10 rounded-lg"
+                className="h-10 w-10 border-(--border-hairline) rounded-lg"
               >
                 {soundEnabled ? (
                   <Volume2 className="w-4 h-4" />

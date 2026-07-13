@@ -177,7 +177,7 @@ export function NeverHaveIEverActivity() {
           </div>
         </>
       ) : (
-        <div className="glass-card p-12 rounded-3xl text-center w-full border border-border shadow-xl">
+        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-12 rounded-3xl text-center w-full border border-border shadow-xl">
           <p className="mb-4 flex justify-center">
             <Emoji name="see_no_evil_monkey" size={48} />
           </p>

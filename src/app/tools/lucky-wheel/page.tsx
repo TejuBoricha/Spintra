@@ -659,7 +659,7 @@ export default function LuckyWheelPage() {
             className="space-y-6"
           >
             {/* Entries card */}
-            <div className="glass-card p-5 space-y-4">
+            <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                   Entries ({entries.length})
@@ -694,7 +694,7 @@ export default function LuckyWheelPage() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 10, height: 0 }}
-                      className="flex items-center gap-2 p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.03] group/entry hover:bg-white/[0.04] transition-colors"
+                      className="flex items-center gap-2 p-2.5 rounded-lg bg-(--surface-sunken) border border-white/[0.03] group/entry hover:bg-white/[0.04] transition-colors"
                     >
                       {/* Color picker */}
                       <div className="relative">
@@ -808,7 +808,7 @@ export default function LuckyWheelPage() {
             </div>
 
             {/* Templates */}
-            <div className="glass-card p-5 space-y-3">
+            <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-5 space-y-3">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                 Templates
               </h3>
@@ -842,7 +842,7 @@ export default function LuckyWheelPage() {
             </div>
 
             {/* Sound toggle */}
-            <div className="glass-card p-4 flex items-center justify-between">
+            <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label className="text-sm font-medium">Sound Effects</Label>
                 <p className="text-xs text-muted-foreground">
@@ -859,7 +859,7 @@ export default function LuckyWheelPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="glass-card p-6 text-center space-y-4"
+          className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 text-center space-y-4"
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-300 text-xs font-medium">
             <Sparkles className="w-3.5 h-3.5" />
