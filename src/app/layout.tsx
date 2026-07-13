@@ -66,7 +66,7 @@ export default function RootLayout({
         </a>
         <Providers>
           <Navbar />
-          <main id="main-content" className="min-h-screen">{children}</main>
+          <main id="main-content" className="min-h-screen pt-[6rem]">{children}</main>
           <Toaster position="bottom-center" />
         </Providers>
         {/* E2E test bridge: catches clicks on the hidden server-rendered

@@ -197,7 +197,7 @@ export default function TeamMakerPage() {
         <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-cyan-500/5 rounded-full blur-[120px]" />
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-24 pb-12">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12">
         {/* ── Header ── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

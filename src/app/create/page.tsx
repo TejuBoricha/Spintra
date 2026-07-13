@@ -14,7 +14,7 @@ export default function Page() {
   return (
     <div>
       {/* Not <main>: the root layout already renders the page's single main landmark. */}
-      <div className="min-h-screen pt-24 pb-16 px-4">
+      <div className="min-h-screen pb-16 px-4">
         <div className="max-w-4xl mx-auto">
           <h1 className="font-display text-4xl sm:text-5xl font-black mb-4">Create a <span className="gradient-text">Room</span></h1>
           <p className="text-muted-foreground text-lg mb-8">Pick a game type, set up your room, and invite people in seconds.</p>

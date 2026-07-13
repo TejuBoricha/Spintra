@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function RoomLoading() {
   return (
-    <div className="min-h-screen pt-16 flex flex-col md:flex-row w-full">
+    <div className="min-h-screen flex flex-col md:flex-row w-full">
       <div className="flex-1 flex flex-col min-w-0 gap-4 p-4">
         <Skeleton className="h-12 w-full max-w-md" />
         <Skeleton className="h-8 w-48" />

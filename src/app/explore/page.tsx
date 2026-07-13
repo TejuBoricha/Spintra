@@ -341,7 +341,7 @@ export default function ExplorePage() {
   }), [recentActivities, search, activeCategory]);
 
   return (
-    <div className="min-h-screen pt-24 pb-16 px-4">
+    <div className="min-h-screen pb-16 px-4">
       <div className="max-w-6xl mx-auto space-y-12">
         {/* Header */}
         <motion.div

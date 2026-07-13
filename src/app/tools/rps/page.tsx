@@ -59,7 +59,7 @@ export default function RPSPage() {
   const outcomeText = { win: "You Win!", lose: "AI Wins!", draw: "Draw!" };
 
   return (
-    <div className="min-h-screen pt-24 pb-16 px-4">
+    <div className="min-h-screen pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">

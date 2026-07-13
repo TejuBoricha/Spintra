@@ -804,7 +804,7 @@ function RoomUIInner({
   );
 
   return (
-    <div className="min-h-screen pt-16 flex flex-col md:flex-row w-full">
+    <div className="min-h-screen flex flex-col md:flex-row w-full">
       {/* Screen-reader-only announcements for participant join/leave and
           game changes — found missing entirely in the Session 41 audit.
           Visually hidden (sr-only): these are transient events that would

@@ -184,7 +184,7 @@ export default function DicePage() {
   const currentDice = diceTypes.find((d) => d.sides === selectedDice) || diceTypes[1];
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden pt-24 pb-16 px-4">
+    <div className="min-h-screen bg-background relative overflow-hidden pb-16 px-4">
       {/* Immersive background glow effects */}
       <div className="absolute top-[-10%] left-[-20%] w-[60%] h-[50%] rounded-full dark:bg-(--violet-800)/10 bg-primary/5 blur-[150px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-20%] w-[60%] h-[50%] rounded-full dark:bg-cyan-900/10 bg-cyan-500/5 blur-[150px] pointer-events-none" />
