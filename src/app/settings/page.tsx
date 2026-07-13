@@ -38,11 +38,13 @@ export default function SettingsPage() {
   const [displayName, setDisplayName] = useState("");
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const username = getOrCreateRoomUser().username;
     const savedSound = safeStorageGet(SOUND_STORAGE_KEY);
     queueMicrotask(() => {
+      setMounted(true);
       setDisplayName(username);
       if (savedSound !== null) setSoundEnabled(savedSound === "true");
     });
@@ -126,17 +128,21 @@ export default function SettingsPage() {
 
           <div className="flex items-center justify-between">
             <Label htmlFor="settings-theme" className="font-normal">Theme</Label>
-            <Select value={theme} onValueChange={(v) => setTheme(v as "dark" | "light")}>
-              <SelectTrigger id="settings-theme" className="w-32">
-                <SelectValue>{(v: string) => (v === "dark" ? "Dark" : "Light")}</SelectValue>
-              </SelectTrigger>
-              <SelectContent alignItemWithTrigger={false} sideOffset={6}>
-                <SelectGroup>
-                  <SelectItem value="dark">Dark</SelectItem>
-                  <SelectItem value="light">Light</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            {mounted ? (
+              <Select value={theme} onValueChange={(v) => setTheme(v as "dark" | "light")}>
+                <SelectTrigger id="settings-theme" className="w-32">
+                  <SelectValue>{theme === "dark" ? "Dark" : "Light"}</SelectValue>
+                </SelectTrigger>
+                <SelectContent alignItemWithTrigger={false} sideOffset={6}>
+                  <SelectGroup>
+                    <SelectItem value="dark">Dark</SelectItem>
+                    <SelectItem value="light">Light</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="w-32 h-10 rounded-md border border-input bg-transparent" />
+            )}
           </div>
         </section>
 
