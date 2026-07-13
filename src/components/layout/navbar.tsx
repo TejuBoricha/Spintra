@@ -370,7 +370,7 @@ export function Navbar() {
                   onKeyDown={(e) => handleDigitKeyDown(index, e)}
                   onFocus={(e) => e.target.select()}
                   aria-label={`Room code character ${index + 1}`}
-                  className="h-14 w-12 sm:h-16 sm:w-14 rounded-xl border-2 border-(--border-strong) bg-(--surface-sunken) text-center text-2xl font-mono font-black uppercase text-(--brand-primary-strong) outline-none transition-all focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20 shadow-inner"
+                  className="h-12 w-12 sm:h-14 sm:w-14 p-0 rounded-full border-2 border-(--border-strong) bg-(--surface-sunken) text-center text-2xl font-mono font-black uppercase text-(--brand-primary-strong) outline-none transition-all focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20 shadow-inner"
                   autoFocus={index === 0}
                 />
               ))}
