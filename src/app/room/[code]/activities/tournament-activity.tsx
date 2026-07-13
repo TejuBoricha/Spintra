@@ -20,6 +20,7 @@ import {
   type MatchRef,
   generateBracketForType,
   recordMatchResult,
+  calculateStandings,
 } from "@/lib/tournament-engine";
 
 function MatchCard({
@@ -29,7 +30,7 @@ function MatchCard({
   match: BracketMatch;
   onClick?: () => void;
 }) {
-  const isBye = match.player1 === "BYE" || match.player2 === "BYE";
+  const isBye = match.player1 === "__BYE__" || match.player2 === "__BYE__";
   // A match is only interactable when both real players are present and the
   // host provided a click handler. Matches with null/TBD slots must not be
   // editable — saving scores on them corrupts subsequent bracket advancement.
@@ -109,7 +110,10 @@ function ScoreEditor({
               type="number"
               min={0}
               value={score1}
-              onChange={(e) => setScore1(parseInt(e.target.value) || 0)}
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                setScore1(!isNaN(val) && val >= 0 ? val : 0);
+              }}
               className="w-20 mx-auto text-center text-lg font-bold"
             />
           </div>
@@ -120,7 +124,10 @@ function ScoreEditor({
               type="number"
               min={0}
               value={score2}
-              onChange={(e) => setScore2(parseInt(e.target.value) || 0)}
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                setScore2(!isNaN(val) && val >= 0 ? val : 0);
+              }}
               className="w-20 mx-auto text-center text-lg font-bold"
             />
           </div>
@@ -231,10 +238,25 @@ export function TournamentActivity() {
         bracketKey !== "grandFinal" &&
         (tournament?.type === "single-elimination" || tournament?.type === "double-elimination")
       ) {
-        toast.error(
-          "This match is already completed. Re-editing would corrupt the bracket because the winner has already advanced."
-        );
-        return false;
+        const winnerNextMatch = bracketKey === "rounds"
+          ? tournament.rounds[match.round]?.find((m: BracketMatch) => m.position === Math.floor(match.position / 2))
+          : tournament.losersBracket?.[match.round]?.find((m: BracketMatch) => m.position === (match.round % 2 !== 0 ? Math.floor(match.position / 2) : match.position));
+        
+        if (winnerNextMatch && winnerNextMatch.status === "completed") {
+          toast.error("This match's winner has already played their next match. Re-editing would corrupt the bracket.");
+          return false;
+        }
+
+        if (tournament.type === "double-elimination" && bracketKey === "rounds" && tournament.losersBracket) {
+           const rw = match.round;
+           const targetRound = rw === 1 ? 0 : 2 * rw - 3;
+           const targetPos = rw === 1 ? Math.floor(match.position / 2) : match.position;
+           const loserNextMatch = tournament.losersBracket[targetRound]?.find((m: BracketMatch) => m.position === targetPos);
+           if (loserNextMatch && loserNextMatch.status === "completed") {
+             toast.error("This match's loser has already played their next match in the losers bracket. Re-editing would corrupt the bracket.");
+             return false;
+           }
+        }
       }
       return true;
     },
@@ -244,6 +266,10 @@ export function TournamentActivity() {
   const handleScoreSave = useCallback(
     (s1: number, s2: number) => {
       if (!editingMatch || !tournament) return;
+      if (s1 < 0 || s2 < 0) {
+        toast.error("Scores cannot be negative.");
+        return;
+      }
 
       const outcome = recordMatchResult(tournament, editingMatch, s1, s2);
       setEditingMatch(null);
@@ -413,7 +439,7 @@ export function TournamentActivity() {
                           key={match.id}
                           match={match}
                           onClick={
-                            isHost && match.player1 !== "BYE" && match.player2 !== "BYE"
+                            isHost && match.player1 !== "__BYE__" && match.player2 !== "__BYE__"
                               ? () => {
                                   if (!guardMatchEdit(match, "rounds")) return;
                                   setEditingMatch({ match, roundIdx: ri, position: mi, bracketKey: "rounds" });
@@ -425,6 +451,44 @@ export function TournamentActivity() {
                     </div>
                   </div>
                 ))}
+                
+                {(() => {
+                  const standings = calculateStandings(tournament.rounds, tournament.participants);
+                  return (
+                    <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 mt-6">
+                      <h3 className="text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground">Standings</h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                          <thead>
+                            <tr className="border-b border-(--border-hairline)">
+                              <th className="pb-2 font-medium">Rank</th>
+                              <th className="pb-2 font-medium">Player</th>
+                              <th className="pb-2 font-medium text-center">W</th>
+                              <th className="pb-2 font-medium text-center">L</th>
+                              <th className="pb-2 font-medium text-center">D</th>
+                              <th className="pb-2 font-medium text-right text-amber-500">Pts</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {standings.map((row, idx) => (
+                              <tr key={row.player} className="border-b border-(--border-hairline) last:border-0">
+                                <td className="py-2 font-mono text-muted-foreground">{idx + 1}</td>
+                                <td className="py-2 font-semibold flex items-center gap-2">
+                                  {idx === 0 && row.points > 0 ? <Trophy className="w-4 h-4 text-amber-400" /> : null}
+                                  {row.player}
+                                </td>
+                                <td className="py-2 text-center text-emerald-500">{row.wins}</td>
+                                <td className="py-2 text-center text-red-500">{row.losses}</td>
+                                <td className="py-2 text-center text-muted-foreground">{row.draws}</td>
+                                <td className="py-2 text-right font-bold text-amber-500">{row.points}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>

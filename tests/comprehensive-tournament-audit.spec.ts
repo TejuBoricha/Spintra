@@ -19,8 +19,8 @@ test.describe('Tournament Engine — Direct Unit & Matrix Tests', () => {
   test('padWithByes should correctly pad participant counts to powers of 2', () => {
     expect(padWithByes(['A'])).toEqual(['A']);
     expect(padWithByes(['A', 'B'])).toEqual(['A', 'B']);
-    expect(padWithByes(['A', 'B', 'C'])).toEqual(['A', 'B', 'C', 'BYE']);
-    expect(padWithByes(['A', 'B', 'C', 'D', 'E'])).toEqual(['A', 'B', 'C', 'D', 'E', 'BYE', 'BYE', 'BYE']);
+    expect(padWithByes(['A', 'B', 'C'])).toEqual(['A', 'B', 'C', '__BYE__']);
+    expect(padWithByes(['A', 'B', 'C', 'D', 'E'])).toEqual(['A', 'B', 'C', 'D', 'E', '__BYE__', '__BYE__', '__BYE__']);
     expect(padWithByes(Array(17).fill('P')).length).toBe(32);
   });
 
@@ -81,10 +81,9 @@ test.describe('Tournament Engine — Direct Unit & Matrix Tests', () => {
   for (const size of [2, 3, 4, 5, 8, 10]) {
     test(`Swiss Generation Matrix: size=${size}`, () => {
       const players = Array.from({ length: size }, (_, i) => `Player ${i + 1}`);
-      const expectedRounds = Math.ceil(Math.log2(size));
-      const rounds = generateSwiss(players, expectedRounds);
+      const rounds = generateSwiss(players);
 
-      expect(rounds.length).toBe(expectedRounds);
+      expect(rounds.length).toBe(1);
       // Padded to even size, so matches per round is Ceil(size/2)
       expect(rounds[0].length).toBe(Math.ceil(size / 2));
     });
@@ -139,22 +138,17 @@ test.describe('Tournament Engine — Direct Unit & Matrix Tests', () => {
     };
 
     const outcome = recordMatchResult(tournament, editMatch, 1, 1);
-    expect(outcome.kind).toBe('advanced'); // Correctly advances (record updated)
-    if (outcome.kind === 'advanced') {
+    expect(outcome.kind).toBe('champion'); // Completes the tournament
+    if (outcome.kind === 'champion') {
       expect(outcome.tournament.rounds[0][0].winner).toBeNull(); // Tied match has no winner
       expect(outcome.tournament.rounds[0][0].score1).toBe(1);
       expect(outcome.tournament.rounds[0][0].score2).toBe(1);
     } else {
-      throw new Error('Expected advanced outcome');
+      throw new Error('Expected champion outcome');
     }
   });
 
-  test('generateSwiss with 0 or negative rounds should return empty array', () => {
-    const roundsZero = generateSwiss(['A', 'B'], 0);
-    expect(roundsZero).toEqual([]);
-    const roundsNeg = generateSwiss(['A', 'B'], -5);
-    expect(roundsNeg).toEqual([]);
-  });
+  // Test removed since generateSwiss no longer accepts numRounds.
 
   test('generateRoundRobin with 0 or 1 player should generate empty brackets', () => {
     const emptyRR = generateRoundRobin([]);
@@ -258,7 +252,7 @@ test.describe('Tournament UI E2E & Edge Cases Spec', () => {
     await page.goto('/tools/tournament', { waitUntil: 'networkidle' });
 
     await page.getByPlaceholder(/Enter participant names/).fill('Alpha\nBravo\nCharlie\nDelta');
-    await page.getByRole('tab', { name: 'Single Elim' }).click();
+    await page.getByRole('radio', { name: 'Single Elim' }).click();
     await page.getByRole('button', { name: 'Generate Bracket' }).click();
 
     // 4-player Single Elim needs 3 matches to finish: 2 in Round 1 + 1 in Final
@@ -280,34 +274,46 @@ test.describe('Tournament UI E2E & Edge Cases Spec', () => {
   });
 
   // Test UI 2: Single Elimination 3-Player BYE Progression Lock (Odd count failure check)
-  test('E2E: Single Elimination 3-player shows BYE lock progression defect', async ({ page }) => {
+  test('E2E: Single Elimination 3-player completes successfully with BYE', async ({ page }) => {
+    // 3 players + 1 BYE = 4 slots (2 matches in round 1)
     await page.goto('/tools/tournament', { waitUntil: 'networkidle' });
 
     await page.getByPlaceholder(/Enter participant names/).fill('Alpha\nBravo\nCharlie');
-    await page.getByRole('tab', { name: 'Single Elim' }).click();
+    await page.getByRole('radio', { name: 'Single Elim' }).click();
     await page.getByRole('button', { name: 'Generate Bracket' }).click();
 
-    const realMatch = page.locator('[data-testid="tournament-match"]').nth(0);
-    const byeMatch = page.locator('[data-testid="tournament-match"]').nth(1);
+    // Verify 2 matches in round 1
+    const matchCount = await page.locator('[data-testid="tournament-match"]').count();
+    expect(matchCount).toBeGreaterThanOrEqual(2);
 
-    // Verify BYE match is pending and unclickable (ready=false)
-    await expect(byeMatch).toHaveAttribute('data-match-ready', 'false');
-    await expect(byeMatch).toHaveAttribute('data-match-status', 'pending');
+    const byeMatch = page.locator('[data-testid="tournament-match"]').nth(1);
+    const text = await byeMatch.textContent();
+    expect(text).toContain('__BYE__');
+
+    // Verify BYE match is auto-completed
+    await expect(byeMatch).toHaveAttribute('data-match-status', 'completed');
 
     // Score the real match
+    const realMatch = page.locator('[data-testid="tournament-match"]').first();
+    await expect(realMatch).toHaveAttribute('data-match-status', 'pending');
     await realMatch.click();
-    const scoreInputs = page.locator('input[type="number"]');
-    await scoreInputs.nth(0).fill('2');
-    await scoreInputs.nth(1).fill('0');
+
+    await page.getByPlaceholder('0').first().fill('3');
+    await page.getByPlaceholder('0').nth(1).fill('1');
     await page.getByRole('button', { name: 'Save' }).click();
 
-    // Verify a player advanced to Round 2, but the other slot remains TBD due to BYE lock
-    const round2Match = page.locator('[data-testid="tournament-match"]').nth(2);
-    await expect(round2Match).toContainText('TBD');
-    await expect(round2Match).toHaveAttribute('data-match-ready', 'false');
+    // Verify final match is now pending and has both players
+    const finalMatch = page.locator('[data-testid="tournament-match"]').nth(2);
+    await expect(finalMatch).toHaveAttribute('data-match-status', 'pending');
+    await expect(finalMatch).toHaveAttribute('data-match-ready', 'true');
+    
+    // Complete the final match
+    await finalMatch.click();
+    await page.getByPlaceholder('0').first().fill('2');
+    await page.getByPlaceholder('0').nth(1).fill('0');
+    await page.getByRole('button', { name: 'Save' }).click();
 
-    // Verify tournament is stuck (no Champion crowned)
-    await expect(page.getByText('Tournament Champion')).not.toBeVisible();
+    await expect(page.getByText('Tournament Champion')).toBeVisible();
   });
 
   // Test UI 3: Typo Correction Lock check (Matches can never be edited after completion)
@@ -315,7 +321,7 @@ test.describe('Tournament UI E2E & Edge Cases Spec', () => {
     await page.goto('/tools/tournament', { waitUntil: 'networkidle' });
 
     await page.getByPlaceholder(/Enter participant names/).fill('Alpha\nBravo');
-    await page.getByRole('tab', { name: 'Single Elim' }).click();
+    await page.getByRole('radio', { name: 'Single Elim' }).click();
     await page.getByRole('button', { name: 'Generate Bracket' }).click();
 
     const match = page.locator('[data-testid="tournament-match"]').first();
@@ -336,12 +342,12 @@ test.describe('Tournament UI E2E & Edge Cases Spec', () => {
     await expect(page.locator('input[type="number"]')).toHaveCount(0);
   });
 
-  // Test UI 4: Double Elimination 2-Player Deadlock
-  test('E2E: Double Elimination 2-player deadlocks after Winners Final match', async ({ page }) => {
+  // Test UI 4: Double Elimination 2-Player Completes Successfully
+  test('E2E: Double Elimination 2-player completes successfully', async ({ page }) => {
     await page.goto('/tools/tournament', { waitUntil: 'networkidle' });
 
     await page.getByPlaceholder(/Enter participant names/).fill('Alpha\nBravo');
-    await page.getByRole('tab', { name: 'Double Elim' }).click();
+    await page.getByRole('radio', { name: 'Double Elim' }).click();
     await page.getByRole('button', { name: 'Generate Bracket' }).click();
 
     const winnersMatch = page.locator('[data-testid="tournament-match"]').first();
@@ -353,23 +359,20 @@ test.describe('Tournament UI E2E & Edge Cases Spec', () => {
     await scoreInputs.nth(1).fill('2');
     await page.getByRole('button', { name: 'Save' }).click();
 
-    // Winners match completes, but no losers final or grand final exists. Assert stuck.
+    // Winners match completes, and the tournament is finished (2 player special case)
     await expect(winnersMatch).toHaveAttribute('data-match-status', 'completed');
-    await expect(page.getByText('Tournament Champion')).not.toBeVisible();
+    await expect(page.getByText('Tournament Champion')).toBeVisible();
   });
 
   // Test UI 5: Round Robin Standings & Completion Defect
-  test('E2E: Round Robin computes points on standalone page but fails to complete', async ({ page }) => {
+  test('E2E: Round Robin computes points on standalone page and completes', async ({ page }) => {
     await page.goto('/tools/tournament', { waitUntil: 'networkidle' });
 
     await page.getByPlaceholder(/Enter participant names/).fill('Alpha\nBravo\nCharlie');
-    await page.getByRole('tab', { name: 'Round Robin' }).click();
+    await page.getByRole('radio', { name: 'Round Robin' }).click();
     await page.getByRole('button', { name: 'Generate Bracket' }).click();
 
     // Record results for the 3 matches
-    // Match 1: Player 0 vs Player 1 (2-1)
-    // Match 2: Player 0 vs Player 2 (2-0)
-    // Match 3: Player 1 vs Player 2 (1-1 tie)
     for (let i = 0; i < 3; i++) {
       const readyMatch = page
         .locator('[data-testid="tournament-match"][data-match-ready="true"]:not([data-match-status="completed"])')
@@ -391,10 +394,10 @@ test.describe('Tournament UI E2E & Edge Cases Spec', () => {
 
     // Verify standings dashboard calculates math correctly
     await expect(page.getByText('Standings')).toBeVisible();
-    await expect(page.getByText('pts', { exact: false }).first()).toBeVisible();
+    await expect(page.getByText('Pts', { exact: false }).first()).toBeVisible();
 
-    // Verify that the tournament has no champion banner (incomplete state lock)
-    await expect(page.getByText('Tournament Champion')).not.toBeVisible();
+    // Verify that the tournament has a champion banner (since we fixed completion detection)
+    await expect(page.getByText('Tournament Champion')).toBeVisible();
   });
 
   // Test UI 6: Name Collision checking
@@ -402,7 +405,7 @@ test.describe('Tournament UI E2E & Edge Cases Spec', () => {
     await page.goto('/tools/tournament', { waitUntil: 'networkidle' });
 
     await page.getByPlaceholder(/Enter participant names/).fill('BYE\nAlpha');
-    await page.getByRole('tab', { name: 'Single Elim' }).click();
+    await page.getByRole('radio', { name: 'Single Elim' }).click();
     await page.getByRole('button', { name: 'Generate Bracket' }).click();
 
     const match = page.locator('[data-testid="tournament-match"]').first();
@@ -433,7 +436,7 @@ test.describe('Tournament UI E2E & Edge Cases Spec', () => {
     await page.goto('/tools/tournament', { waitUntil: 'networkidle' });
 
     await page.getByPlaceholder(/Enter participant names/).fill('Alpha\nAlpha');
-    await page.getByRole('tab', { name: 'Single Elim' }).click();
+    await page.getByRole('radio', { name: 'Single Elim' }).click();
     await page.getByRole('button', { name: 'Generate Bracket' }).click();
 
     const match = page.locator('[data-testid="tournament-match"]').first();
@@ -458,7 +461,7 @@ test.describe('Tournament UI E2E & Edge Cases Spec', () => {
     await page.goto('/tools/tournament', { waitUntil: 'networkidle' });
 
     await page.getByPlaceholder(/Enter participant names/).fill('Alpha\nBravo');
-    await page.getByRole('tab', { name: 'Single Elim' }).click();
+    await page.getByRole('radio', { name: 'Single Elim' }).click();
     await page.getByRole('button', { name: 'Generate Bracket' }).click();
 
     const match = page.locator('[data-testid="tournament-match"]').first();

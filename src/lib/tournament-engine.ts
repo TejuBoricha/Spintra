@@ -37,7 +37,7 @@ export function padWithByes(participants: string[]): string[] {
   const size = participants.length;
   const nextPow2 = Math.pow(2, Math.ceil(Math.log2(size)));
   if (size === nextPow2) return [...participants];
-  const byes = Array(nextPow2 - size).fill("BYE");
+  const byes = Array(nextPow2 - size).fill("__BYE__");
   return [...participants, ...byes];
 }
 
@@ -125,50 +125,129 @@ export function generateRoundRobin(participants: string[]): BracketMatch[][] {
   return [matches];
 }
 
+export function calculateStandings(rounds: BracketMatch[][], participants: string[]) {
+  const points: Record<string, number> = {};
+  participants.forEach(p => points[p] = 0);
+  
+  for (const round of rounds) {
+    for (const match of round) {
+      if (match.status === "completed" && match.player1 && match.player2) {
+        if (match.score1 !== null && match.score2 !== null) {
+          if (match.score1 > match.score2) {
+            points[match.player1] = (points[match.player1] || 0) + 3;
+          } else if (match.score2 > match.score1) {
+            points[match.player2] = (points[match.player2] || 0) + 3;
+          } else {
+            points[match.player1] = (points[match.player1] || 0) + 1;
+            points[match.player2] = (points[match.player2] || 0) + 1;
+          }
+        }
+      }
+    }
+  }
+
+  return participants.map(p => ({ 
+    player: p, 
+    points: points[p], 
+    wins: rounds.flat().filter(m => m.status === "completed" && m.winner === p).length,
+    draws: rounds.flat().filter(m => m.status === "completed" && m.score1 === m.score2 && m.score1 !== null && (m.player1 === p || m.player2 === p)).length,
+    losses: rounds.flat().filter(m => m.status === "completed" && m.winner !== p && m.winner !== null && (m.player1 === p || m.player2 === p)).length,
+  })).sort((a, b) => b.points - a.points);
+}
+
+export function generateNextSwissRound(rounds: BracketMatch[][], participants: string[]): BracketMatch[] {
+  const standings = calculateStandings(rounds, participants);
+  const played = new Set<string>();
+  for (const r of rounds) {
+    for (const m of r) {
+      if (m.player1 && m.player2) {
+         played.add(`${m.player1}-${m.player2}`);
+         played.add(`${m.player2}-${m.player1}`);
+      }
+    }
+  }
+
+  const nextRound: BracketMatch[] = [];
+  const available = standings.map(s => s.player);
+
+  while (available.length > 1) {
+    const p1 = available.shift()!;
+    let opponentIdx = -1;
+    for (let i = 0; i < available.length; i++) {
+       if (!played.has(`${p1}-${available[i]}`)) {
+          opponentIdx = i;
+          break;
+       }
+    }
+    if (opponentIdx === -1) opponentIdx = 0;
+    
+    const p2 = available.splice(opponentIdx, 1)[0];
+    nextRound.push({
+        id: generateId(),
+        round: rounds.length + 1,
+        position: nextRound.length,
+        player1: p1,
+        player2: p2,
+        score1: null,
+        score2: null,
+        winner: null,
+        status: "pending",
+    });
+  }
+
+  if (available.length === 1) {
+    nextRound.push({
+        id: generateId(),
+        round: rounds.length + 1,
+        position: nextRound.length,
+        player1: available[0],
+        player2: "__BYE__",
+        score1: 1,
+        score2: 0,
+        winner: available[0],
+        status: "completed",
+    });
+  }
+
+  return nextRound;
+}
+
 /** Generate swiss – pair participants round by round based on records */
 export function generateSwiss(
-  participants: string[],
-  numRounds: number
+  participants: string[]
 ): BracketMatch[][] {
   const shuffled = shuffleArray(participants);
   const rounds: BracketMatch[][] = [];
 
-  for (let r = 0; r < numRounds; r++) {
-    const roundMatches: BracketMatch[] = [];
-    // Simple pairing: just pair adjacent in shuffled order
-    // In a real Swiss, we'd pair by record; for v1, shuffle each round
-    const roundOrder = shuffleArray([...shuffled]);
-    for (let i = 0; i < roundOrder.length; i += 2) {
-      if (i + 1 < roundOrder.length) {
-        roundMatches.push({
-          id: generateId(),
-          round: r + 1,
-          position: i / 2,
-          player1: roundOrder[i],
-          player2: roundOrder[i + 1],
-          score1: null,
-          score2: null,
-          winner: null,
-          status: "pending",
-        });
-      } else {
-        // Bye
-        roundMatches.push({
-          id: generateId(),
-          round: r + 1,
-          position: i / 2,
-          player1: roundOrder[i],
-          player2: "BYE",
-          score1: 1,
-          score2: 0,
-          winner: roundOrder[i],
-          status: "completed",
-        });
-      }
+  const roundMatches: BracketMatch[] = [];
+  for (let i = 0; i < shuffled.length; i += 2) {
+    if (i + 1 < shuffled.length) {
+      roundMatches.push({
+        id: generateId(),
+        round: 1,
+        position: i / 2,
+        player1: shuffled[i],
+        player2: shuffled[i + 1],
+        score1: null,
+        score2: null,
+        winner: null,
+        status: "pending",
+      });
+    } else {
+      roundMatches.push({
+        id: generateId(),
+        round: 1,
+        position: i / 2,
+        player1: shuffled[i],
+        player2: "__BYE__",
+        score1: 1,
+        score2: 0,
+        winner: shuffled[i],
+        status: "completed",
+      });
     }
-    rounds.push(roundMatches);
   }
-
+  rounds.push(roundMatches);
   return rounds;
 }
 
@@ -290,15 +369,15 @@ export function advanceInLosersBracket(
       updatedNextMatch &&
       updatedNextMatch.player1 &&
       updatedNextMatch.player2 &&
-      (updatedNextMatch.player1 === "BYE" || updatedNextMatch.player2 === "BYE")
+      (updatedNextMatch.player1 === "__BYE__" || updatedNextMatch.player2 === "__BYE__")
     ) {
-      const nonBye = updatedNextMatch.player1 === "BYE" ? updatedNextMatch.player2 : updatedNextMatch.player1;
+      const nonBye = updatedNextMatch.player1 === "__BYE__" ? updatedNextMatch.player2 : updatedNextMatch.player1;
       lb[nextRoundIdx] = lb[nextRoundIdx].map((m) =>
         m.position === targetPos
           ? {
               ...m,
-              score1: m.player1 === "BYE" ? 0 : 1,
-              score2: m.player1 === "BYE" ? 1 : 0,
+              score1: m.player1 === "__BYE__" ? 0 : 1,
+              score2: m.player1 === "__BYE__" ? 1 : 0,
               winner: nonBye,
               status: "completed" as const,
             }
@@ -315,20 +394,56 @@ export function generateBracketForType(
   participants: string[],
   seeds: string[]
 ): { rounds: BracketMatch[][]; losersBracket?: BracketMatch[][] } {
+  let tournament: Tournament;
+
+  if (type === "double-elimination" && participants.length < 3) {
+    type = "single-elimination";
+  }
+
   switch (type) {
     case "single-elimination":
-      return { rounds: generateSingleElimination(participants, seeds) };
+      tournament = { type, rounds: generateSingleElimination(participants, seeds), participants, seeds, currentRound: 1, winner: null };
+      break;
     case "double-elimination": {
       const { winners, losers } = generateDoubleElimination(participants, seeds);
-      return { rounds: winners, losersBracket: losers };
+      tournament = { type, rounds: winners, losersBracket: losers, participants, seeds, currentRound: 1, winner: null };
+      break;
     }
     case "round-robin":
-      return { rounds: generateRoundRobin(participants) };
+      tournament = { type, rounds: generateRoundRobin(participants), participants, seeds, currentRound: 1, winner: null };
+      break;
     case "swiss": {
-      const n = Math.min(Math.ceil(Math.log2(participants.length)), 5);
-      return { rounds: generateSwiss(participants, n) };
+      tournament = { type, rounds: generateSwiss(participants), participants, seeds, currentRound: 1, winner: null };
+      break;
     }
   }
+
+  // Auto-resolve any __BYE__ matches immediately for elimination brackets
+  if (type === "single-elimination" || type === "double-elimination") {
+    let resolved = true;
+    while (resolved) {
+      resolved = false;
+      const allMatches = [
+        ...tournament.rounds.flatMap((r, roundIdx) => r.map((match, position) => ({ match, roundIdx, position, bracketKey: "rounds" as const }))),
+        ...(tournament.losersBracket || []).flatMap((r, roundIdx) => r.map((match, position) => ({ match, roundIdx, position, bracketKey: "losersBracket" as const }))),
+      ];
+
+      for (const { match, roundIdx, position, bracketKey } of allMatches) {
+        if (match.status !== "completed" && match.player1 && match.player2 && (match.player1 === "__BYE__" || match.player2 === "__BYE__")) {
+          const s1 = match.player1 === "__BYE__" ? 0 : 1;
+          const s2 = match.player2 === "__BYE__" ? 0 : 1;
+          const outcome = recordMatchResult(tournament, { match, roundIdx, position, bracketKey }, s1, s2);
+          if (outcome.kind !== "invalid") {
+            tournament = outcome.tournament;
+            resolved = true;
+            break; // Restart loop to capture newly cascaded BYE matches
+          }
+        }
+      }
+    }
+  }
+
+  return { rounds: tournament.rounds, losersBracket: tournament.losersBracket };
 }
 
 export interface MatchRef {
@@ -462,12 +577,12 @@ export function recordMatchResult(
 
           // Check if the target match is now fully populated and has a BYE
           const m = lb[targetRound][targetPos];
-          if (m.player1 && m.player2 && (m.player1 === "BYE" || m.player2 === "BYE")) {
-            const nonBye = m.player1 === "BYE" ? m.player2 : m.player1;
+          if (m.player1 && m.player2 && (m.player1 === "__BYE__" || m.player2 === "__BYE__")) {
+            const nonBye = m.player1 === "__BYE__" ? m.player2 : m.player1;
             lb[targetRound][targetPos] = {
               ...m,
-              score1: m.player1 === "BYE" ? 0 : 1,
-              score2: m.player1 === "BYE" ? 1 : 0,
+              score1: m.player1 === "__BYE__" ? 0 : 1,
+              score2: m.player1 === "__BYE__" ? 1 : 0,
               winner: nonBye,
               status: "completed" as const,
             };
@@ -535,6 +650,28 @@ export function recordMatchResult(
         losersBracket: updatedLosersBracket,
       },
     };
+  }
+
+  if (tournament.type === "swiss" || tournament.type === "round-robin") {
+    const isComplete = updatedBracket.every(r => r.every(m => m.status === "completed"));
+    if (isComplete) {
+      if (tournament.type === "swiss") {
+        const expectedRounds = Math.min(Math.ceil(Math.log2(tournament.participants.length)), 5);
+        if (updatedBracket.length < expectedRounds) {
+          const nextRound = generateNextSwissRound(updatedBracket, tournament.participants);
+          updatedBracket.push(nextRound);
+          return { kind: "advanced", winner, tournament: { ...tournament, rounds: updatedBracket } };
+        }
+      }
+
+      const standings = calculateStandings(updatedBracket, tournament.participants);
+      const champion = standings[0].player;
+      return {
+        kind: "champion",
+        winner: champion,
+        tournament: { ...tournament, rounds: updatedBracket, winner: champion }
+      };
+    }
   }
 
   return { kind: "advanced", winner, tournament: { ...tournament, rounds: updatedBracket } };
