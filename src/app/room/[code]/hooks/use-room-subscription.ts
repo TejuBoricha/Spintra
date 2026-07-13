@@ -1090,54 +1090,64 @@ export function useRoomSubscription({
     // reconcile normally — this only skips the unreliable first snapshot.
     let hasSyncedOnce = false;
 
+    // Flips local is_online from live presence and, when allowed, writes the
+    // crash-reconciliation for stale rows (any connected participant may do
+    // this, not just the host — otherwise a crashed host's own row could
+    // never be corrected by anyone, permanently blocking host succession;
+    // see migration 0019). If the current user has zero presence entries,
+    // the room is empty: also reconcile any stale row belonging to the
+    // current user's own previous session (crashed singleton case). After a
+    // successful crash-write, host election is re-run directly with the
+    // reconciled list — waiting for the realtime UPDATE echo of our own
+    // write leaves the room stuck if that event is dropped.
+    const reconcileAgainstPresence = (allowCrashWrites: boolean) => {
+      const state = channel.presenceState();
+      const onlineIds = new Set(
+        Object.values(state)
+          .flat()
+          .map((p) => (p as unknown as { user_id: string }).user_id)
+      );
+
+      setParticipants((prev) => {
+        const updated = prev.map((participant) => ({
+          ...participant,
+          is_online: onlineIds.has(participant.user_id),
+        }));
+
+        const supabaseClient = getSupabaseBrowserClient();
+        if (supabaseClient && allowCrashWrites) {
+          const crashed = prev.filter(
+            (p) =>
+              p.is_online &&
+              !onlineIds.has(p.user_id) &&
+              (p.user_id !== currentUser.id || onlineIds.size === 0)
+          );
+          if (crashed.length > 0) {
+            supabaseClient
+              .from("room_participants")
+              .update({ is_online: false })
+              .in(
+                "user_id",
+                crashed.map((p) => p.user_id)
+              )
+              .eq("room_id", roomCode)
+              .then(
+                () => electHostIfNeeded(supabaseClient, updated),
+                () => {}
+              );
+          }
+        }
+
+        return updated;
+      });
+    };
+
     const channel = supabase
       .channel(`room:${roomCode}`, { config: { private: true } })
       .on("presence", { event: "sync" }, () => {
-        const state = channel.presenceState();
-        const onlineIds = new Set(
-          Object.values(state)
-            .flat()
-            .map((p) => (p as unknown as { user_id: string }).user_id)
-        );
         const isFirstSync = !hasSyncedOnce;
         hasSyncedOnce = true;
-
-        setParticipants((prev) => {
-          const updated = prev.map((participant) => ({
-            ...participant,
-            is_online: onlineIds.has(participant.user_id),
-          }));
-
-          // Any connected participant (not just the host) reconciles stale
-          // is_online rows against live presence — otherwise a crashed
-          // host's own row could never be corrected by anyone (nobody else
-          // is permitted to touch it), permanently blocking host succession.
-          // If the current user has zero presence entries, the room is empty:
-          // also reconcile any stale row belonging to the current user's
-          // own previous session (crashed singleton case).
-          const supabaseClient = getSupabaseBrowserClient();
-          if (supabaseClient && !isFirstSync) {
-            const crashed = prev.filter(
-              (p) =>
-                p.is_online &&
-                !onlineIds.has(p.user_id) &&
-                (p.user_id !== currentUser.id || onlineIds.size === 0)
-            );
-            if (crashed.length > 0) {
-              supabaseClient
-                .from("room_participants")
-                .update({ is_online: false })
-                .in(
-                  "user_id",
-                  crashed.map((p) => p.user_id)
-                )
-                .eq("room_id", roomCode)
-                .then(() => {}, () => {});
-            }
-          }
-
-          return updated;
-        });
+        reconcileAgainstPresence(!isFirstSync);
       })
       .on(
         "postgres_changes",
@@ -1347,6 +1357,57 @@ export function useRoomSubscription({
 
     supabaseChannelRef.current = channel;
 
+    // One-shot settled reconciliation against DB truth: the sync handler
+    // above can only catch peers who crash WHILE we're watching — a peer who
+    // was already dead before we joined is invisible to it twice over (the
+    // first sync is skipped for writes, and that same sync flips the peer
+    // offline in LOCAL state, so later passes filtering on local is_online
+    // find nothing to fix while the DB row still says online). That stale
+    // DB row blocks elect_room_host forever: the room stays "Waiting for
+    // host…" for everyone who ever joins. So, once, shortly after
+    // subscribing — long enough that every genuinely alive peer's track()
+    // has landed — compare the DB's own is_online=true rows against live
+    // presence, flip the truly-dead ones, and reload participants (which
+    // re-runs host election).
+    const reconcileStaleDbRows = async () => {
+      const supabaseClient = getSupabaseBrowserClient();
+      if (!supabaseClient) return;
+      const { data: onlineRows } = await supabaseClient
+        .from("room_participants")
+        .select("user_id")
+        .eq("room_id", roomCode)
+        .eq("is_online", true);
+      if (!onlineRows?.length) return;
+      const state = channel.presenceState();
+      const presentIds = new Set(
+        Object.values(state)
+          .flat()
+          .map((p) => (p as unknown as { user_id: string }).user_id)
+      );
+      const stale = onlineRows.filter(
+        (row) =>
+          !presentIds.has(row.user_id) &&
+          (row.user_id !== currentUser.id || presentIds.size === 0)
+      );
+      if (!stale.length) return;
+      const { error } = await supabaseClient
+        .from("room_participants")
+        .update({ is_online: false })
+        .in(
+          "user_id",
+          stale.map((row) => row.user_id)
+        )
+        .eq("room_id", roomCode);
+      if (!error) {
+        // Reload from the DB — this also re-runs electHostIfNeeded with the
+        // corrected rows, promoting the earliest online participant if the
+        // stale row was the host's.
+        loadParticipantsRef.current?.();
+      }
+    };
+
+    let presenceSettleTimer: ReturnType<typeof setTimeout> | null = null;
+
     channel.subscribe((status: string) => {
       if (status === "SUBSCRIBED") {
         if (realtimeReconnectTimerRef.current) {
@@ -1368,6 +1429,11 @@ export function useRoomSubscription({
         // closed before its next tick).
         loadParticipantsRef.current?.();
         channel.track({ user_id: currentUser.id });
+        if (!presenceSettleTimer) {
+          presenceSettleTimer = setTimeout(() => {
+            void reconcileStaleDbRows();
+          }, 10_000);
+        }
         if (isHostRef.current && activeActivityRef.current) {
           channel.send({
             type: "broadcast",
@@ -1398,6 +1464,9 @@ export function useRoomSubscription({
       if (realtimeReconnectTimerRef.current) {
         clearTimeout(realtimeReconnectTimerRef.current);
         realtimeReconnectTimerRef.current = null;
+      }
+      if (presenceSettleTimer) {
+        clearTimeout(presenceSettleTimer);
       }
       supabase.removeChannel(channel);
       supabaseChannelRef.current = null;
