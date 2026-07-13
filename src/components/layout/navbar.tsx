@@ -343,7 +343,7 @@ export function Navbar() {
       </div>
 
       <Dialog open={isJoinOpen} onOpenChange={setIsJoinOpen}>
-        <DialogContent className="text-center rounded-[2.5rem] border-0 bg-white/70 dark:bg-black/70 backdrop-blur-3xl shadow-[0_0_80px_-15px_rgba(100,255,100,0.3)] overflow-hidden p-8 sm:p-10">
+        <DialogContent className="max-w-lg sm:max-w-lg text-center rounded-[2.5rem] border-0 bg-white/70 dark:bg-black/70 backdrop-blur-3xl shadow-[0_0_80px_-15px_rgba(100,255,100,0.3)] overflow-hidden p-8 sm:p-10">
           {/* Funky Background Blob */}
           <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
