@@ -6,6 +6,15 @@ This document tracks all active, remaining, and completed tasks for the Spintra 
 
 ---
 
+## Session 60: UI/UX Overhaul & Layout Fixes (COMPLETE)
+
+Performed a comprehensive UI overhaul for navigation elements and globally resolved overlapping fixed layout content.
+- `[x]` **Floating Navbar:** Rebuilt the primary Navbar into a stunning floating glassmorphic pill (`fixed`, `backdrop-blur`).
+- `[x]` **Navigation Consolidation:** Removed redundant dropdown menus and relocated Quick Tools/Settings links directly into easily accessible center-pill and mobile drawer slots.
+- `[x]` **Terminology Cleanup:** Updated Discover -> Browse, Explore -> Live Rooms, and Standalone Tools -> Quick Tools for conceptual clarity.
+- `[x]` **Layout Re-architecture:** Stripped hacky hardcoded top-paddings (`pt-16`/`pt-24`) from 18 individual page layouts and consolidated into a single `<main>` wrapper in `layout.tsx` to uniformly handle the floating navbar bleed.
+- `[x]` **Hydration Repair:** Fixed an SSR hydration mismatch on the Settings page caused by early synchronous theme reads.
+
 ## Session 56: Tournament Engine & Layout Fixes (COMPLETE)
 
 Performed a comprehensive fix to the tournament engine, Playwright E2E tests, and homepage UI layout.
