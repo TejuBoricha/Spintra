@@ -287,7 +287,7 @@ export default function NameDrawPage() {
           transition={{ duration: 0.5 }}
           className="text-center mb-10"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass text-sm mb-4">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm mb-4">
             <GameIcon className="w-4 h-4 text-amber-400" />
             <span className="text-muted-foreground">Random Picker</span>
           </div>

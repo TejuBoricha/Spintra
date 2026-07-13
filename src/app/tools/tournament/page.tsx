@@ -533,7 +533,7 @@ export default function TournamentPage() {
           transition={{ duration: 0.5 }}
           className="text-center mb-10"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass text-sm mb-4">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm mb-4">
             <GameIcon className="w-4 h-4 text-emerald-400" />
             <span className="text-muted-foreground">Bracket Generator</span>
           </div>
@@ -731,7 +731,7 @@ export default function TournamentPage() {
                     {/* Progress */}
                     {totalMatches > 0 && (
                       <div className="hidden sm:flex items-center gap-2">
-                        <div className="w-24 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                        <div className="w-24 h-1.5 rounded-full bg-(--surface-sunken) overflow-hidden">
                           <motion.div
                             className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500"
                             initial={{ width: 0 }}

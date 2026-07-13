@@ -306,7 +306,7 @@ export const RoomHeader = memo(function RoomHeader({
                   size="icon"
                   onClick={toggleSound}
                   aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-                  className="text-muted-foreground hover:text-white"
+                  className="text-muted-foreground hover:text-foreground"
                 />
               }
             >

@@ -196,7 +196,7 @@ export default function DicePage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-10"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass border-border/40 text-xs text-muted-foreground mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-xs text-muted-foreground mb-4">
             <GameIcon className="w-3.5 h-3.5 text-(--brand-primary-strong)" />
             <span>Interactive Rolling Arena</span>
           </div>
@@ -211,7 +211,7 @@ export default function DicePage() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Controls Panel */}
           <div className="space-y-6">
-            <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 border-border space-y-6">
+            <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 space-y-6">
               <div>
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-4">
                   Select Dice Shape
@@ -280,7 +280,7 @@ export default function DicePage() {
 
             {/* Live Analytics Dashboard */}
             {stats.totalCount > 0 && (
-              <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 border-border space-y-4">
+              <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 space-y-4">
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 mb-2">
                   <TrendingUp className="w-4 h-4 text-(--brand-primary-strong)" />
                   Rolling Statistics
@@ -334,7 +334,7 @@ export default function DicePage() {
 
           {/* Rolling Tray / Arena */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 border-border flex flex-col justify-between min-h-[460px] relative overflow-hidden">
+            <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 flex flex-col justify-between min-h-[460px] relative overflow-hidden">
               {/* Velvet background */}
               <div className="absolute inset-0 bg-gradient-to-br from-zinc-100 via-zinc-50/50 to-zinc-100 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 opacity-[0.95] z-0" />
               {/* LED border strip glowing border */}
@@ -440,7 +440,7 @@ export default function DicePage() {
 
             {/* Elegant History Feed */}
             {history.length > 0 && (
-              <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 border-border">
+              <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6">
                 <div className="flex items-center justify-between w-full mb-4">
                   <span className="text-xs uppercase font-bold tracking-widest text-muted-foreground flex items-center gap-2">
                     <History className="w-4 h-4 text-(--brand-primary-strong)" />

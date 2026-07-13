@@ -150,7 +150,7 @@ export function TruthOrDareActivity() {
               </>
             )}
           </Badge>
-          <p className="text-xl font-bold leading-normal text-white">{todPrompt.text}</p>
+          <p className="text-xl font-bold leading-normal text-foreground">{todPrompt.text}</p>
         </motion.div>
       ) : (
         <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-3xl p-12 text-center w-full shadow-xl">

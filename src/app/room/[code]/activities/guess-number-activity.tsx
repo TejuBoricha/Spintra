@@ -119,7 +119,7 @@ export function GuessNumberActivity() {
       </h2>
 
       {isHost && (
-        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 rounded-3xl border border-cyan-500/30 bg-gradient-to-br from-cyan-500/5 to-blue-500/5 shadow-lg shadow-cyan-500/5">
+        <div className="bg-(--surface-panel) p-6 rounded-3xl border border-cyan-500/30 bg-gradient-to-br from-cyan-500/5 to-blue-500/5 shadow-lg shadow-cyan-500/5">
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2 font-bold">
             Secret Number (Host Only):
           </p>
@@ -185,7 +185,7 @@ export function GuessNumberActivity() {
           );
         })}
         {guessHistory.length === 0 && (
-          <div className="text-center py-8 border border-(--border-hairline) bg-(--surface-panel) rounded-2xl rounded-2xl border border-border">
+          <div className="text-center py-8 border border-(--border-hairline) bg-(--surface-panel) rounded-2xl">
             <p className="mb-2 flex justify-center">
               <Emoji name="thinking_face" size={32} />
             </p>

@@ -205,7 +205,7 @@ export default function TeamMakerPage() {
           transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass text-sm text-muted-foreground mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm text-muted-foreground mb-6">
             <GameIcon className="w-4 h-4" />
             Team Tool
           </div>
@@ -266,7 +266,7 @@ export default function TeamMakerPage() {
             </div>
 
             {/* Auto-balance toggle */}
-            <div className="flex items-center justify-between p-3 rounded-lg bg-(--surface-sunken) border border-white/[0.04]">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-(--surface-sunken) border border-(--border-hairline)">
               <div className="space-y-0.5">
                 <Label htmlFor="auto-balance-switch" className="text-sm font-medium cursor-pointer">Auto-Balance</Label>
                 <p className="text-xs text-muted-foreground">Distribute names evenly across teams</p>
@@ -275,7 +275,7 @@ export default function TeamMakerPage() {
             </div>
  
             {/* Sound toggle */}
-            <div className="flex items-center justify-between p-3 rounded-lg bg-(--surface-sunken) border border-white/[0.04]">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-(--surface-sunken) border border-(--border-hairline)">
               <div className="space-y-0.5">
                 <Label htmlFor="sound-effects-switch" className="text-sm font-medium cursor-pointer">Sound Effects</Label>
                 <p className="text-xs text-muted-foreground">Play sounds when shuffling or adding players</p>
@@ -310,7 +310,7 @@ export default function TeamMakerPage() {
                 <button
                   key={tpl.label}
                   onClick={() => applyTemplate(tpl)}
-                  className="flex items-center gap-3 p-3 rounded-lg border border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.04] hover:border-primary/20 transition-all text-left group"
+                  className="flex items-center gap-3 p-3 rounded-lg border border-(--border-hairline) bg-(--surface-sunken) hover:bg-muted hover:border-primary/20 transition-all text-left group"
                 >
                   <Emoji name={tpl.icon} size={24} animated={false} />
                   <div className="flex-1 min-w-0">
@@ -411,7 +411,7 @@ export default function TeamMakerPage() {
                         </div>
                         <button
                           onClick={() => toggleCollapse(teamIdx)}
-                          className="p-1 rounded hover:bg-white/[0.04] transition-colors"
+                          className="p-1 rounded hover:bg-muted transition-colors"
                         >
                           {isCollapsed ? (
                             <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -437,7 +437,7 @@ export default function TeamMakerPage() {
                                 initial={{ opacity: 0, x: -10 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: 10, height: 0 }}
-                                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-(--surface-sunken) border border-white/[0.03] group/member hover:bg-white/[0.04] transition-colors"
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-(--surface-sunken) border border-(--border-hairline) group/member hover:bg-muted transition-colors"
                               >
                                 <span className="flex-1 text-sm truncate">
                                   {member}
@@ -452,7 +452,7 @@ export default function TeamMakerPage() {
                                         key={targetTeam.colorIdx}
                                         onClick={() => moveMember(teamIdx, teams.indexOf(targetTeam), memberIdx)}
                                         className={cn(
-                                          "p-1 rounded text-xs transition-colors hover:bg-white/[0.08]",
+                                          "p-1 rounded text-xs transition-colors hover:bg-muted",
                                           TEAM_COLORS[targetTeam.colorIdx % TEAM_COLORS.length].text
                                         )}
                                         title={`Move to ${targetTeam.name}`}

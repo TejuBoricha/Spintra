@@ -218,7 +218,7 @@ export function TriviaActivity() {
                   setSelectedCategory(e.target.value);
                   setRemainingIndices([]);
                 }}
-                className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-sm text-white focus-visible:border-yellow-500/50 focus-visible:ring-2 focus-visible:ring-yellow-500/20 focus-visible:outline-none w-full"
+                className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-sm text-foreground focus-visible:border-yellow-500/50 focus-visible:ring-2 focus-visible:ring-yellow-500/20 focus-visible:outline-none w-full"
               >
                 <option value="All" className="bg-neutral-950 text-white">All Categories</option>
                 <option value="General Knowledge" className="bg-neutral-950 text-white">General Knowledge</option>
@@ -238,7 +238,7 @@ export function TriviaActivity() {
                   setSelectedDifficulty(e.target.value);
                   setRemainingIndices([]);
                 }}
-                className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-sm text-white focus-visible:border-yellow-500/50 focus-visible:ring-2 focus-visible:ring-yellow-500/20 focus-visible:outline-none w-full"
+                className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-sm text-foreground focus-visible:border-yellow-500/50 focus-visible:ring-2 focus-visible:ring-yellow-500/20 focus-visible:outline-none w-full"
               >
                 <option value="All" className="bg-neutral-950 text-white">All Difficulties</option>
                 <option value="easy" className="bg-neutral-950 text-white">Easy</option>
@@ -276,7 +276,7 @@ export function TriviaActivity() {
             </Badge>
           </div>
           
-          <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 rounded-2xl text-center w-full border border-yellow-500/30">
+          <div className="bg-(--surface-panel) rounded-2xl p-6 text-center w-full border border-yellow-500/30">
             <p className="text-lg font-semibold">{triviaQuestion.text}</p>
           </div>
           

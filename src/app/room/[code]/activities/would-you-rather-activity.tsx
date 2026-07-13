@@ -158,7 +158,7 @@ export function WouldYouRatherActivity() {
                       </span>
                     )}
                   </div>
-                  <p className="font-bold text-base flex-1 line-clamp-3 leading-relaxed text-white">
+                  <p className="font-bold text-base flex-1 line-clamp-3 leading-relaxed text-foreground">
                     {text}
                   </p>
                   <div className="flex items-baseline gap-2 mt-4">

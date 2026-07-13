@@ -62,7 +62,7 @@ export default function RPSPage() {
     <div className="min-h-screen pt-24 pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-orange-400" />
             <span className="text-sm text-muted-foreground">Classic showdown</span>
           </div>
@@ -110,7 +110,7 @@ export default function RPSPage() {
                 key={playerChoice}
                 initial={{ scale: 0.5 }}
                 animate={{ scale: 1 }}
-                className="w-24 h-24 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) rounded-2xl flex items-center justify-center"
+                className="w-24 h-24 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) flex items-center justify-center"
               >
                 {playerChoice ? (
                   <Emoji name={choices.find((c) => c.name === playerChoice)!.emoji} size={56} pop />
@@ -137,7 +137,7 @@ export default function RPSPage() {
                 initial={aiChoice ? { scale: 0.5 } : {}}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.3 }}
-                className="w-24 h-24 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) rounded-2xl flex items-center justify-center"
+                className="w-24 h-24 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) flex items-center justify-center"
               >
                 {playing ? (
                   <motion.div
@@ -179,7 +179,7 @@ export default function RPSPage() {
               whileTap={{ scale: 0.9 }}
               onClick={() => play(choice.name)}
               disabled={playing}
-              className="w-24 h-24 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) rounded-2xl flex flex-col items-center justify-center gap-2 hover:border-primary/30 transition-all disabled:opacity-50"
+              className="w-24 h-24 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) flex flex-col items-center justify-center gap-2 hover:border-primary/30 transition-all disabled:opacity-50"
             >
               <Emoji name={choice.emoji} size={40} animated={false} />
               <span className="text-xs text-muted-foreground">{choice.name}</span>

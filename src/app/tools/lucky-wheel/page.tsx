@@ -580,7 +580,7 @@ export default function LuckyWheelPage() {
           transition={{ duration: 0.5 }}
           className="text-center mb-10"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass text-sm text-muted-foreground mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm text-muted-foreground mb-6">
             <GameIcon className="w-4 h-4" />
             Wheel Tool
           </div>
@@ -694,7 +694,7 @@ export default function LuckyWheelPage() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 10, height: 0 }}
-                      className="flex items-center gap-2 p-2.5 rounded-lg bg-(--surface-sunken) border border-white/[0.03] group/entry hover:bg-white/[0.04] transition-colors"
+                      className="flex items-center gap-2 p-2.5 rounded-lg bg-(--surface-sunken) border border-(--border-hairline) group/entry hover:bg-muted transition-colors"
                     >
                       {/* Color picker */}
                       <div className="relative">
@@ -824,7 +824,7 @@ export default function LuckyWheelPage() {
                       applyTemplate(tpl);
                     }}
                     aria-label={`Apply "${tpl.label}" template (replaces current entries)`}
-                    className="flex items-center gap-3 p-2.5 rounded-lg border border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.04] hover:border-cyan-500/20 transition-all text-left group"
+                    className="flex items-center gap-3 p-2.5 rounded-lg border border-(--border-hairline) bg-(--surface-sunken) hover:bg-muted hover:border-cyan-500/20 transition-all text-left group"
                   >
                     <Emoji name={tpl.icon} size={22} animated={false} />
                     <div className="flex-1 min-w-0">

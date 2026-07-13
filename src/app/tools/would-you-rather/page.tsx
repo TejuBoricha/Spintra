@@ -67,7 +67,7 @@ export default function WouldYouRatherPage() {
     <div className="min-h-screen pt-24 pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-(--brand-primary-strong)" />
             <span className="text-sm text-muted-foreground">Tough choices ahead</span>
           </div>
@@ -126,9 +126,9 @@ export default function WouldYouRatherPage() {
                   </button>
 
                   <div className="flex items-center justify-center gap-4">
-                    <div className="w-px h-6 bg-white/10" />
+                    <div className="w-px h-6 bg-border" />
                     <span className="text-sm font-bold text-muted-foreground uppercase">or</span>
-                    <div className="w-px h-6 bg-white/10" />
+                    <div className="w-px h-6 bg-border" />
                   </div>
 
                   <button

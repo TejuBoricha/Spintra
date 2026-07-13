@@ -46,7 +46,7 @@ export default function TruthOrDarePage() {
     <div className="min-h-screen pt-24 pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-pink-400" />
             <span className="text-sm text-muted-foreground">Spicy questions</span>
           </div>
@@ -62,7 +62,7 @@ export default function TruthOrDarePage() {
               onClick={() => { setCategory(c); setMode(null); setCurrent(null); setUsed(new Set()); }}
               aria-pressed={category.name === c.name}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                category.name === c.name ? "bg-primary text-primary-foreground" : "border border-(--border-hairline) bg-(--surface-panel) rounded-2xl hover:border-(--border-hairline)"
+                category.name === c.name ? "bg-primary text-primary-foreground" : "border border-(--border-hairline) bg-(--surface-panel) rounded-2xl"
               }`}
             >
               <Emoji name={c.icon} size={18} animated={false} className="mr-1" /> {c.name}
