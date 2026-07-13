@@ -5,7 +5,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { fireConfetti } from "@/components/celebration";
 import { banUserFromRoom } from "@/lib/room-bans";
-import { logModerationAction } from "@/lib/moderation";
+import { moderationKickBan } from "@/lib/moderation";
 import { getDeviceFingerprint } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
 import type { User, ChatMessage, RoomParticipant, RoomType, ActivityEvent } from "@/lib/types";
@@ -380,48 +380,12 @@ export function useRoomSubscription({
 
       const supabase = getSupabaseBrowserClient();
       if (supabase) {
-        try {
-          // Snapshot the fingerprint before deleting the participant row —
-          // once it's gone there's nothing left to look up, and the
-          // copy_fingerprint_to_ban trigger (migration 0047) can only fall
-          // back to null at that point, silently disabling fingerprint-based
-          // ban matching for this kick.
-          const { data: participantRow } = await supabase
-            .from("room_participants")
-            .select("fingerprint_hash")
-            .eq("room_id", roomCode)
-            .eq("user_id", participant.user_id)
-            .maybeSingle();
-
-          await supabase
-            .from("room_participants")
-            .delete()
-            .eq("room_id", roomCode)
-            .eq("user_id", participant.user_id);
-
-          // Best-effort: prevents the kicked user from immediately rejoining.
-          // Kick itself has already succeeded above, so a failure here doesn't
-          // block the primary action — just logged for visibility.
-          // ignoreDuplicates (ON CONFLICT DO NOTHING): a ban row may already
-          // exist from an earlier kick, and room_bans has no UPDATE policy
-          // (insert-once, delete-to-unban — migrations 0012/0043), so both a
-          // plain insert (duplicate key) and an upsert's DO UPDATE half (RLS)
-          // would error here. An existing row already means "banned".
-          const { error: banError } = await supabase.from("room_bans").upsert(
-            {
-              room_id: roomCode,
-              user_id: participant.user_id,
-              banned_by: currentUser.id,
-              username: participant.user?.username ?? null,
-              fingerprint_hash: participantRow?.fingerprint_hash ?? null,
-            },
-            { onConflict: "room_id,user_id", ignoreDuplicates: true }
-          );
-          if (banError) {
-            console.error("Failed to record room ban:", banError);
-          }
-          logModerationAction(roomCode, currentUser.id, "kick_ban", participant.user_id, participant.user?.username ?? null);
-        } catch (error) {
+        // One transactional RPC (migration 0055): snapshots the participant,
+        // deletes them, records the ban, closes every open report about them,
+        // and writes the history row — atomically, host-verified and
+        // self-kick-rejected inside the database.
+        const { error } = await moderationKickBan(roomCode, participant.user_id);
+        if (error) {
           console.error("Failed to remove participant:", error);
           toast.error("Unable to remove participant.");
           return;

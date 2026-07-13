@@ -16,7 +16,12 @@ import {
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { listBannedUserIdsFromRoom, unbanUserFromRoom } from "@/lib/room-bans";
-import { logModerationAction, type ModerationActionKind } from "@/lib/moderation";
+import {
+  moderationKickBan,
+  moderationUnban,
+  moderationDismissReport,
+  type ModerationActionKind,
+} from "@/lib/moderation";
 import { toast } from "sonner";
 
 interface MessageReport {
@@ -163,13 +168,14 @@ export function ModerationDashboard({
   }, [roomCode, loadReports, loadBans, loadActions]);
 
   const markReviewed = async (reportId: string) => {
-    const supabase = getSupabaseBrowserClient();
-    if (!supabase) return;
-    const report = reports.find((r) => r.id === reportId);
     setReports((prev) => prev.map((r) => (r.id === reportId ? { ...r, reviewed: true } : r)));
-    await supabase.from("message_reports").update({ reviewed: true }).eq("id", reportId);
-    if (report) {
-      logModerationAction(roomCode, currentUserId, "dismiss_report", report.reported_user_id, null, report.reason);
+    // One transactional RPC (migration 0055): flips reviewed and writes the
+    // history row together, host-verified inside the database.
+    const { error } = await moderationDismissReport(roomCode, reportId);
+    if (error) {
+      console.error("Failed to dismiss report:", error);
+      setReports((prev) => prev.map((r) => (r.id === reportId ? { ...r, reviewed: false } : r)));
+      toast.error("Unable to dismiss report.");
     }
   };
 
@@ -185,61 +191,20 @@ export function ModerationDashboard({
     }
     setIsKicking(true);
     try {
-      const supabase = getSupabaseBrowserClient();
-      if (!supabase) return;
-      // Snapshot the username and device fingerprint before deleting the
-      // participant row — once it's gone there's no other source. username
-      // is for the Bans tab's list (migration 0043); fingerprint_hash is
-      // for cross-identity ban matching (migration 0047) — the
-      // copy_fingerprint_to_ban trigger can only fall back to null once
-      // this row is deleted.
-      const { data: participantRow } = await supabase
-        .from("room_participants")
-        .select("username, fingerprint_hash")
-        .eq("room_id", roomCode)
-        .eq("user_id", kickTargetId)
-        .maybeSingle();
-      await supabase
-        .from("room_participants")
-        .delete()
-        .eq("room_id", roomCode)
-        .eq("user_id", kickTargetId);
-      // ignoreDuplicates (ON CONFLICT DO NOTHING) is load-bearing: room_bans
-      // deliberately has no UPDATE policy (insert-once, delete-to-unban —
-      // migrations 0012/0043), so an upsert's DO UPDATE half is rejected by
-      // RLS whenever a ban row already exists (e.g. kicking the same user
-      // from a second report). An existing row already means "banned".
-      const { error: banError } = await supabase.from("room_bans").upsert(
-        {
-          room_id: roomCode,
-          user_id: kickTargetId,
-          banned_by: currentUserId,
-          username: participantRow?.username ?? null,
-          fingerprint_hash: participantRow?.fingerprint_hash ?? null,
-        },
-        { onConflict: "room_id,user_id", ignoreDuplicates: true }
-      );
-      if (banError) {
-        console.error("Failed to record room ban:", banError.message || JSON.stringify(banError));
+      // One transactional RPC (migration 0055): snapshots the participant,
+      // deletes them, records the ban, closes every open report about them,
+      // and writes the history row — atomically, host-verified and
+      // self-kick-rejected inside the database.
+      const { error } = await moderationKickBan(roomCode, kickTargetId);
+      if (error) {
+        console.error("Failed to remove reported participant:", error);
+        toast.error("Unable to remove participant.");
+        return;
       }
-      // Close out every open report about this user — they're banned, so the
-      // reports are handled. Left open, they outlive host changes and resurface
-      // as actionable (worst case: describing a future host after a
-      // ban → unban → rejoin → promotion cycle).
-      await supabase
-        .from("message_reports")
-        .update({ reviewed: true })
-        .eq("room_id", roomCode)
-        .eq("reported_user_id", kickTargetId)
-        .eq("reviewed", false);
       setReports((prev) =>
         prev.map((r) => (r.reported_user_id === kickTargetId ? { ...r, reviewed: true } : r))
       );
-      logModerationAction(roomCode, currentUserId, "kick_ban", kickTargetId, participantRow?.username ?? null);
       toast.success("Participant removed from the room.");
-    } catch (error) {
-      console.error("Failed to remove reported participant:", error);
-      toast.error("Unable to remove participant.");
     } finally {
       setIsKicking(false);
       setKickTargetId(null);
@@ -253,11 +218,10 @@ export function ModerationDashboard({
       const ban = bans.find((b) => b.id === unbanTargetId);
       const supabase = getSupabaseBrowserClient();
       if (supabase) {
-        const { error } = await supabase.from("room_bans").delete().eq("id", unbanTargetId);
-        if (error) throw error;
-        if (ban) {
-          logModerationAction(roomCode, currentUserId, "unban", ban.user_id, ban.username);
-        }
+        // One transactional RPC (migration 0055): deletes the ban row and
+        // writes the history row together, host-verified in the database.
+        const { error } = await moderationUnban(roomCode, unbanTargetId);
+        if (error) throw new Error(error);
       } else {
         if (ban) unbanUserFromRoom(roomCode, ban.user_id);
       }

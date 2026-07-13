@@ -593,6 +593,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      moderation_dismiss_report: {
+        Args: { p_report_id: string; p_room_code: string }
+        Returns: undefined
+      }
+      moderation_kick_ban: {
+        Args: { p_room_code: string; p_target_user_id: string }
+        Returns: string
+      }
+      moderation_unban: {
+        Args: { p_ban_id: string; p_room_code: string }
+        Returns: string
+      }
       set_guess_number_secret: {
         Args: { p_room_code: string; p_secret: number }
         Returns: undefined
