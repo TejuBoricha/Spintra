@@ -302,9 +302,9 @@ export default function TeamMakerPage() {
             transition={{ delay: 0.2, duration: 0.4 }}
             className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 space-y-4"
           >
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
               Quick Templates
-            </h3>
+            </h2>
             <div className="grid gap-2">
               {TEMPLATES.map((tpl) => (
                 <button
@@ -517,7 +517,7 @@ export default function TeamMakerPage() {
                   <Sparkles className="w-3.5 h-3.5" />
                   Multiplayer
                 </div>
-                <h3 className="text-xl font-bold">Want to collaborate live?</h3>
+                <h2 className="text-xl font-bold">Want to collaborate live?</h2>
                 <p className="text-sm text-muted-foreground max-w-md mx-auto">
                   Create a room and build teams together with friends in real time.
                   Everyone sees changes instantly.

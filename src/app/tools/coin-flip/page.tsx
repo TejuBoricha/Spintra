@@ -133,7 +133,7 @@ export default function CoinFlipPage() {
             animate={{ opacity: 1 }}
             className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 max-w-md mx-auto"
           >
-            <h3 className="text-lg font-semibold mb-4 flex items-center justify-between w-full">
+            <h2 className="text-lg font-semibold mb-4 flex items-center justify-between w-full">
               <span className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-(--brand-primary-strong)" />
                 Statistics
@@ -148,7 +148,7 @@ export default function CoinFlipPage() {
                 <RotateCcw className="w-3.5 h-3.5" />
                 Reset
               </Button>
-            </h3>
+            </h2>
             <div className="grid grid-cols-2 gap-4">
               <div className="p-3 rounded-lg bg-yellow-500/10">
                 <div className="text-2xl font-bold text-yellow-400">{stats.headsPercent}%</div>

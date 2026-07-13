@@ -410,7 +410,10 @@ export default function ExplorePage() {
           <div className="flex items-center gap-2 mb-6">
             <TrendingUp className="w-5 h-5 text-(--brand-primary-strong)" />
             <h2 className="font-display text-2xl font-black text-foreground">Live Trending Rooms</h2>
-            <Badge variant="success" className="ml-2 font-mono uppercase text-[10px] tracking-widest animate-pulse">
+            {/* Pulse the dot, not the text — animate-pulse on the whole badge drops
+                the label below contrast thresholds mid-animation. */}
+            <Badge variant="success" className="ml-2 font-mono uppercase text-[10px] tracking-widest">
+              <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" aria-hidden="true" />
               Live Feed
             </Badge>
           </div>

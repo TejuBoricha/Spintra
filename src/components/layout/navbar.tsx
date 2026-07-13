@@ -182,7 +182,7 @@ export function Navbar() {
             >
               <Image
                 src="/icons/logo.png"
-                alt="Spintra"
+                alt=""
                 width={32}
                 height={32}
                 className="w-full h-full object-cover"

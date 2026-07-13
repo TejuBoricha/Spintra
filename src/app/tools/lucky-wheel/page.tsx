@@ -661,9 +661,9 @@ export default function LuckyWheelPage() {
             {/* Entries card */}
             <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                   Entries ({entries.length})
-                </h3>
+                </h2>
                 <div className="flex gap-1">
                   <Button
                     variant="ghost"
@@ -702,6 +702,7 @@ export default function LuckyWheelPage() {
                           type="color"
                           value={entry.color}
                           onChange={(e) => updateEntryColor(entry.id, e.target.value)}
+                          aria-label={`Change color for ${entry.label}`}
                           className="absolute inset-0 w-5 h-5 opacity-0 cursor-pointer z-10"
                         />
                         <div
@@ -775,7 +776,8 @@ export default function LuckyWheelPage() {
                       {/* Remove */}
                       <button
                         onClick={() => removeEntry(entry.id)}
-                        className="p-1 rounded opacity-0 group-hover/entry:opacity-100 hover:bg-red-500/10 text-red-400 transition-all"
+                        aria-label={`Remove ${entry.label}`}
+                        className="p-1 rounded opacity-0 group-hover/entry:opacity-100 focus-visible:opacity-100 hover:bg-red-500/10 text-red-400 transition-all"
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
@@ -801,6 +803,7 @@ export default function LuckyWheelPage() {
                   variant="outline"
                   onClick={addEntry}
                   disabled={!newEntryLabel.trim()}
+                  aria-label="Add entry"
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </Button>
@@ -809,9 +812,9 @@ export default function LuckyWheelPage() {
 
             {/* Templates */}
             <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-5 space-y-3">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                 Templates
-              </h3>
+              </h2>
               <div className="grid gap-2">
                 {TEMPLATES.map((tpl) => (
                   <button
@@ -849,7 +852,7 @@ export default function LuckyWheelPage() {
                   Play tick sounds while spinning
                 </p>
               </div>
-              <Switch checked={soundEnabled} onCheckedChange={setSoundEnabled} />
+              <Switch checked={soundEnabled} onCheckedChange={setSoundEnabled} aria-label="Sound effects" />
             </div>
           </motion.div>
         </div>
@@ -865,7 +868,7 @@ export default function LuckyWheelPage() {
             <Sparkles className="w-3.5 h-3.5" />
             Multiplayer
           </div>
-          <h3 className="text-xl font-bold">Spin together with friends?</h3>
+          <h2 className="text-xl font-bold">Spin together with friends?</h2>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
             Create a room and let everyone watch the wheel spin live.
             Perfect for giveaways, game nights, and decision-making.

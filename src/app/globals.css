@@ -36,6 +36,8 @@
   --lime-400: #e2f72a;
   --lime-500: #d4ea1f;
   --lime-600: #a8bb18;
+  /* Dark olive for readable brand text on light surfaces (≥4.5:1 on white/cream) */
+  --lime-700: #5f7010;
 
   /* Base ramp — coral (secondary / energetic accent) */
   --coral-400: #f54452;
@@ -144,6 +146,9 @@
   --accent-foreground: var(--cream-50);
   --destructive: var(--coral-500);
   --destructive-foreground: #ffffff;
+  /* Destructive as *text* on tinted/plain surfaces — needs more contrast than the
+     solid-fill --destructive in both themes (lighter on dark, darker on light). */
+  --destructive-strong: var(--coral-400);
   --border: var(--ink-600);
   --input: var(--ink-600);
   --ring: var(--lime-400);
@@ -212,8 +217,11 @@
   --shadow-sticker: rgba(0, 0, 0, 0.3);
   --text-primary: #14120f;
   --text-secondary: #55524a;
-  --text-link: var(--coral-500);
+  --text-link: var(--coral-600);
   --text-accent: #5c6b12;
+  /* :root's lime-500/coral-400 are dark-surface choices — unreadable on cream/white */
+  --brand-primary-strong: var(--lime-700);
+  --destructive-strong: var(--coral-600);
   color-scheme: light;
 
   /* shadcn/Tailwind-facing vars, remapped onto the ramp above */

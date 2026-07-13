@@ -213,9 +213,9 @@ export default function DicePage() {
           <div className="space-y-6">
             <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 space-y-6">
               <div>
-                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-4">
+                <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-4">
                   Select Dice Shape
-                </h3>
+                </h2>
                 <div className="grid grid-cols-4 gap-2">
                   {diceTypes.map((d) => (
                     <button
@@ -239,9 +239,9 @@ export default function DicePage() {
 
               <div>
                 <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                  <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
                     Dice Amount
-                  </h3>
+                  </h2>
                   <span className="text-sm font-bold text-(--brand-primary-strong)">{count}</span>
                 </div>
                 <div className="flex items-center gap-3">
@@ -281,10 +281,10 @@ export default function DicePage() {
             {/* Live Analytics Dashboard */}
             {stats.totalCount > 0 && (
               <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 space-y-4">
-                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 mb-2">
+                <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 mb-2">
                   <TrendingUp className="w-4 h-4 text-(--brand-primary-strong)" />
                   Rolling Statistics
-                </h3>
+                </h2>
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div className="p-3 rounded-xl bg-card/40 border border-border">
                     <div className="text-xs text-muted-foreground font-medium">Total Rolls</div>
