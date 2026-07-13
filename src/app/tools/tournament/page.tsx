@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ChipGroup } from "@/components/ui/chip-group";
 import { toast } from "sonner";
 import type { TournamentType } from "@/lib/types";
 import { Emoji } from "@/components/emoji";
@@ -96,7 +96,7 @@ function ScoreEditor({
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        className="glass-card p-6 w-full max-w-sm"
+        className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 w-full max-w-sm"
       >
         <h3 className="text-lg font-bold mb-4 text-center">Update Score</h3>
 
@@ -129,12 +129,12 @@ function ScoreEditor({
         </div>
 
         <div className="flex gap-3">
-          <Button variant="outline" onClick={onClose} className="flex-1 glass border-white/10">
+          <Button variant="outline" onClick={onClose} className="flex-1">
             Cancel
           </Button>
           <Button
             onClick={() => onSave(score1, score2)}
-            className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0"
+            className="flex-1 border-2 border-(--border-strong) bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:brightness-95"
           >
             <Check className="w-4 h-4 mr-1" />
             Save
@@ -160,7 +160,7 @@ function MatchCard({
   const isBye = isBye1 || isBye2;
 
   const statusColors = {
-    pending: "border-white/5 bg-white/[0.02]",
+    pending: "border-(--border-hairline) bg-(--surface-sunken)",
     "in-progress": "border-amber-500/30 bg-amber-500/5",
     completed: "border-emerald-500/30 bg-emerald-500/5",
   };
@@ -450,7 +450,7 @@ export default function TournamentPage() {
     return (
       <div className="space-y-6">
         {/* Standings */}
-        <div className="glass-card p-4">
+        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
             Standings
           </h3>
@@ -458,7 +458,7 @@ export default function TournamentPage() {
             {sorted.map(([name, record], i) => (
               <div
                 key={name}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/5"
+                className="flex items-center gap-3 px-3 py-2 rounded-xl bg-(--surface-sunken) border border-(--border-hairline)"
               >
                 <span className="text-xs font-mono text-muted-foreground w-6 text-right">
                   #{i + 1}
@@ -496,7 +496,7 @@ export default function TournamentPage() {
     return (
       <div className="space-y-4">
         {rounds.map((round, ri) => (
-          <div key={ri} className="glass-card p-4">
+          <div key={ri} className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
               Round {ri + 1}
             </h3>
@@ -537,7 +537,7 @@ export default function TournamentPage() {
             <GameIcon className="w-4 h-4 text-emerald-400" />
             <span className="text-muted-foreground">Bracket Generator</span>
           </div>
-          <h1 className="text-4xl sm:text-5xl font-bold mb-3">
+          <h1 className="font-display text-4xl sm:text-5xl font-black mb-3">
             Tournament{" "}
             <span className="gradient-text">Generator</span>
           </h1>
@@ -556,7 +556,7 @@ export default function TournamentPage() {
             className="lg:col-span-2 space-y-4"
           >
             {/* Tournament Type */}
-            <div className="glass-card p-5 space-y-4">
+            <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                   Format
@@ -565,7 +565,7 @@ export default function TournamentPage() {
                   onClick={() => setSoundEnabled(!soundEnabled)}
                   title={soundEnabled ? "Sound On" : "Sound Off"}
                   aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-                  className="p-1 rounded hover:bg-white/[0.05] transition-colors text-muted-foreground hover:text-foreground"
+                  className="p-1 rounded-control hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                 >
                   {soundEnabled ? (
                     <Volume2 className="w-4 h-4 text-emerald-400" />
@@ -574,32 +574,24 @@ export default function TournamentPage() {
                   )}
                 </button>
               </div>
-              <Tabs
+              <ChipGroup
+                ariaLabel="Tournament format"
                 value={tournamentType}
-                onValueChange={(v) => {
+                onChange={(v) => {
                   setTournamentType(v as TournamentType);
                   setTournament(null);
                 }}
-              >
-                <TabsList className="w-full">
-                  <TabsTrigger value="single-elimination" className="flex-1 text-xs">
-                    Single Elim
-                  </TabsTrigger>
-                  <TabsTrigger value="double-elimination" className="flex-1 text-xs">
-                    Double Elim
-                  </TabsTrigger>
-                  <TabsTrigger value="round-robin" className="flex-1 text-xs">
-                    Round Robin
-                  </TabsTrigger>
-                  <TabsTrigger value="swiss" className="flex-1 text-xs">
-                    Swiss
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+                options={[
+                  { value: "single-elimination", label: "Single Elim" },
+                  { value: "double-elimination", label: "Double Elim" },
+                  { value: "round-robin", label: "Round Robin" },
+                  { value: "swiss", label: "Swiss" },
+                ]}
+              />
             </div>
 
             {/* Participants */}
-            <div className="glass-card p-5 space-y-4">
+            <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                   Participants
@@ -639,7 +631,7 @@ export default function TournamentPage() {
               <Button
                 onClick={generateBracket}
                 disabled={participants.length < 2}
-                className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white border-0 shadow-lg shadow-emerald-500/25"
+                className="w-full border-2 border-(--border-strong) bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white shadow-lg shadow-emerald-500/25"
               >
                 <Swords className="w-4 h-4 mr-2" />
                 Generate Bracket
@@ -647,7 +639,7 @@ export default function TournamentPage() {
             </div>
 
             {/* Templates */}
-            <div className="glass-card p-5 space-y-3">
+            <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-5 space-y-3">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                 Templates
               </h2>
@@ -656,7 +648,7 @@ export default function TournamentPage() {
                   <button
                     key={key}
                     onClick={() => applyTemplate(key)}
-                    className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-emerald-500/30 transition-colors text-sm"
+                    className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-xl border border-(--border-hairline) bg-(--surface-sunken) hover:bg-muted hover:border-emerald-500/30 transition-colors text-sm"
                   >
                     <LayoutTemplate className="w-4 h-4 text-emerald-400/60 shrink-0" />
                     <span className="flex-1 capitalize">
@@ -672,7 +664,7 @@ export default function TournamentPage() {
 
             {/* Create Room CTA */}
             <Link href="/create?type=tournament">
-              <div className="glass-card p-4 flex items-center justify-between group cursor-pointer hover:border-emerald-500/30 transition-colors">
+              <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 flex items-center justify-between group cursor-pointer hover:border-emerald-500/30 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
                     <Users className="w-5 h-5 text-white" />
@@ -697,7 +689,7 @@ export default function TournamentPage() {
             className="lg:col-span-3 space-y-6"
           >
             {!tournament ? (
-              <div className="glass-card p-12 flex flex-col items-center justify-center min-h-[400px]">
+              <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-12 flex flex-col items-center justify-center min-h-[400px]">
                 <motion.div
                   animate={{ y: [0, -8, 0] }}
                   transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
@@ -720,7 +712,7 @@ export default function TournamentPage() {
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="glass-card p-4 flex items-center justify-between flex-wrap gap-3"
+                  className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 flex items-center justify-between flex-wrap gap-3"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
@@ -758,7 +750,6 @@ export default function TournamentPage() {
                       variant="outline"
                       size="sm"
                       onClick={shareBracket}
-                      className="glass border-white/10 hover:border-white/20"
                     >
                       <Share2 className="w-3.5 h-3.5 mr-1" />
                       Share
@@ -767,7 +758,6 @@ export default function TournamentPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setTournament(null)}
-                      className="glass border-white/10 hover:border-white/20"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                     </Button>
@@ -788,7 +778,7 @@ export default function TournamentPage() {
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="glass-card p-5 overflow-x-auto"
+                  className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-5 overflow-x-auto"
                 >
                   {tournament.type === "single-elimination" &&
                     renderSingleEliminationBracket(tournament.rounds)}
