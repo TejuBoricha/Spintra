@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Float, Sphere, Torus, MeshDistortMaterial, Environment } from "@react-three/drei";
+import { Float, Sphere, Torus, MeshDistortMaterial } from "@react-three/drei";
 import * as THREE from "three";
 
 function createParticlePositions(count: number) {
@@ -105,12 +105,16 @@ export function HeroThreeScene() {
       dpr={[1, 1.5]}
       style={{ background: "transparent" }}
     >
-      <ambientLight intensity={0.3} />
+      {/* Local lights only — the previous <Environment preset="city" /> fetched a
+          1.5 MB HDR from raw.githubusercontent.com at runtime, which dominated the
+          home page's payload and tied its visuals to an external CDN. These
+          translucent low-opacity shapes only need soft directional fill. */}
+      <ambientLight intensity={0.7} />
+      <directionalLight position={[3, 6, 4]} intensity={1.2} color="#ffffff" />
       <pointLight position={[5, 5, 5]} intensity={0.5} color="#6d3ee0" />
       <pointLight position={[-5, -3, -3]} intensity={0.3} color="#3ddaee" />
       <FloatingGeometry />
       <ParticleField />
-      <Environment preset="city" />
     </Canvas>
   );
 }
