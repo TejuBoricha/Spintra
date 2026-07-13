@@ -184,13 +184,24 @@ export function Navbar() {
             </span>
           </Link>
 
-          {/* Center: Funky Actions (Desktop Only) */}
+          {/* Center: Main Navigation (Desktop Only) */}
           <div className="hidden md:flex items-center p-1 rounded-[1.5rem] bg-gradient-to-b from-(--surface-sunken)/80 to-transparent border border-(--border-hairline) shadow-inner gap-1 backdrop-blur-md">
+            <Link href="/explore">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="rounded-full px-5 font-bold tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
+              >
+                <Globe className="w-3.5 h-3.5 mr-2 text-blue-400" />
+                LIVE ROOMS
+              </Button>
+            </Link>
+            <div className="w-px h-5 bg-(--border-glass) mx-1" />
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsJoinOpen(true)}
-              className="rounded-full px-6 font-bold tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
+              className="rounded-full px-5 font-bold tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
             >
               JOIN
             </Button>
