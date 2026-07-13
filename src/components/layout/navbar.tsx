@@ -64,11 +64,7 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  useEffect(() => {
-    if (!isJoinOpen) {
-      setCodeDigits(Array(6).fill(""));
-    }
-  }, [isJoinOpen]);
+
 
   const handleJoinRoomSubmit = useCallback(async () => {
     if (codeDigits.some((d) => !d)) return;
@@ -350,7 +346,13 @@ export function Navbar() {
         </AnimatePresence>
       </div>
 
-      <Dialog open={isJoinOpen} onOpenChange={setIsJoinOpen}>
+      <Dialog 
+        open={isJoinOpen} 
+        onOpenChange={(open) => {
+          setIsJoinOpen(open);
+          if (!open) setCodeDigits(Array(6).fill(""));
+        }}
+      >
         <DialogContent className="max-w-md sm:max-w-md text-center rounded-[2rem] border border-(--border-glass) bg-(--surface-glass-strong) backdrop-blur-3xl shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden p-8 sm:p-10">
           <DialogHeader className="relative z-10 space-y-4">
             <div className="mx-auto w-20 h-20 rounded-[1.5rem] bg-(--surface-sunken) border-2 border-(--border-strong) shadow-inner flex items-center justify-center relative overflow-hidden group">
