@@ -294,8 +294,13 @@ export default function CreateRoomClient() {
               />
             </div>
 
-            <div className="flex items-center justify-between">
-              <Label htmlFor="public" className="cursor-pointer">Public Room</Label>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label htmlFor="public" className="cursor-pointer">Public Room</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Listed on the Explore page so anyone can join. Off = invite-only via code.
+                </p>
+              </div>
               <Switch id="public" checked={isPublic} onCheckedChange={setIsPublic} />
             </div>
 
