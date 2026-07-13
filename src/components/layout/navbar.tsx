@@ -17,23 +17,13 @@ import {
   Menu,
   X,
   Sparkles,
-  Grip,
   Globe,
   Wrench,
   Gamepad2,
   Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 const subscribeToClient = () => () => {};
@@ -196,6 +186,16 @@ export function Navbar() {
                 LIVE ROOMS
               </Button>
             </Link>
+            <Link href="/tools">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="rounded-full px-5 font-bold tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
+              >
+                <Wrench className="w-3.5 h-3.5 mr-2 text-orange-400" />
+                TOOLS
+              </Button>
+            </Link>
             <div className="w-px h-5 bg-(--border-glass) mx-1" />
             <Button
               variant="ghost"
@@ -222,50 +222,7 @@ export function Navbar() {
 
           {/* Right: Icons & Menus */}
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Grid Mega Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-full text-muted-foreground hover:text-foreground hover:bg-(--surface-sunken) transition-colors h-10 w-10"
-                    aria-label="Navigation Menu"
-                  >
-                    <Grip className="w-5 h-5" />
-                  </Button>
-                }
-              />
-              <DropdownMenuContent
-                align="end"
-                sideOffset={12}
-                className="w-56 rounded-[1.5rem] p-2 border-(--border-glass) bg-(--surface-glass-strong) backdrop-blur-3xl shadow-2xl"
-              >
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel className="px-2 py-1.5 text-xs text-muted-foreground uppercase tracking-widest font-semibold">
-                    Browse
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem render={<Link href="/explore" className="cursor-pointer rounded-xl p-2.5 transition-colors focus:bg-primary/10" />}>
-                    <Globe className="w-4 h-4 mr-2 text-blue-400" />
-                    <span className="font-semibold text-sm">Live Rooms</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem render={<Link href="/tools" className="cursor-pointer rounded-xl p-2.5 transition-colors focus:bg-primary/10" />}>
-                    <Wrench className="w-4 h-4 mr-2 text-orange-400" />
-                    <span className="font-semibold text-sm">Quick Tools</span>
-                  </DropdownMenuItem>
-                  
-                  <DropdownMenuSeparator className="bg-(--border-hairline) my-1" />
-                  
-                  <DropdownMenuLabel className="px-2 py-1.5 text-xs text-muted-foreground uppercase tracking-widest font-semibold">
-                    Host
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem render={<Link href="/create" className="cursor-pointer rounded-xl p-2.5 transition-colors focus:bg-primary/10" />}>
-                    <Gamepad2 className="w-4 h-4 mr-2 text-green-400" />
-                    <span className="font-semibold text-sm">Create a Room</span>
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+
 
             <Link href="/settings" className="hidden sm:block">
               <Button
@@ -348,6 +305,12 @@ export function Navbar() {
                     <Button variant="ghost" className="w-full rounded-2xl h-12 bg-(--surface-sunken)/50">
                       <Wrench className="w-4 h-4 mr-2 text-orange-400" />
                       Quick Tools
+                    </Button>
+                  </Link>
+                  <Link href="/settings" onClick={() => setMobileOpen(false)} className="col-span-2">
+                    <Button variant="ghost" className="w-full rounded-2xl h-12 bg-(--surface-sunken)/50">
+                      <Settings className="w-4 h-4 mr-2" />
+                      Settings
                     </Button>
                   </Link>
                 </div>
