@@ -113,7 +113,6 @@ export function WordScrambleActivity() {
       </h2>
       {isHost && (
         <Button
-          disabled={!!scrambleWord && !scrambleWinner}
           onClick={newWord}
           className="bg-gradient-to-r from-lime-500 to-green-600 hover:from-lime-400 hover:to-green-500 text-white border-0 rounded-full px-6 shadow-lg shadow-lime-500/10"
         >

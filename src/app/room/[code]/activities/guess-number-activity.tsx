@@ -52,7 +52,7 @@ export function GuessNumberActivity() {
       const fetchSecret = async () => {
         const supabase = getSupabaseBrowserClient();
         if (supabase) {
-          // @ts-ignore - Supabase types are not yet generated for this new RPC
+          // @ts-expect-error - Supabase types are not yet generated for this new RPC
           const { data, error } = await supabase.rpc("get_guess_number_secret", {
             p_room_code: roomCode,
           });

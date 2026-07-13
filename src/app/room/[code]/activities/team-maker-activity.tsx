@@ -45,7 +45,6 @@ export function TeamMakerActivity() {
             <Button
               key={n}
               variant="outline"
-              disabled={tmTeams.length > 0}
               className="h-10 px-5 text-sm font-semibold border-cyan-500/30 hover:bg-cyan-500/10 text-cyan-300 rounded-full transition-all"
               onClick={() => {
                 const online = participants.filter((p) => p.is_online);

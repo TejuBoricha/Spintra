@@ -513,7 +513,6 @@ export function useRoomSubscription({
         }
 
         const isRoomHost = roomRow.host_id === currentUser.id;
-        const role = isRoomHost ? ("host" as const) : ("participant" as const);
         const joined_at = new Date().toISOString();
 
         // 1. Existing participant row (reconnection safety) — reuse
