@@ -356,26 +356,26 @@ export function Navbar() {
         <DialogContent className="max-w-md sm:max-w-[420px] p-0 border-0 bg-transparent shadow-none overflow-visible">
           {/* Animated gradient border wrapper */}
           <div className="relative p-[2px] rounded-[2.5rem] overflow-hidden group">
-            {/* Rotating gradient background */}
-            <div className="absolute inset-0 bg-[conic-gradient(from_0deg,transparent_0_340deg,rgba(255,255,255,0.5)_360deg)] animate-[spin_4s_linear_infinite] opacity-100" />
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 opacity-30" />
+            {/* Rotating gradient background using brand colors */}
+            <div className="absolute inset-0 bg-[conic-gradient(from_0deg,transparent_0_340deg,rgba(125,187,37,0.8)_360deg)] animate-[spin_4s_linear_infinite] opacity-100" />
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-green-400/20 to-blue-500/20 opacity-40" />
             
             {/* Inner Glass Container */}
-            <div className="relative bg-[#0a0a0a]/95 backdrop-blur-3xl rounded-[calc(2.5rem-2px)] p-8 overflow-hidden flex flex-col items-center shadow-[0_0_40px_rgba(139,92,246,0.2)]">
+            <div className="relative bg-(--surface-glass-strong)/95 backdrop-blur-3xl rounded-[calc(2.5rem-2px)] p-8 overflow-hidden flex flex-col items-center shadow-[0_0_40px_rgba(125,187,37,0.15)]">
               
               {/* Decorative ambient light */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-1/2 bg-purple-500/20 blur-[80px] pointer-events-none rounded-full" />
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-1/2 bg-primary/10 blur-[80px] pointer-events-none rounded-full" />
 
               {/* Header */}
               <div className="relative z-10 flex flex-col items-center mb-8">
-                <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-5 shadow-[0_0_20px_rgba(255,255,255,0.05)] backdrop-blur-md relative overflow-hidden group-hover:border-white/20 transition-colors duration-500">
-                  <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/30 to-pink-500/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  <Gamepad2 className="w-8 h-8 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
+                <div className="w-16 h-16 rounded-2xl bg-(--surface-sunken) border border-(--border-glass) flex items-center justify-center mb-5 shadow-inner relative overflow-hidden group-hover:border-primary/30 transition-colors duration-500">
+                  <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <Gamepad2 className="w-8 h-8 text-(--brand-primary-strong) drop-shadow-sm" />
                 </div>
-                <h2 className="text-3xl font-display font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-white via-white/90 to-white/50 uppercase">
+                <h2 className="text-3xl font-display font-black tracking-widest text-foreground uppercase">
                   Join Room
                 </h2>
-                <p className="text-xs font-mono text-purple-300/60 uppercase tracking-[0.3em] mt-3">
+                <p className="text-xs font-mono text-muted-foreground uppercase tracking-[0.3em] mt-3">
                   Initialize Connection
                 </p>
               </div>
@@ -393,12 +393,12 @@ export function Navbar() {
                       onChange={(e) => handleDigitChange(index, e.target.value)}
                       onKeyDown={(e) => handleDigitKeyDown(index, e)}
                       onFocus={(e) => e.target.select()}
-                      className="peer w-10 h-14 sm:w-12 sm:h-16 p-0 bg-white/[0.03] border border-white/10 rounded-xl text-center text-2xl font-mono font-bold uppercase text-white outline-none transition-all focus:bg-white/[0.08] focus:border-purple-500 focus:shadow-[0_0_20px_rgba(168,85,247,0.4)] focus:-translate-y-1 placeholder:text-white/10"
+                      className="peer w-10 h-14 sm:w-12 sm:h-16 p-0 bg-(--surface-sunken) border border-(--border-strong) rounded-xl text-center text-2xl font-mono font-bold uppercase text-foreground outline-none transition-all focus:bg-background focus:border-(--brand-primary-strong) focus:shadow-[0_0_20px_rgba(125,187,37,0.2)] focus:-translate-y-1 placeholder:text-muted-foreground/30"
                       placeholder="-"
                       autoFocus={index === 0}
                     />
                     {/* Input glow effect */}
-                    <div className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-purple-500 to-transparent opacity-0 peer-focus:opacity-100 transition-opacity" />
+                    <div className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-primary to-transparent opacity-0 peer-focus:opacity-100 transition-opacity" />
                   </div>
                 ))}
               </div>
@@ -407,7 +407,7 @@ export function Navbar() {
               <Button
                 disabled={joinCode.length !== 6 || joining}
                 onClick={handleJoinRoomSubmit}
-                className="relative z-10 w-full h-14 rounded-xl bg-white text-black hover:bg-white/90 font-display font-black tracking-widest text-lg overflow-hidden transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:hover:scale-100 group/btn border-0 shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)]"
+                className="relative z-10 w-full h-14 rounded-xl bg-(--brand-primary-strong) text-white hover:bg-primary/90 font-display font-black tracking-widest text-lg overflow-hidden transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:hover:scale-100 group/btn border-0 shadow-[0_0_20px_rgba(125,187,37,0.3)] hover:shadow-[0_0_30px_rgba(125,187,37,0.5)]"
               >
                 <span className="relative z-10 flex items-center justify-center gap-2">
                   {joining ? "CONNECTING..." : "ENTER GAME"}
@@ -421,7 +421,7 @@ export function Navbar() {
                   )}
                 </span>
                 {/* Button hover gradient sweep */}
-                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-black/10 to-transparent group-hover/btn:animate-[shimmer_1.5s_infinite]" />
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover/btn:animate-[shimmer_1.5s_infinite]" />
               </Button>
             </div>
           </div>
