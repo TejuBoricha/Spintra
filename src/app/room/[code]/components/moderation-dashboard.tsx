@@ -175,6 +175,14 @@ export function ModerationDashboard({
 
   const confirmKickReportedUser = async () => {
     if (!kickTargetId) return;
+    // Hard guard against self-moderation, independent of the UI check: a host
+    // banning themself deletes their own participant row and locks them out of
+    // their own room.
+    if (kickTargetId === currentUserId) {
+      toast.error("You can't kick or ban yourself.");
+      setKickTargetId(null);
+      return;
+    }
     setIsKicking(true);
     try {
       const supabase = getSupabaseBrowserClient();
@@ -214,6 +222,19 @@ export function ModerationDashboard({
       if (banError) {
         console.error("Failed to record room ban:", banError.message || JSON.stringify(banError));
       }
+      // Close out every open report about this user — they're banned, so the
+      // reports are handled. Left open, they outlive host changes and resurface
+      // as actionable (worst case: describing a future host after a
+      // ban → unban → rejoin → promotion cycle).
+      await supabase
+        .from("message_reports")
+        .update({ reviewed: true })
+        .eq("room_id", roomCode)
+        .eq("reported_user_id", kickTargetId)
+        .eq("reviewed", false);
+      setReports((prev) =>
+        prev.map((r) => (r.reported_user_id === kickTargetId ? { ...r, reviewed: true } : r))
+      );
       logModerationAction(roomCode, currentUserId, "kick_ban", kickTargetId, participantRow?.username ?? null);
       toast.success("Participant removed from the room.");
     } catch (error) {
@@ -327,14 +348,23 @@ export function ModerationDashboard({
                             Dismiss
                           </Button>
                         )}
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => setKickTargetId(report.reported_user_id)}
-                          className="h-7 text-xs"
-                        >
-                          Kick & Ban
-                        </Button>
+                        {/* A report can outlive a host change and end up describing the
+                            *current* host (kicked → unbanned → rejoined → promoted).
+                            Offering Kick & Ban here would let the host ban themself. */}
+                        {report.reported_user_id === currentUserId ? (
+                          <span className="text-[11px] text-muted-foreground italic">
+                            This report is about you
+                          </span>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => setKickTargetId(report.reported_user_id)}
+                            className="h-7 text-xs"
+                          >
+                            Kick & Ban
+                          </Button>
+                        )}
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground wrap-break-word">
