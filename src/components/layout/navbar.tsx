@@ -228,25 +228,25 @@ export function Navbar() {
               >
                 <DropdownMenuGroup>
                   <DropdownMenuLabel className="px-2 py-1.5 text-xs text-muted-foreground uppercase tracking-widest font-semibold">
-                    Discover
+                    Browse
                   </DropdownMenuLabel>
                   <DropdownMenuItem render={<Link href="/explore" className="cursor-pointer rounded-xl p-2.5 transition-colors focus:bg-primary/10" />}>
                     <Globe className="w-4 h-4 mr-2 text-blue-400" />
-                    <span className="font-semibold text-sm">Public Rooms</span>
+                    <span className="font-semibold text-sm">Live Rooms</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem render={<Link href="/tools" className="cursor-pointer rounded-xl p-2.5 transition-colors focus:bg-primary/10" />}>
                     <Wrench className="w-4 h-4 mr-2 text-orange-400" />
-                    <span className="font-semibold text-sm">Standalone Tools</span>
+                    <span className="font-semibold text-sm">Quick Tools</span>
                   </DropdownMenuItem>
                   
                   <DropdownMenuSeparator className="bg-(--border-hairline) my-1" />
                   
                   <DropdownMenuLabel className="px-2 py-1.5 text-xs text-muted-foreground uppercase tracking-widest font-semibold">
-                    Create
+                    Host
                   </DropdownMenuLabel>
                   <DropdownMenuItem render={<Link href="/create" className="cursor-pointer rounded-xl p-2.5 transition-colors focus:bg-primary/10" />}>
                     <Gamepad2 className="w-4 h-4 mr-2 text-green-400" />
-                    <span className="font-semibold text-sm">Game Templates</span>
+                    <span className="font-semibold text-sm">Create a Room</span>
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
               </DropdownMenuContent>
@@ -326,13 +326,13 @@ export function Navbar() {
                   <Link href="/explore" onClick={() => setMobileOpen(false)}>
                     <Button variant="ghost" className="w-full rounded-2xl h-12 bg-(--surface-sunken)/50">
                       <Globe className="w-4 h-4 mr-2 text-blue-400" />
-                      Explore
+                      Live Rooms
                     </Button>
                   </Link>
                   <Link href="/tools" onClick={() => setMobileOpen(false)}>
                     <Button variant="ghost" className="w-full rounded-2xl h-12 bg-(--surface-sunken)/50">
                       <Wrench className="w-4 h-4 mr-2 text-orange-400" />
-                      Tools
+                      Quick Tools
                     </Button>
                   </Link>
                 </div>

@@ -37,7 +37,7 @@ export default function ToolsPage() {
           </div>
           <div className="space-y-2">
             <h1 className="font-display text-4xl sm:text-5xl font-black">
-              Standalone <span className="gradient-text">Tools</span>
+              Quick <span className="gradient-text">Tools</span>
             </h1>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
               Quickly use any of our built-in tools without creating a full multiplayer room. Perfect for local play or fast decisions.
