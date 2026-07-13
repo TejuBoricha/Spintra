@@ -19,8 +19,8 @@ export function FeatureCard({ title, description, icon: Icon, href, gradient, st
     <motion.div
       initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1, duration: 0.5 }}
-      viewport={{ once: true }}
+      transition={{ delay: (index % 3) * 0.1, duration: 0.4 }}
+      viewport={{ once: true, margin: "-50px" }}
       whileHover={{ y: -6, scale: 1.02 }}
     >
       <Link href={href}>
