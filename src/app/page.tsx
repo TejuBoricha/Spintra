@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { checkCanJoinRoom, ROOM_JOIN_ERROR_MESSAGES } from "@/lib/room-join-check";
-import { ArrowRight, Sparkles, Zap, Globe, MessageCircle, Star, DownloadCloud, Gift } from "lucide-react";
+import { ArrowRight, Sparkles, Zap, Globe, MessageCircle, Star, DownloadCloud, Gift, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getOrCreateRoomUser } from "@/lib/room-user";
@@ -259,32 +259,76 @@ export default function HomePage() {
                    const game = GAMES.find((g) => g.type === room.type);
                    const Icon = game?.icon || Star;
                    return (
-                     <button
-                       key={room.code}
-                       onClick={() => {
-                         setHomeCode(room.code);
-                         router.push(`/room/${room.code}`);
-                       }}
-                       className="flex items-center justify-between p-3 rounded-control border border-(--border-hairline) bg-(--surface-sunken) hover:border-primary/40 transition-all group w-full cursor-pointer"
-                     >
-                       <div className="flex items-center gap-3">
-                         <div className={`p-2 rounded-control bg-gradient-to-br ${game?.color || "from-(--violet-500) to-(--violet-800)"} text-white`}>
-                           <Icon className="w-4 h-4" />
-                         </div>
-                         <div>
-                           <p className="font-body text-sm font-bold group-hover:text-(--brand-primary-strong) transition-colors">
-                             {room.name}
-                           </p>
-                           <p className="text-xs text-muted-foreground">
-                             {game?.label || "Multiplayer"} Activity
-                           </p>
-                         </div>
-                       </div>
-                       <span className="font-mono text-xs font-bold text-(--brand-primary-strong) group-hover:text-primary bg-primary/10 px-2.5 py-1 rounded-control">
-                         {room.code}
-                       </span>
-                     </button>
-                   );
+                      <div
+                        key={room.code}
+                        onClick={() => {
+                          setHomeCode(room.code);
+                          router.push(`/room/${room.code}`);
+                        }}
+                        className="flex items-center justify-between p-3 rounded-control border border-(--border-hairline) bg-(--surface-sunken) hover:border-primary/40 transition-all group w-full cursor-pointer relative"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setHomeCode(room.code);
+                            router.push(`/room/${room.code}`);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-control bg-gradient-to-br ${game?.color || "from-(--violet-500) to-(--violet-800)"} text-white`}>
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="font-body text-sm font-bold group-hover:text-(--brand-primary-strong) transition-colors">
+                              {room.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {game?.label || "Multiplayer"} Activity
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-(--brand-primary-strong) group-hover:text-primary bg-primary/10 px-2.5 py-1 rounded-control">
+                            {room.code}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="w-7 h-7 rounded-full opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all md:flex hidden"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const newHistory = roomHistory.filter(h => h.code !== room.code);
+                              setRoomHistory(newHistory);
+                              if (typeof window !== "undefined") {
+                                localStorage.setItem("spintra-room-history", JSON.stringify(newHistory));
+                              }
+                            }}
+                            title="Remove from history"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                          {/* Mobile-always-visible button variant for touch screens */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="w-7 h-7 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all md:hidden"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const newHistory = roomHistory.filter(h => h.code !== room.code);
+                              setRoomHistory(newHistory);
+                              if (typeof window !== "undefined") {
+                                localStorage.setItem("spintra-room-history", JSON.stringify(newHistory));
+                              }
+                            }}
+                            title="Remove from history"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
                  })}
                </div>
              </motion.div>
