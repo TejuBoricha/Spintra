@@ -32,6 +32,7 @@ Load only what the row tells you to. Don't read every document by default — se
 | `DECISIONS.md` | Architecture Decision Records — what was decided, why, alternatives considered, trade-offs. Never a changelog. |
 | `CHANGELOG_AI.md` | Full chronological implementation history. Append-only — never edit past entries. |
 | `ZUSTAND_INVESTIGATION.md` | State management investigation report — Zustand vs. React Context split and slice patterns. |
+| `HOST_MIGRATION_AUDIT.md` | Host-migration investigation report — findings across all 14 games and the multiplayer infra when a room's host disconnects and another participant is promoted. |
 | `ENGINEERING_GOVERNANCE_REVIEW_V2.md` | The **current** point-in-time audit of this documentation system (dated 2026-07-04). Not part of daily workflow. |
 | `ENGINEERING_GOVERNANCE_REVIEW.md` | The **superseded** V1 audit (dated 2026-07-03) — kept as historical record, not current. |
 
