@@ -10,7 +10,6 @@ import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { TRIVIA_QUESTIONS, type TriviaQuestion } from "@/lib/trivia-questions";
-import { shuffleArray } from "@/lib/utils";
 
 import { playSwipe, playPop, playSuccess, playFailure } from "@/lib/audio";
 
@@ -30,7 +29,15 @@ export function TriviaActivity() {
   // Host configuration state
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("All");
-  const [remainingIndices, setRemainingIndices] = useState<number[]>([]);
+  // Which questions have already been drawn THIS activity session, derived
+  // from the replayed trivia_question event log itself (see the listener
+  // below) rather than a separate host-only "remaining shuffle bag" — the
+  // old remainingIndices approach was host-local useState, invisible to a
+  // newly-promoted host, whose own empty remainingIndices meant questions
+  // could repeat right after a host migration. Keying on questionId falls
+  // back to the question text for the static offline question bank (demo
+  // mode), which has no stable id. See docs/HOST_MIGRATION_AUDIT.md M3.
+  const [askedQuestionKeys, setAskedQuestionKeys] = useState<Set<string>>(new Set());
   const [questions, setQuestions] = useState<TriviaQuestion[]>([...TRIVIA_QUESTIONS]);
 
   useEffect(() => {
@@ -86,6 +93,13 @@ export function TriviaActivity() {
           difficulty: event.difficulty,
         });
         setTriviaAnswers({});
+        setAskedQuestionKeys((prev) => {
+          const key = event.questionId ?? event.text;
+          if (prev.has(key)) return prev;
+          const next = new Set(prev);
+          next.add(key);
+          return next;
+        });
         playSwipe(soundEnabled);
       } else if (event.kind === "trivia_answer") {
         // Answers are resent a few times after the initial broadcast (see
@@ -133,29 +147,33 @@ export function TriviaActivity() {
   );
 
   const drawNextQuestion = () => {
-    let currentIndices = [...remainingIndices];
-    if (currentIndices.length === 0) {
-      const indices = filteredQuestions.map((_, i) => i);
-      currentIndices = shuffleArray(indices);
-    }
-    const nextIndex = currentIndices.pop();
-    setRemainingIndices(currentIndices);
+    if (filteredQuestions.length === 0) return;
+    // Not-yet-asked pool under the CURRENT filter; if every question in it
+    // has already been asked, reshuffle from the full filtered pool again —
+    // same exhaustion behavior the old shuffle-bag had (including that the
+    // very next draw can, same as before, repeat the question that was
+    // just asked — not a new edge case introduced here).
+    let pool = filteredQuestions.filter((q) => !askedQuestionKeys.has(q.id ?? q.text));
+    if (pool.length === 0) pool = filteredQuestions;
 
-    if (nextIndex !== undefined) {
-      const q = filteredQuestions[nextIndex];
-      const num = (triviaQuestion?.num ?? 0) + 1;
-      sendActivityEvent({
-        kind: "trivia_question",
-        questionId: q.id,
-        text: q.text,
-        options: [...q.options],
-        correctIndex: q.correctIndex,
-        num,
-        category: q.category,
-        difficulty: q.difficulty,
-      });
-    }
+    const q = pool[Math.floor(Math.random() * pool.length)];
+    const num = (triviaQuestion?.num ?? 0) + 1;
+    sendActivityEvent({
+      kind: "trivia_question",
+      questionId: q.id,
+      text: q.text,
+      options: [...q.options],
+      correctIndex: q.correctIndex,
+      num,
+      category: q.category,
+      difficulty: q.difficulty,
+    });
   };
+
+  const remainingCount = useMemo(
+    () => filteredQuestions.filter((q) => !askedQuestionKeys.has(q.id ?? q.text)).length,
+    [filteredQuestions, askedQuestionKeys]
+  );
 
   const myAnswer = triviaQuestion ? triviaAnswers[currentUser.id] : undefined;
   const correctCount = Object.values(triviaAnswers).filter((a) => a.correct).length;
@@ -214,10 +232,7 @@ export function TriviaActivity() {
               <label className="text-xs text-muted-foreground font-semibold">Category</label>
               <select
                 value={selectedCategory}
-                onChange={(e) => {
-                  setSelectedCategory(e.target.value);
-                  setRemainingIndices([]);
-                }}
+                onChange={(e) => setSelectedCategory(e.target.value)}
                 className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-sm text-foreground focus-visible:border-yellow-500/50 focus-visible:ring-2 focus-visible:ring-yellow-500/20 focus-visible:outline-none w-full"
               >
                 <option value="All" className="bg-neutral-950 text-white">All Categories</option>
@@ -234,10 +249,7 @@ export function TriviaActivity() {
               <label className="text-xs text-muted-foreground font-semibold">Difficulty</label>
               <select
                 value={selectedDifficulty}
-                onChange={(e) => {
-                  setSelectedDifficulty(e.target.value);
-                  setRemainingIndices([]);
-                }}
+                onChange={(e) => setSelectedDifficulty(e.target.value)}
                 className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-sm text-foreground focus-visible:border-yellow-500/50 focus-visible:ring-2 focus-visible:ring-yellow-500/20 focus-visible:outline-none w-full"
               >
                 <option value="All" className="bg-neutral-950 text-white">All Difficulties</option>
@@ -372,7 +384,7 @@ export function TriviaActivity() {
                 <Shuffle className="w-4 h-4 mr-2" /> Next Question
               </Button>
               <div className="text-center text-xs text-muted-foreground">
-                Remaining in deck: {remainingIndices.length} / {filteredQuestions.length}
+                Remaining in deck: {remainingCount} / {filteredQuestions.length}
               </div>
             </div>
           )}
