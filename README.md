@@ -186,8 +186,13 @@ secrets to function:
 
 | Workflow | Trigger | Required secrets |
 |---|---|---|
-| `deploy.yml` | Push to `main` touching `supabase/migrations/**` | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_ID` |
-| `db-backup.yml` | Daily at 03:00 UTC (+ manual dispatch) | `SUPABASE_DB_URL`, `AWS_BACKUP_ACCESS_KEY_ID`, `AWS_BACKUP_SECRET_ACCESS_KEY`, `AWS_BACKUP_S3_BUCKET` |
+| `deploy.yml` | Push to `main` touching `supabase/migrations/**` (or manual dispatch) | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_ID` |
+| `db-backup.yml` | Daily at 03:00 UTC (+ manual dispatch) | `SUPABASE_DB_URL`, `AWS_BACKUP_ACCESS_KEY_ID`, `AWS_BACKUP_SECRET_ACCESS_KEY`, `AWS_BACKUP_S3_BUCKET`, `AWS_BACKUP_R2_ENDPOINT` |
+
+`db-backup.yml` uploads to Cloudflare R2 (S3-API-compatible, free tier,
+zero egress fees) rather than real AWS S3 — `AWS_BACKUP_R2_ENDPOINT` is the
+bucket's R2 endpoint URL, and the region is hardcoded to `auto` in the
+workflow itself (R2's documented value, not a real AWS region).
 
 Without these secrets set (`gh secret set <NAME>`), both workflows run but
 fail every time — migrations must then be pushed manually
