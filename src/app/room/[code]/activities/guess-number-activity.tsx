@@ -52,13 +52,15 @@ export function GuessNumberActivity() {
       const fetchSecret = async () => {
         const supabase = getSupabaseBrowserClient();
         if (supabase) {
-          // @ts-expect-error - Supabase types are not yet generated for this new RPC
           const { data, error } = await supabase.rpc("get_guess_number_secret", {
             p_room_code: roomCode,
           });
           // Note: if the secret hasn't been set at all, the DB will return null.
           if (!error && data !== null) {
-            setGuessSecretNumber(data as number);
+            setGuessSecretNumber(data);
+          }
+          if (error) {
+            console.error("Failed to recover secret number:", error.message);
           }
         }
       };

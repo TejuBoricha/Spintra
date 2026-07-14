@@ -27,10 +27,24 @@ type TmTeamsEvent         = { kind: "team_maker_teams"; teams: { name: string; m
 // read-only, purely so old rows still replay instead of silently dropping
 // that event on reconnect.
 type TmTeamsLegacyEvent   = { kind: "tm_teams"; teams: { name: string; members: string[] }[] };
+// Broadcast so a host who migrates before Generate Bracket is clicked
+// doesn't silently see the format selection reset to the default — see
+// docs/HOST_MIGRATION_AUDIT.md finding M4. Low-stakes (no bracket exists
+// yet), unlike TournamentUpdateEvent — no sender verification needed.
+type TournamentFormatSelectedEvent = { kind: "tournament_format_selected"; format: TournamentType };
 type TournamentUpdateEvent = {
   kind: "tournament_update";
   tournament: Tournament;
   outcome?: "champion" | "grand-final-set" | "advanced";
+  // Self-reported author, checked against the receiving client's own live
+  // rooms.host_id (never the sender's own claim about itself) before a
+  // LIVE (non-replayed) event is trusted — see tournament-activity.tsx.
+  // Not a security boundary on its own (a client could lie about this
+  // field); the actual enforcement is the DB trigger on room_activity_state
+  // (migration 0060) checking the real auth.uid() at persist time. This
+  // field exists to dampen the live-broadcast race during a host
+  // transition, not to stop a determined forger.
+  senderId: string;
 };
 type NdWinnerEvent        = { kind: "name_draw_winner"; winner: string };
 // Same rename/replay-compat treatment as TmTeamsLegacyEvent above.
@@ -72,7 +86,7 @@ export type ActivityEvent =
   | RpsChoiceEvent    | RpsResetEvent
   | TmTeamsEvent      | TmTeamsLegacyEvent
   | NdWinnerEvent     | NdWinnerLegacyEvent
-  | TournamentUpdateEvent
+  | TournamentUpdateEvent | TournamentFormatSelectedEvent
   | TriviaQuestionEvent | TriviaAnswerEvent
   | WheelEntriesEvent | WheelSpinningEvent
   | GuessSubmitEvent | GuessResetEvent

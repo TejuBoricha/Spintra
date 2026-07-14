@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { Swords, Trophy, Crown, RotateCcw, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -181,15 +181,47 @@ function BracketColumns({
 }
 
 export function TournamentActivity() {
-  const { isHost, sendActivityEvent, registerEventListener, soundEnabled } = useRoomActivity();
+  const { isHost, hostUserId, currentUser, sendActivityEvent, registerEventListener, soundEnabled } = useRoomActivity();
   const { participants } = useRoomParticipants();
   const [tournamentType, setTournamentType] = useState<TournamentType>("single-elimination");
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [editingMatch, setEditingMatch] = useState<MatchRef | null>(null);
 
+  // Read by the listener below without being an effect dependency — a
+  // frequently-changing dependency (hostUserId changes on every host
+  // migration) would re-run the effect, which calls registerEventListener
+  // again, which REPLAYS the entire persisted event log again, corrupting
+  // state. Every other activity in this codebase follows this same
+  // ref-mirror pattern for exactly this reason (see bingo-activity.tsx).
+  const hostUserIdRef = useRef(hostUserId);
   useEffect(() => {
-    return registerEventListener((event) => {
+    hostUserIdRef.current = hostUserId;
+  }, [hostUserId]);
+
+  useEffect(() => {
+    // registerEventListener replays the full persisted log synchronously,
+    // in this same call, before returning — so by the time it returns,
+    // every historical event has already been dispatched to the callback
+    // below. Only events arriving AFTER that point are genuinely live.
+    // This distinction matters: a past tournament_update was authored by
+    // whoever was host AT THE TIME (possibly a since-replaced host), and
+    // rejecting it against the CURRENT host would incorrectly discard
+    // legitimate history for any room that's ever had more than one host.
+    let hasReplayed = false;
+
+    const unregister = registerEventListener((event) => {
       if (event.kind === "tournament_update") {
+        // Only live events are checked against the current host — see the
+        // comment above. Not a full security boundary (senderId is a
+        // self-reported claim a determined client could forge to match the
+        // real host's id) — the actual, unforgeable enforcement is the DB
+        // trigger on room_activity_state (migration 0060) checking the
+        // real auth.uid() at persist time. This check exists to stop a
+        // stale/demoted host's broadcast from clobbering the live view
+        // during the brief propagation window of a legitimate transition.
+        if (hasReplayed && event.senderId !== hostUserIdRef.current) {
+          return;
+        }
         setTournament(event.tournament);
         if (event.outcome === "champion") {
           fireConfetti();
@@ -199,11 +231,16 @@ export function TournamentActivity() {
         } else if (event.outcome === "grand-final-set") {
           toast.success("Grand Final is set!", { id: "grand-final-set" });
         }
+      } else if (event.kind === "tournament_format_selected") {
+        setTournamentType(event.format);
       } else if (event.kind === "activity_reset") {
         setTournament(null);
         setEditingMatch(null);
       }
     });
+
+    hasReplayed = true;
+    return unregister;
   }, [registerEventListener]);
 
   const generateBracket = useCallback(() => {
@@ -223,8 +260,8 @@ export function TournamentActivity() {
       winner: null,
       losersBracket,
     };
-    sendActivityEvent({ kind: "tournament_update", tournament: next });
-  }, [participants, tournamentType, sendActivityEvent]);
+    sendActivityEvent({ kind: "tournament_update", tournament: next, senderId: currentUser.id });
+  }, [participants, tournamentType, sendActivityEvent, currentUser.id]);
 
   // Returns true if the match is safe to edit; shows a toast and returns false otherwise.
   const guardMatchEdit = useCallback(
@@ -289,9 +326,10 @@ export function TournamentActivity() {
         kind: "tournament_update",
         tournament: outcome.tournament,
         outcome: outcome.kind === "advanced" ? "advanced" : outcome.kind,
+        senderId: currentUser.id,
       });
     },
-    [editingMatch, tournament, soundEnabled, sendActivityEvent]
+    [editingMatch, tournament, soundEnabled, sendActivityEvent, currentUser.id]
   );
 
   return (
@@ -312,7 +350,11 @@ export function TournamentActivity() {
           <ChipGroup
             ariaLabel="Tournament format"
             value={tournamentType}
-            onChange={(v) => setTournamentType(v as TournamentType)}
+            onChange={(v) => {
+              const format = v as TournamentType;
+              setTournamentType(format);
+              sendActivityEvent({ kind: "tournament_format_selected", format });
+            }}
             options={[
               { value: "single-elimination", label: "Single Elim" },
               { value: "double-elimination", label: "Double Elim" },

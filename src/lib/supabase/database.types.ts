@@ -580,6 +580,10 @@ export type Database = {
         Args: { p_room_code: string; p_user_id: string }
         Returns: boolean
       }
+      get_guess_number_secret: {
+        Args: { p_room_code: string }
+        Returns: number
+      }
       is_member_of_room: {
         Args: { room_code: string; user_uuid: string }
         Returns: boolean
