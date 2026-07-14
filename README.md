@@ -45,6 +45,16 @@ a synced multiplayer activity inside a room (`/room/[code]`):
 Two additional room modes bundle several of the above into one room:
 **Party Mode** (all games unlocked) and **Classroom** (teacher-friendly picks/teams).
 
+## Room platform features
+
+Beyond the games themselves, every multiplayer room includes:
+
+- **Moderation Dashboard** — message reporting, kick/ban with an action history audit log, host-scoped via server-verified RPCs
+- **Scoreboard + XP/Leveling** — server-verified score awards (RPS, Bingo, Trivia) with a live leaderboard and rank tiers
+- **Room Settings panel** — host controls for max participants, chat moderation, activity timers
+- **Automatic host migration** — if the host disconnects, the room elects a new host without interrupting the game
+- **Connection status banner** — live indicator when realtime sync degrades or reconnects
+
 ## Tech stack
 
 - Next.js 16 (App Router) + React 19
@@ -73,22 +83,28 @@ To enable real multiplayer:
 
 1. Create a project at [supabase.com](https://supabase.com).
 2. Copy the Project URL and anon public key into `.env.local` (see `.env.example`).
-3. Run `supabase/migrations/0001_init_schema_and_rls.sql` in the Supabase SQL
-   editor (or via `supabase db push`) to create the `rooms`, `room_participants`,
-   and `chat_messages` tables, enable Row Level Security, and turn on realtime
-   for them.
+3. Apply every migration in `supabase/migrations/` in order (61 files as of
+   this writing) via `supabase db push` (or `supabase link` once, then
+   `supabase db push`) — this creates the full schema (`rooms`,
+   `room_participants`, `chat_messages`, moderation, scoring/XP, tournament
+   state, etc.), enables Row Level Security, and turns on realtime. On
+   `main`, `.github/workflows/deploy.yml` pushes any new migration files
+   automatically on every push that touches `supabase/migrations/**` — see
+   [Deployment](#deployment) for the secrets it needs.
 
-**Important caveat:** Spintra does not use Supabase Auth — every client
-generates its own random `user_id` in `localStorage`. The RLS policies in the
-migration close the most damaging gaps (host-role races, unrestricted
-deletes) but cannot cryptographically verify a client's claimed identity.
-Read the comment at the top of that migration file before treating this as a
-fully secure setup; migrating to Supabase Anonymous Auth is the real fix.
+Spintra uses Supabase **Anonymous Auth**: each client gets a real
+`auth.users` row (no email/password), and RLS/trigger policies key off
+`auth.uid()` rather than a client-supplied identity. See
+`supabase/migrations/0001_init_schema_and_rls.sql` for the baseline policy
+set and later migrations for the moderation/scoring/host-election hardening
+built on top of it.
 
 | Variable | Required | Description |
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | For real multiplayer | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | For real multiplayer | Supabase anon public key |
+| `NEXT_PUBLIC_SENTRY_DSN` | Optional | Error monitoring. Without it, Sentry never initializes (see `sentry.*.config.ts`) — the app runs exactly the same |
+| `SENTRY_ORG` / `SENTRY_PROJECT` / `SENTRY_AUTH_TOKEN` | Optional | Only needed to upload source maps for readable production stack traces |
 
 ## Scripts
 
@@ -111,12 +127,19 @@ fully secure setup; migrating to Supabase Anonymous Auth is the real fix.
 src/app/tools/*             standalone single-player game/utility pages
 src/app/room/[code]/        multiplayer room (chat, participants, header)
 src/app/room/[code]/activities/  per-game room UI, one file per game
-src/app/create/             room creation flow
-src/lib/games.ts            single source of truth for the game catalog
-src/lib/supabase/client.ts  browser Supabase client (returns null if unconfigured)
-src/lib/room-user.ts        client-side identity (localStorage-based, no auth)
-proxy.ts                    redirects /room?code=X to /room/X
-supabase/migrations/        schema + RLS for the Supabase-backed tables
+src/app/room/[code]/components/  moderation dashboard, scoreboard, room settings
+src/app/create/              room creation flow
+src/app/explore/             public room discovery / browse
+src/app/settings/            user preferences (username, theme, etc.)
+src/app/api/health/          liveness endpoint for uptime monitors / deploy checks
+src/lib/games.ts             single source of truth for the game catalog
+src/lib/supabase/client.ts   browser Supabase client (returns null if unconfigured)
+src/lib/room-user.ts         client-side identity, backed by Supabase Anonymous Auth
+src/lib/moderation.ts        moderation RPC client wrappers (kick/ban/dismiss)
+src/lib/xp.ts                XP/rank tier calculations
+src/lib/tournament-engine.ts bracket generation for all 4 tournament formats
+proxy.ts                     redirects /room?code=X to /room/X
+supabase/migrations/         schema + RLS for the Supabase-backed tables
 ```
 
 ## Development notes
@@ -128,22 +151,47 @@ supabase/migrations/        schema + RLS for the Supabase-backed tables
 
 ## Testing
 
-- `tests/smoke.spec.ts` — the only automated coverage today (Playwright,
-  room create/join flow).
-- `.github/workflows/ci.yml` — runs a dependency security audit, typecheck,
-  lint, a documentation drift check, build, and the smoke test on every push.
+Playwright specs in `tests/`: `smoke.spec.ts` and `comprehensive-smoke.spec.ts`
+(room create/join flow), `multiplayer-loop.spec.ts` (two genuinely distinct
+participants — join, activity sync, moderation), `comprehensive-tournament-audit.spec.ts`
+and `tournament-double-elimination.spec.ts` (bracket generation and scoring
+across all formats).
+
+`.github/workflows/ci.yml` runs two jobs on every push: `validate` (dependency
+security audit, typecheck, lint, docs drift check, build, and the Playwright
+suite against the demo/`BroadcastChannel` fallback — no Supabase needed) and
+`db-integration` (spins up an ephemeral local Supabase via Docker, applies
+every migration fresh, and re-runs the suite against real RLS/triggers/realtime
+instead of the demo fallback).
 
 ## Known limitations
 
-- No test coverage beyond the one smoke spec.
-- Multiplayer authorization relies on RLS, not verified user identity (see
-  [Environment variables](#environment-variables) above).
+- Bingo's async host-side win verification has no arbitration between two
+  players who achieve a genuinely simultaneous valid win — a narrow,
+  code-reviewed (not yet live-reproduced) race.
+- The daily DB backup and automatic migration-deploy workflows
+  (`.github/workflows/db-backup.yml`, `deploy.yml`) require repo secrets
+  that aren't configured yet — see [Deployment](#deployment).
+- Production error monitoring (Sentry) is scaffolded but not wired up
+  (no `NEXT_PUBLIC_SENTRY_DSN` configured yet).
 
 ## Deployment
 
-Any Next.js host works (e.g. [Vercel](https://vercel.com/new)). Set the two
-`NEXT_PUBLIC_SUPABASE_*` environment variables in your hosting provider's
-dashboard before deploying.
+Any Next.js host works (e.g. [Vercel](https://vercel.com/new)). Set the
+`NEXT_PUBLIC_SUPABASE_*` (and optionally `NEXT_PUBLIC_SENTRY_DSN`/`SENTRY_*`)
+environment variables in your hosting provider's dashboard before deploying.
+
+Two GitHub Actions workflows handle Supabase-side operations and need repo
+secrets to function:
+
+| Workflow | Trigger | Required secrets |
+|---|---|---|
+| `deploy.yml` | Push to `main` touching `supabase/migrations/**` | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_ID` |
+| `db-backup.yml` | Daily at 03:00 UTC (+ manual dispatch) | `SUPABASE_DB_URL`, `AWS_BACKUP_ACCESS_KEY_ID`, `AWS_BACKUP_SECRET_ACCESS_KEY`, `AWS_BACKUP_S3_BUCKET` |
+
+Without these secrets set (`gh secret set <NAME>`), both workflows run but
+fail every time — migrations must then be pushed manually
+(`supabase db push`) and no backups are retained.
 
 ## License
 
