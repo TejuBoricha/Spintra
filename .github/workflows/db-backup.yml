@@ -7,7 +7,15 @@ on:
   workflow_dispatch: {}
 
 env:
-  PGDUMP_VERSION: "16"
+  # Must match (or exceed) the live Supabase project's Postgres version —
+  # pg_dump refuses to dump from a newer server than itself. Found via a
+  # live run: this was pinned to 16 while the project runs Postgres 17.6,
+  # so pg_dump aborted immediately on every single run with "aborting
+  # because of server version mismatch" — silently, because see the
+  # pipefail note below. Verify the live version before ever changing
+  # this: `supabase projects list` (postgres_engine field), or the
+  # Database section of the Supabase dashboard.
+  PGDUMP_VERSION: "17"
 
 jobs:
   backup:
@@ -24,6 +32,17 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
+          # set -o pipefail: without it (GitHub Actions' bash default is
+          # only `-e`, confirmed live in a run's own logs), a failing
+          # pg_dump whose stderr goes to the terminal but whose stdout is
+          # piped into gzip does NOT fail this step — gzip happily
+          # compresses zero bytes into a small-but-"valid" .gz file, the
+          # step exits 0, and the job reports success. This is exactly
+          # what happened with the version mismatch above: a ~20-byte
+          # "backup" silently uploaded on every run, until checked by
+          # hand. pipefail makes pg_dump's own exit code the one that
+          # actually matters.
+          set -euo pipefail
           TIMESTAMP=$(date +%Y%m%d_%H%M%S)
           FILENAME="spintra_backup_${TIMESTAMP}.sql.gz"
           pg_dump "$DATABASE_URL" \
@@ -32,6 +51,20 @@ jobs:
             --clean \
             --if-exists \
             | gzip > "$FILENAME"
+          # Second, independent line of defense: even a *successful*
+          # pg_dump of a genuinely empty/near-empty database would be
+          # unusual for this schema (61+ migrations of tables/functions/
+          # policies) — a suspiciously small archive is worth failing
+          # loudly on rather than silently accepting, since pipefail only
+          # catches a pg_dump that actually exits non-zero, not one that
+          # succeeds while dumping far less than expected for some other
+          # reason (e.g. a bad connection string pointed at an empty DB).
+          MIN_BYTES=2048
+          ACTUAL_BYTES=$(stat -c%s "$FILENAME")
+          if [ "$ACTUAL_BYTES" -lt "$MIN_BYTES" ]; then
+            echo "::error::Backup file is only ${ACTUAL_BYTES} bytes (expected at least ${MIN_BYTES}) — refusing to upload a suspiciously small backup."
+            exit 1
+          fi
           echo "BACKUP_FILE=$FILENAME" >> "$GITHUB_ENV"
 
       - name: Upload to R2
