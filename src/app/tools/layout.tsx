@@ -1,6 +1,19 @@
 import React from "react";
 import Link from "next/link";
 import { Info } from "lucide-react";
+import type { Metadata } from "next";
+
+// Applies to /tools (the index/browse page) specifically — each individual
+// /tools/<name> page overrides this with its own metadata via its own
+// nested layout.tsx (see src/lib/tool-metadata.ts), Next.js's normal
+// child-wins metadata merging. Previously missing entirely: /tools inherited
+// the root layout's homepage title/description verbatim.
+export const metadata: Metadata = {
+  title: "All Games & Tools — Spintra",
+  description:
+    "Browse all 14 Spintra tools — spinners, brackets, team makers, dice, trivia, and more. Play solo or turn any of them into a synced multiplayer room.",
+  alternates: { canonical: "/tools" },
+};
 
 export default function ToolsLayout({ children }: { children: React.ReactNode }) {
   return (
