@@ -82,6 +82,30 @@ export function useRoomSubscription({
   // Refs
   const supabaseChannelRef = useRef<RealtimeChannel | null>(null);
   const closingRoomRef = useRef(false);
+  const leavingRoomRef = useRef(false);
+  // Generation counter guarding roomHostId against a stale-response race:
+  // loadRoomDetails() runs both on mount and on an unconditional 6s
+  // interval (see roomDetailsInterval below); if a poll is issued right
+  // before a host election commits, its response (captured before the
+  // election, but resolving after) would otherwise overwrite the freshly
+  // correct roomHostId with the dead host's id — confirmed live via a
+  // real host-migration test: isHost flipped true on promotion, then
+  // silently reverted to false moments later. electHostIfNeeded bumps
+  // this on every successful local election, invalidating any in-flight
+  // loadRoomDetails call that started before it — see both call sites.
+  const roomHostIdGenRef = useRef(0);
+  // loadRoomDetails() below reuses the pre-entry prefetchedRoom snapshot
+  // instead of a real fetch whenever it's truthy — correct for saving one
+  // redundant round trip on the VERY FIRST call, but prefetchedRoom is a
+  // stable object reference for the component's whole lifetime, so without
+  // this guard EVERY subsequent call (including the unconditional 6s
+  // roomDetailsInterval poll, whose entire purpose is reconciling missed
+  // updates) kept reapplying that same frozen initial snapshot forever —
+  // never actually re-fetching. Confirmed live: this silently defeated the
+  // reconciliation poll for name/lock/capacity/host_id on every session,
+  // and was the real root cause of a promoted host's is_host reverting
+  // back to false minutes after a correct, live-delivered election.
+  const hasConsumedPrefetchedRoomRef = useRef(false);
   const activeActivityRef = useRef(activeActivity);
   const roomTypeRef = useRef(roomType);
   const broadcastRef = useRef<BroadcastChannel | null>(null);
@@ -292,6 +316,11 @@ export function useRoomSubscription({
         return;
       }
 
+      // Invalidate any loadRoomDetails() fetch already in flight — see
+      // roomHostIdGenRef's declaration. Must happen before setRoomHostId
+      // below so a fetch that resolves in the gap between these two lines
+      // (vanishingly unlikely, but free to guarantee) can't win the race.
+      roomHostIdGenRef.current++;
       setRoomHostId(currentUser.id);
       setParticipants((prev) =>
         prev.map((participant) =>
@@ -303,8 +332,20 @@ export function useRoomSubscription({
       toast.success("You are now the host.");
       setNotification("The previous host left, and you have been promoted to host.");
       fireConfetti();
+
+      // Tell every OTHER connected client — see docs/HOST_MIGRATION_AUDIT.md
+      // finding H2. Best-effort: a missed broadcast (e.g. a peer briefly
+      // disconnected) isn't retried, since every client's participants list
+      // and rooms.host_id already converge to the truth via the normal sync
+      // paths regardless — this is purely the human-readable announcement,
+      // not the source of truth for who the host actually is.
+      supabaseChannelRef.current?.send({
+        type: "broadcast",
+        event: "host_changed",
+        payload: { newHostId: currentUser.id, newHostUsername: currentUser.username },
+      });
     },
-    [currentUser.id, roomCode]
+    [currentUser.id, currentUser.username, roomCode]
   );
 
   // Switch Game / Activity Handler
@@ -426,6 +467,32 @@ export function useRoomSubscription({
     toast.success("Room closed for everyone.");
     router.push("/explore");
   }, [isHost, roomCode, router, postLocalMessage]);
+
+  // Leave Room Handler — see docs/HOST_MIGRATION_AUDIT.md finding M2.
+  // Previously this was a bare `window.location.href` navigation with no
+  // explicit departure signal at all: detection relied entirely on
+  // presence-based crash detection, even for an intentional leave the app
+  // has 100% certainty about (the confirm dialog was already accepted).
+  // Explicitly deleting this client's own participant row first fires the
+  // existing room_participants DELETE handler below for every OTHER
+  // client immediately (not the up-to-several-seconds presence path),
+  // which already calls electHostIfNeeded — so this alone is the fix, no
+  // new RPC needed. leavingRoomRef mirrors closingRoomRef's exact pattern
+  // above: without it, that same DELETE handler would show THIS client
+  // its own "You were removed by the host" toast, since a self-row
+  // deletion previously only ever meant a kick or room closure.
+  const leaveRoom = useCallback(async () => {
+    leavingRoomRef.current = true;
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) {
+      await supabase
+        .from("room_participants")
+        .delete()
+        .eq("room_id", roomCode)
+        .eq("user_id", currentUser.id);
+    }
+    window.location.href = "/";
+  }, [roomCode, currentUser.id]);
 
   // Load room details, participants list, and register self in database.
   // Runs in demo mode too — loadRoomDetails() below has its own demo-mode
@@ -685,6 +752,11 @@ export function useRoomSubscription({
     };
 
     const loadRoomDetails = async () => {
+      // Captured before the fetch — see roomHostIdGenRef's declaration.
+      // Anything that changes the room's host locally (electHostIfNeeded)
+      // bumps the counter, so a check after the fetch resolves can tell
+      // whether a more authoritative update already happened meanwhile.
+      const roomHostIdGenAtStart = roomHostIdGenRef.current;
       try {
         const supabaseClient = getSupabaseBrowserClient();
         if (!supabaseClient) {
@@ -729,8 +801,10 @@ export function useRoomSubscription({
         }
         // Reuse room-client.tsx's verifyAccess fetch (which already selects
         // every column below) instead of re-querying the same rooms row a
-        // second time — falls back to a real fetch if unavailable.
-        let data = prefetchedRoom;
+        // second time — but only on the very first call. See
+        // hasConsumedPrefetchedRoomRef's declaration.
+        let data = hasConsumedPrefetchedRoomRef.current ? null : prefetchedRoom;
+        hasConsumedPrefetchedRoomRef.current = true;
         if (!data) {
           const result = await supabaseClient
             .from("rooms")
@@ -747,7 +821,14 @@ export function useRoomSubscription({
           setRoomName(data.name);
           setRoomType(data.type as RoomType);
           setIsLocked(!!data.is_locked);
-          setRoomHostId(data.host_id);
+          // Only apply if no local election happened while this fetch was
+          // in flight — otherwise this (now-stale) response would silently
+          // revert a freshly-promoted host back to the dead one. Other
+          // fields above aren't subject to this race (nothing else writes
+          // them optimistically outside this same function).
+          if (roomHostIdGenRef.current === roomHostIdGenAtStart) {
+            setRoomHostId(data.host_id);
+          }
           if (typeof data.max_participants === "number") setMaxParticipantsLimit(data.max_participants);
 
           // Save to room history in localStorage
@@ -799,6 +880,21 @@ export function useRoomSubscription({
     // if the RLS read itself succeeds.
     const loadActivityStateAndActivate = async (roomType: RoomType) => {
       const supabaseClient = getSupabaseBrowserClient();
+      // Party/classroom rooms have no single fixed activity — the host picks
+      // one at a time, so the room's OWN type ("party") never equals the
+      // persisted sub-activity's type ("tournament"). The `persisted.type
+      // === roomType` check below is only ever true for a single-game room
+      // (where they genuinely are the same value); for party/classroom it
+      // was always false, and setActiveActivity was skipped for them
+      // unconditionally right after — meaning NO party/classroom room's
+      // active game was ever recoverable by anyone who joined after the
+      // activity_change broadcast already happened (the host was still
+      // present and the game still running — confirmed live, this is not
+      // specific to host migration, though a promoted host hits it worst
+      // since they also can't act on a game they can't even see). Found
+      // while testing docs/HOST_MIGRATION_AUDIT.md's M4; the persisted
+      // sub-activity type recovers this for every case uniformly.
+      let persistedSubActivityType: string | null = null;
       if (supabaseClient) {
         try {
           const stateResult = await supabaseClient
@@ -808,16 +904,23 @@ export function useRoomSubscription({
             .maybeSingle();
           if (stateResult.data?.activity_state) {
             const persisted = stateResult.data.activity_state as { type?: string; events?: ActivityEvent[] } | null;
-            if (persisted?.type === roomType && Array.isArray(persisted.events)) {
-              activityEventLogRef.current = persisted.events.slice(-ACTIVITY_EVENT_LOG_CAP);
+            if (persisted?.type && Array.isArray(persisted.events)) {
+              if (persisted.type === roomType || roomType === "party" || roomType === "classroom") {
+                activityEventLogRef.current = persisted.events.slice(-ACTIVITY_EVENT_LOG_CAP);
+              }
+              persistedSubActivityType = persisted.type;
             }
           }
         } catch (e) {
           console.error("Failed to load activity state:", e);
         }
       }
-      if (isMounted && roomType !== "party" && roomType !== "classroom") {
-        setActiveActivity((prev) => prev || { type: roomType, state: null });
+      if (isMounted) {
+        if (roomType !== "party" && roomType !== "classroom") {
+          setActiveActivity((prev) => prev || { type: roomType, state: null });
+        } else if (persistedSubActivityType) {
+          setActiveActivity((prev) => prev || { type: persistedSubActivityType!, state: null });
+        }
       }
     };
 
@@ -989,7 +1092,7 @@ export function useRoomSubscription({
                 try {
                   const stored = window.localStorage.getItem("spintra-room-history");
                   if (stored) {
-                    const history = JSON.parse(stored).filter((h: any) => h.code !== roomCode);
+                    const history = JSON.parse(stored).filter((h: { code: string }) => h.code !== roomCode);
                     window.localStorage.setItem("spintra-room-history", JSON.stringify(history));
                   }
                 } catch (e) {}
@@ -1006,7 +1109,7 @@ export function useRoomSubscription({
               try {
                 const stored = window.localStorage.getItem("spintra-room-history");
                 if (stored) {
-                  const history = JSON.parse(stored).filter((h: any) => h.code !== roomCode);
+                  const history = JSON.parse(stored).filter((h: { code: string }) => h.code !== roomCode);
                   window.localStorage.setItem("spintra-room-history", JSON.stringify(history));
                 }
               } catch (e) {}
@@ -1019,13 +1122,22 @@ export function useRoomSubscription({
             if (payload) {
               setParticipants((prev) =>
                 prev.map((p) =>
-                  p.user_id === payload
+                  p.user_id === payload.userId
                     ? { ...p, role: "host" as const }
                     : p.role === "host"
                     ? { ...p, role: "participant" as const }
                     : p
                 )
               );
+              // Every OTHER tab's own notification (matches the real-mode
+              // host_changed broadcast handler above) — the promoting tab
+              // already showed its own toast/notification directly at the
+              // send site below, so skip it here to avoid double-announcing
+              // to the one person who doesn't need it.
+              if (payload.userId !== currentUser.id && payload.username) {
+                setNotification(`${payload.username} is now the host.`);
+                setRoomAnnouncement(`${payload.username} is now the host.`);
+              }
             }
             break;
 
@@ -1046,7 +1158,7 @@ export function useRoomSubscription({
                   if (online.length && online[0].user_id === currentUser.id) {
                     bc.postMessage({
                       type: "HOST_PROMOTED",
-                      payload: currentUser.id,
+                      payload: { userId: currentUser.id, username: currentUser.username },
                       senderId: currentUser.id,
                     });
                     toast.success("You are now the host.");
@@ -1302,6 +1414,13 @@ export function useRoomSubscription({
               setRoomAnnouncement(`${removed.username || "A participant"} left the room.`);
             }
             if (isSelf) {
+              if (leavingRoomRef.current) {
+                // Intentional leave (leaveRoom below already deleted this
+                // exact row and is navigating away itself) — not a kick or
+                // room closure, so no alarming toast for the person who
+                // just confirmed they wanted to leave.
+                return prev;
+              }
               setTimeout(async () => {
                 const supabaseClient = getSupabaseBrowserClient();
                 let roomExists = false;
@@ -1349,7 +1468,15 @@ export function useRoomSubscription({
           if (typeof updated.is_locked === "boolean") setIsLocked(updated.is_locked);
           if (typeof updated.max_participants === "number")
             setMaxParticipantsLimit(updated.max_participants);
-          if (updated.host_id) setRoomHostId(updated.host_id);
+          if (updated.host_id) {
+            // A live postgres_changes delivery is authoritative (it reflects
+            // a real committed row, not an optimistic guess) — treat it the
+            // same as a local election for staleness purposes, so a
+            // loadRoomDetails() fetch already in flight can't later
+            // overwrite it with older data. See roomHostIdGenRef.
+            roomHostIdGenRef.current++;
+            setRoomHostId(updated.host_id);
+          }
         }
       )
       .on(
@@ -1369,6 +1496,21 @@ export function useRoomSubscription({
       .on("broadcast", { event: "activity_event" }, ({ payload }) => {
         if (payload) {
           handleActivityEvent(payload);
+        }
+      })
+      // Every other participant's own notification of a host change — see
+      // docs/HOST_MIGRATION_AUDIT.md finding H2. Broadcast, not persisted:
+      // a transient announcement, not state anyone needs to recover on
+      // reconnect (by the time they reconnect, participants/rooms.host_id
+      // already reflects the current host via the normal sync paths).
+      // Channel.send() doesn't echo back to its own sender by default, so
+      // this never double-fires for the promoted client itself — that
+      // client already set its own notification directly inside
+      // electHostIfNeeded.
+      .on("broadcast", { event: "host_changed" }, ({ payload }) => {
+        if (payload?.newHostUsername) {
+          setNotification(`${payload.newHostUsername} is now the host.`);
+          setRoomAnnouncement(`${payload.newHostUsername} is now the host.`);
         }
       });
 
@@ -1570,6 +1712,7 @@ export function useRoomSubscription({
     toggleLock,
     handleKickParticipant,
     handleCloseRoom,
+    leaveRoom,
     realtimeStatusLabel,
     realtimeStatusClass,
     isLocalOnlyMode,

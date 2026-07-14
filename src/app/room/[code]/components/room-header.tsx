@@ -48,6 +48,7 @@ interface RoomHeaderProps {
   currentUserId: string;
   toggleLock: () => void;
   onOpenCloseRoomDialog: () => void;
+  onLeaveRoom: () => void;
   roomType: RoomType;
   onOpenPicker: () => void;
   onResetActivity: () => void;
@@ -74,6 +75,7 @@ export const RoomHeader = memo(function RoomHeader({
   currentUserId,
   toggleLock,
   onOpenCloseRoomDialog,
+  onLeaveRoom,
   roomType,
   onOpenPicker,
   onResetActivity,
@@ -428,7 +430,7 @@ export const RoomHeader = memo(function RoomHeader({
               variant="destructive"
               onClick={() => {
                 setIsExitConfirmOpen(false);
-                window.location.href = "/";
+                onLeaveRoom();
               }}
             >
               Leave Room

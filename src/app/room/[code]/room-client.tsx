@@ -269,7 +269,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
             try {
               const stored = window.localStorage.getItem("spintra-room-history");
               if (stored) {
-                const history = JSON.parse(stored).filter((h: any) => h.code !== roomCode);
+                const history = JSON.parse(stored).filter((h: { code: string }) => h.code !== roomCode);
                 window.localStorage.setItem("spintra-room-history", JSON.stringify(history));
               }
             } catch (e) {}
@@ -303,7 +303,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
             try {
               const stored = window.localStorage.getItem("spintra-room-history");
               if (stored) {
-                const history = JSON.parse(stored).filter((h: any) => h.code !== roomCode);
+                const history = JSON.parse(stored).filter((h: { code: string }) => h.code !== roomCode);
                 window.localStorage.setItem("spintra-room-history", JSON.stringify(history));
               }
             } catch (e) {}
@@ -659,6 +659,7 @@ function RoomUIInner({
     participants,
     roomType,
     roomName,
+    roomHostId,
     isLocked,
     activeActivity,
     maxParticipantsLimit,
@@ -673,6 +674,7 @@ function RoomUIInner({
     toggleLock,
     handleKickParticipant,
     handleCloseRoom,
+    leaveRoom,
     realtimeStatusLabel,
     realtimeStatusClass,
     isLocalOnlyMode,
@@ -759,6 +761,7 @@ function RoomUIInner({
       roomCode,
       roomType,
       isHost,
+      hostUserId: roomHostId,
       currentUser: localUser,
       sendActivityEvent,
       registerEventListener,
@@ -770,6 +773,7 @@ function RoomUIInner({
       roomCode,
       roomType,
       isHost,
+      roomHostId,
       localUser,
       sendActivityEvent,
       registerEventListener,
@@ -851,6 +855,7 @@ function RoomUIInner({
           currentUserId={localUser.id}
           toggleLock={toggleLock}
           onOpenCloseRoomDialog={handleOpenCloseRoomDialog}
+          onLeaveRoom={leaveRoom}
           roomType={roomType}
           onOpenPicker={handleOpenPicker}
           onResetActivity={handleResetActivity}
