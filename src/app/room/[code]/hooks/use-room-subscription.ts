@@ -195,6 +195,16 @@ export function useRoomSubscription({
   // We determine isHost from roomHostId (database) or localCreatorId (local fallback)
   const isHost = roomHostId ? roomHostId === currentUser.id : localCreatorId === currentUser.id;
   const isHostRef = useRef(isHost);
+  // Mirrors isHost's own fallback exactly — roomHostId is never populated in
+  // demo/local-only mode (no Supabase, so no elect_room_host RPC or
+  // postgres_changes to ever set it), so exposing raw roomHostId as "the
+  // host's id" would be permanently null there, incorrectly rejecting every
+  // live tournament_update broadcast against Tournament's H1 sender check
+  // (confirmed via CI: the validate job intentionally builds without
+  // Supabase configured, exercising exactly this path — both tournament E2E
+  // tests failed for this reason). localCreatorId IS the host's id in demo
+  // mode, the same way it already substitutes for roomHostId in isHost above.
+  const hostUserId = roomHostId ?? localCreatorId;
 
   // Sync refs
   useEffect(() => {
@@ -1691,6 +1701,7 @@ export function useRoomSubscription({
     setRoomName,
     roomHostId,
     setRoomHostId,
+    hostUserId,
     isLocked,
     setIsLocked,
     activeActivity,
