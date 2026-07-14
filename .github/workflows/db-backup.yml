@@ -57,7 +57,14 @@ jobs:
           set -euo pipefail
           TIMESTAMP=$(date +%Y%m%d_%H%M%S)
           FILENAME="spintra_backup_${TIMESTAMP}.sql.gz"
-          pg_dump "$DATABASE_URL" \
+          # Bare `pg_dump` still resolves to ubuntu-latest's pre-installed
+          # v16, not the v17 the previous step just apt-installed — found
+          # live: installing postgresql-client-17 doesn't repoint /usr/bin/
+          # pg_dump, it just adds /usr/lib/postgresql/17/bin/pg_dump
+          # alongside the existing v16 one. Invoking the versioned path
+          # directly removes the ambiguity instead of depending on
+          # update-alternatives having done what we'd want here.
+          "/usr/lib/postgresql/${{ env.PGDUMP_VERSION }}/bin/pg_dump" "$DATABASE_URL" \
             --no-owner \
             --no-privileges \
             --clean \
