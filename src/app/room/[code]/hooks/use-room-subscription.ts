@@ -1229,16 +1229,83 @@ export function useRoomSubscription({
     // reconcile normally — this only skips the unreliable first snapshot.
     let hasSyncedOnce = false;
 
-    // Flips local is_online from live presence and, when allowed, writes the
-    // crash-reconciliation for stale rows (any connected participant may do
-    // this, not just the host — otherwise a crashed host's own row could
-    // never be corrected by anyone, permanently blocking host succession;
-    // see migration 0019). If the current user has zero presence entries,
-    // the room is empty: also reconcile any stale row belonging to the
-    // current user's own previous session (crashed singleton case). After a
-    // successful crash-write, host election is re-run directly with the
-    // reconciled list — waiting for the realtime UPDATE echo of our own
-    // write leaves the room stuck if that event is dropped.
+    // Crash-writes require confirmation across a short grace window, not a
+    // single presence snapshot. Found via a live repro: killing one client's
+    // connection caused OTHER, still-fully-connected peers' rows to also get
+    // written is_online:false — in one run, BOTH survivors, including the
+    // one that had just been promoted host, ended up marked offline. Cause:
+    // channel.presenceState() can transiently under-report the online
+    // roster for a beat right after any peer's connection state changes
+    // (ordinary eventual-consistency in presence propagation, not specific
+    // to this codebase), and the old code treated a single sync's snapshot
+    // as ground truth and wrote it immediately. A user_id only reaches this
+    // map if reconcileAgainstPresence/reconcileStaleDbRows saw it missing;
+    // the write only actually happens if a FRESH re-check after
+    // CRASH_CONFIRM_MS still shows them missing, and any sync that sees the
+    // user present again cancels their pending timer outright.
+    const CRASH_CONFIRM_MS = 4000;
+    const pendingCrashTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+    const cancelCrashConfirmation = (presentIds: Set<string>) => {
+      for (const userId of presentIds) {
+        const timer = pendingCrashTimers.get(userId);
+        if (timer) {
+          clearTimeout(timer);
+          pendingCrashTimers.delete(userId);
+        }
+      }
+    };
+
+    const scheduleCrashConfirmation = (candidateIds: string[]) => {
+      const supabaseClient = getSupabaseBrowserClient();
+      if (!supabaseClient) return;
+      for (const userId of candidateIds) {
+        if (pendingCrashTimers.has(userId)) continue;
+        const timer = setTimeout(() => {
+          pendingCrashTimers.delete(userId);
+          const freshState = channel.presenceState();
+          const freshOnlineIds = new Set(
+            Object.values(freshState)
+              .flat()
+              .map((p) => (p as unknown as { user_id: string }).user_id)
+          );
+          if (freshOnlineIds.has(userId)) return;
+          supabaseClient
+            .from("room_participants")
+            .update({ is_online: false })
+            .eq("user_id", userId)
+            .eq("room_id", roomCode)
+            // Multiple still-connected peers can independently schedule a
+            // confirmation for the same crashed user_id and both survive
+            // their fresh re-check (neither's presence view includes the
+            // dead peer, correctly). Without this, whichever write lands
+            // second hits trg_restrict_host_participant_update's "old.is_online
+            // is distinct from true" branch — a harmless no-op in outcome,
+            // but a raised exception (visible 400) on the losing client.
+            // Scoping the match to currently-true rows makes the redundant
+            // write affect zero rows instead of erroring.
+            .eq("is_online", true)
+            .then(
+              // Reload from the DB — this also re-runs electHostIfNeeded
+              // with the corrected rows (same pattern as
+              // reconcileStaleDbRows below), rather than threading a
+              // potentially-stale local participants snapshot through.
+              () => loadParticipantsRef.current?.(),
+              () => {}
+            );
+        }, CRASH_CONFIRM_MS);
+        pendingCrashTimers.set(userId, timer);
+      }
+    };
+
+    // Flips local is_online from live presence and, when allowed, schedules
+    // crash-confirmation for rows that appear stale (any connected
+    // participant may do this, not just the host — otherwise a crashed
+    // host's own row could never be corrected by anyone, permanently
+    // blocking host succession; see migration 0019). If the current user has
+    // zero presence entries, the room is empty: also reconcile any stale row
+    // belonging to the current user's own previous session (crashed
+    // singleton case).
     const reconcileAgainstPresence = (allowCrashWrites: boolean) => {
       const state = channel.presenceState();
       const onlineIds = new Set(
@@ -1247,14 +1314,15 @@ export function useRoomSubscription({
           .map((p) => (p as unknown as { user_id: string }).user_id)
       );
 
+      cancelCrashConfirmation(onlineIds);
+
       setParticipants((prev) => {
         const updated = prev.map((participant) => ({
           ...participant,
           is_online: onlineIds.has(participant.user_id),
         }));
 
-        const supabaseClient = getSupabaseBrowserClient();
-        if (supabaseClient && allowCrashWrites) {
+        if (allowCrashWrites) {
           const crashed = prev.filter(
             (p) =>
               p.is_online &&
@@ -1262,18 +1330,7 @@ export function useRoomSubscription({
               (p.user_id !== currentUser.id || onlineIds.size === 0)
           );
           if (crashed.length > 0) {
-            supabaseClient
-              .from("room_participants")
-              .update({ is_online: false })
-              .in(
-                "user_id",
-                crashed.map((p) => p.user_id)
-              )
-              .eq("room_id", roomCode)
-              .then(
-                () => electHostIfNeeded(supabaseClient, updated),
-                () => {}
-              );
+            scheduleCrashConfirmation(crashed.map((p) => p.user_id));
           }
         }
 
@@ -1559,20 +1616,11 @@ export function useRoomSubscription({
           (row.user_id !== currentUser.id || presentIds.size === 0)
       );
       if (!stale.length) return;
-      const { error } = await supabaseClient
-        .from("room_participants")
-        .update({ is_online: false })
-        .in(
-          "user_id",
-          stale.map((row) => row.user_id)
-        )
-        .eq("room_id", roomCode);
-      if (!error) {
-        // Reload from the DB — this also re-runs electHostIfNeeded with the
-        // corrected rows, promoting the earliest online participant if the
-        // stale row was the host's.
-        loadParticipantsRef.current?.();
-      }
+      // Routed through the same confirm-after-grace-period path as
+      // reconcileAgainstPresence, rather than writing immediately off this
+      // one presence snapshot — this function's own snapshot is just as
+      // vulnerable to transient under-reporting as the sync handler's.
+      scheduleCrashConfirmation(stale.map((row) => row.user_id));
     };
 
     let presenceSettleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1637,13 +1685,32 @@ export function useRoomSubscription({
       if (presenceSettleTimer) {
         clearTimeout(presenceSettleTimer);
       }
+      for (const timer of pendingCrashTimers.values()) {
+        clearTimeout(timer);
+      }
+      pendingCrashTimers.clear();
       supabase.removeChannel(channel);
       supabaseChannelRef.current = null;
     };
+    // Deliberately currentUser.id/.username only — not the whole currentUser
+    // object. Every awardScore() call (every trivia/rps/bingo answer)
+    // replaces localUser with a new object solely to update xp/rank, and
+    // this effect owns the entire realtime channel: depending on the object
+    // identity tore the channel down and resubscribed from scratch on every
+    // single answer, producing a visible "Realtime subscription failed"
+    // toast each time and re-opening the channel's "first presence sync"
+    // window repeatedly (see the reconcileAgainstPresence/hasSyncedOnce
+    // comment above) — the exact race 0056/0061 already had to guard against
+    // at the DB layer. Only id and username are actually read anywhere in
+    // this effect's body — the two `user: currentUser` payload snapshots
+    // (demo-mode PING/PONG handshake only) are fine trailing an xp/rank
+    // change by however long since the last real identity change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     roomCode,
     electHostIfNeeded,
-    currentUser,
+    currentUser.id,
+    currentUser.username,
     localCreatorId,
     router,
     addIncomingMessage,
