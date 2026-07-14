@@ -260,7 +260,7 @@ export default function NameDrawPage() {
       `Draw mode: ${eliminationMode ? "Elimination" : "Repeatable"}`,
       `Total entries: ${names.length}`,
       "",
-      "Powered by Spintra — spintra.com",
+      "Powered by Spintra — spintra.io",
     ].join("\n");
 
     try {

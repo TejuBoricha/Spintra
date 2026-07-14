@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { GAMES } from "@/lib/games";
 
 // Must match metadataBase in src/app/layout.tsx.
-const BASE_URL = "https://spintra.com";
+const BASE_URL = "https://spintra.io";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPaths = ["", "/explore", "/create", "/legal/terms", "/legal/privacy"];
