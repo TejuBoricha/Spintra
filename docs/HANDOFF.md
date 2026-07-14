@@ -6,23 +6,27 @@ Portable session-continuity note for any AI assistant to resume work immediately
 
 ## Last Completed Task
 
-**Session 60: UI/UX Overhaul & Join Modal Redesign — COMPLETE.**
+**Session 61: Concurrent multiplayer stress-testing + production readiness + first real deployment — COMPLETE.**
 
-Performed a comprehensive UI overhaul to align with the core green/white Spintra brand identity and improve navigation clarity.
+Triggered by the user directly questioning why real bugs kept surfacing in code marked "verified live" — the honest finding was that prior verification meant narrow single-scenario checks, never genuine concurrent multi-client load. Ran real 2-3-client Playwright sessions against the live Supabase project and found/fixed 3 real concurrency bugs in the multiplayer core:
 
-- **Floating Navbar & Navigation Consolidation:** Rebuilt the primary Navbar into a stunning floating glassmorphic pill (`fixed`, `backdrop-blur`). Removed redundant dropdown menus and relocated Quick Tools directly into easily accessible center-pill and mobile drawer slots.
-- **Terminology Cleanup:** Updated Discover -> Browse, Explore -> Live Rooms, and Standalone Tools -> Quick Tools for conceptual clarity.
-- **Button Contrast Bugfix:** Globally fixed a major UI visibility issue across all 50+ `variant="outline"` usages (including Team Maker, RPS, Bingo, and Cancel buttons) by correcting the core Spintra Button variant to use a transparent background instead of a harsh solid white surface.
-- **Local History Pruning:** Added logic to actively sweep `localStorage` so "Recently Visited" rooms automatically disappear from the user's dashboard if the room is closed by the host, or if the user is kicked or banned. Additionally added a manual "Remove from history" (X) button to let users clear empty or testing rooms from their list without waiting for the server's 2-hour cron job.
-- **Join Room Modal Redesign:** Updated the Join Room modal to match the Spintra brand identity (green/white), replacing the previous purple cyberpunk theme.
-- **Layout Re-architecture:** Stripped hacky hardcoded top-paddings (`pt-16`/`pt-24`) from 18 individual page layouts and consolidated into a single `<main>` wrapper in `layout.tsx` to uniformly handle the floating navbar bleed. Fixed an SSR hydration mismatch on the Settings page.
+- Host-election split-brain (`elect_room_host` had no locking/idempotency) — fixed with `pg_advisory_xact_lock`, migration `0061`
+- Healthy peers falsely marked offline (crash-reconciliation trusted a single presence snapshot) — fixed with a confirm-after-4s-recheck pattern
+- Realtime channel torn down on every game answer (`useRoomSubscription`'s channel effect depended on the whole `currentUser` object, which `awardScore()` replaces on every XP change) — narrowed to `currentUser.id`/`.username`
 
-**Next recommended task:** Review the QA Audit findings and address the remaining Tournament system edge cases, or proceed with deployment preparation.
+Then closed out production readiness: `deploy.yml` and `db-backup.yml` had zero repo secrets and had been silently failing (backups: 5+ consecutive days) — both configured and verified with real successful runs (`db-backup.yml` needed 3 follow-up fixes: Postgres version mismatch, missing apt repo, wrong binary path, each only found by actually running it). Found Sentry had never worked at all since originally scaffolded (`sentry.client.config.ts` doesn't load under Turbopack, which this project always builds with) — fixed via `src/instrumentation-client.ts`, verified live.
+
+**Session closed with Spintra's actual first production deployment**: live now at **https://spintra.io** (Vercel + Cloudflare DNS, Vercel Authentication disabled, `.vercel.app` alias redirects to the custom domain). Verified end-to-end against production: health check green, a real room created successfully, zero console/network errors.
+
+Full detail: `docs/AI_CONTEXT.md` Session 61 entry, `docs/TASKS.md` (Bingo dual-winner race and duplicate audit-log entry recorded there, not fixed — user's explicit call).
+
+**Next recommended task:** Nothing urgent queued. Watch Sentry for real production error patterns now that strangers can reach the site.
 
 ---
 
 ## Prior Sessions Summary
 
+- **Session 60:** UI/UX Overhaul & Join Modal Redesign — floating navbar, terminology cleanup, button contrast fixes, local history pruning.
 - **Session 59:** E2E Test Hardening & UX Fixes
 - **Session 54:** Tournament QA Automation Audit — COMPLETE.
 - **Session 53:** Comprehensive E2E Product Launch Audit — COMPLETE.
@@ -40,4 +44,4 @@ None.
 
 ## Next Steps
 
-Review Tournament QA findings from Session 54, configure deployment pipelines, coordinate a staging environment test run, and proceed with the public release checklist.
+Nothing urgent queued post-launch. If picking up work: monitor Sentry for real production error/abuse patterns (the reason it was wired up), and reassess the two Session 61-deferred items (Bingo dual-winner race, duplicate audit-log entry) once there's real usage data on how often they'd actually trigger — both are explicitly deferred by the user's choice, not oversights, so don't start them unprompted.

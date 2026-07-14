@@ -4,7 +4,7 @@
 > DB schema live in `ARCHITECTURE.md`. Session-to-session handoff lives in `HANDOFF.md`. Backlog
 > and roadmap live in `TASKS.md`. Do not duplicate those here — link to them instead.
 > Always update this file after every significant milestone.
-> Last updated: 2026-07-10 IST
+> Last updated: 2026-07-14 IST
 
 ---
 
@@ -29,8 +29,17 @@ All migrations applied locally, database types regenerated, and successfully pus
 **Session 53: Comprehensive Release Candidate (RC) Audit — COMPLETE.** Conducted a thorough end-to-end audit of all 18 development, QA, and security phases. Results compiled in `final_release_audit.md`. Tested current product build against local and remote Supabase endpoints. Playwright integration tests run, validating core multiplayer loops, scoreboard standups, XP preservation, and moderation workflows.
 **Session 54: Tournament QA Automation Audit — COMPLETE.** Performed a comprehensive QA and engineering audit of the Spintra Tournament system. Discovered 12 defects and architectural risks (saved to `tournament_qa_audit_report.md` in the brain artifacts directory). Created and executed a comprehensive automated E2E and unit test suite (`tests/comprehensive-tournament-audit.spec.ts`) validating 48 scenarios (38 unit matrix/out-of-bounds/scoring tests, and 10 E2E/Multiplayer UI checks, including duplicate names, negative score values, and whitespace validations). All 48 tests passed successfully.
 
+**Session 61: Concurrent multiplayer stress-testing + production readiness + first real deployment — COMPLETE.** Prompted directly by user pushback after several real bugs slipped past prior "verified live" claims — the user asked why bugs kept surfacing in code that had supposedly been tested, and the honest answer was that "verified live" had meant narrow single-scenario checks, never genuine concurrent multi-client load. This session ran real 2-3-client Playwright sessions against the live Supabase project (not mocked) specifically hunting for concurrency bugs, and found three:
 
+1. **Host-election split-brain**: `elect_room_host` (0046/0056) had no locking and wasn't idempotent — two clients racing to take over from a crashed host could both end up `role='host'` (observed live: two participant rows both `role='host'`, `rooms.host_id` landing on whichever committed last). Also caused triple-duplicate "You are now the host" toasts from a single client's own racing election calls. Fixed with `pg_advisory_xact_lock(hashtext(room_code))` serializing election attempts per room, migration `0061`.
+2. **Healthy peers falsely marked offline**: presence-based crash-reconciliation trusted a single `channel.presenceState()` snapshot as ground truth; a transient under-report right after any peer's connection state changed could get a genuinely-connected survivor (once, the one just promoted host) written `is_online:false`. Fixed with a confirm-after-4s-with-fresh-recheck pattern instead of acting on one snapshot.
+3. **Realtime channel torn down on every game answer**: `useRoomSubscription`'s channel-setup effect (owns the entire realtime channel) depended on the whole `currentUser` object; `awardScore()` replaces `localUser` with a new object on every trivia/rps/bingo answer solely to update xp/rank, tearing the channel down and rebuilding it on every single answer — the "Realtime subscription failed" toast a real two-player session hit repeatedly. Narrowed the effect's dependency to `currentUser.id`/`.username`, the only fields it actually reads.
 
+All three verified via repeated live multi-client runs (6 clean host-crash simulations, 6 rounds of concurrent trivia answering with an exactly-correct XP ledger). RPS/Bingo/Tournament/Moderation/activity-switching were also stress-tested and found correct (one RPS "failure" was a test-design bug — host never submitted a choice, not an app bug). Two narrow findings recorded but not fixed (user's call): Bingo's async dual-winner race (code-reviewed, not live-reproduced) and a cosmetic duplicate `moderation_actions` audit-log entry on concurrent double-kick — both in `TASKS.md`.
+
+Same session, pivoted to production readiness: `deploy.yml` and `db-backup.yml` had zero repo secrets configured and had been silently failing on every run (deploy: since creation; backups: 5+ consecutive days, confirmed via `gh run list`) — both now configured (Supabase access token/DB password/project ID; Cloudflare R2 for backup storage, chosen over AWS S3 for its free tier and zero egress fees) and verified with real successful runs, including a genuine 410 KiB backup upload. The `db-backup.yml` fix took 3 follow-up rounds after the initial secret configuration — a Postgres server/client version mismatch (server runs 17.6, workflow was pinned to `postgresql-client-16`), a missing PGDG apt repository for the newer client version, and apt-installing v17 without it becoming the binary actually invoked (bare `pg_dump` still resolved to Ubuntu's pre-installed v16) — each only surfaced by actually running the workflow, not by reading it. Also found and fixed while wiring up Sentry: `sentry.client.config.ts` (the SDK's original scaffolding, from an earlier session) has never actually worked under Turbopack, which this project's dev/build always runs under — confirmed via the SDK's own webpack.js deprecation warning, and empirically (the DSN never appeared in any served client JS chunk). Fixed by moving init to `src/instrumentation-client.ts`; verified live against a real Sentry project.
+
+Session closed with the actual first production deployment: Vercel project created, connected to this GitHub repo, environment variables configured, Vercel Authentication (which was blocking all public access by default) disabled, custom domain `spintra.io` connected via Cloudflare DNS (CNAME, DNS-only/unproxied per Vercel's requirement), and the default `.vercel.app` alias set to redirect (308) to `spintra.io` as the one canonical URL. Verified end-to-end against the live production URL: `/api/health` reachable, a real room created successfully against production Supabase, zero console/network errors.
 
 ---
 
@@ -42,13 +51,13 @@ All planned modularisation (14/14 activities), invite and QR sharing systems, re
 
 ## Current Objective
 
-The Spintra application has achieved feature completion for its MVP backlog. Core features are thoroughly audited, verified by test coverage, and ready for production launch.
+**Spintra is live in production** at https://spintra.io (Vercel, custom domain via Cloudflare DNS) as of Session 61 — this is a genuine change from prior sessions' "ready for production launch," which described code readiness without an actual deployment target. Migrations auto-deploy on merge to `main` (`deploy.yml`), daily DB backups actually succeed and land in Cloudflare R2 (`db-backup.yml`), and Sentry error monitoring is live and verified. The multiplayer core has been stress-tested under real concurrent multi-client load, not just single-session manual checks.
 
 ---
 
 ## Current Focus
 
-Reconcile any post-launch client telemetry feedback, optimize database query profiles, and establish localized analytics models.
+Monitor Sentry for real production errors now that strangers (not just known testers) can reach the site. Watch `deploy.yml`/`db-backup.yml` for continued success (both were silently broken for a long time before Session 61 — don't assume a past green run means the next one will be).
 
 ---
 
@@ -63,6 +72,9 @@ Reconcile any post-launch client telemetry feedback, optimize database query pro
 - **Multiple room membership is not prevented.** A single anonymous user can join multiple rooms simultaneously — there is no server-side enforcement preventing this. Accepted architectural trade-off of the anonymous identity model (frictionless onboarding over strict session constraints). Documented in Session 39; not a launch blocker.
 - **Rooms persist indefinitely** — **fixed Session 40.** `pg_cron` now runs `public.cleanup_inactive_rooms()` (rooms with no online participants, >2h old) every 30 minutes via migration `0020`.
 - **A real, already-merged "Session 44" exists in `git log`** (13+ commits) whose work was never reflected in `AI_CONTEXT.md` at all. Reconciled as numbering drift due to multiple AI agent executions.
+- **Bingo's async win-verification has no arbitration between two simultaneous valid winners.** Found via code review during Session 61's stress-testing pass, not live-reproduced — deliberately not chased further (see `TASKS.md` for the exact mechanism and why).
+- **Concurrent double-kick can write a duplicate `moderation_actions` audit-log entry.** Found live during Session 61 — cosmetic only, the actual ban state is never duplicated. See `TASKS.md`.
+- **"Verified live" in past session notes throughout this file described single-scenario checks, not genuine concurrent multi-client load** (the gap Session 61 exists to close for the multiplayer core specifically). Treat older "verified live"/"confirmed working" claims about realtime/host-election/presence behavior with that caveat unless a session explicitly says it used multiple simultaneous real clients.
 
 ---
 
@@ -79,13 +91,9 @@ Load-bearing assumptions a new session should be aware of before making changes:
 
 ## Next Recommended Task
 
-**Sessions 45, 46, and 47's full audits are complete across all tiers** (Critical/High/Medium/Low, see `TASKS.md` for exact status of every finding — nothing remains open or deferred from any of the three). What's left is genuinely net-new feature work or requires the user's own action, not further bug-fixing:
+Visual Scoreboard, XP/Leveling, and a real Moderation Dashboard (beyond direct SQL-editor querying) — all listed as net-new in earlier sessions — **have since shipped** (see PR #24, "new design system, settings page, and moderation dashboard v2"); this file's prior "Next Recommended Task" section was stale on that point and has been corrected.
 
-1. **Visual Scoreboard** — persistent real-time leaderboard during trivia/activities (closes the gap Trivia's own copy already implies)
-2. **XP and Leveling System** — XP rewards engine with player ranks
-3. **Moderation Dashboard** — beyond direct SQL-editor querying (Product×10 item, also net-new)
-
-Production Error Monitoring remains explicitly deferred by the user's own choice — do not start unprompted. Choosing a deployment target and confirming the Supabase backup/DR plan both require the user's own action (not code).
+Nothing urgent is currently queued. The two narrow items from Session 61 (Bingo dual-winner race, duplicate audit-log entry — both in `TASKS.md`) are explicitly deferred by the user's own choice, not oversights — don't pick them up unprompted. Reasonable next threads if asked "what's next": watch Sentry for real production error patterns now that strangers can reach the site; consider whether the Bingo/audit-log items are worth fixing once there's real usage data on how often they'd actually trigger.
 
 ---
 

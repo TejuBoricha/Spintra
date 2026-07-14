@@ -4,6 +4,8 @@ A production-readiness audit of what happens when a room's original host disconn
 
 **Status: every finding below is fixed and live-verified** (two real browser sessions via Playwright, plus direct DB/REST checks) — not just reasoned about statically. Each entry keeps its root-cause analysis (so the reasoning survives after the code changes) and now also states what was actually implemented and how it was verified.
 
+**2026-07-14 correction (Session 61):** this document's own "Verification method" section below claimed the host-election/demotion mechanics were "confirmed live and correct" — true for the scenarios actually tested (single sequential host crashes, two-participant sessions), but incomplete: it did not cover genuinely *concurrent* multi-client races. A dedicated concurrent-stress-testing pass the same day found two real bugs in exactly this mechanism — a split-brain race in `elect_room_host` (two clients simultaneously promoting themselves) and a false-offline race in the presence crash-reconciliation logic — neither of which this audit's testing method would have caught, since it never ran multiple real clients racing against each other at the same instant. Both fixed; full detail in `CHANGELOG_AI.md`'s Session 61 entry and migration `0061`. General lesson, not specific to this document: "verified live" through this project's history has usually meant a single-scenario check, not adversarial concurrent load — treat any older "confirmed live" claim about realtime/host/presence behavior with that caveat unless it explicitly says otherwise.
+
 This is a findings document, not a changelog. Full implementation detail is tracked in `CHANGELOG_AI.md`/`TASKS.md` as usual.
 
 ---
