@@ -34,16 +34,23 @@ jobs:
             | gzip > "$FILENAME"
           echo "BACKUP_FILE=$FILENAME" >> "$GITHUB_ENV"
 
-      - name: Upload to S3
+      - name: Upload to R2
         if: env.BACKUP_FILE != ''
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_BACKUP_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_BACKUP_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_BACKUP_REGION || 'us-east-1' }}
+          # R2 is S3-API-compatible but isn't AWS — "auto" is Cloudflare's
+          # documented region value for the S3 client's request signing,
+          # and the bucket lives at a per-account R2 endpoint, not a real
+          # AWS region endpoint.
+          AWS_DEFAULT_REGION: auto
+          AWS_ENDPOINT_URL: ${{ secrets.AWS_BACKUP_R2_ENDPOINT }}
           S3_BUCKET: ${{ secrets.AWS_BACKUP_S3_BUCKET }}
         run: |
-          aws s3 cp "$BACKUP_FILE" "s3://${S3_BUCKET}/spintra-db-backups/${BACKUP_FILE}" \
-            --storage-class STANDARD_IA
+          # No --storage-class: STANDARD_IA is AWS-specific terminology R2
+          # doesn't recognize the same way. The bucket's own default
+          # storage class (Standard) already applies.
+          aws s3 cp "$BACKUP_FILE" "s3://${S3_BUCKET}/spintra-db-backups/${BACKUP_FILE}"
 
       - name: Cleanup
         if: always()
