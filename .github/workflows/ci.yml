@@ -125,7 +125,7 @@ jobs:
         run: npm ci
 
       - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v3
         with:
           # Pinned rather than "latest" — this exact version's behavior
           # (supabase status -o env output format, db reset semantics) is
