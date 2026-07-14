@@ -393,9 +393,22 @@ export function generateBracketForType(
   type: TournamentType,
   participants: string[],
   seeds: string[]
-): { rounds: BracketMatch[][]; losersBracket?: BracketMatch[][] } {
+): { type: TournamentType; rounds: BracketMatch[][]; losersBracket?: BracketMatch[][] } {
   let tournament: Tournament;
 
+  // With fewer than 3 players, a real losers bracket is degenerate (the
+  // same 2 players would just replay each other), so this silently
+  // downgrades to single-elimination. That adjustment MUST be returned to
+  // the caller (not just used internally) — every caller constructs its
+  // own Tournament.type from its ORIGINAL UI selection, and
+  // recordMatchResult trusts tournament.type to pick its double- vs.
+  // single-elimination branch. A caller that kept using the stale
+  // "double-elimination" selection against this function's actual
+  // single-elim-shaped output (no losers bracket at all) would take the
+  // double-elimination branch, wait forever for a losers-bracket champion
+  // that can never exist, and never declare an overall winner — exactly
+  // the "2-player double elimination never shows a champion" bug this
+  // comment is here because of.
   if (type === "double-elimination" && participants.length < 3) {
     type = "single-elimination";
   }
@@ -443,7 +456,7 @@ export function generateBracketForType(
     }
   }
 
-  return { rounds: tournament.rounds, losersBracket: tournament.losersBracket };
+  return { type, rounds: tournament.rounds, losersBracket: tournament.losersBracket };
 }
 
 export interface MatchRef {

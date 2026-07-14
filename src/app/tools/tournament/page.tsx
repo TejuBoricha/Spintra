@@ -249,10 +249,14 @@ export default function TournamentPage() {
     }
     playSuccess(soundEnabled);
 
-    const { rounds, losersBracket } = generateBracketForType(tournamentType, participants, seeds);
+    // type may differ from tournamentType (silently downgraded for <3
+    // players) — must use the returned value, not the original UI
+    // selection, or recordMatchResult takes the wrong branch against
+    // bracket data shaped for a different format.
+    const { type, rounds, losersBracket } = generateBracketForType(tournamentType, participants, seeds);
 
     setTournament({
-      type: tournamentType,
+      type,
       rounds,
       participants,
       seeds,

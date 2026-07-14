@@ -833,7 +833,7 @@ test('moderation dashboard: kick, ban list, unban, and rejoin all work end to en
     await expect(page.getByText('please remove me')).toBeVisible({ timeout: 10000 });
 
     // Remove (kick+ban) from the report.
-    await page.getByRole('button', { name: 'Remove' }).click();
+    await page.getByRole('button', { name: 'Kick & Ban' }).click();
     await expect(page.getByRole('dialog').filter({ hasText: 'Remove this participant?' })).toBeVisible({ timeout: 5000 });
     await page.getByRole('button', { name: 'Remove', exact: true }).click();
     await guestPage.waitForURL(/\/explore/, { timeout: 15000 });

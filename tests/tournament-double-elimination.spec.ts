@@ -9,7 +9,10 @@ test('double-elimination bracket feeds losers through and crowns a champion', as
   await page.goto('/tools/tournament', { waitUntil: 'networkidle' });
 
   await page.getByPlaceholder(/Enter participant names/).fill('Alpha\nBravo\nCharlie\nDelta');
-  await page.getByRole('tab', { name: 'Double Elim' }).click();
+  // Format selector was migrated from a misused Tabs (which visually showed
+  // two options as simultaneously "selected") to ChipGroup, a real
+  // role="radio" single-select control, earlier in this branch's history.
+  await page.getByRole('radio', { name: 'Double Elim' }).click();
   await page.getByRole('button', { name: 'Generate Bracket' }).click();
 
   const readyUnplayedMatch = page

@@ -298,8 +298,8 @@ test.describe('Tournament UI E2E & Edge Cases Spec', () => {
     await expect(realMatch).toHaveAttribute('data-match-status', 'pending');
     await realMatch.click();
 
-    await page.getByPlaceholder('0').first().fill('3');
-    await page.getByPlaceholder('0').nth(1).fill('1');
+    await page.locator('input[type="number"]').first().fill('3');
+    await page.locator('input[type="number"]').nth(1).fill('1');
     await page.getByRole('button', { name: 'Save' }).click();
 
     // Verify final match is now pending and has both players
@@ -309,8 +309,8 @@ test.describe('Tournament UI E2E & Edge Cases Spec', () => {
     
     // Complete the final match
     await finalMatch.click();
-    await page.getByPlaceholder('0').first().fill('2');
-    await page.getByPlaceholder('0').nth(1).fill('0');
+    await page.locator('input[type="number"]').first().fill('2');
+    await page.locator('input[type="number"]').nth(1).fill('0');
     await page.getByRole('button', { name: 'Save' }).click();
 
     await expect(page.getByText('Tournament Champion')).toBeVisible();

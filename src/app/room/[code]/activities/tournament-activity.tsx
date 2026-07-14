@@ -250,9 +250,13 @@ export function TournamentActivity() {
       return;
     }
 
-    const { rounds, losersBracket } = generateBracketForType(tournamentType, names, []);
+    // type may differ from tournamentType (silently downgraded for <3
+    // players) — must use the returned value, not the original UI
+    // selection, or recordMatchResult takes the wrong branch against
+    // bracket data shaped for a different format (see tournament-engine.ts).
+    const { type, rounds, losersBracket } = generateBracketForType(tournamentType, names, []);
     const next: Tournament = {
-      type: tournamentType,
+      type,
       rounds,
       participants: names,
       seeds: [],
