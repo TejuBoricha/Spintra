@@ -55,12 +55,36 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
 };
 
+// Structured data (schema.org WebApplication) — previously absent
+// site-wide. Helps search engines understand what Spintra actually is
+// (a free, interactive multiplayer app, not a content/article site) and
+// is a prerequisite for various rich-result types. Safe to render as an
+// inline <script> here: production CSP's script-src already includes
+// 'unsafe-inline' (see next.config.ts's comment — required unconditionally
+// by Next.js's own hydration bootstrap, not something this addition
+// introduces).
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "Spintra",
+  url: "https://spintra.io",
+  description:
+    "Create rooms, invite friends, spin wheels, draw names, build teams, run tournaments, and play together in real time.",
+  applicationCategory: "GameApplication",
+  operatingSystem: "Any (web browser)",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${archivo.variable} ${plusJakartaSans.variable} ${jetbrainsMono.variable} antialiased`} suppressHydrationWarning>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
         <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[60] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-pill focus:outline-none">
           Skip to content
         </a>
