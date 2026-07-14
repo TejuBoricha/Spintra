@@ -236,6 +236,7 @@ export function useRoomChat({
           room_id: roomCode,
           reported_user_id: message.user_id,
           reporter_id: currentUser.id,
+          reporter_username: currentUser.username,
         });
         if (error) throw error;
         reportedMessageIdsRef.current.add(message.id);

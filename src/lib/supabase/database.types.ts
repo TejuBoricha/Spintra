@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -198,6 +203,7 @@ export type Database = {
           reason: string | null
           reported_user_id: string
           reporter_id: string
+          reporter_username: string | null
           reviewed: boolean
           room_id: string
         }
@@ -208,6 +214,7 @@ export type Database = {
           reason?: string | null
           reported_user_id: string
           reporter_id: string
+          reporter_username?: string | null
           reviewed?: boolean
           room_id: string
         }
@@ -218,6 +225,7 @@ export type Database = {
           reason?: string | null
           reported_user_id?: string
           reporter_id?: string
+          reporter_username?: string | null
           reviewed?: boolean
           room_id?: string
         }
@@ -572,6 +580,10 @@ export type Database = {
         Args: { p_room_code: string; p_user_id: string }
         Returns: boolean
       }
+      get_guess_number_secret: {
+        Args: { p_room_code: string }
+        Returns: number
+      }
       is_member_of_room: {
         Args: { room_code: string; user_uuid: string }
         Returns: boolean
@@ -584,6 +596,18 @@ export type Database = {
           p_user_id: string
         }
         Returns: undefined
+      }
+      moderation_dismiss_report: {
+        Args: { p_report_id: string; p_room_code: string }
+        Returns: undefined
+      }
+      moderation_kick_ban: {
+        Args: { p_room_code: string; p_target_user_id: string }
+        Returns: string
+      }
+      moderation_unban: {
+        Args: { p_ban_id: string; p_room_code: string }
+        Returns: string
       }
       set_guess_number_secret: {
         Args: { p_room_code: string; p_secret: number }
@@ -726,4 +750,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

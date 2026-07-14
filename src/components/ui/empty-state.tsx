@@ -13,13 +13,13 @@ export function EmptyState({ icon, title, description, action, className }: Empt
   return (
     <div
       className={cn(
-        "glass-card p-12 rounded-3xl text-center w-full border border-border shadow-xl flex flex-col items-center gap-4",
+        "bg-(--surface-panel) p-12 rounded-2xl text-center w-full border border-(--border-hairline) shadow-1 flex flex-col items-center gap-4",
         className
       )}
     >
       {icon && <div className="text-3xl">{icon}</div>}
-      {title && <h3 className="text-lg font-semibold text-foreground">{title}</h3>}
-      {description && <p className="text-sm text-muted-foreground max-w-sm">{description}</p>}
+      {title && <h3 className="font-display text-lg font-bold text-foreground">{title}</h3>}
+      {description && <p className="font-body text-sm text-muted-foreground max-w-sm">{description}</p>}
       {action && <div className="mt-2">{action}</div>}
     </div>
   );

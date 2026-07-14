@@ -5,7 +5,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { fireConfetti } from "@/components/celebration";
 import { banUserFromRoom } from "@/lib/room-bans";
-import { logModerationAction } from "@/lib/moderation";
+import { moderationKickBan } from "@/lib/moderation";
 import { getDeviceFingerprint } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
 import type { User, ChatMessage, RoomParticipant, RoomType, ActivityEvent } from "@/lib/types";
@@ -82,6 +82,30 @@ export function useRoomSubscription({
   // Refs
   const supabaseChannelRef = useRef<RealtimeChannel | null>(null);
   const closingRoomRef = useRef(false);
+  const leavingRoomRef = useRef(false);
+  // Generation counter guarding roomHostId against a stale-response race:
+  // loadRoomDetails() runs both on mount and on an unconditional 6s
+  // interval (see roomDetailsInterval below); if a poll is issued right
+  // before a host election commits, its response (captured before the
+  // election, but resolving after) would otherwise overwrite the freshly
+  // correct roomHostId with the dead host's id — confirmed live via a
+  // real host-migration test: isHost flipped true on promotion, then
+  // silently reverted to false moments later. electHostIfNeeded bumps
+  // this on every successful local election, invalidating any in-flight
+  // loadRoomDetails call that started before it — see both call sites.
+  const roomHostIdGenRef = useRef(0);
+  // loadRoomDetails() below reuses the pre-entry prefetchedRoom snapshot
+  // instead of a real fetch whenever it's truthy — correct for saving one
+  // redundant round trip on the VERY FIRST call, but prefetchedRoom is a
+  // stable object reference for the component's whole lifetime, so without
+  // this guard EVERY subsequent call (including the unconditional 6s
+  // roomDetailsInterval poll, whose entire purpose is reconciling missed
+  // updates) kept reapplying that same frozen initial snapshot forever —
+  // never actually re-fetching. Confirmed live: this silently defeated the
+  // reconciliation poll for name/lock/capacity/host_id on every session,
+  // and was the real root cause of a promoted host's is_host reverting
+  // back to false minutes after a correct, live-delivered election.
+  const hasConsumedPrefetchedRoomRef = useRef(false);
   const activeActivityRef = useRef(activeActivity);
   const roomTypeRef = useRef(roomType);
   const broadcastRef = useRef<BroadcastChannel | null>(null);
@@ -171,6 +195,16 @@ export function useRoomSubscription({
   // We determine isHost from roomHostId (database) or localCreatorId (local fallback)
   const isHost = roomHostId ? roomHostId === currentUser.id : localCreatorId === currentUser.id;
   const isHostRef = useRef(isHost);
+  // Mirrors isHost's own fallback exactly — roomHostId is never populated in
+  // demo/local-only mode (no Supabase, so no elect_room_host RPC or
+  // postgres_changes to ever set it), so exposing raw roomHostId as "the
+  // host's id" would be permanently null there, incorrectly rejecting every
+  // live tournament_update broadcast against Tournament's H1 sender check
+  // (confirmed via CI: the validate job intentionally builds without
+  // Supabase configured, exercising exactly this path — both tournament E2E
+  // tests failed for this reason). localCreatorId IS the host's id in demo
+  // mode, the same way it already substitutes for roomHostId in isHost above.
+  const hostUserId = roomHostId ?? localCreatorId;
 
   // Sync refs
   useEffect(() => {
@@ -292,6 +326,11 @@ export function useRoomSubscription({
         return;
       }
 
+      // Invalidate any loadRoomDetails() fetch already in flight — see
+      // roomHostIdGenRef's declaration. Must happen before setRoomHostId
+      // below so a fetch that resolves in the gap between these two lines
+      // (vanishingly unlikely, but free to guarantee) can't win the race.
+      roomHostIdGenRef.current++;
       setRoomHostId(currentUser.id);
       setParticipants((prev) =>
         prev.map((participant) =>
@@ -303,8 +342,20 @@ export function useRoomSubscription({
       toast.success("You are now the host.");
       setNotification("The previous host left, and you have been promoted to host.");
       fireConfetti();
+
+      // Tell every OTHER connected client — see docs/HOST_MIGRATION_AUDIT.md
+      // finding H2. Best-effort: a missed broadcast (e.g. a peer briefly
+      // disconnected) isn't retried, since every client's participants list
+      // and rooms.host_id already converge to the truth via the normal sync
+      // paths regardless — this is purely the human-readable announcement,
+      // not the source of truth for who the host actually is.
+      supabaseChannelRef.current?.send({
+        type: "broadcast",
+        event: "host_changed",
+        payload: { newHostId: currentUser.id, newHostUsername: currentUser.username },
+      });
     },
-    [currentUser.id, roomCode]
+    [currentUser.id, currentUser.username, roomCode]
   );
 
   // Switch Game / Activity Handler
@@ -380,40 +431,12 @@ export function useRoomSubscription({
 
       const supabase = getSupabaseBrowserClient();
       if (supabase) {
-        try {
-          // Snapshot the fingerprint before deleting the participant row —
-          // once it's gone there's nothing left to look up, and the
-          // copy_fingerprint_to_ban trigger (migration 0047) can only fall
-          // back to null at that point, silently disabling fingerprint-based
-          // ban matching for this kick.
-          const { data: participantRow } = await supabase
-            .from("room_participants")
-            .select("fingerprint_hash")
-            .eq("room_id", roomCode)
-            .eq("user_id", participant.user_id)
-            .maybeSingle();
-
-          await supabase
-            .from("room_participants")
-            .delete()
-            .eq("room_id", roomCode)
-            .eq("user_id", participant.user_id);
-
-          // Best-effort: prevents the kicked user from immediately rejoining.
-          // Kick itself has already succeeded above, so a failure here doesn't
-          // block the primary action — just logged for visibility.
-          const { error: banError } = await supabase.from("room_bans").insert({
-            room_id: roomCode,
-            user_id: participant.user_id,
-            banned_by: currentUser.id,
-            username: participant.user?.username ?? null,
-            fingerprint_hash: participantRow?.fingerprint_hash ?? null,
-          });
-          if (banError) {
-            console.error("Failed to record room ban:", banError);
-          }
-          logModerationAction(roomCode, currentUser.id, "kick_ban", participant.user_id, participant.user?.username ?? null);
-        } catch (error) {
+        // One transactional RPC (migration 0055): snapshots the participant,
+        // deletes them, records the ban, closes every open report about them,
+        // and writes the history row — atomically, host-verified and
+        // self-kick-rejected inside the database.
+        const { error } = await moderationKickBan(roomCode, participant.user_id);
+        if (error) {
           console.error("Failed to remove participant:", error);
           toast.error("Unable to remove participant.");
           return;
@@ -454,6 +477,32 @@ export function useRoomSubscription({
     toast.success("Room closed for everyone.");
     router.push("/explore");
   }, [isHost, roomCode, router, postLocalMessage]);
+
+  // Leave Room Handler — see docs/HOST_MIGRATION_AUDIT.md finding M2.
+  // Previously this was a bare `window.location.href` navigation with no
+  // explicit departure signal at all: detection relied entirely on
+  // presence-based crash detection, even for an intentional leave the app
+  // has 100% certainty about (the confirm dialog was already accepted).
+  // Explicitly deleting this client's own participant row first fires the
+  // existing room_participants DELETE handler below for every OTHER
+  // client immediately (not the up-to-several-seconds presence path),
+  // which already calls electHostIfNeeded — so this alone is the fix, no
+  // new RPC needed. leavingRoomRef mirrors closingRoomRef's exact pattern
+  // above: without it, that same DELETE handler would show THIS client
+  // its own "You were removed by the host" toast, since a self-row
+  // deletion previously only ever meant a kick or room closure.
+  const leaveRoom = useCallback(async () => {
+    leavingRoomRef.current = true;
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) {
+      await supabase
+        .from("room_participants")
+        .delete()
+        .eq("room_id", roomCode)
+        .eq("user_id", currentUser.id);
+    }
+    window.location.href = "/";
+  }, [roomCode, currentUser.id]);
 
   // Load room details, participants list, and register self in database.
   // Runs in demo mode too — loadRoomDetails() below has its own demo-mode
@@ -541,7 +590,6 @@ export function useRoomSubscription({
         }
 
         const isRoomHost = roomRow.host_id === currentUser.id;
-        const role = isRoomHost ? ("host" as const) : ("participant" as const);
         const joined_at = new Date().toISOString();
 
         // 1. Existing participant row (reconnection safety) — reuse
@@ -597,7 +645,7 @@ export function useRoomSubscription({
             .upsert({
               room_id: roomCode,
               user_id: currentUser.id,
-              role,
+              role: (roomRow.host_id === currentUser.id) ? "host" : "participant",
               is_online: true,
               joined_at,
               username: currentUserRef.current.username,
@@ -714,6 +762,11 @@ export function useRoomSubscription({
     };
 
     const loadRoomDetails = async () => {
+      // Captured before the fetch — see roomHostIdGenRef's declaration.
+      // Anything that changes the room's host locally (electHostIfNeeded)
+      // bumps the counter, so a check after the fetch resolves can tell
+      // whether a more authoritative update already happened meanwhile.
+      const roomHostIdGenAtStart = roomHostIdGenRef.current;
       try {
         const supabaseClient = getSupabaseBrowserClient();
         if (!supabaseClient) {
@@ -758,8 +811,10 @@ export function useRoomSubscription({
         }
         // Reuse room-client.tsx's verifyAccess fetch (which already selects
         // every column below) instead of re-querying the same rooms row a
-        // second time — falls back to a real fetch if unavailable.
-        let data = prefetchedRoom;
+        // second time — but only on the very first call. See
+        // hasConsumedPrefetchedRoomRef's declaration.
+        let data = hasConsumedPrefetchedRoomRef.current ? null : prefetchedRoom;
+        hasConsumedPrefetchedRoomRef.current = true;
         if (!data) {
           const result = await supabaseClient
             .from("rooms")
@@ -776,7 +831,14 @@ export function useRoomSubscription({
           setRoomName(data.name);
           setRoomType(data.type as RoomType);
           setIsLocked(!!data.is_locked);
-          setRoomHostId(data.host_id);
+          // Only apply if no local election happened while this fetch was
+          // in flight — otherwise this (now-stale) response would silently
+          // revert a freshly-promoted host back to the dead one. Other
+          // fields above aren't subject to this race (nothing else writes
+          // them optimistically outside this same function).
+          if (roomHostIdGenRef.current === roomHostIdGenAtStart) {
+            setRoomHostId(data.host_id);
+          }
           if (typeof data.max_participants === "number") setMaxParticipantsLimit(data.max_participants);
 
           // Save to room history in localStorage
@@ -828,6 +890,21 @@ export function useRoomSubscription({
     // if the RLS read itself succeeds.
     const loadActivityStateAndActivate = async (roomType: RoomType) => {
       const supabaseClient = getSupabaseBrowserClient();
+      // Party/classroom rooms have no single fixed activity — the host picks
+      // one at a time, so the room's OWN type ("party") never equals the
+      // persisted sub-activity's type ("tournament"). The `persisted.type
+      // === roomType` check below is only ever true for a single-game room
+      // (where they genuinely are the same value); for party/classroom it
+      // was always false, and setActiveActivity was skipped for them
+      // unconditionally right after — meaning NO party/classroom room's
+      // active game was ever recoverable by anyone who joined after the
+      // activity_change broadcast already happened (the host was still
+      // present and the game still running — confirmed live, this is not
+      // specific to host migration, though a promoted host hits it worst
+      // since they also can't act on a game they can't even see). Found
+      // while testing docs/HOST_MIGRATION_AUDIT.md's M4; the persisted
+      // sub-activity type recovers this for every case uniformly.
+      let persistedSubActivityType: string | null = null;
       if (supabaseClient) {
         try {
           const stateResult = await supabaseClient
@@ -837,16 +914,23 @@ export function useRoomSubscription({
             .maybeSingle();
           if (stateResult.data?.activity_state) {
             const persisted = stateResult.data.activity_state as { type?: string; events?: ActivityEvent[] } | null;
-            if (persisted?.type === roomType && Array.isArray(persisted.events)) {
-              activityEventLogRef.current = persisted.events.slice(-ACTIVITY_EVENT_LOG_CAP);
+            if (persisted?.type && Array.isArray(persisted.events)) {
+              if (persisted.type === roomType || roomType === "party" || roomType === "classroom") {
+                activityEventLogRef.current = persisted.events.slice(-ACTIVITY_EVENT_LOG_CAP);
+              }
+              persistedSubActivityType = persisted.type;
             }
           }
         } catch (e) {
           console.error("Failed to load activity state:", e);
         }
       }
-      if (isMounted && roomType !== "party" && roomType !== "classroom") {
-        setActiveActivity((prev) => prev || { type: roomType, state: null });
+      if (isMounted) {
+        if (roomType !== "party" && roomType !== "classroom") {
+          setActiveActivity((prev) => prev || { type: roomType, state: null });
+        } else if (persistedSubActivityType) {
+          setActiveActivity((prev) => prev || { type: persistedSubActivityType!, state: null });
+        }
       }
     };
 
@@ -889,9 +973,25 @@ export function useRoomSubscription({
         }, 20_000)
       : null;
 
+    // Separate, more frequent, *unconditional* reconciliation for the room's
+    // own row (name/lock/capacity). Unlike participants, a silently dropped
+    // single postgres_changes UPDATE here doesn't necessarily flip
+    // isRealtimeReadyRef/realtimeErrorRef at all (the channel still reports
+    // healthy) — gating this the same way as loadParticipants would leave a
+    // stale room name/capacity forever with no self-heal. The room row
+    // changes far less often than participants do, so unconditional polling
+    // isn't the cost concern the participant gate exists for; the read
+    // itself is a single cheap lookup by unique indexed `code`.
+    const roomDetailsInterval = supabase
+      ? setInterval(() => {
+          loadRoomDetails();
+        }, 6_000)
+      : null;
+
     return () => {
       isMounted = false;
       if (reconciliationInterval) clearInterval(reconciliationInterval);
+      if (roomDetailsInterval) clearInterval(roomDetailsInterval);
     };
   }, [roomCode, currentUser.id, electHostIfNeeded, router, authReady, prefetchedRoom, prefetchedExistingParticipant]);
 
@@ -998,6 +1098,15 @@ export function useRoomSubscription({
 
           case "KICKED":
             if (payload === currentUser.id) {
+              if (typeof window !== "undefined") {
+                try {
+                  const stored = window.localStorage.getItem("spintra-room-history");
+                  if (stored) {
+                    const history = JSON.parse(stored).filter((h: { code: string }) => h.code !== roomCode);
+                    window.localStorage.setItem("spintra-room-history", JSON.stringify(history));
+                  }
+                } catch (e) {}
+              }
               toast.error("You were removed from the room by the host.", { id: "kicked-toast" });
               router.push("/explore");
               return;
@@ -1006,6 +1115,15 @@ export function useRoomSubscription({
             break;
 
           case "ROOM_CLOSED":
+            if (typeof window !== "undefined") {
+              try {
+                const stored = window.localStorage.getItem("spintra-room-history");
+                if (stored) {
+                  const history = JSON.parse(stored).filter((h: { code: string }) => h.code !== roomCode);
+                  window.localStorage.setItem("spintra-room-history", JSON.stringify(history));
+                }
+              } catch (e) {}
+            }
             toast.error("The host closed this room.", { id: "room-closed-toast" });
             router.push("/explore");
             break;
@@ -1014,13 +1132,22 @@ export function useRoomSubscription({
             if (payload) {
               setParticipants((prev) =>
                 prev.map((p) =>
-                  p.user_id === payload
+                  p.user_id === payload.userId
                     ? { ...p, role: "host" as const }
                     : p.role === "host"
                     ? { ...p, role: "participant" as const }
                     : p
                 )
               );
+              // Every OTHER tab's own notification (matches the real-mode
+              // host_changed broadcast handler above) — the promoting tab
+              // already showed its own toast/notification directly at the
+              // send site below, so skip it here to avoid double-announcing
+              // to the one person who doesn't need it.
+              if (payload.userId !== currentUser.id && payload.username) {
+                setNotification(`${payload.username} is now the host.`);
+                setRoomAnnouncement(`${payload.username} is now the host.`);
+              }
             }
             break;
 
@@ -1041,7 +1168,7 @@ export function useRoomSubscription({
                   if (online.length && online[0].user_id === currentUser.id) {
                     bc.postMessage({
                       type: "HOST_PROMOTED",
-                      payload: currentUser.id,
+                      payload: { userId: currentUser.id, username: currentUser.username },
                       senderId: currentUser.id,
                     });
                     toast.success("You are now the host.");
@@ -1102,54 +1229,64 @@ export function useRoomSubscription({
     // reconcile normally — this only skips the unreliable first snapshot.
     let hasSyncedOnce = false;
 
+    // Flips local is_online from live presence and, when allowed, writes the
+    // crash-reconciliation for stale rows (any connected participant may do
+    // this, not just the host — otherwise a crashed host's own row could
+    // never be corrected by anyone, permanently blocking host succession;
+    // see migration 0019). If the current user has zero presence entries,
+    // the room is empty: also reconcile any stale row belonging to the
+    // current user's own previous session (crashed singleton case). After a
+    // successful crash-write, host election is re-run directly with the
+    // reconciled list — waiting for the realtime UPDATE echo of our own
+    // write leaves the room stuck if that event is dropped.
+    const reconcileAgainstPresence = (allowCrashWrites: boolean) => {
+      const state = channel.presenceState();
+      const onlineIds = new Set(
+        Object.values(state)
+          .flat()
+          .map((p) => (p as unknown as { user_id: string }).user_id)
+      );
+
+      setParticipants((prev) => {
+        const updated = prev.map((participant) => ({
+          ...participant,
+          is_online: onlineIds.has(participant.user_id),
+        }));
+
+        const supabaseClient = getSupabaseBrowserClient();
+        if (supabaseClient && allowCrashWrites) {
+          const crashed = prev.filter(
+            (p) =>
+              p.is_online &&
+              !onlineIds.has(p.user_id) &&
+              (p.user_id !== currentUser.id || onlineIds.size === 0)
+          );
+          if (crashed.length > 0) {
+            supabaseClient
+              .from("room_participants")
+              .update({ is_online: false })
+              .in(
+                "user_id",
+                crashed.map((p) => p.user_id)
+              )
+              .eq("room_id", roomCode)
+              .then(
+                () => electHostIfNeeded(supabaseClient, updated),
+                () => {}
+              );
+          }
+        }
+
+        return updated;
+      });
+    };
+
     const channel = supabase
       .channel(`room:${roomCode}`, { config: { private: true } })
       .on("presence", { event: "sync" }, () => {
-        const state = channel.presenceState();
-        const onlineIds = new Set(
-          Object.values(state)
-            .flat()
-            .map((p) => (p as unknown as { user_id: string }).user_id)
-        );
         const isFirstSync = !hasSyncedOnce;
         hasSyncedOnce = true;
-
-        setParticipants((prev) => {
-          const updated = prev.map((participant) => ({
-            ...participant,
-            is_online: onlineIds.has(participant.user_id),
-          }));
-
-          // Any connected participant (not just the host) reconciles stale
-          // is_online rows against live presence — otherwise a crashed
-          // host's own row could never be corrected by anyone (nobody else
-          // is permitted to touch it), permanently blocking host succession.
-          // If the current user has zero presence entries, the room is empty:
-          // also reconcile any stale row belonging to the current user's
-          // own previous session (crashed singleton case).
-          const supabaseClient = getSupabaseBrowserClient();
-          if (supabaseClient && !isFirstSync) {
-            const crashed = prev.filter(
-              (p) =>
-                p.is_online &&
-                !onlineIds.has(p.user_id) &&
-                (p.user_id !== currentUser.id || onlineIds.size === 0)
-            );
-            if (crashed.length > 0) {
-              supabaseClient
-                .from("room_participants")
-                .update({ is_online: false })
-                .in(
-                  "user_id",
-                  crashed.map((p) => p.user_id)
-                )
-                .eq("room_id", roomCode)
-                .then(() => {}, () => {});
-            }
-          }
-
-          return updated;
-        });
+        reconcileAgainstPresence(!isFirstSync);
       })
       .on(
         "postgres_changes",
@@ -1287,6 +1424,13 @@ export function useRoomSubscription({
               setRoomAnnouncement(`${removed.username || "A participant"} left the room.`);
             }
             if (isSelf) {
+              if (leavingRoomRef.current) {
+                // Intentional leave (leaveRoom below already deleted this
+                // exact row and is navigating away itself) — not a kick or
+                // room closure, so no alarming toast for the person who
+                // just confirmed they wanted to leave.
+                return prev;
+              }
               setTimeout(async () => {
                 const supabaseClient = getSupabaseBrowserClient();
                 let roomExists = false;
@@ -1334,7 +1478,15 @@ export function useRoomSubscription({
           if (typeof updated.is_locked === "boolean") setIsLocked(updated.is_locked);
           if (typeof updated.max_participants === "number")
             setMaxParticipantsLimit(updated.max_participants);
-          if (updated.host_id) setRoomHostId(updated.host_id);
+          if (updated.host_id) {
+            // A live postgres_changes delivery is authoritative (it reflects
+            // a real committed row, not an optimistic guess) — treat it the
+            // same as a local election for staleness purposes, so a
+            // loadRoomDetails() fetch already in flight can't later
+            // overwrite it with older data. See roomHostIdGenRef.
+            roomHostIdGenRef.current++;
+            setRoomHostId(updated.host_id);
+          }
         }
       )
       .on(
@@ -1355,9 +1507,75 @@ export function useRoomSubscription({
         if (payload) {
           handleActivityEvent(payload);
         }
+      })
+      // Every other participant's own notification of a host change — see
+      // docs/HOST_MIGRATION_AUDIT.md finding H2. Broadcast, not persisted:
+      // a transient announcement, not state anyone needs to recover on
+      // reconnect (by the time they reconnect, participants/rooms.host_id
+      // already reflects the current host via the normal sync paths).
+      // Channel.send() doesn't echo back to its own sender by default, so
+      // this never double-fires for the promoted client itself — that
+      // client already set its own notification directly inside
+      // electHostIfNeeded.
+      .on("broadcast", { event: "host_changed" }, ({ payload }) => {
+        if (payload?.newHostUsername) {
+          setNotification(`${payload.newHostUsername} is now the host.`);
+          setRoomAnnouncement(`${payload.newHostUsername} is now the host.`);
+        }
       });
 
     supabaseChannelRef.current = channel;
+
+    // One-shot settled reconciliation against DB truth: the sync handler
+    // above can only catch peers who crash WHILE we're watching — a peer who
+    // was already dead before we joined is invisible to it twice over (the
+    // first sync is skipped for writes, and that same sync flips the peer
+    // offline in LOCAL state, so later passes filtering on local is_online
+    // find nothing to fix while the DB row still says online). That stale
+    // DB row blocks elect_room_host forever: the room stays "Waiting for
+    // host…" for everyone who ever joins. So, once, shortly after
+    // subscribing — long enough that every genuinely alive peer's track()
+    // has landed — compare the DB's own is_online=true rows against live
+    // presence, flip the truly-dead ones, and reload participants (which
+    // re-runs host election).
+    const reconcileStaleDbRows = async () => {
+      const supabaseClient = getSupabaseBrowserClient();
+      if (!supabaseClient) return;
+      const { data: onlineRows } = await supabaseClient
+        .from("room_participants")
+        .select("user_id")
+        .eq("room_id", roomCode)
+        .eq("is_online", true);
+      if (!onlineRows?.length) return;
+      const state = channel.presenceState();
+      const presentIds = new Set(
+        Object.values(state)
+          .flat()
+          .map((p) => (p as unknown as { user_id: string }).user_id)
+      );
+      const stale = onlineRows.filter(
+        (row) =>
+          !presentIds.has(row.user_id) &&
+          (row.user_id !== currentUser.id || presentIds.size === 0)
+      );
+      if (!stale.length) return;
+      const { error } = await supabaseClient
+        .from("room_participants")
+        .update({ is_online: false })
+        .in(
+          "user_id",
+          stale.map((row) => row.user_id)
+        )
+        .eq("room_id", roomCode);
+      if (!error) {
+        // Reload from the DB — this also re-runs electHostIfNeeded with the
+        // corrected rows, promoting the earliest online participant if the
+        // stale row was the host's.
+        loadParticipantsRef.current?.();
+      }
+    };
+
+    let presenceSettleTimer: ReturnType<typeof setTimeout> | null = null;
 
     channel.subscribe((status: string) => {
       if (status === "SUBSCRIBED") {
@@ -1380,6 +1598,11 @@ export function useRoomSubscription({
         // closed before its next tick).
         loadParticipantsRef.current?.();
         channel.track({ user_id: currentUser.id });
+        if (!presenceSettleTimer) {
+          presenceSettleTimer = setTimeout(() => {
+            void reconcileStaleDbRows();
+          }, 10_000);
+        }
         if (isHostRef.current && activeActivityRef.current) {
           channel.send({
             type: "broadcast",
@@ -1410,6 +1633,9 @@ export function useRoomSubscription({
       if (realtimeReconnectTimerRef.current) {
         clearTimeout(realtimeReconnectTimerRef.current);
         realtimeReconnectTimerRef.current = null;
+      }
+      if (presenceSettleTimer) {
+        clearTimeout(presenceSettleTimer);
       }
       supabase.removeChannel(channel);
       supabaseChannelRef.current = null;
@@ -1475,6 +1701,7 @@ export function useRoomSubscription({
     setRoomName,
     roomHostId,
     setRoomHostId,
+    hostUserId,
     isLocked,
     setIsLocked,
     activeActivity,
@@ -1496,6 +1723,7 @@ export function useRoomSubscription({
     toggleLock,
     handleKickParticipant,
     handleCloseRoom,
+    leaveRoom,
     realtimeStatusLabel,
     realtimeStatusClass,
     isLocalOnlyMode,

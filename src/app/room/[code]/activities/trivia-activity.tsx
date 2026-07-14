@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import { Lightbulb, Shuffle, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,6 @@ import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { TRIVIA_QUESTIONS, type TriviaQuestion } from "@/lib/trivia-questions";
-import { shuffleArray } from "@/lib/utils";
 
 import { playSwipe, playPop, playSuccess, playFailure } from "@/lib/audio";
 
@@ -30,7 +29,15 @@ export function TriviaActivity() {
   // Host configuration state
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("All");
-  const [remainingIndices, setRemainingIndices] = useState<number[]>([]);
+  // Which questions have already been drawn THIS activity session, derived
+  // from the replayed trivia_question event log itself (see the listener
+  // below) rather than a separate host-only "remaining shuffle bag" — the
+  // old remainingIndices approach was host-local useState, invisible to a
+  // newly-promoted host, whose own empty remainingIndices meant questions
+  // could repeat right after a host migration. Keying on questionId falls
+  // back to the question text for the static offline question bank (demo
+  // mode), which has no stable id. See docs/HOST_MIGRATION_AUDIT.md M3.
+  const [askedQuestionKeys, setAskedQuestionKeys] = useState<Set<string>>(new Set());
   const [questions, setQuestions] = useState<TriviaQuestion[]>([...TRIVIA_QUESTIONS]);
 
   useEffect(() => {
@@ -63,6 +70,16 @@ export function TriviaActivity() {
     }
   }, [isHost]);
 
+  // Mirrors triviaAnswers so the event listener below (a long-lived
+  // subscription that intentionally doesn't depend on triviaAnswers, to
+  // avoid resubscribing the channel on every answer) can still tell a
+  // genuinely new answer apart from an idempotent resend of one already
+  // known — see the periodic resend effect further down.
+  const triviaAnswersRef = useRef(triviaAnswers);
+  useEffect(() => {
+    triviaAnswersRef.current = triviaAnswers;
+  }, [triviaAnswers]);
+
   useEffect(() => {
     return registerEventListener((event) => {
       if (event.kind === "trivia_question") {
@@ -76,8 +93,21 @@ export function TriviaActivity() {
           difficulty: event.difficulty,
         });
         setTriviaAnswers({});
+        setAskedQuestionKeys((prev) => {
+          const key = event.questionId ?? event.text;
+          if (prev.has(key)) return prev;
+          const next = new Set(prev);
+          next.add(key);
+          return next;
+        });
         playSwipe(soundEnabled);
       } else if (event.kind === "trivia_answer") {
+        // Answers are resent a few times after the initial broadcast (see
+        // below) so a peer whose channel missed the first delivery still
+        // catches it — that resend is otherwise indistinguishable from a
+        // brand-new answer, so only play the reveal sound the first time
+        // this userId is seen for the current question.
+        const alreadyKnown = !!triviaAnswersRef.current[event.userId];
         setTriviaAnswers((prev) => ({
           ...prev,
           [event.userId]: { username: event.username, choiceIndex: event.choiceIndex, correct: event.correct },
@@ -85,14 +115,16 @@ export function TriviaActivity() {
         if (typeof event.correctIndex === "number") {
           setTriviaQuestion((prev) => prev ? { ...prev, correctIndex: event.correctIndex } : null);
         }
-        if (event.userId === currentUser.id) {
-          if (event.correct) {
-            playSuccess(soundEnabled);
+        if (!alreadyKnown) {
+          if (event.userId === currentUser.id) {
+            if (event.correct) {
+              playSuccess(soundEnabled);
+            } else {
+              playFailure(soundEnabled);
+            }
           } else {
-            playFailure(soundEnabled);
+            playPop(soundEnabled);
           }
-        } else {
-          playPop(soundEnabled);
         }
       } else if (event.kind === "activity_reset") {
         setTriviaQuestion(null);
@@ -115,32 +147,68 @@ export function TriviaActivity() {
   );
 
   const drawNextQuestion = () => {
-    let currentIndices = [...remainingIndices];
-    if (currentIndices.length === 0) {
-      const indices = filteredQuestions.map((_, i) => i);
-      currentIndices = shuffleArray(indices);
-    }
-    const nextIndex = currentIndices.pop();
-    setRemainingIndices(currentIndices);
+    if (filteredQuestions.length === 0) return;
+    // Not-yet-asked pool under the CURRENT filter; if every question in it
+    // has already been asked, reshuffle from the full filtered pool again —
+    // same exhaustion behavior the old shuffle-bag had (including that the
+    // very next draw can, same as before, repeat the question that was
+    // just asked — not a new edge case introduced here).
+    let pool = filteredQuestions.filter((q) => !askedQuestionKeys.has(q.id ?? q.text));
+    if (pool.length === 0) pool = filteredQuestions;
 
-    if (nextIndex !== undefined) {
-      const q = filteredQuestions[nextIndex];
-      const num = (triviaQuestion?.num ?? 0) + 1;
-      sendActivityEvent({
-        kind: "trivia_question",
-        questionId: q.id,
-        text: q.text,
-        options: [...q.options],
-        correctIndex: q.correctIndex,
-        num,
-        category: q.category,
-        difficulty: q.difficulty,
-      });
-    }
+    const q = pool[Math.floor(Math.random() * pool.length)];
+    const num = (triviaQuestion?.num ?? 0) + 1;
+    sendActivityEvent({
+      kind: "trivia_question",
+      questionId: q.id,
+      text: q.text,
+      options: [...q.options],
+      correctIndex: q.correctIndex,
+      num,
+      category: q.category,
+      difficulty: q.difficulty,
+    });
   };
+
+  const remainingCount = useMemo(
+    () => filteredQuestions.filter((q) => !askedQuestionKeys.has(q.id ?? q.text)).length,
+    [filteredQuestions, askedQuestionKeys]
+  );
 
   const myAnswer = triviaQuestion ? triviaAnswers[currentUser.id] : undefined;
   const correctCount = Object.values(triviaAnswers).filter((a) => a.correct).length;
+
+  // trivia_answer is a fire-and-forget broadcast (no delivery guarantee) —
+  // if a peer's realtime channel briefly hiccups right as this fires, that
+  // peer never learns this answer happened, with nothing to self-heal it
+  // (unlike postgres_changes-backed state, there's no row to re-fetch).
+  // Resending a few times over the following seconds gives any peer who
+  // missed the first delivery another chance to catch it; the listener
+  // above only reacts to the first delivery it actually receives per userId
+  // (see alreadyKnown), so repeats are inert once every peer has it.
+  useEffect(() => {
+    if (!myAnswer || !triviaQuestion) return;
+    let resends = 0;
+    const interval = setInterval(() => {
+      resends += 1;
+      if (resends > 5) {
+        clearInterval(interval);
+        return;
+      }
+      sendActivityEvent({
+        kind: "trivia_answer",
+        userId: currentUser.id,
+        username: currentUser.username,
+        choiceIndex: myAnswer.choiceIndex,
+        correctIndex: triviaQuestion.correctIndex,
+        correct: myAnswer.correct,
+      });
+    }, 3000);
+    return () => clearInterval(interval);
+    // Re-broadcasts only need to restart when the answer/question identity
+    // actually changes, not on every unrelated re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myAnswer?.choiceIndex, triviaQuestion?.num]);
 
   return (
     <motion.div
@@ -155,7 +223,7 @@ export function TriviaActivity() {
       </h2>
 
       {isHost && !triviaQuestion && (
-        <div className="w-full space-y-4 glass-card p-6 rounded-2xl border border-white/10">
+        <div className="w-full space-y-4 border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6">
           <h3 className="text-lg font-bold text-yellow-400">Host Settings</h3>
           <p className="text-xs text-muted-foreground -mt-2">Pick a category and difficulty, then press Start Trivia</p>
 
@@ -164,11 +232,8 @@ export function TriviaActivity() {
               <label className="text-xs text-muted-foreground font-semibold">Category</label>
               <select
                 value={selectedCategory}
-                onChange={(e) => {
-                  setSelectedCategory(e.target.value);
-                  setRemainingIndices([]);
-                }}
-                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus-visible:border-yellow-500/50 focus-visible:ring-2 focus-visible:ring-yellow-500/20 focus-visible:outline-none w-full"
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-sm text-foreground focus-visible:border-yellow-500/50 focus-visible:ring-2 focus-visible:ring-yellow-500/20 focus-visible:outline-none w-full"
               >
                 <option value="All" className="bg-neutral-950 text-white">All Categories</option>
                 <option value="General Knowledge" className="bg-neutral-950 text-white">General Knowledge</option>
@@ -184,11 +249,8 @@ export function TriviaActivity() {
               <label className="text-xs text-muted-foreground font-semibold">Difficulty</label>
               <select
                 value={selectedDifficulty}
-                onChange={(e) => {
-                  setSelectedDifficulty(e.target.value);
-                  setRemainingIndices([]);
-                }}
-                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus-visible:border-yellow-500/50 focus-visible:ring-2 focus-visible:ring-yellow-500/20 focus-visible:outline-none w-full"
+                onChange={(e) => setSelectedDifficulty(e.target.value)}
+                className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-sm text-foreground focus-visible:border-yellow-500/50 focus-visible:ring-2 focus-visible:ring-yellow-500/20 focus-visible:outline-none w-full"
               >
                 <option value="All" className="bg-neutral-950 text-white">All Difficulties</option>
                 <option value="easy" className="bg-neutral-950 text-white">Easy</option>
@@ -226,7 +288,7 @@ export function TriviaActivity() {
             </Badge>
           </div>
           
-          <div className="glass-card p-6 rounded-2xl text-center w-full border border-yellow-500/30">
+          <div className="bg-(--surface-panel) rounded-2xl p-6 text-center w-full border border-yellow-500/30">
             <p className="text-lg font-semibold">{triviaQuestion.text}</p>
           </div>
           
@@ -236,14 +298,14 @@ export function TriviaActivity() {
               const hasAnswered = !!myAnswer;
               const isCorrectOption = typeof triviaQuestion.correctIndex === "number" && i === triviaQuestion.correctIndex;
 
-              let btnStyle = "border-white/10 hover:border-yellow-500/50 hover:bg-yellow-500/10";
+              let btnStyle = "border-(--border-hairline) hover:border-yellow-500/50 hover:bg-yellow-500/10";
               if (hasAnswered) {
                 if (isCorrectOption) {
                   btnStyle = "border-emerald-500 bg-emerald-500/15 text-emerald-300 shadow-emerald-500/10 font-bold";
                 } else if (isPicked) {
                   btnStyle = "border-rose-500 bg-rose-500/15 text-rose-300 shadow-rose-500/10 font-bold";
                 } else {
-                  btnStyle = "border-white/5 opacity-40";
+                  btnStyle = "border-(--border-hairline) opacity-40";
                 }
               }
 
@@ -322,7 +384,7 @@ export function TriviaActivity() {
                 <Shuffle className="w-4 h-4 mr-2" /> Next Question
               </Button>
               <div className="text-center text-xs text-muted-foreground">
-                Remaining in deck: {remainingIndices.length} / {filteredQuestions.length}
+                Remaining in deck: {remainingCount} / {filteredQuestions.length}
               </div>
             </div>
           )}

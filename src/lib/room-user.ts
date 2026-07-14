@@ -1,6 +1,7 @@
 import type { User } from "@/lib/types";
-import { safeStorageGet, safeStorageSet } from "@/lib/utils";
+import { safeStorageGet, safeStorageSet, safeStorageRemove } from "@/lib/utils";
 
+const STORAGE_PREFIX = "spintra-";
 const USER_STORAGE_KEY = "spintra-room-user";
 const CREATOR_STORAGE_PREFIX = "spintra-room-creator-";
 
@@ -54,4 +55,30 @@ export function getLocalRoomCreatorId(roomCode?: string): string | null {
   const normalizedCode = normalizeRoomCode(roomCode);
   if (!normalizedCode) return null;
   return safeStorageGet(`${CREATOR_STORAGE_PREFIX}${normalizedCode}`);
+}
+
+// Device-only rename: no account exists to update server-side, so this just
+// rewrites the same localStorage record getOrCreateRoomUser reads.
+export function updateRoomUsername(newUsername: string): User {
+  const current = getOrCreateRoomUser();
+  const updated = { ...current, username: newUsername };
+  safeStorageSet(USER_STORAGE_KEY, JSON.stringify(updated));
+  return updated;
+}
+
+// Wipes every localStorage key this app has ever written (identity, sound/theme
+// prefs, room history, per-room creator flags, cookie consent) rather than an
+// explicit list, so it can't silently miss a key added later.
+export function clearAllLocalUserData(): void {
+  if (typeof window === "undefined") return;
+  const keys: string[] = [];
+  try {
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const key = window.localStorage.key(i);
+      if (key?.startsWith(STORAGE_PREFIX)) keys.push(key);
+    }
+  } catch {
+    // private browsing / storage unavailable
+  }
+  keys.forEach(safeStorageRemove);
 }

@@ -17,6 +17,11 @@ export interface RoomActivityContextType {
   roomCode: string;
   roomType: RoomType;
   isHost: boolean;
+  // The room's current host per the live rooms.host_id column (not a
+  // snapshot) — lets an activity distinguish "this event's self-reported
+  // sender is the CURRENT host" from "...was the host at some point,"
+  // which matters across a host migration. See tournament-activity.tsx.
+  hostUserId: string | null;
   currentUser: User;
   sendActivityEvent: (event: ActivityEvent) => void;
   registerEventListener: (fn: (event: ActivityEvent) => void) => () => void;

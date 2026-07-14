@@ -102,7 +102,6 @@ export function TruthOrDareActivity() {
             return (
               <Button
                 key={btn.type}
-                disabled={!!todPrompt}
                 onClick={() => {
                   const text = list[Math.floor(Math.random() * list.length)];
                   sendActivityEvent({
@@ -150,10 +149,10 @@ export function TruthOrDareActivity() {
               </>
             )}
           </Badge>
-          <p className="text-xl font-bold leading-normal text-white">{todPrompt.text}</p>
+          <p className="text-xl font-bold leading-normal text-foreground">{todPrompt.text}</p>
         </motion.div>
       ) : (
-        <div className="glass-card p-12 rounded-3xl text-center w-full border border-white/10 shadow-xl">
+        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-3xl p-12 text-center w-full shadow-xl">
           <p className="mb-4 flex justify-center">
             <Emoji name="performing_arts" size={48} />
           </p>

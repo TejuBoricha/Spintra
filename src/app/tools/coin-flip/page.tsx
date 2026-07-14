@@ -53,10 +53,10 @@ export default function CoinFlipPage() {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-16 px-4">
+    <div className="min-h-screen pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-yellow-400" />
             <span className="text-sm text-muted-foreground">50/50 chance</span>
           </div>
@@ -116,7 +116,7 @@ export default function CoinFlipPage() {
             onClick={() => setSoundEnabled(!soundEnabled)}
             title={soundEnabled ? "Sound On" : "Sound Off"}
             aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-            className="h-12 w-12 rounded-full border-white/10"
+            className="h-12 w-12 rounded-full border-(--border-hairline)"
           >
             {soundEnabled ? (
               <Volume2 className="w-5 h-5" />
@@ -131,11 +131,11 @@ export default function CoinFlipPage() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="glass-card p-6 max-w-md mx-auto"
+            className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 max-w-md mx-auto"
           >
-            <h3 className="text-lg font-semibold mb-4 flex items-center justify-between w-full">
+            <h2 className="text-lg font-semibold mb-4 flex items-center justify-between w-full">
               <span className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-purple-400" />
+                <TrendingUp className="w-5 h-5 text-(--brand-primary-strong)" />
                 Statistics
               </span>
               <Button
@@ -148,7 +148,7 @@ export default function CoinFlipPage() {
                 <RotateCcw className="w-3.5 h-3.5" />
                 Reset
               </Button>
-            </h3>
+            </h2>
             <div className="grid grid-cols-2 gap-4">
               <div className="p-3 rounded-lg bg-yellow-500/10">
                 <div className="text-2xl font-bold text-yellow-400">{stats.headsPercent}%</div>
@@ -166,8 +166,8 @@ export default function CoinFlipPage() {
             </div>
           </motion.div>
         ) : (
-          <div className="glass-card p-6 max-w-md mx-auto text-center text-muted-foreground text-sm flex flex-col items-center gap-2">
-            <TrendingUp className="w-6 h-6 text-purple-400/60" />
+          <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 max-w-md mx-auto text-center text-muted-foreground text-sm flex flex-col items-center gap-2">
+            <TrendingUp className="w-6 h-6 text-(--brand-primary-strong)/60" />
             Flip to start tracking stats.
           </div>
         )}

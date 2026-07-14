@@ -64,11 +64,11 @@ export default function WouldYouRatherPage() {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-16 px-4">
+    <div className="min-h-screen pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
-            <GameIcon className="w-4 h-4 text-purple-400" />
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
+            <GameIcon className="w-4 h-4 text-(--brand-primary-strong)" />
             <span className="text-sm text-muted-foreground">Tough choices ahead</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Would You Rather</h1>
@@ -98,7 +98,7 @@ export default function WouldYouRatherPage() {
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
-            className="glass-card p-8 mb-6 max-w-lg mx-auto"
+            className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-8 mb-6 max-w-lg mx-auto"
           >
             <p className="text-xl font-medium mb-6">Would you rather...</p>
             <div className="space-y-4">
@@ -109,8 +109,8 @@ export default function WouldYouRatherPage() {
                     disabled={showResult}
                     className={`w-full p-5 rounded-xl text-lg font-semibold transition-all relative overflow-hidden ${
                       showResult
-                        ? "glass-card cursor-default"
-                        : "glass-card hover:border-purple-500/30 hover:bg-purple-500/5 cursor-pointer"
+                        ? "border border-(--border-hairline) bg-(--surface-panel) rounded-2xl cursor-default"
+                        : "border border-(--border-hairline) bg-(--surface-panel) rounded-2xl hover:border-primary/30 hover:bg-primary/5 cursor-pointer"
                     }`}
                   >
                     {q.optionA}
@@ -119,16 +119,16 @@ export default function WouldYouRatherPage() {
                         initial={{ scaleX: 0 }}
                         animate={{ scaleX: total > 0 ? aVotes / total : 0 }}
                         style={{ transformOrigin: "left" }}
-                        className="absolute inset-0 bg-purple-500/10 rounded-xl z-0"
+                        className="absolute inset-0 bg-primary/10 rounded-xl z-0"
                       />
                     )}
                     <span className="relative z-10">{showResult && `${total > 0 ? Math.round((aVotes / Math.max(total, 1)) * 100) : 50}%`}</span>
                   </button>
 
                   <div className="flex items-center justify-center gap-4">
-                    <div className="w-px h-6 bg-white/10" />
+                    <div className="w-px h-6 bg-border" />
                     <span className="text-sm font-bold text-muted-foreground uppercase">or</span>
-                    <div className="w-px h-6 bg-white/10" />
+                    <div className="w-px h-6 bg-border" />
                   </div>
 
                   <button
@@ -136,8 +136,8 @@ export default function WouldYouRatherPage() {
                     disabled={showResult}
                     className={`w-full p-5 rounded-xl text-lg font-semibold transition-all relative overflow-hidden ${
                       showResult
-                        ? "glass-card cursor-default"
-                        : "glass-card hover:border-cyan-500/30 hover:bg-cyan-500/5 cursor-pointer"
+                        ? "border border-(--border-hairline) bg-(--surface-panel) rounded-2xl cursor-default"
+                        : "border border-(--border-hairline) bg-(--surface-panel) rounded-2xl hover:border-cyan-500/30 hover:bg-cyan-500/5 cursor-pointer"
                     }`}
                   >
                     {q.optionB}
@@ -162,14 +162,14 @@ export default function WouldYouRatherPage() {
         </AnimatePresence>
 
         {showResult && (
-          <Button onClick={next} className="bg-gradient-to-r from-purple-600 to-cyan-500 border-0">
+          <Button onClick={next} className="bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">
             Next Question <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
         )}
 
         {/* Counter */}
         <div className="mt-6 text-sm text-muted-foreground">
-          <ThumbsUp className="w-4 h-4 inline mr-1 text-purple-400" />
+          <ThumbsUp className="w-4 h-4 inline mr-1 text-(--brand-primary-strong)" />
           {total} votes across {Object.keys(votes).length} questions
         </div>
       </div>

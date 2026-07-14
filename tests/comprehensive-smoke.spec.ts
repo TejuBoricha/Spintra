@@ -34,7 +34,11 @@ test('comprehensive smoke test of all tools and room activities', async ({ page 
   // 6. Go to /tools/would-you-rather
   await page.goto('/tools/would-you-rather');
   await expect(page.getByText('Want to play with friends?').first()).toBeVisible();
-  await page.locator('button.glass-card').first().click();
+  // Option text is drawn randomly per load, so this targets the first
+  // clickable option button by structure (sibling of the "Would you
+  // rather..." prompt), not by a styling class — .glass-card was removed
+  // in the design-system migration, which is why this previously timed out.
+  await page.getByText('Would you rather...').locator('..').locator('button').first().click();
 
   // 7. Go to /tools/truth-or-dare
   await page.goto('/tools/truth-or-dare');

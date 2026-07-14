@@ -27,11 +27,25 @@ export function DiceActivity() {
       if (event.kind === "dice_rolling") {
         setDiceRolling(true);
         playDiceRoll(soundEnabled);
+        
+        if (rollTimerRef.current) clearTimeout(rollTimerRef.current);
+        
+        // Host migration fix: compute instantly, delay the UI locally.
+        if (event.results) {
+          rollTimerRef.current = setTimeout(() => {
+            setDiceResults(event.results!); // Use non-null assertion since we checked it
+            setDiceRolling(false);
+            playTick(soundEnabled);
+          }, 900);
+        }
       } else if (event.kind === "dice_roll") {
+        // Kept for backward compatibility with pre-migration event logs
+        if (rollTimerRef.current) clearTimeout(rollTimerRef.current);
         setDiceResults(event.results);
         setDiceRolling(false);
         playTick(soundEnabled);
       } else if (event.kind === "activity_reset") {
+        if (rollTimerRef.current) clearTimeout(rollTimerRef.current);
         setDiceResults([]);
         setDiceRolling(false);
       }
@@ -66,8 +80,8 @@ export function DiceActivity() {
             key={i}
             animate={diceRolling ? { rotate: [0, 180, 360], scale: [1, 1.25, 1], y: [0, -20, 0] } : { rotate: 0, scale: 1, y: 0 }}
             transition={{ duration: 0.8, delay: i * 0.08, ease: "easeInOut" }}
-            className={`w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-5xl font-black text-white shadow-2xl border border-purple-400/40 select-none ${
-              val === 0 ? "opacity-40" : "shadow-purple-500/25"
+            className={`w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-(--violet-600) flex items-center justify-center text-5xl font-black text-white shadow-2xl border border-(--border-strong) select-none ${
+              val === 0 ? "opacity-40" : "shadow-glow-primary-sm"
             }`}
           >
             {val === 0 ? "?" : ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"][val - 1]}
@@ -79,7 +93,7 @@ export function DiceActivity() {
         <motion.p
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="text-xl font-bold text-purple-300 bg-purple-500/10 px-4 py-1.5 rounded-full border border-purple-500/20"
+          className="text-xl font-bold text-(--brand-primary-strong) bg-primary/10 px-4 py-1.5 rounded-full border border-primary/20"
         >
           Total: {diceResults.reduce((a, b) => a + b, 0)}
         </motion.p>
@@ -96,14 +110,11 @@ export function DiceActivity() {
               key={count}
               disabled={diceRolling}
               onClick={() => {
-                sendActivityEvent({ kind: "dice_rolling" });
-                rollTimerRef.current = setTimeout(() => {
-                  const results = Array.from({ length: count }, () => Math.ceil(Math.random() * 6));
-                  sendActivityEvent({ kind: "dice_roll", results });
-                }, 900);
-              }}
+              const results = Array.from({ length: count }, () => Math.ceil(Math.random() * 6));
+              sendActivityEvent({ kind: "dice_rolling", results });
+            }}
               variant="outline"
-              className="h-10 px-5 text-sm font-semibold border-purple-500/30 hover:bg-purple-500/10 text-purple-200 rounded-full transition-all"
+              className="h-10 px-5 text-sm font-semibold border-primary/30 hover:bg-primary/10 text-(--brand-primary-strong) rounded-full transition-all"
             >
               Roll {count}d6
             </Button>

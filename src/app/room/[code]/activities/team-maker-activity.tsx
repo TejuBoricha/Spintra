@@ -45,7 +45,6 @@ export function TeamMakerActivity() {
             <Button
               key={n}
               variant="outline"
-              disabled={tmTeams.length > 0}
               className="h-10 px-5 text-sm font-semibold border-cyan-500/30 hover:bg-cyan-500/10 text-cyan-300 rounded-full transition-all"
               onClick={() => {
                 const online = participants.filter((p) => p.is_online);
@@ -77,7 +76,7 @@ export function TeamMakerActivity() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
           {tmTeams.map((team, i) => {
             const colors = [
-              "border-purple-500/40 bg-gradient-to-br from-purple-500/5 to-indigo-500/5 shadow-purple-500/5",
+              "border-(--violet-500)/40 bg-gradient-to-br from-(--violet-500)/5 to-(--violet-800)/5 shadow-(--violet-500)/5",
               "border-cyan-500/40 bg-gradient-to-br from-cyan-500/5 to-blue-500/5 shadow-cyan-500/5",
               "border-amber-500/40 bg-gradient-to-br from-amber-500/5 to-orange-500/5 shadow-amber-500/5",
               "border-emerald-500/40 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 shadow-emerald-500/5",
@@ -100,7 +99,7 @@ export function TeamMakerActivity() {
                       className="text-sm font-semibold text-muted-foreground flex items-center gap-2"
                     >
                       <Emoji name="busts_in_silhouette" size={14} animated={false} />
-                      <span className="text-neutral-200">{m}</span>
+                      <span className="text-foreground">{m}</span>
                     </p>
                   ))}
                   {team.members.length === 0 && (
@@ -112,7 +111,7 @@ export function TeamMakerActivity() {
           })}
         </div>
       ) : (
-        <div className="glass-card p-12 rounded-3xl text-center w-full border border-border shadow-xl">
+        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-3xl p-12 text-center w-full shadow-xl">
           <p className="mb-4 flex justify-center">
             <Emoji name="busts_in_silhouette" size={48} />
           </p>

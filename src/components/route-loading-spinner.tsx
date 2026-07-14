@@ -4,8 +4,8 @@ export function RouteLoadingSpinner({ label = "Loading..." }: { label?: string }
     // otherwise get no signal at all that a navigation is in flight.
     <div role="status" aria-live="polite" className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
       <div aria-hidden="true" className="relative w-16 h-16">
-        <div className="absolute inset-0 rounded-full border-4 border-purple-500/20" />
-        <div className="absolute inset-0 rounded-full border-4 border-t-purple-500 animate-spin" />
+        <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
+        <div className="absolute inset-0 rounded-full border-4 border-t-primary animate-spin" />
       </div>
       <p className="text-muted-foreground text-sm font-semibold tracking-wider animate-pulse uppercase">
         {label}

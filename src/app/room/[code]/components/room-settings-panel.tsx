@@ -250,7 +250,7 @@ export function RoomSettingsPanel({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="settings-max-participants">Max participants</Label>
-                <span className="text-sm font-semibold text-purple-400">
+                <span className="text-sm font-semibold text-(--brand-primary-strong)">
                   {maxParticipants} people
                 </span>
               </div>

@@ -1,153 +1,34 @@
 # HANDOFF.md — Session Resume
 
-Portable session-continuity note for any AI assistant (Antigravity, Claude Code, VS Code Agent, Cursor, Windsurf, Gemini CLI, etc.) to resume work immediately. This file intentionally does not restate architecture, tech stack, or progress history — see `ARCHITECTURE.md`, `AI_CONTEXT.md`, and `CHANGELOG_AI.md` for those.
+Portable session-continuity note for any AI assistant to resume work immediately.
 
 ---
 
 ## Last Completed Task
 
-**Session 50: Banner contrast fix, room ban upsert, homepage restructure — COMPLETE.**
+**Session 60: UI/UX Overhaul & Join Modal Redesign — COMPLETE.**
 
-Fixed announcement banner readability in light mode across homepage and tools pages, fixed room ban error handling (duplicate `(room_id, user_id)` constraint crash), and restructured homepage conditional rendering.
+Performed a comprehensive UI overhaul to align with the core green/white Spintra brand identity and improve navigation clarity.
 
-- **Banner contrast fix:** changed banner text from `text-muted-foreground` to `text-amber-300` in both `src/app/page.tsx` and `src/app/tools/layout.tsx`. `text-muted-foreground` is `#6B7280` (gray-500) in light mode — washed out against the amber banner background. `text-amber-300` auto-adapts via `.light .text-amber-300 { color: #d97706 !important; }` in `globals.css` — readable in both themes.
-- **Room ban upsert:** changed `insert()` → `upsert()` with `onConflict: "room_id,user_id"` so duplicate ban attempts don't crash with the `unique` constraint. Improved error logging to use `.message || JSON.stringify()` instead of catching a bare `{}` object.
-- **Homepage restructure:** "Want to play with friends?" banner shows when `!roomHistory || roomHistory.length === 0`; "Recently Visited Rooms" shows when `roomHistory.length > 0` — no more double-prompt.
-- **3 commits** pushed to `main` (banner contrast fix, gitignore chore, room ban fix).
+- **Floating Navbar & Navigation Consolidation:** Rebuilt the primary Navbar into a stunning floating glassmorphic pill (`fixed`, `backdrop-blur`). Removed redundant dropdown menus and relocated Quick Tools directly into easily accessible center-pill and mobile drawer slots.
+- **Terminology Cleanup:** Updated Discover -> Browse, Explore -> Live Rooms, and Standalone Tools -> Quick Tools for conceptual clarity.
+- **Button Contrast Bugfix:** Globally fixed a major UI visibility issue across all 50+ `variant="outline"` usages (including Team Maker, RPS, Bingo, and Cancel buttons) by correcting the core Spintra Button variant to use a transparent background instead of a harsh solid white surface.
+- **Local History Pruning:** Added logic to actively sweep `localStorage` so "Recently Visited" rooms automatically disappear from the user's dashboard if the room is closed by the host, or if the user is kicked or banned. Additionally added a manual "Remove from history" (X) button to let users clear empty or testing rooms from their list without waiting for the server's 2-hour cron job.
+- **Join Room Modal Redesign:** Updated the Join Room modal to match the Spintra brand identity (green/white), replacing the previous purple cyberpunk theme.
+- **Layout Re-architecture:** Stripped hacky hardcoded top-paddings (`pt-16`/`pt-24`) from 18 individual page layouts and consolidated into a single `<main>` wrapper in `layout.tsx` to uniformly handle the floating navbar bleed. Fixed an SSR hydration mismatch on the Settings page.
 
-**Next recommended task:** Visual Scoreboard, XP/Leveling System, or the Moderation Dashboard.
-
----
-
-**Session 48: Comprehensive Platform Readiness Audit — COMPLETE.****
-- Performed a comprehensive 15-phase audit of the entire Spintra repository to evaluate launch readiness, engineering patterns, security, and UX.
-- Authored the detailed audit report (`production_ready_audit_report.md`), stored outside this repository in the authoring tool's workspace.
-- Documented 50 launch-blocking issues, 20 quick wins, 10 technical debt items, 10 UX improvements, 10 product features, and a prioritized project roadmap.
-
-**Session 47: Unban UI, empty-state copy pass, expanded e2e coverage — COMPLETE.**
-
-
-Closed the 3 remaining smaller items from the audit's UX×10/Product×10 lists (host-facing unban list Session 45 deferred, "consistent empty-state copy across 14 activities" never addressed, reconnect/presence-reconciliation e2e gaps Session 45 left open) — explicitly scoped away from the 4 larger net-new features (Scoreboard, XP, Room Settings, Moderation Dashboard) and 2 items requiring the user's own action. Planned via 3 parallel Explore agents + a Plan agent before implementation.
-
-- **Unban UI** — migration `0043` (host-scoped select/delete policies on `room_bans`, `username` snapshot column), new `unban-panel.tsx` (clones `MessageReportsPanel`'s pattern), wired into `room-header.tsx`.
-- **Empty-state copy standardized** across all 14 activities; added a genuine "not enough players" guard only where 0/1 online participants produced a broken result (Team Maker, RPS) — the other 9 activities work correctly solo and were left untouched.
-- **2 new e2e tests**: reconnect (same identity via `page.reload()` in the same browser context) and presence-reconciliation-without-a-crash (3rd participant joins then leaves cleanly). Coverage: 9/9 passing.
-
-**3 real, previously-unknown bugs found and fixed along the way** (via actually running the new code, not just reading it):
-1. First-time joiners of an in-progress room never saw the in-progress activity state — `room_activity_state`'s RLS requires an existing participant row, but the read ran before that row was created. Fixed by reordering `runSetup`.
-2. `room_bans` was never added to the `supabase_realtime` publication (unlike `message_reports`) — the new unban panel's list could never live-update. Fixed in migration `0043`.
-3. Realtime-joined participants got a malformed `participants` entry (missing the nested `user` object) — broke their displayed name/avatar until a page reload. Fixed by matching `loadParticipants()`'s shape in the `postgres_changes` INSERT handler.
-
-**Verification:** all migrations applied fresh via local Docker Supabase, full Playwright suite (9/9) run twice for stability. Unban feature manually smoke-tested end-to-end via a scripted browser flow — this is what caught bugs #2 and #3, neither of which any automated test covers. `npm run verify` clean; migration `0043` pushed live and re-verified. Full detail: `docs/TASKS.md`'s Session 47 section, `docs/CHANGELOG_AI.md`'s Session 47 entry.
-
-**Next recommended task:** the 2 remaining net-new Medium-priority features (Visual Scoreboard, XP/Leveling System) or the Moderation Dashboard (Product×10 item, also net-new) — see below.
+**Next recommended task:** Review the QA Audit findings and address the remaining Tournament system edge cases, or proceed with deployment preparation.
 
 ---
 
-## Prior session (Session 46 summary)
+## Prior Sessions Summary
 
-**Session 46: Post-Session-45 CI fixes + all 5 remaining Session 45 findings — COMPLETE.**
-
-Started by checking CI status on Session 45's push and finding `validate` failing — investigation (not assumption) found two unrelated, pre-existing bugs, both fixed and pushed as their own commits before the fix-everything work below:
-1. `validate` had failed on every commit since `752295f` (2026-07-06): a build-time env var assertion in `next.config.ts` conflicted with that job's intentional no-Supabase demo-mode build. Fixed with an explicit `SKIP_ENV_VALIDATION` opt-out (default off — fail-fast preserved everywhere else).
-2. That fix let `validate`'s tests actually run for the first time in days, immediately surfacing a second bug: demo-mode rooms never auto-activated their chosen game (dead code since `c0f1798`, 2026-07-04 — a demo-mode branch was added inside a function whose enclosing effect already bailed out one line earlier). Fixed by removing the redundant outer guard.
-
-Full root-cause writeups for both: `docs/CHANGELOG_AI.md`'s two "Post-Session-45 fix" entries.
-
-Then, at the user's request, all 5 items Session 45 had left open were fixed:
-- **Zero analytics/telemetry** — migration `0041` (`analytics_events`, insert-only RLS, no select policy, rate-limited), `src/lib/analytics.ts`. Deliberately scoped to 3 events (`room_created`/`room_joined`/`activity_started`), not full instrumentation.
-- **Homepage 3D hero unconditional load** — gated on `useReducedMotion()` + `IntersectionObserver` in `src/app/page.tsx`; the WebGL render loop no longer runs once scrolled out of view.
-- **Departed/kicked users' chat showing "Guest"** — migration `0040` adds a `username` snapshot column to `chat_messages`, captured at send time.
-- **Truth or Dare content fork** — unified via a shared source (`TRUTH_OR_DARE_CATEGORIES` in `src/lib/utils.ts`) without the risk originally flagged; the tool page's zero-network-dependency behavior is unchanged, only the in-room activity's fallback pool now draws from the same content instead of a separately-hardcoded, much smaller list.
-- **`tm_teams`/`nd_winner` event-kind naming** — renamed to `team_maker_teams`/`name_draw_winner` without the replay risk originally flagged: both old kind strings kept as read-only legacy members in the `ActivityEvent` union so an already-persisted `room_activity_state` row still replays.
-
-**Verification:** all migrations (`0040`, `0041`) applied fresh via a local Docker Supabase stack (`supabase db reset`), full Playwright suite run against it — 7/7 pass (one pre-existing, already-documented host-election flake self-recovers on retry, unrelated to any change this session). Directly confirmed via `psql` that `analytics_events` rows and `chat_messages.username` are actually populated by real app usage, not just schema-correct. `npm run verify`/`npm run build` clean with real production credentials restored afterward. Full detail: `docs/TASKS.md`'s Session 46 section, `docs/CHANGELOG_AI.md`'s Session 46 entry.
-
-**Final state:** all 42 Session 45 findings + the 2 CI bugs found today are now resolved. Local Docker/Supabase stack stopped after verification. Production `.env.local` credentials (recovered via `supabase projects api-keys` after being briefly overwritten mid-session for local testing — never actually lost, anon keys are retrievable/publishable) restored and confirmed correct.
-
-**Next recommended task:** the 2 remaining net-new Medium-priority features that predate the Session 45 audit (Visual Scoreboard, XP/Leveling System — see below).
-
----
-
-## Prior session (Session 41 summary)
-
-**Session 41: Production Readiness Audit + Critical Tier Fixes (in progress).** User asked for a comprehensive 8-perspective production-readiness audit (Production Engineering, QA, Security, Performance, Scalability, Reliability, UX, Accessibility) as if launching to real public traffic. Ran 5 parallel research agents (Security · Performance/Scalability · Reliability/Prod-Eng · QA/Functional · UX/Accessibility), synthesized 60 findings into a categorized report (4 Critical, 12 High, 16 Medium, 21 Low, 7 Nice-to-have), published as an artifact. User is rotating the one Critical security finding (a leaked DB password in git history) directly; asked to fix everything else tier by tier, starting with Critical.
-
-**Critical tier — done:**
-- Production build-time guard (`ProductionConfigWarningBanner` + `isSupabaseConfigured()`) — an unmissable banner now renders if a production build is ever missing its Supabase env vars, instead of silently degrading every visitor to same-browser-only mode.
-- Explore page hardened: `.limit(60)` added, realtime subscription scoped to `is_public=eq.true` and debounced (was refetching the full unbounded dataset on every single room/participant change anywhere), migration `0022` adds the supporting `rooms(is_public, created_at)` partial index.
-- **`rooms.activity_state jsonb`** (migration `0023`): a capped, ordered per-activity event log. `registerEventListener` now replays it to any newly-mounting listener, and `handleActivityEvent` (the single dispatch point for events regardless of origin — sent locally or received via broadcast) records to it and debounce-persists it. This generically recovers all 14 activities' in-progress state after a refresh/reconnect with zero per-activity code changes, since every activity already communicates exclusively through `sendActivityEvent`/`registerEventListener`. Verified live: created a real trivia room via Playwright against the production Supabase project, started a question, refreshed the page, confirmed the question was still there — and inspected the DB row directly to see the exact persisted event.
-- **Unplanned, found during that live verification:** migration `0019`'s `participants_update` RLS policy directly self-referenced `room_participants` in its own USING/WITH CHECK clause (instead of routing through `is_member_of_room()`, the SECURITY DEFINER helper migration `0009` built specifically to avoid this). Postgres was rejecting every UPDATE on that table with "infinite recursion detected in policy for relation room_participants" — a real, live 500 error breaking reconnects, presence sync, and host election in production. Fixed via migration `0024`, re-verified live (room join + trivia start worked with zero console errors afterward). **None of the 5 audit agents caught this** — they were static/read-only analysis; this only surfaced because the activity-state fix's own verification step drove a real browser session against the live database instead of stopping at typecheck.
-- `npm run verify` clean throughout (typecheck, lint, docs:check).
-
-**Not yet started:** High (12 findings), Medium (16), Low (21), Nice-to-have (7) — full checklist in `TASKS.md`.
-
----
-
-**Session 40: Room Auto-Expiry + Migration 0009 Recovery.** User asked to fix the "Known Issues/Risks" from a fresh-session initialization report; after clarifying scope (most listed items are documented intentional trade-offs, not bugs), scoped this to the one genuinely actionable item: rooms persisting indefinitely.
-
-Key findings/fixes:
-- **Root cause:** migration `0009_backend_and_db_improvements.sql` already defined `public.cleanup_inactive_rooms()` (deletes rooms with no online participants, >2h old) back when it was written, but only left a comment telling an admin to run `cron.schedule(...)` by hand in the SQL editor — that manual step was never done.
-- **New discovery:** while verifying, found `is_member_of_room`, the hardened RLS select policies, and the participant-limit trigger — all also defined in `0009` — didn't exist live either. Migration `0009` was tracked "applied" in the migration-history table but had **never actually executed against the live database**, same class of bug as `0008`/`0010` (Sessions 37/38). Live RLS select policies were still the looser `0005` versions this whole time.
-- **Fix:** re-ran `0009`'s exact SQL live via `supabase db query --file` (no numbering change, matching the precedent from Session 37/38) — confirmed via direct `pg_proc`/`pg_policy`/`pg_trigger` queries that the functions, hardened policies, and trigger now exist and match source.
-- **Verification of real impact:** manually invoked `cleanup_inactive_rooms()` once — it deleted **23 genuinely abandoned rooms** that had been silently accumulating in production.
-- **New migration `0020_schedule_room_cleanup_cron.sql`:** enables `pg_cron`, schedules `cleanup_inactive_rooms()` every 30 minutes. Confirmed live via `select * from cron.job` (active=true, correct schedule/command).
-- `npm run verify` clean (typecheck, lint, docs:check all 9 checks — required one `ARCHITECTURE.md` migrations-table update for `0020`, which docs:check itself caught).
-
-**Follow-up (same session):** ran the systematic audit that finding suggested — cross-checked all 20 migrations' expected live objects (tables, columns, functions, triggers, policies, constraints, indexes, extensions, realtime publication membership, replica identity, seed-data row counts) against the actual live database via direct catalog queries (`pg_proc`, `pg_policy`, `pg_trigger`, `pg_constraint`, `pg_indexes`, `pg_publication_tables`, `information_schema.columns`). **Result: no further gaps found.** `0001`–`0008` and `0010`–`0019` all confirmed genuinely live and matching source exactly; seed data is clean (44 `activity_prompts`, 50 `trivia_questions`, no duplicates from the earlier re-applications). The three-migration pattern (`0008`, `0009`, `0010`) appears fully closed out now, not a wider systemic issue.
-
-**Small cleanup (same session):** the audit surfaced one harmless drift — `room_participants_role_check` still permitted `'spectator'`, a value the client stopped being able to produce back in Session 38 (dead `UserRole.spectator` enum removed then, but the DB constraint was never updated). Verified zero live rows used it, then added migration `0021` to tighten the constraint to `('host', 'participant')`. Applied and verified live.
-
----
-
-**Session 39: Platform QA Audit (13-Area Review + Tournament Hardening).** User requested a comprehensive 13-area QA audit. All actionable findings were fixed in-session; non-actionable or deferred items were documented.
-
-Key fixes:
-- **Live Trending Rooms:** explore page never called `signInAnonymously()` so Supabase RLS blocked every rooms query. Fixed with `authReady`-gated auth init.
-- **Privacy bypass:** Recent Activity query exposed private room codes (no `is_public` filter). Fixed.
-- **Explore filters:** Trending used a fake hash (not real participant counts); New's cutoff violated `react-hooks/purity`; Classroom had no logic. All fixed with real data and `queueMicrotask`-initialized state.
-- **Banned user toast:** both explore and homepage showed a "Joining room..." success toast before the ban was checked. Fixed by querying `room_bans` first.
-- **Fake homepage stats:** "10,000+ Active Rooms" → real game count; "GIFs, reactions, mentions — live" → accurate chat description; "Beautiful share cards" → accurate share description.
-- **Tournament integrity:** tie scores in single/double-elimination now rejected; TBD matches (null players) non-clickable; completed-match re-editing blocked by `guardMatchEdit`; round-robin/Swiss labels fixed.
-- **Party vs Classroom:** added `classroomSafe?: boolean` to `GameDefinition`; `ActivityPickerDialog` now filters social/party games in classroom rooms with a visible notice.
-- **Pre-existing CRLF bug in `check-docs-drift.mjs`:** folder-structure and migrations-table checks had been silently failing on Windows. Fixed with `.replace(/\r\n/g, "\n")`.
-
-Verification: `npm run verify` fully clean (typecheck, lint, docs:check all 9 checks passing).
-
----
-
-**Prior sessions (30–38) summary:**
-
-Sessions 30–33 (Legal Basics, Rate Limiting, Abuse & Moderation Controls, Tournament Bracket Fix) were committed as 4 scoped commits and pushed to `origin/main`. The user then asked to check the resulting CI run — it failed again, this time on `tests/smoke.spec.ts` (not the already-fixed tournament test). Session 34 root-caused and fixed this:
-
-**Session 34: Demo-Mode Room Activity Never Auto-Activated.** Reproduced CI's actual conditions exactly (moved `.env.local` aside — CI has never had Supabase secrets configured — and ran with `CI=true`, which matches the workflow's fresh `next build && next start`). Confirmed this is a wholly separate, **pre-existing** bug unrelated to Sessions 30–33: checked out the original `700dfcc` commit and reproduced the identical failure there too. Root cause: `loadRoomDetails` in `use-room-subscription.ts` returned immediately when Supabase isn't configured, so `activeActivity` was never set from the room's type in demo/`BroadcastChannel` mode — `create-client.tsx` already wrote `spintra-room-type-{code}`/`spintra-room-name-{code}` to `localStorage` specifically for this, but nothing read it back. Fixed by adding the localStorage fallback read. Verified passing in both modes (with and without Supabase configured).
-
-Session 35 then reviewed and triaged the repo's 5 open Dependabot PRs (4 GitHub Actions bumps + 1 bundled 16-package npm update). All 4 Actions bumps merged clean after a `@dependabot rebase` to clear staleness-only CI failures. The npm bundle (`#16`) had a genuine issue: `eslint ^9 → ^10` crashes lint because `eslint-config-next`'s bundled `eslint-plugin-react` still calls a `context` API ESLint 10 removed. Applied the other 15 safe updates directly to `main` (commit `b429a16`, fully verified locally first), held `eslint` at `^9`, and closed PR #16 as superseded with an explanatory comment.
-
-**Session 36: Legal Page Placeholders Filled In.** User provided real values for the Terms/Privacy pages' bracketed placeholders: operator "Tejas Gogara", jurisdiction "India", contact `tejasboricha225@gmail.com`. Caught and corrected a likely typo in the user's initially-provided privacy email (`@hmail.com` → confirmed `@gmail.com`) before shipping it. Committed as `e5910a1`, pushed. This closes the last outstanding gap in the "Legal Basics" pre-launch item.
-
-**Session 37: Pre-Launch Product Readiness Audit + Critical/High Fixes.** User asked for a full audit (functional/integration/DB-security/state-management/UX passes, 4 parallel research agents) of the entire repo as if about to launch, then asked to fix the Critical + High findings. Fixed: room creation's silent local-only fallback on Supabase errors (now hard-stops); kick not enforced in demo mode + ban not checked pre-entry (new `src/lib/room-bans.ts` + migration `0013_room_bans_self_select.sql`, applied live); demo-mode sharing had no cross-device warning; the chat/participants sidebar toggle was tearing down and rebuilding the entire realtime channel (unstable callback identity, fixed via a ref); light mode was investigated and found to already work correctly (pre-existing CSS override layer in `globals.css` neutralizes it — downgraded from bug to a token-consistency cleanup). **Critical fix:** the room-based Tournament activity could never actually finish a tournament (only generated one flat round, no scoring/advancement) — extracted the standalone `/tools/tournament` tool's full bracket engine into shared `src/lib/tournament-engine.ts` and built a real multiplayer room activity on it, functionally verified end-to-end across two independent browser sessions against the live Supabase project. All work committed across 3 commits (`6f96221`, `b73c0f2`, `4141432`) plus a docs-drift fix (`1f4f4f8`) after a genuine CI catch (see below). 11 Medium + 15 Low audit findings remain queued in `TASKS.md`.
-
-**Important process note from Session 37:** this machine's global `core.autocrlf=true` smudges LF→CRLF on *any* git operation that materializes files on disk — `git clone`, `git archive`, and `git checkout-index` all reintroduce CRLF, not just the primary working tree. A "fresh clone to /tmp" does **not** reliably reproduce what a real Linux CI checkout sees. Only `git show HEAD:<path>` (or `git cat-file`) bypasses the smudge filter and shows true blob content. This was learned the hard way: the Tournament-fix commit failed real CI on Documentation Drift Check, which was initially misdiagnosed as the usual known CRLF false positive, when it was actually a genuine gap (migration `0013` missing from `ARCHITECTURE.md`'s table). Use `git show`, not clone-based reproduction, to verify docs:check going forward.
-
-**Session 38: Pre-Launch Audit Backlog (Medium/Low findings).** User said "work on backlog" — worked through all 6 remaining Medium findings and most of the 15 Low findings from Session 37's audit. Migrations `0014`–`0019`: RLS column restrictions (rooms host-promotion, participant host-update), DB-level room lock enforcement, missing constraints/index, message-reports host UI (`reviewed` flag + host-scoped policy), and presence reconciliation open to any participant (not just host — closes a real "crashed host blocks succession forever" hole). Removed dead code (`UserRole.spectator`, `rooms.settings` column — dropped, vestigial localStorage key, unused chat-hook export) and the unused `@tanstack/react-query` dependency. Added `loading.tsx`/`error.tsx` for the 3 highest-traffic routes, fixed the QR fallback, added missing aria-labels + a chat `aria-live` region. **Along the way, found and fixed a real production gap**: migrations `0008` and `0010` were tracked as "applied" but had never actually run — `activity_prompts` and `trivia_questions` didn't exist live, due to a genuine SQL syntax bug in `0010` (unescaped apostrophe in "Shaquille O'Neal"). Fixed the bug, reverted + re-applied both migrations for real, verified via REST queries (50 trivia questions, 44 prompts now genuinely live). No user outage resulted — 5 activities have graceful hardcoded fallbacks that were silently used instead. Every RLS/trigger change was verified with targeted live checks (not just the E2E suite) against the real Supabase project, including a specific privilege-escalation boundary check for the presence-reconciliation permission change. 8 commits total, all pushed and green on CI.
-
-**Going forward:** the Supabase CLI is linked (`supabase/config.toml`, project ref `qjxaehxwuqntyqrdmihs`) — future migrations can be pushed directly with `npx supabase db push --linked --yes`, no manual SQL Editor paste needed. **New lesson from Session 38:** don't assume a migration listed as "applied" in `supabase migration list` actually ran successfully — if a later migration touching the same table fails with "relation does not exist," check the tracked-applied migration's SQL for a genuine bug and verify the table exists via a direct REST query before assuming it's just an ordering issue. GitHub API log downloads require admin rights even on this public repo — use the `check-runs`/`annotations` endpoints for failure summaries. GitHub API write access (commenting/merging/closing PRs) works through the same credential `git credential fill` returns for `github.com` — no separate token setup needed, it's the one already used for `git push`.
-
----
-
-## Current Task
-
-Working tree clean. `docs/CHANGELOG_AI.md` entry appended for Session 50. All changes committed and pushed to `origin/main`.
-
-**Reminders carried forward:**
-- **Live verification required for nontrivial fixes.** The RLS recursion bug in migration `0019` was invisible to all 5 static audit agents — only surfaced by a live Playwright session against production. Don't stop at typecheck/lint.
-- **Migration "applied" status is not reliable.** `0008`, `0009`, `0010` were all tracked-applied-but-never-executed. Verify new migrations with `npm run verify:migration`. The one-time full audit (Sessions 40) found no further instances — closed unless new evidence appears.
-- `eslint ^9 → ^10` is intentionally held back — not safe until `eslint-config-next`/`eslint-plugin-react` ship ESLint 10 support.
-- Rate limiting and bans (0011/0012) are bypassable by rotating anonymous session — accepted trade-off.
-- Same-browser demo mode: two tabs share localStorage identity — not real multi-user simulation.
-- Trivia answer key world-readable via RLS; chat filter client-side only; host-election tiebreak not DB-enforced — all intentionally deferred.
-- Multiple room membership is an accepted architectural trade-off.
+- **Session 59:** E2E Test Hardening & UX Fixes
+- **Session 54:** Tournament QA Automation Audit — COMPLETE.
+- **Session 53:** Comprehensive E2E Product Launch Audit — COMPLETE.
+- **Session 52:** Moderation Dashboard implemented and merged.
+- **Session 51:** Visual Scoreboard + XP/Leveling implemented and merged.
+- **Session 50:** Banner contrast fixes, room ban upsert fixes, and homepage UI restructure.
 
 ---
 
@@ -157,12 +38,6 @@ None.
 
 ---
 
-## Next Recommended Task
+## Next Steps
 
-**All Session 41 audit tiers are complete and merged to `main`.** Three larger Medium Priority features remain:
-
-1. **Visual Scoreboard** — persistent real-time leaderboard during trivia/activities
-2. **XP and Leveling System** — XP rewards engine with player ranks
-3. **Room Settings Panel** — host-configurable settings (max participants, chat moderation, activity timers)
-
-Production Error Monitoring remains explicitly deferred — do not start unprompted.
+Review Tournament QA findings from Session 54, configure deployment pipelines, coordinate a staging environment test run, and proceed with the public release checklist.

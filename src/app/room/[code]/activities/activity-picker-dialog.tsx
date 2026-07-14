@@ -36,7 +36,7 @@ export function ActivityPickerDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-purple-400" />
+            <Sparkles className="w-5 h-5 text-(--brand-primary-strong)" />
             Choose an Activity
           </DialogTitle>
           {isClassroom && (
@@ -54,10 +54,10 @@ export function ActivityPickerDialog({
                 key={g.type}
                 onClick={() => onSelect(g.type)}
                 aria-label={`Select ${g.label}`}
-                className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all text-sm font-medium hover:border-purple-500/50 hover:bg-purple-500/10 ${
+                className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all text-sm font-medium hover:border-primary/50 hover:bg-primary/10 ${
                   activeActivityType === g.type
-                    ? "border-purple-500 bg-purple-500/20 text-purple-300"
-                    : "border-border text-muted-foreground"
+                    ? "border-primary bg-primary/20 text-(--brand-primary-strong)"
+                    : "border-(--border-hairline) bg-(--surface-panel) text-muted-foreground"
                 }`}
               >
                 <Icon className="w-6 h-6" />

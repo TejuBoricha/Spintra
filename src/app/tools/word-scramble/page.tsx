@@ -76,10 +76,10 @@ export default function WordScramblePage() {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-16 px-4">
+    <div className="min-h-screen pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-lime-400" />
             <span className="text-sm text-muted-foreground">Unscramble the word</span>
           </div>
@@ -90,7 +90,7 @@ export default function WordScramblePage() {
               onClick={() => setSoundEnabled(!soundEnabled)}
               title={soundEnabled ? "Sound On" : "Sound Off"}
               aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-              className="p-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+              className="p-1.5 rounded-lg border border-(--border-hairline) bg-(--surface-sunken) hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
             >
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
@@ -108,7 +108,7 @@ export default function WordScramblePage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="glass-card p-8 mb-6"
+            className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-8 mb-6"
           >
             <div className="flex justify-center gap-2 mb-6 flex-wrap">
               {scrambled
@@ -121,7 +121,7 @@ export default function WordScramblePage() {
                     </div>
                   ))
                 : word.split("").map((_, i) => (
-                    <div key={i} className="w-12 h-12 rounded-xl border border-white/5 bg-white/5 animate-pulse" />
+                    <div key={i} className="w-12 h-12 rounded-xl border border-(--border-hairline) bg-(--surface-sunken) animate-pulse" />
                   ))}
             </div>
             {revealed > 0 && !solved && (

@@ -287,7 +287,7 @@ export default function NameDrawPage() {
           transition={{ duration: 0.5 }}
           className="text-center mb-10"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass text-sm mb-4">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm mb-4">
             <GameIcon className="w-4 h-4 text-amber-400" />
             <span className="text-muted-foreground">Random Picker</span>
           </div>
@@ -309,7 +309,7 @@ export default function NameDrawPage() {
             className="lg:col-span-2 space-y-4"
           >
             {/* Input Card */}
-            <div className="glass-card p-5 space-y-4">
+            <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                   Entries
@@ -332,7 +332,6 @@ export default function NameDrawPage() {
                   variant="outline"
                   size="sm"
                   onClick={handleCsvImport}
-                  className="glass border-white/10 hover:border-white/20"
                 >
                   <Upload className="w-3.5 h-3.5 mr-1" />
                   Import CSV
@@ -342,7 +341,6 @@ export default function NameDrawPage() {
                   size="sm"
                   onClick={saveNames}
                   disabled={names.length === 0}
-                  className="glass border-white/10 hover:border-white/20"
                 >
                   <Save className="w-3.5 h-3.5 mr-1" />
                   Save
@@ -352,7 +350,7 @@ export default function NameDrawPage() {
                   size="sm"
                   onClick={clearAll}
                   disabled={names.length === 0 && drawnNames.length === 0}
-                  className="glass border-white/10 hover:border-white/20 text-red-400 hover:text-red-300"
+                  className="text-red-400 hover:text-red-300"
                 >
                   <Trash2 className="w-3.5 h-3.5 mr-1" />
                   Clear
@@ -367,7 +365,7 @@ export default function NameDrawPage() {
                     <button
                       key={key}
                       onClick={() => addSampleSet(key)}
-                      className="text-xs px-2.5 py-1 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 hover:border-amber-500/30 transition-colors capitalize"
+                      className="text-xs px-2.5 py-1 rounded-full border border-(--border-hairline) bg-(--surface-sunken) hover:bg-muted hover:border-amber-500/30 transition-colors capitalize"
                     >
                       + {key} ({entries.length})
                     </button>
@@ -377,7 +375,7 @@ export default function NameDrawPage() {
             </div>
 
             {/* Settings Card */}
-            <div className="glass-card p-5 space-y-4">
+            <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-5 space-y-4">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                 Settings
               </h2>
@@ -416,7 +414,7 @@ export default function NameDrawPage() {
 
             {/* Create Room CTA */}
             <Link href="/create?type=name-draw">
-              <div className="glass-card p-4 flex items-center justify-between group cursor-pointer hover:border-amber-500/30 transition-colors">
+              <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 flex items-center justify-between group cursor-pointer hover:border-amber-500/30 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
                     <Users className="w-5 h-5 text-white" />
@@ -441,7 +439,7 @@ export default function NameDrawPage() {
             className="lg:col-span-3 space-y-6"
           >
             {/* Winner Spotlight */}
-            <div className="glass-card p-8 min-h-[280px] flex flex-col items-center justify-center relative overflow-hidden">
+            <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-8 min-h-[280px] flex flex-col items-center justify-center relative overflow-hidden">
               {/* Background glow */}
               <div className="absolute inset-0 bg-gradient-to-b from-amber-500/5 via-transparent to-transparent pointer-events-none" />
 
@@ -600,7 +598,7 @@ export default function NameDrawPage() {
                   isDrawing ||
                   availableNames.length === 0
                 }
-                className="flex-1 glass border-white/10 hover:border-amber-500/30"
+                className="flex-1 hover:border-amber-500/30"
               >
                 <Shuffle className="w-4 h-4 mr-2" />
                 Draw {Math.min(drawCount, availableNames.length)}
@@ -610,7 +608,6 @@ export default function NameDrawPage() {
                 variant="ghost"
                 onClick={reset}
                 disabled={drawnNames.length === 0 && !currentWinner}
-                className="glass border-white/10 hover:border-white/20"
                 aria-label="Reset draw history"
               >
                 <RotateCcw className="w-4 h-4" />
@@ -620,7 +617,6 @@ export default function NameDrawPage() {
                 variant="ghost"
                 onClick={shareResults}
                 disabled={drawnNames.length === 0}
-                className="glass border-white/10 hover:border-white/20"
                 aria-label="Share results"
               >
                 <Share2 className="w-4 h-4" />
@@ -631,7 +627,6 @@ export default function NameDrawPage() {
                 onClick={() => setSoundEnabled(!soundEnabled)}
                 title={soundEnabled ? "Sound On" : "Sound Off"}
                 aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-                className="glass border-white/10 hover:border-white/20"
               >
                 {soundEnabled ? (
                   <Volume2 className="w-4 h-4" />
@@ -643,7 +638,7 @@ export default function NameDrawPage() {
 
             {/* Available Names */}
             {availableNames.length > 0 && names.length > 0 && (
-              <div className="glass-card p-4">
+              <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                     Available ({availableNames.length})
@@ -658,7 +653,7 @@ export default function NameDrawPage() {
                   {availableNames.map((name) => (
                     <span
                       key={name}
-                      className="text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/5 text-foreground/70"
+                      className="text-xs px-2.5 py-1 rounded-full bg-(--surface-sunken) border border-(--border-hairline) text-foreground/70"
                     >
                       {name}
                     </span>
@@ -672,7 +667,7 @@ export default function NameDrawPage() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="glass-card p-4"
+                className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4"
               >
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
@@ -693,7 +688,7 @@ export default function NameDrawPage() {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.05 }}
-                      className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5"
+                      className="flex items-center gap-3 px-3 py-2 rounded-lg bg-(--surface-sunken) border border-(--border-hairline)"
                     >
                       <span className="text-xs font-mono text-amber-400/60 w-6 text-right">
                         #{drawnNames.length - i}

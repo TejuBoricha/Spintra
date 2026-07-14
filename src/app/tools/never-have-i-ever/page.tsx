@@ -74,10 +74,10 @@ export default function NeverHaveIEverPage() {
   const total = Object.keys(responses).length;
 
   return (
-    <div className="min-h-screen pt-24 pb-16 px-4">
+    <div className="min-h-screen pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-pink-400" />
             <span className="text-sm text-muted-foreground">Group confessions</span>
           </div>
@@ -101,7 +101,7 @@ export default function NeverHaveIEverPage() {
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: -20 }}
-            className="glass-card p-8 mb-6 max-w-lg mx-auto relative overflow-hidden"
+            className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-8 mb-6 max-w-lg mx-auto relative overflow-hidden"
           >
             {revealed && (
               <motion.div
@@ -141,7 +141,7 @@ export default function NeverHaveIEverPage() {
               onClick={() => setSoundEnabled(!soundEnabled)}
               title={soundEnabled ? "Sound On" : "Sound Off"}
               aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-              className="h-12 w-12 border-white/10 rounded-lg"
+              className="h-12 w-12 border-(--border-hairline) rounded-lg"
             >
               {soundEnabled ? (
                 <Volume2 className="w-5 h-5" />
@@ -160,7 +160,7 @@ export default function NeverHaveIEverPage() {
               )}
             </p>
             <div className="mt-4 flex justify-center items-center gap-3">
-              <Button onClick={next} className="bg-gradient-to-r from-purple-600 to-cyan-500 border-0">
+              <Button onClick={next} className="bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">
                 Next <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
               <Button
@@ -169,7 +169,7 @@ export default function NeverHaveIEverPage() {
                 onClick={() => setSoundEnabled(!soundEnabled)}
                 title={soundEnabled ? "Sound On" : "Sound Off"}
                 aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-                className="h-10 w-10 border-white/10 rounded-lg"
+                className="h-10 w-10 border-(--border-hairline) rounded-lg"
               >
                 {soundEnabled ? (
                   <Volume2 className="w-4 h-4" />

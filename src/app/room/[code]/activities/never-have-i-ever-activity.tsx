@@ -82,7 +82,6 @@ export function NeverHaveIEverActivity() {
       </h2>
       {isHost && (
         <Button
-          disabled={!!nhiePrompt}
           onClick={() => {
             const text = statements[Math.floor(Math.random() * statements.length)];
             sendActivityEvent({ kind: "nhie_prompt", text });
@@ -177,7 +176,7 @@ export function NeverHaveIEverActivity() {
           </div>
         </>
       ) : (
-        <div className="glass-card p-12 rounded-3xl text-center w-full border border-border shadow-xl">
+        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-3xl p-12 text-center w-full shadow-xl">
           <p className="mb-4 flex justify-center">
             <Emoji name="see_no_evil_monkey" size={48} />
           </p>

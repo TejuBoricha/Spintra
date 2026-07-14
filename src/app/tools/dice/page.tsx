@@ -36,7 +36,7 @@ const GameIcon = getGameByType("dice")!.icon;
 // ── Dice Configs ──
 const diceTypes = [
   { sides: 4, label: "D4", color: "from-amber-500 to-orange-600", glow: "shadow-amber-500/20" },
-  { sides: 6, label: "D6", color: "from-purple-500 to-indigo-600", glow: "shadow-purple-500/20" },
+  { sides: 6, label: "D6", color: "from-primary to-(--violet-600)", glow: "shadow-glow-primary-sm" },
   { sides: 8, label: "D8", color: "from-cyan-500 to-blue-600", glow: "shadow-cyan-500/20" },
   { sides: 10, label: "D10", color: "from-emerald-500 to-teal-600", glow: "shadow-emerald-500/20" },
   { sides: 12, label: "D12", color: "from-rose-500 to-pink-600", glow: "shadow-rose-500/20" },
@@ -184,9 +184,9 @@ export default function DicePage() {
   const currentDice = diceTypes.find((d) => d.sides === selectedDice) || diceTypes[1];
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden pt-24 pb-16 px-4">
+    <div className="min-h-screen bg-background relative overflow-hidden pb-16 px-4">
       {/* Immersive background glow effects */}
-      <div className="absolute top-[-10%] left-[-20%] w-[60%] h-[50%] rounded-full dark:bg-purple-900/10 bg-purple-500/5 blur-[150px] pointer-events-none" />
+      <div className="absolute top-[-10%] left-[-20%] w-[60%] h-[50%] rounded-full dark:bg-(--violet-800)/10 bg-primary/5 blur-[150px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-20%] w-[60%] h-[50%] rounded-full dark:bg-cyan-900/10 bg-cyan-500/5 blur-[150px] pointer-events-none" />
 
       <div className="max-w-5xl mx-auto relative z-10">
@@ -196,8 +196,8 @@ export default function DicePage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-10"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass border-border/40 text-xs text-muted-foreground mb-4">
-            <GameIcon className="w-3.5 h-3.5 text-purple-500 dark:text-purple-400" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-xs text-muted-foreground mb-4">
+            <GameIcon className="w-3.5 h-3.5 text-(--brand-primary-strong)" />
             <span>Interactive Rolling Arena</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-black mb-3 tracking-tight text-foreground">
@@ -211,11 +211,11 @@ export default function DicePage() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Controls Panel */}
           <div className="space-y-6">
-            <div className="glass-card p-6 border-border space-y-6">
+            <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 space-y-6">
               <div>
-                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-4">
+                <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-4">
                   Select Dice Shape
-                </h3>
+                </h2>
                 <div className="grid grid-cols-4 gap-2">
                   {diceTypes.map((d) => (
                     <button
@@ -226,7 +226,7 @@ export default function DicePage() {
                       }}
                       className={`py-3 px-1.5 rounded-xl border text-xs font-bold transition-all flex flex-col items-center gap-2 ${
                         selectedDice === d.sides
-                          ? "bg-purple-500/10 border-purple-500/50 text-purple-600 dark:text-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.15)]"
+                          ? "bg-primary/10 border-primary/50 text-(--brand-primary-strong) shadow-glow-primary-sm"
                           : "border-border bg-card/30 text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                     >
@@ -239,10 +239,10 @@ export default function DicePage() {
 
               <div>
                 <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                  <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
                     Dice Amount
-                  </h3>
-                  <span className="text-sm font-bold text-purple-600 dark:text-purple-400">{count}</span>
+                  </h2>
+                  <span className="text-sm font-bold text-(--brand-primary-strong)">{count}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Button
@@ -262,7 +262,7 @@ export default function DicePage() {
                     value={count}
                     onChange={(e) => setCount(Number(e.target.value))}
                     disabled={rolling}
-                    className="flex-1 accent-purple-500 h-1 bg-muted rounded-lg cursor-pointer"
+                    className="flex-1 accent-primary h-1 bg-muted rounded-lg cursor-pointer"
                   />
                   <Button
                     variant="outline"
@@ -280,11 +280,11 @@ export default function DicePage() {
 
             {/* Live Analytics Dashboard */}
             {stats.totalCount > 0 && (
-              <div className="glass-card p-6 border-border space-y-4">
-                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 mb-2">
-                  <TrendingUp className="w-4 h-4 text-purple-500 dark:text-purple-400" />
+              <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 space-y-4">
+                <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-4 h-4 text-(--brand-primary-strong)" />
                   Rolling Statistics
-                </h3>
+                </h2>
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div className="p-3 rounded-xl bg-card/40 border border-border">
                     <div className="text-xs text-muted-foreground font-medium">Total Rolls</div>
@@ -296,7 +296,7 @@ export default function DicePage() {
                   </div>
                   <div className="p-3 rounded-xl bg-card/40 border border-border">
                     <div className="text-xs text-muted-foreground font-medium">Average</div>
-                    <div className="text-lg font-extrabold mt-1 text-purple-600 dark:text-purple-400">{stats.avg}</div>
+                    <div className="text-lg font-extrabold mt-1 text-(--brand-primary-strong)">{stats.avg}</div>
                   </div>
                 </div>
 
@@ -334,7 +334,7 @@ export default function DicePage() {
 
           {/* Rolling Tray / Arena */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="glass-card p-6 border-border flex flex-col justify-between min-h-[460px] relative overflow-hidden">
+            <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 flex flex-col justify-between min-h-[460px] relative overflow-hidden">
               {/* Velvet background */}
               <div className="absolute inset-0 bg-gradient-to-br from-zinc-100 via-zinc-50/50 to-zinc-100 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 opacity-[0.95] z-0" />
               {/* LED border strip glowing border */}
@@ -346,7 +346,7 @@ export default function DicePage() {
                   Tray
                 </span>
                 {results.length > 0 && !rolling && (
-                  <span role="status" aria-live="polite" className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 text-xs px-3 py-1 font-bold rounded-full">
+                  <span role="status" aria-live="polite" className="bg-primary/10 text-(--brand-primary-strong) border border-primary/20 text-xs px-3 py-1 font-bold rounded-full">
                     Total: {total}
                   </span>
                 )}
@@ -368,7 +368,7 @@ export default function DicePage() {
                       {selectedDice === 6 ? (
                         <D6Canvas value={1} rolling={true} />
                       ) : (
-                        <div className="relative w-16 h-16 flex items-center justify-center text-purple-500 dark:text-purple-400">
+                        <div className="relative w-16 h-16 flex items-center justify-center text-(--brand-primary-strong)">
                           <PolyhedralSvg sides={selectedDice} className="absolute inset-0 w-full h-full animate-pulse" />
                           <Sparkles className="w-5 h-5 animate-spin" />
                         </div>
@@ -420,7 +420,7 @@ export default function DicePage() {
                   size="lg"
                   onClick={roll}
                   disabled={rolling}
-                  className="px-10 py-6 text-sm font-black tracking-wider uppercase bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white border-0 shadow-lg shadow-purple-500/25 flex items-center gap-2 rounded-xl"
+                  className="px-10 py-6 text-sm font-black tracking-wider uppercase bg-gradient-to-r bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95 shadow-lg shadow-glow-primary-sm flex items-center gap-2 rounded-xl"
                 >
                   <Play className="w-4 h-4 fill-white" />
                   Roll {count}d{selectedDice}
@@ -440,10 +440,10 @@ export default function DicePage() {
 
             {/* Elegant History Feed */}
             {history.length > 0 && (
-              <div className="glass-card p-6 border-border">
+              <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6">
                 <div className="flex items-center justify-between w-full mb-4">
                   <span className="text-xs uppercase font-bold tracking-widest text-muted-foreground flex items-center gap-2">
-                    <History className="w-4 h-4 text-purple-500 dark:text-purple-400" />
+                    <History className="w-4 h-4 text-(--brand-primary-strong)" />
                     History Feed
                   </span>
                   <Button
@@ -476,7 +476,7 @@ export default function DicePage() {
                           </span>
                         ))}
                       </div>
-                      <span className="font-extrabold text-purple-600 dark:text-purple-400">
+                      <span className="font-extrabold text-(--brand-primary-strong)">
                         = {h.results.reduce((a, b) => a + b, 0)}
                       </span>
                     </div>

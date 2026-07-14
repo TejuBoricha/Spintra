@@ -81,10 +81,10 @@ export default function TriviaPage() {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-16 px-4">
+    <div className="min-h-screen pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-yellow-400" />
             <span className="text-sm text-muted-foreground">Test your knowledge</span>
           </div>
@@ -95,7 +95,7 @@ export default function TriviaPage() {
               onClick={() => setSoundEnabled(!soundEnabled)}
               title={soundEnabled ? "Sound On" : "Sound Off"}
               aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-              className="p-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+              className="p-1.5 rounded-lg border border-(--border-hairline) bg-(--surface-sunken) hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
             >
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
@@ -115,7 +115,7 @@ export default function TriviaPage() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="glass-card p-8 mb-6"
+                className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-8 mb-6"
               >
                 <p className="text-xl font-semibold mb-6">{question.q}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -129,12 +129,12 @@ export default function TriviaPage() {
                         disabled={selected !== null}
                         className={`p-4 rounded-xl border-2 text-left font-medium transition-all disabled:cursor-default ${
                           selected === null
-                            ? "border-white/10 hover:border-yellow-500/50 hover:bg-yellow-500/10"
+                            ? "border-(--border-hairline) hover:border-yellow-500/50 hover:bg-yellow-500/10"
                             : isCorrect
                             ? "border-emerald-500 bg-emerald-500/20 text-emerald-300"
                             : isPicked
                             ? "border-red-500 bg-red-500/20 text-red-300"
-                            : "border-white/10 opacity-50"
+                            : "border-(--border-hairline) opacity-50"
                         }`}
                       >
                         {opt}

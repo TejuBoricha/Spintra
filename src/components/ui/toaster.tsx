@@ -12,7 +12,7 @@ export function Toaster(props: ToasterProps) {
   return (
     <Sonner
       theme={theme}
-      className="toaster group"
+      className="toaster group !z-[100]"
       toastOptions={{
         classNames: {
           toast:

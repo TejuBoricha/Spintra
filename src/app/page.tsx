@@ -8,13 +8,14 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { checkCanJoinRoom, ROOM_JOIN_ERROR_MESSAGES } from "@/lib/room-join-check";
-import { ArrowRight, Sparkles, Zap, Globe, MessageCircle, Star } from "lucide-react";
+import { ArrowRight, Sparkles, Zap, Globe, MessageCircle, Star, DownloadCloud, Gift, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { getOrCreateRoomUser } from "@/lib/room-user";
 import dynamic from "next/dynamic";
 const HeroThreeScene = dynamic(() => import("@/components/landing/hero-scene").then((m) => m.HeroThreeScene), {
   ssr: false,
-  loading: () => <div className="h-full w-full bg-gradient-to-b from-purple-950/50 to-background" />,
+  loading: () => <div className="h-full w-full bg-gradient-to-b from-(--violet-800)/40 to-background" />,
 });
 import { FeatureCard } from "@/components/landing/feature-card";
 import { AuroraBackground } from "@/components/landing/aurora-bg";
@@ -28,6 +29,8 @@ const heroFeatures = GAMES.map((game) => ({
   gradient: game.color,
   stats: game.stats,
 }));
+
+const socialProofGames = GAMES.filter((g) => !g.createOnly).slice(0, 4);
 
 const perks = [
   { icon: Zap, label: "Instant Rooms", desc: "Create in seconds, join in milliseconds" },
@@ -83,13 +86,6 @@ export default function HomePage() {
   }, [homeCode, router, currentUser.id]);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"],
-  });
-
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
-  const heroScale = useTransform(scrollYProgress, [0, 0.15], [1, 0.95]);
 
   // The WebGL scene's render loop (useFrame) runs continuously for as long
   // as the Canvas is mounted — with no visibility check, it kept animating
@@ -101,6 +97,23 @@ export default function HomePage() {
   const prefersReducedMotion = useReducedMotion();
   const heroSectionRef = useRef<HTMLElement>(null);
   const [isHeroVisible, setIsHeroVisible] = useState(false);
+
+  // Scoped to the hero section's own scroll distance (top of hero hitting
+  // the viewport top, through its bottom hitting the viewport top) rather
+  // than the whole page's scrollYProgress — the hero's content column can
+  // run taller than one viewport (e.g. once "Recently Visited Rooms" is
+  // showing), and tying the fade to a fixed fraction of the *entire* page
+  // (badge through footer) meant opacity could already be near 0 while
+  // the lower half of the hero — Recently Visited Rooms included — was
+  // still the thing actually on screen, making it unreadable rather than
+  // gone. Scoping to the hero itself keeps the fade proportional to how
+  // much of the hero has actually scrolled past.
+  const { scrollYProgress: heroScrollProgress } = useScroll({
+    target: heroSectionRef,
+    offset: ["start start", "end start"],
+  });
+  const heroOpacity = useTransform(heroScrollProgress, [0, 1], [1, 0]);
+  const heroScale = useTransform(heroScrollProgress, [0, 1], [1, 0.95]);
 
   useEffect(() => {
     if (prefersReducedMotion) return;
@@ -121,13 +134,13 @@ export default function HomePage() {
       <AuroraBackground />
 
       {/* Hero Section */}
-      <section ref={heroSectionRef} className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
+      <section ref={heroSectionRef} className="relative min-h-screen flex items-center justify-center overflow-hidden">
         {/* 3D Scene Background — only mounted while visible and motion isn't reduced */}
         <div className="absolute inset-0 z-0">
           {!prefersReducedMotion && isHeroVisible ? (
             <HeroThreeScene />
           ) : (
-            <div className="h-full w-full bg-gradient-to-b from-purple-950/50 to-background" />
+            <div className="h-full w-full bg-gradient-to-b from-(--violet-800)/40 to-background" />
           )}
         </div>
 
@@ -143,7 +156,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.6 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass text-sm mb-8"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm mb-8"
           >
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-muted-foreground">Multiplayer platform for</span>
@@ -155,7 +168,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.8 }}
-            className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.05] mb-6"
+            className="font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[1.05] mb-6"
           >
             Turn Every{" "}
             <span className="gradient-text">Decision</span>
@@ -182,21 +195,14 @@ export default function HomePage() {
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <Link href="/create">
-              <Button
-                size="lg"
-                className="text-lg px-8 py-6 bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white border-0 shadow-xl shadow-purple-500/25 group"
-              >
-                <Sparkles className="w-5 h-5 mr-2 group-hover:animate-spin" />
+              <Button variant="brand" size="lg" className="group text-lg">
+                <Sparkles className="w-5 h-5 group-hover:animate-spin" />
                 Create Room
-                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
             <Link href="/explore">
-              <Button
-                variant="outline"
-                size="lg"
-                className="text-lg px-8 py-6 glass border-border hover:border-foreground/20"
-              >
+              <Button variant="secondary" size="lg" className="text-lg">
                 Explore Games
               </Button>
             </Link>
@@ -207,16 +213,16 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7, duration: 0.6 }}
-            className="max-w-md mx-auto mt-12 p-6 glass-card border border-border rounded-3xl space-y-4"
+            className="max-w-md mx-auto mt-12 p-6 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 space-y-4"
           >
             <label
               htmlFor="home-code-input"
-              className="block text-sm font-bold text-muted-foreground uppercase tracking-widest text-left cursor-pointer"
+              className="block font-body text-sm font-bold text-muted-foreground uppercase tracking-widest text-left cursor-pointer"
             >
               Have a Room Code?
             </label>
             <div className="flex gap-2">
-              <input
+              <Input
                 id="home-code-input"
                 type="text"
                 maxLength={6}
@@ -225,39 +231,27 @@ export default function HomePage() {
                 onKeyDown={(e) => e.key === "Enter" && handleHomeJoin()}
                 placeholder="ENTER CODE"
                 aria-label="Enter room code"
-                className="flex-1 px-4 h-12 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl text-center text-lg font-mono font-bold uppercase tracking-widest text-purple-600 dark:text-purple-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-all"
+                className="flex-1 h-12 text-center text-lg font-mono font-bold uppercase tracking-widest text-(--brand-primary-strong)"
               />
               <Button
                 onClick={handleHomeJoin}
                 disabled={homeCode.length !== 6 || homeJoining}
-                className="h-12 px-6 bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white rounded-2xl font-bold shadow-lg shadow-purple-500/10 disabled:opacity-50"
+                variant="brand"
+                className="h-12"
               >
                 {homeJoining ? "Verifying..." : "Join"}
               </Button>
             </div>
            </motion.div>
 
-           {(!roomHistory || roomHistory.length === 0) && (
-             <div className="mt-8"> 
-                <div className="w-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-b border-amber-500/20 px-4 py-2.5 text-center text-xs sm:text-sm text-amber-300 flex items-center justify-center gap-2 shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 shrink-0 text-amber-500">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <path d="M12 16v-4"></path>
-                    <path d="M12 8h.01"></path>
-                  </svg>
-                  <span>Want to play with friends? <Link href="/create" className="underline font-bold text-amber-500 transition-colors mx-1">Create a Multiplayer Room</Link> to invite them!</span>
-               </div>
-             </div>
-           )}
-
            {roomHistory.length > 0 && (
              <motion.div
                initial={{ opacity: 0, y: 10 }}
                animate={{ opacity: 1, y: 0 }}
                transition={{ delay: 0.8, duration: 0.6 }}
-               className="max-w-md mx-auto mt-6 p-6 glass-card border border-border rounded-3xl space-y-3 text-left"
+               className="max-w-md mx-auto mt-6 p-6 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 space-y-3 text-left"
              >
-               <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+               <h3 className="font-body text-xs font-bold text-muted-foreground uppercase tracking-widest">
                  Recently Visited Rooms
                </h3>
                <div className="flex flex-col gap-2">
@@ -265,32 +259,76 @@ export default function HomePage() {
                    const game = GAMES.find((g) => g.type === room.type);
                    const Icon = game?.icon || Star;
                    return (
-                     <button
-                       key={room.code}
-                       onClick={() => {
-                         setHomeCode(room.code);
-                         router.push(`/room/${room.code}`);
-                       }}
-                       className="flex items-center justify-between p-3 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.08] hover:border-purple-500/30 transition-all group w-full cursor-pointer"
-                     >
-                       <div className="flex items-center gap-3">
-                         <div className={`p-2 rounded-xl bg-gradient-to-br ${game?.color || "from-purple-500 to-cyan-500"} text-white`}>
-                           <Icon className="w-4 h-4" />
-                         </div>
-                         <div>
-                           <p className="text-sm font-bold group-hover:text-purple-300 transition-colors">
-                             {room.name}
-                           </p>
-                           <p className="text-xs text-muted-foreground">
-                             {game?.label || "Multiplayer"} Activity
-                           </p>
-                         </div>
-                       </div>
-                       <span className="font-mono text-xs font-bold text-purple-400 group-hover:text-purple-200 bg-purple-500/10 px-2.5 py-1 rounded-lg">
-                         {room.code}
-                       </span>
-                     </button>
-                   );
+                      <div
+                        key={room.code}
+                        onClick={() => {
+                          setHomeCode(room.code);
+                          router.push(`/room/${room.code}`);
+                        }}
+                        className="flex items-center justify-between p-3 rounded-control border border-(--border-hairline) bg-(--surface-sunken) hover:border-primary/40 transition-all group w-full cursor-pointer relative"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setHomeCode(room.code);
+                            router.push(`/room/${room.code}`);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-control bg-gradient-to-br ${game?.color || "from-(--violet-500) to-(--violet-800)"} text-white`}>
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="font-body text-sm font-bold group-hover:text-(--brand-primary-strong) transition-colors">
+                              {room.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {game?.label || "Multiplayer"} Activity
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-(--brand-primary-strong) group-hover:text-primary bg-primary/10 px-2.5 py-1 rounded-control">
+                            {room.code}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="w-7 h-7 rounded-full opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all md:flex hidden"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const newHistory = roomHistory.filter(h => h.code !== room.code);
+                              setRoomHistory(newHistory);
+                              if (typeof window !== "undefined") {
+                                localStorage.setItem("spintra-room-history", JSON.stringify(newHistory));
+                              }
+                            }}
+                            title="Remove from history"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                          {/* Mobile-always-visible button variant for touch screens */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="w-7 h-7 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all md:hidden"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const newHistory = roomHistory.filter(h => h.code !== room.code);
+                              setRoomHistory(newHistory);
+                              if (typeof window !== "undefined") {
+                                localStorage.setItem("spintra-room-history", JSON.stringify(newHistory));
+                              }
+                            }}
+                            title="Remove from history"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
                  })}
                </div>
              </motion.div>
@@ -305,19 +343,27 @@ export default function HomePage() {
           >
             <div className="flex items-center gap-2">
               <div className="flex -space-x-2">
-                {[...Array(4)].map((_, i) => (
+                {socialProofGames.map((game) => (
                   <div
-                    key={i}
-                    className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500 to-cyan-500 border-2 border-background"
-                  />
+                    key={game.href}
+                    className="w-7 h-7 rounded-full bg-(image:--gradient-avatar) border-2 border-background flex items-center justify-center"
+                  >
+                    <game.icon className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
+                  </div>
                 ))}
               </div>
               <span>{GAMES.filter((g) => !g.createOnly).length} games to play</span>
             </div>
             <div className="hidden sm:block w-px h-4 bg-border" />
-            <span className="hidden sm:inline">No download required</span>
+            <span className="hidden sm:flex items-center gap-1.5">
+              <DownloadCloud className="w-4 h-4 text-(--brand-primary-strong)" />
+              No download required
+            </span>
             <div className="hidden sm:block w-px h-4 bg-border" />
-            <span className="hidden sm:inline">Free to start</span>
+            <span className="hidden sm:flex items-center gap-1.5">
+              <Gift className="w-4 h-4 text-(--brand-primary-strong)" />
+              Free to start
+            </span>
           </motion.div>
 
           {/* Scroll indicator */}
@@ -351,7 +397,7 @@ export default function HomePage() {
                 viewport={{ once: true }}
                 className="text-center"
               >
-                <perk.icon className="w-6 h-6 text-purple-400 mx-auto mb-3" />
+                <perk.icon className="w-6 h-6 text-(--brand-primary-strong) mx-auto mb-3" />
                 <div className="font-semibold text-sm">{perk.label}</div>
                 <div className="text-xs text-muted-foreground mt-1">{perk.desc}</div>
               </motion.div>
@@ -369,7 +415,7 @@ export default function HomePage() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl sm:text-5xl font-bold mb-4">
+            <h2 className="font-display text-3xl sm:text-5xl font-black mb-4">
               Everything you need to{" "}
               <span className="gradient-text">play together</span>
             </h2>
@@ -393,28 +439,25 @@ export default function HomePage() {
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="glass-card p-12 sm:p-16 relative overflow-hidden"
+            className="rounded-2xl border border-(--border-hairline) bg-(--surface-panel) p-12 sm:p-16 relative overflow-hidden shadow-2"
           >
             {/* Inner glow */}
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-cyan-500/10" />
-            <div className="absolute -top-24 -right-24 w-48 h-48 bg-purple-500/20 rounded-full blur-3xl" />
-            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-cyan-500/20 rounded-full blur-3xl" />
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-(--cyan-500)/10" />
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/20 rounded-full blur-3xl" />
+            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-(--cyan-500)/20 rounded-full blur-3xl" />
 
             <div className="relative z-10">
-              <h2 className="text-3xl sm:text-5xl font-bold mb-4">
+              <h2 className="font-display text-3xl sm:text-5xl font-black mb-4">
                 Ready to <span className="gradient-text">Spin</span>?
               </h2>
               <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
                 Create your first room in seconds. No account needed. Just click and play.
               </p>
               <Link href="/create">
-                <Button
-                  size="lg"
-                  className="text-lg px-10 py-6 bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white border-0 shadow-xl shadow-purple-500/25"
-                >
-                  <Sparkles className="w-5 h-5 mr-2" />
+                <Button variant="brand" size="lg" className="text-lg">
+                  <Sparkles className="w-5 h-5" />
                   Create Your First Room
-                  <ArrowRight className="w-5 h-5 ml-2" />
+                  <ArrowRight className="w-5 h-5" />
                 </Button>
               </Link>
             </div>
@@ -427,7 +470,7 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded overflow-hidden flex-shrink-0">
-              <Image src="/icons/logo.png" alt="Spintra" width={24} height={24} className="w-full h-full object-cover" />
+              <Image src="/icons/logo.png" alt="" width={24} height={24} className="w-full h-full object-cover" />
             </div>
             <span className="font-semibold">
               <span className="gradient-text">Spin</span>tra

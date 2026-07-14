@@ -53,7 +53,7 @@ export function NameDrawActivity() {
           </p>
         </motion.div>
       ) : (
-        <div className="glass-card p-12 rounded-3xl text-center border border-border w-full shadow-xl">
+        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-3xl p-12 text-center w-full shadow-xl">
           <p className="mb-4 flex justify-center">
             <Emoji name="admission_tickets" size={48} />
           </p>
@@ -65,7 +65,6 @@ export function NameDrawActivity() {
 
       {isHost && (
         <Button
-          disabled={!!ndWinner}
           onClick={() => {
             const online = participants.filter((p) => p.is_online);
             // Drawing from an empty pool used to broadcast "?" as the

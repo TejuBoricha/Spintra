@@ -19,7 +19,7 @@ export function AggregateIdleScreen({ activityType, isHost }: AggregateIdleScree
       exit={{ opacity: 0, y: -20 }}
       className="flex items-center justify-center min-h-[400px]"
     >
-      <div className="text-center glass-card p-12 max-w-md w-full">
+      <div className="text-center border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-12 max-w-md w-full">
         <p className="mb-4 flex justify-center">
           <Emoji name={activityType === "party" ? "party_popper" : "books"} size={56} />
         </p>

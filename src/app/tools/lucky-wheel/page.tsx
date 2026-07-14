@@ -45,15 +45,15 @@ interface WheelEntry {
 
 // ── Constants ──────────────────────────────────────────────
 const DEFAULT_ENTRIES: WheelEntry[] = [
-  { id: "1", label: "Prize 1", color: "#8b5cf6", weight: 1 },
-  { id: "2", label: "Prize 2", color: "#06b6d4", weight: 1 },
+  { id: "1", label: "Prize 1", color: "#6d3ee0", weight: 1 },
+  { id: "2", label: "Prize 2", color: "#3ddaee", weight: 1 },
   { id: "3", label: "Prize 3", color: "#f59e0b", weight: 1 },
   { id: "4", label: "Free Spin", color: "#10b981", weight: 1 },
   { id: "5", label: "Try Again", color: "#ef4444", weight: 1 },
 ];
 
 const PALETTE = [
-  "#8b5cf6", "#06b6d4", "#f59e0b", "#10b981", "#ef4444",
+  "#6d3ee0", "#3ddaee", "#f59e0b", "#10b981", "#ef4444",
   "#ec4899", "#6366f1", "#14b8a6", "#f97316", "#84cc16",
   "#3b82f6", "#a855f7", "#22c55e", "#e11d48", "#eab308",
   "#0ea5e9", "#d946ef", "#34d399", "#fb923c", "#a3e635",
@@ -65,8 +65,8 @@ const TEMPLATES: { label: string; icon: EmojiName; entries: WheelEntry[] }[] = [
     icon: "wrapped_gift",
     entries: [
       { id: "g1", label: "Grand Prize", color: "#f59e0b", weight: 1 },
-      { id: "g2", label: "Gift Card $50", color: "#8b5cf6", weight: 2 },
-      { id: "g3", label: "T-Shirt", color: "#06b6d4", weight: 3 },
+      { id: "g2", label: "Gift Card $50", color: "#6d3ee0", weight: 2 },
+      { id: "g3", label: "T-Shirt", color: "#3ddaee", weight: 3 },
       { id: "g4", label: "Sticker Pack", color: "#10b981", weight: 4 },
       { id: "g5", label: "Try Again", color: "#ef4444", weight: 5 },
       { id: "g6", label: "Free Spin", color: "#ec4899", weight: 2 },
@@ -77,7 +77,7 @@ const TEMPLATES: { label: string; icon: EmojiName; entries: WheelEntry[] }[] = [
     icon: "pizza",
     entries: [
       { id: "d1", label: "Pizza", color: "#ef4444", weight: 2 },
-      { id: "d2", label: "Sushi", color: "#06b6d4", weight: 2 },
+      { id: "d2", label: "Sushi", color: "#3ddaee", weight: 2 },
       { id: "d3", label: "Burgers", color: "#f59e0b", weight: 2 },
       { id: "d4", label: "Tacos", color: "#10b981", weight: 2 },
       { id: "d5", label: "Indian", color: "#f97316", weight: 1 },
@@ -91,7 +91,7 @@ const TEMPLATES: { label: string; icon: EmojiName; entries: WheelEntry[] }[] = [
       { id: "m1", label: "Action", color: "#ef4444", weight: 1 },
       { id: "m2", label: "Comedy", color: "#f59e0b", weight: 1 },
       { id: "m3", label: "Horror", color: "#6366f1", weight: 1 },
-      { id: "m4", label: "Sci-Fi", color: "#06b6d4", weight: 1 },
+      { id: "m4", label: "Sci-Fi", color: "#3ddaee", weight: 1 },
       { id: "m5", label: "Rom-Com", color: "#ec4899", weight: 1 },
       { id: "m6", label: "Documentary", color: "#10b981", weight: 1 },
     ],
@@ -100,8 +100,8 @@ const TEMPLATES: { label: string; icon: EmojiName; entries: WheelEntry[] }[] = [
     label: "Chores",
     icon: "broom",
     entries: [
-      { id: "c1", label: "Dishes", color: "#06b6d4", weight: 1 },
-      { id: "c2", label: "Vacuum", color: "#8b5cf6", weight: 1 },
+      { id: "c1", label: "Dishes", color: "#3ddaee", weight: 1 },
+      { id: "c2", label: "Vacuum", color: "#6d3ee0", weight: 1 },
       { id: "c3", label: "Trash", color: "#f59e0b", weight: 1 },
       { id: "c4", label: "Laundry", color: "#ec4899", weight: 1 },
       { id: "c5", label: "Lucky! Skip", color: "#10b981", weight: 1 },
@@ -317,11 +317,11 @@ export default function LuckyWheelPage() {
         ctx.save();
         if (diff === 0) {
           ctx.fillStyle = "#ffffff";
-          ctx.shadowColor = "#06b6d4";
+          ctx.shadowColor = "#3ddaee";
           ctx.shadowBlur = 12;
         } else if (diff === 1 || diff === 2) {
-          ctx.fillStyle = "#06b6d4";
-          ctx.shadowColor = "#06b6d4";
+          ctx.fillStyle = "#3ddaee";
+          ctx.shadowColor = "#3ddaee";
           ctx.shadowBlur = 6;
         } else {
           ctx.fillStyle = "#2a2a3c";
@@ -444,7 +444,7 @@ export default function LuckyWheelPage() {
       ctx.beginPath();
       ctx.arc(0, 1, 5, 0, Math.PI * 2);
       ctx.fillStyle = "#22d3ee";
-      ctx.shadowColor = "#06b6d4";
+      ctx.shadowColor = "#3ddaee";
       ctx.shadowBlur = 8;
       ctx.fill();
 
@@ -569,7 +569,7 @@ export default function LuckyWheelPage() {
       <div className="fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-background" />
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-500/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px]" />
       </div>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
@@ -580,7 +580,7 @@ export default function LuckyWheelPage() {
           transition={{ duration: 0.5 }}
           className="text-center mb-10"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass text-sm text-muted-foreground mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm text-muted-foreground mb-6">
             <GameIcon className="w-4 h-4" />
             Wheel Tool
           </div>
@@ -628,7 +628,7 @@ export default function LuckyWheelPage() {
                 onClick={spin}
                 disabled={spinning || entries.length === 0}
                 size="lg"
-                className="h-14 px-10 text-lg font-bold bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 text-white border-0 rounded-full shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className="h-14 px-10 text-lg font-bold bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95 rounded-full shadow-lg shadow-glow-primary-sm hover:shadow-glow-primary-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Play className="w-5 h-5 mr-2" />
                 {spinning ? "Spinning..." : "Spin!"}
@@ -659,11 +659,11 @@ export default function LuckyWheelPage() {
             className="space-y-6"
           >
             {/* Entries card */}
-            <div className="glass-card p-5 space-y-4">
+            <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                   Entries ({entries.length})
-                </h3>
+                </h2>
                 <div className="flex gap-1">
                   <Button
                     variant="ghost"
@@ -694,7 +694,7 @@ export default function LuckyWheelPage() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 10, height: 0 }}
-                      className="flex items-center gap-2 p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.03] group/entry hover:bg-white/[0.04] transition-colors"
+                      className="flex items-center gap-2 p-2.5 rounded-lg bg-(--surface-sunken) border border-(--border-hairline) group/entry hover:bg-muted transition-colors"
                     >
                       {/* Color picker */}
                       <div className="relative">
@@ -702,10 +702,11 @@ export default function LuckyWheelPage() {
                           type="color"
                           value={entry.color}
                           onChange={(e) => updateEntryColor(entry.id, e.target.value)}
+                          aria-label={`Change color for ${entry.label}`}
                           className="absolute inset-0 w-5 h-5 opacity-0 cursor-pointer z-10"
                         />
                         <div
-                          className="w-5 h-5 rounded-full ring-1 ring-white/10 shrink-0 group-focus-within/entry:ring-2 group-focus-within/entry:ring-purple-500"
+                          className="w-5 h-5 rounded-full ring-1 ring-white/10 shrink-0 group-focus-within/entry:ring-2 group-focus-within/entry:ring-primary"
                           style={{ backgroundColor: entry.color }}
                         />
                       </div>
@@ -737,7 +738,7 @@ export default function LuckyWheelPage() {
                           autoFocus
                           maxLength={40}
                           disabled={spinning}
-                          className="flex-1 h-6 px-1.5 text-xs bg-purple-500/10 border border-purple-500/40 text-purple-200 rounded-lg shrink-0 outline-none"
+                          className="flex-1 h-6 px-1.5 text-xs bg-primary/10 border border-primary/40 text-(--brand-primary-strong) rounded-lg shrink-0 outline-none"
                         />
                       ) : (
                         <span
@@ -748,7 +749,7 @@ export default function LuckyWheelPage() {
                             }
                           }}
                           title="Click to edit"
-                          className="flex-1 text-sm truncate cursor-pointer hover:text-purple-300 transition-colors"
+                          className="flex-1 text-sm truncate cursor-pointer hover:text-(--brand-primary-strong) transition-colors"
                         >
                           {entry.label}
                         </span>
@@ -775,7 +776,8 @@ export default function LuckyWheelPage() {
                       {/* Remove */}
                       <button
                         onClick={() => removeEntry(entry.id)}
-                        className="p-1 rounded opacity-0 group-hover/entry:opacity-100 hover:bg-red-500/10 text-red-400 transition-all"
+                        aria-label={`Remove ${entry.label}`}
+                        className="p-1 rounded opacity-0 group-hover/entry:opacity-100 focus-visible:opacity-100 hover:bg-red-500/10 text-red-400 transition-all"
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
@@ -801,6 +803,7 @@ export default function LuckyWheelPage() {
                   variant="outline"
                   onClick={addEntry}
                   disabled={!newEntryLabel.trim()}
+                  aria-label="Add entry"
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </Button>
@@ -808,10 +811,10 @@ export default function LuckyWheelPage() {
             </div>
 
             {/* Templates */}
-            <div className="glass-card p-5 space-y-3">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-5 space-y-3">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                 Templates
-              </h3>
+              </h2>
               <div className="grid gap-2">
                 {TEMPLATES.map((tpl) => (
                   <button
@@ -824,7 +827,7 @@ export default function LuckyWheelPage() {
                       applyTemplate(tpl);
                     }}
                     aria-label={`Apply "${tpl.label}" template (replaces current entries)`}
-                    className="flex items-center gap-3 p-2.5 rounded-lg border border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.04] hover:border-cyan-500/20 transition-all text-left group"
+                    className="flex items-center gap-3 p-2.5 rounded-lg border border-(--border-hairline) bg-(--surface-sunken) hover:bg-muted hover:border-cyan-500/20 transition-all text-left group"
                   >
                     <Emoji name={tpl.icon} size={22} animated={false} />
                     <div className="flex-1 min-w-0">
@@ -842,14 +845,14 @@ export default function LuckyWheelPage() {
             </div>
 
             {/* Sound toggle */}
-            <div className="glass-card p-4 flex items-center justify-between">
+            <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label className="text-sm font-medium">Sound Effects</Label>
                 <p className="text-xs text-muted-foreground">
                   Play tick sounds while spinning
                 </p>
               </div>
-              <Switch checked={soundEnabled} onCheckedChange={setSoundEnabled} />
+              <Switch checked={soundEnabled} onCheckedChange={setSoundEnabled} aria-label="Sound effects" />
             </div>
           </motion.div>
         </div>
@@ -859,19 +862,19 @@ export default function LuckyWheelPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="glass-card p-6 text-center space-y-4"
+          className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 text-center space-y-4"
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-300 text-xs font-medium">
             <Sparkles className="w-3.5 h-3.5" />
             Multiplayer
           </div>
-          <h3 className="text-xl font-bold">Spin together with friends?</h3>
+          <h2 className="text-xl font-bold">Spin together with friends?</h2>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
             Create a room and let everyone watch the wheel spin live.
             Perfect for giveaways, game nights, and decision-making.
           </p>
           <Link href="/create?type=lucky-wheel">
-            <Button className="gap-2 bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 text-white border-0">
+            <Button className="gap-2 bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">
               <Disc3 className="w-4 h-4" />
               Create Room
               <ArrowRight className="w-4 h-4" />

@@ -193,11 +193,11 @@ export default function TeamMakerPage() {
       {/* Background */}
       <div className="fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-background" />
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-500/5 rounded-full blur-[120px]" />
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[120px]" />
         <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-cyan-500/5 rounded-full blur-[120px]" />
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-24 pb-12">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12">
         {/* ── Header ── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -205,7 +205,7 @@ export default function TeamMakerPage() {
           transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass text-sm text-muted-foreground mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm text-muted-foreground mb-6">
             <GameIcon className="w-4 h-4" />
             Team Tool
           </div>
@@ -224,7 +224,7 @@ export default function TeamMakerPage() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1, duration: 0.4 }}
-            className="lg:col-span-2 glass-card p-6 space-y-5"
+            className="lg:col-span-2 border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 space-y-5"
           >
             <div>
               <Label className="text-sm font-medium mb-2 block">
@@ -266,7 +266,7 @@ export default function TeamMakerPage() {
             </div>
 
             {/* Auto-balance toggle */}
-            <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-(--surface-sunken) border border-(--border-hairline)">
               <div className="space-y-0.5">
                 <Label htmlFor="auto-balance-switch" className="text-sm font-medium cursor-pointer">Auto-Balance</Label>
                 <p className="text-xs text-muted-foreground">Distribute names evenly across teams</p>
@@ -275,7 +275,7 @@ export default function TeamMakerPage() {
             </div>
  
             {/* Sound toggle */}
-            <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-(--surface-sunken) border border-(--border-hairline)">
               <div className="space-y-0.5">
                 <Label htmlFor="sound-effects-switch" className="text-sm font-medium cursor-pointer">Sound Effects</Label>
                 <p className="text-xs text-muted-foreground">Play sounds when shuffling or adding players</p>
@@ -287,7 +287,7 @@ export default function TeamMakerPage() {
             <Button
               onClick={generateTeams}
               disabled={parsedNames.length === 0}
-              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 text-white border-0"
+              className="w-full h-12 text-base font-semibold bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95"
             >
               <Shuffle className="w-5 h-5 mr-2" />
               Generate Teams
@@ -300,21 +300,21 @@ export default function TeamMakerPage() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2, duration: 0.4 }}
-            className="glass-card p-6 space-y-4"
+            className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 space-y-4"
           >
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
               Quick Templates
-            </h3>
+            </h2>
             <div className="grid gap-2">
               {TEMPLATES.map((tpl) => (
                 <button
                   key={tpl.label}
                   onClick={() => applyTemplate(tpl)}
-                  className="flex items-center gap-3 p-3 rounded-lg border border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.04] hover:border-purple-500/20 transition-all text-left group"
+                  className="flex items-center gap-3 p-3 rounded-lg border border-(--border-hairline) bg-(--surface-sunken) hover:bg-muted hover:border-primary/20 transition-all text-left group"
                 >
                   <Emoji name={tpl.icon} size={24} animated={false} />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium group-hover:text-purple-300 transition-colors">
+                    <div className="text-sm font-medium group-hover:text-(--brand-primary-strong) transition-colors">
                       {tpl.label}
                     </div>
                     <div className="text-xs text-muted-foreground">
@@ -323,7 +323,7 @@ export default function TeamMakerPage() {
                         : `${tpl.teams} teams × ${tpl.perTeam} players`}
                     </div>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-purple-300 group-hover:translate-x-0.5 transition-all" />
+                  <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-(--brand-primary-strong) group-hover:translate-x-0.5 transition-all" />
                 </button>
               ))}
             </div>
@@ -389,7 +389,7 @@ export default function TeamMakerPage() {
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: teamIdx * 0.08, duration: 0.3 }}
                       className={cn(
-                        "glass-card p-4 space-y-3 ring-1",
+                        "border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 space-y-3 ring-1",
                         color.ring
                       )}
                     >
@@ -411,7 +411,7 @@ export default function TeamMakerPage() {
                         </div>
                         <button
                           onClick={() => toggleCollapse(teamIdx)}
-                          className="p-1 rounded hover:bg-white/[0.04] transition-colors"
+                          className="p-1 rounded hover:bg-muted transition-colors"
                         >
                           {isCollapsed ? (
                             <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -437,7 +437,7 @@ export default function TeamMakerPage() {
                                 initial={{ opacity: 0, x: -10 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: 10, height: 0 }}
-                                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.03] group/member hover:bg-white/[0.04] transition-colors"
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-(--surface-sunken) border border-(--border-hairline) group/member hover:bg-muted transition-colors"
                               >
                                 <span className="flex-1 text-sm truncate">
                                   {member}
@@ -452,7 +452,7 @@ export default function TeamMakerPage() {
                                         key={targetTeam.colorIdx}
                                         onClick={() => moveMember(teamIdx, teams.indexOf(targetTeam), memberIdx)}
                                         className={cn(
-                                          "p-1 rounded text-xs transition-colors hover:bg-white/[0.08]",
+                                          "p-1 rounded text-xs transition-colors hover:bg-muted",
                                           TEAM_COLORS[targetTeam.colorIdx % TEAM_COLORS.length].text
                                         )}
                                         title={`Move to ${targetTeam.name}`}
@@ -511,19 +511,19 @@ export default function TeamMakerPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.6 }}
-                className="glass-card p-6 text-center space-y-4"
+                className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 text-center space-y-4"
               >
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 text-purple-300 text-xs font-medium">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-(--brand-primary-strong) text-xs font-medium">
                   <Sparkles className="w-3.5 h-3.5" />
                   Multiplayer
                 </div>
-                <h3 className="text-xl font-bold">Want to collaborate live?</h3>
+                <h2 className="text-xl font-bold">Want to collaborate live?</h2>
                 <p className="text-sm text-muted-foreground max-w-md mx-auto">
                   Create a room and build teams together with friends in real time.
                   Everyone sees changes instantly.
                 </p>
                 <Link href="/create?type=team-maker">
-                  <Button className="gap-2 bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-600 hover:to-cyan-600 text-white border-0">
+                  <Button className="gap-2 bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">
                     <Users className="w-4 h-4" />
                     Create Room
                     <ArrowRight className="w-4 h-4" />
@@ -541,8 +541,8 @@ export default function TeamMakerPage() {
             animate={{ opacity: 1 }}
             className="text-center py-16"
           >
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-purple-500/10 mb-4">
-              <UserPlus className="w-8 h-8 text-purple-400" />
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
+              <UserPlus className="w-8 h-8 text-(--brand-primary-strong)" />
             </div>
             <p className="text-muted-foreground">
               Add some names above to start building teams.
@@ -557,12 +557,12 @@ export default function TeamMakerPage() {
             animate={{ opacity: 1 }}
             className="text-center py-16"
           >
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-purple-500/10 mb-4">
-              <Shuffle className="w-8 h-8 text-purple-400" />
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
+              <Shuffle className="w-8 h-8 text-(--brand-primary-strong)" />
             </div>
             <p className="text-muted-foreground">
               {parsedNames.length} name{parsedNames.length !== 1 ? "s" : ""} ready.
-              Hit <span className="text-purple-300 font-medium">Generate Teams</span> to
+              Hit <span className="text-(--brand-primary-strong) font-medium">Generate Teams</span> to
               get started!
             </p>
           </motion.div>

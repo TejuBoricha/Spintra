@@ -42,7 +42,7 @@ function Slider({
               key={index}
               index={index}
               aria-label={`Slider value ${index + 1}`}
-              className="relative block w-5 h-5 shrink-0 rounded-full border-2 border-white bg-gradient-to-br from-purple-400 to-cyan-400 ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-4 hover:shadow-lg hover:shadow-purple-500/50 focus-visible:ring-4 focus-visible:outline-hidden active:ring-4 disabled:pointer-events-none disabled:opacity-50"
+              className="relative block w-5 h-5 shrink-0 rounded-full border-2 border-(--border-strong) bg-primary ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-4 hover:shadow-glow-primary-sm focus-visible:ring-4 focus-visible:outline-hidden active:ring-4 disabled:pointer-events-none disabled:opacity-50"
             />
           ))}
         </SliderPrimitive.Track>

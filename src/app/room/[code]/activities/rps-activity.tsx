@@ -135,7 +135,7 @@ export function RpsActivity() {
           animate={{ opacity: 1, scale: 1 }}
           role="status"
           aria-live="polite"
-          className="glass-card p-4 rounded-2xl text-center w-full max-w-xs border border-rose-500/20"
+          className="bg-(--surface-panel) rounded-2xl p-4 text-center w-full max-w-xs border border-rose-500/20"
         >
           {roundResult.outcome === "decided" ? (
             <p className="text-lg font-bold text-emerald-400 flex items-center justify-center gap-2 flex-wrap">
@@ -166,7 +166,7 @@ export function RpsActivity() {
             const config = {
               Rock: { border: "hover:border-rose-500/50 hover:bg-rose-500/10", text: "text-rose-400" },
               Paper: { border: "hover:border-cyan-500/50 hover:bg-cyan-500/10", text: "text-cyan-400" },
-              Scissors: { border: "hover:border-purple-500/50 hover:bg-purple-500/10", text: "text-purple-400" },
+              Scissors: { border: "hover:border-(--violet-500)/50 hover:bg-(--violet-500)/10", text: "text-(--violet-400)" },
             }[choice];
 
             return (
@@ -191,7 +191,7 @@ export function RpsActivity() {
           })}
         </div>
       ) : (
-        <div className="glass-card p-6 rounded-2xl text-center w-full max-w-xs border border-border shadow-xl bg-gradient-to-br from-white/[0.01] to-white/[0.03]">
+        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 text-center w-full max-w-xs shadow-xl">
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Your pick</p>
           <div className="flex flex-col items-center gap-2">
             <Emoji
@@ -220,7 +220,7 @@ export function RpsActivity() {
             className="flex items-center gap-3 px-4 py-3 bg-muted/30 border border-border rounded-xl shadow-sm"
           >
             <span className="font-semibold text-sm text-muted-foreground">{r.username}</span>
-            <span className="text-[10px] text-purple-400/80 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/10">
+            <span className="text-[10px] text-(--brand-primary-strong)/80 bg-primary/10 px-2 py-0.5 rounded-full border border-primary/10">
               Locked In
             </span>
             <span className="ml-auto flex items-center gap-2">

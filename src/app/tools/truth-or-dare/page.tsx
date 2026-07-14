@@ -43,10 +43,10 @@ export default function TruthOrDarePage() {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-16 px-4">
+    <div className="min-h-screen pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-pink-400" />
             <span className="text-sm text-muted-foreground">Spicy questions</span>
           </div>
@@ -62,7 +62,7 @@ export default function TruthOrDarePage() {
               onClick={() => { setCategory(c); setMode(null); setCurrent(null); setUsed(new Set()); }}
               aria-pressed={category.name === c.name}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                category.name === c.name ? "bg-purple-600 text-white" : "glass-card hover:border-white/10"
+                category.name === c.name ? "bg-primary text-primary-foreground" : "border border-(--border-hairline) bg-(--surface-panel) rounded-2xl"
               }`}
             >
               <Emoji name={c.icon} size={18} animated={false} className="mr-1" /> {c.name}
@@ -78,7 +78,7 @@ export default function TruthOrDarePage() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: -20 }}
-              className="glass-card p-8 mb-8 max-w-lg mx-auto"
+              className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-8 mb-8 max-w-lg mx-auto"
             >
               <Badge className={`mb-4 ${mode === "truth" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"}`}>
                 {mode === "truth" ? "Truth" : "Dare"}
@@ -123,7 +123,7 @@ export default function TruthOrDarePage() {
             onClick={() => setSoundEnabled(!soundEnabled)}
             title={soundEnabled ? "Sound On" : "Sound Off"}
             aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-            className="h-10 w-10 border-white/10"
+            className="h-10 w-10 border-(--border-hairline)"
           >
             {soundEnabled ? (
               <Volume2 className="w-4 h-4" />

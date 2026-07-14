@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { Swords, Trophy, Crown, RotateCcw, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ChipGroup } from "@/components/ui/chip-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import type { TournamentType } from "@/lib/types";
@@ -20,6 +20,7 @@ import {
   type MatchRef,
   generateBracketForType,
   recordMatchResult,
+  calculateStandings,
 } from "@/lib/tournament-engine";
 
 function MatchCard({
@@ -29,7 +30,7 @@ function MatchCard({
   match: BracketMatch;
   onClick?: () => void;
 }) {
-  const isBye = match.player1 === "BYE" || match.player2 === "BYE";
+  const isBye = match.player1 === "__BYE__" || match.player2 === "__BYE__";
   // A match is only interactable when both real players are present and the
   // host provided a click handler. Matches with null/TBD slots must not be
   // editable — saving scores on them corrupts subsequent bracket advancement.
@@ -109,7 +110,10 @@ function ScoreEditor({
               type="number"
               min={0}
               value={score1}
-              onChange={(e) => setScore1(parseInt(e.target.value) || 0)}
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                setScore1(!isNaN(val) && val >= 0 ? val : 0);
+              }}
               className="w-20 mx-auto text-center text-lg font-bold"
             />
           </div>
@@ -120,13 +124,16 @@ function ScoreEditor({
               type="number"
               min={0}
               value={score2}
-              onChange={(e) => setScore2(parseInt(e.target.value) || 0)}
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                setScore2(!isNaN(val) && val >= 0 ? val : 0);
+              }}
               className="w-20 mx-auto text-center text-lg font-bold"
             />
           </div>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" onClick={onClose} className="flex-1 glass border-border">
+          <Button variant="outline" onClick={onClose} className="flex-1">
             Cancel
           </Button>
           <Button
@@ -174,15 +181,47 @@ function BracketColumns({
 }
 
 export function TournamentActivity() {
-  const { isHost, sendActivityEvent, registerEventListener, soundEnabled } = useRoomActivity();
+  const { isHost, hostUserId, currentUser, sendActivityEvent, registerEventListener, soundEnabled } = useRoomActivity();
   const { participants } = useRoomParticipants();
   const [tournamentType, setTournamentType] = useState<TournamentType>("single-elimination");
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [editingMatch, setEditingMatch] = useState<MatchRef | null>(null);
 
+  // Read by the listener below without being an effect dependency — a
+  // frequently-changing dependency (hostUserId changes on every host
+  // migration) would re-run the effect, which calls registerEventListener
+  // again, which REPLAYS the entire persisted event log again, corrupting
+  // state. Every other activity in this codebase follows this same
+  // ref-mirror pattern for exactly this reason (see bingo-activity.tsx).
+  const hostUserIdRef = useRef(hostUserId);
   useEffect(() => {
-    return registerEventListener((event) => {
+    hostUserIdRef.current = hostUserId;
+  }, [hostUserId]);
+
+  useEffect(() => {
+    // registerEventListener replays the full persisted log synchronously,
+    // in this same call, before returning — so by the time it returns,
+    // every historical event has already been dispatched to the callback
+    // below. Only events arriving AFTER that point are genuinely live.
+    // This distinction matters: a past tournament_update was authored by
+    // whoever was host AT THE TIME (possibly a since-replaced host), and
+    // rejecting it against the CURRENT host would incorrectly discard
+    // legitimate history for any room that's ever had more than one host.
+    let hasReplayed = false;
+
+    const unregister = registerEventListener((event) => {
       if (event.kind === "tournament_update") {
+        // Only live events are checked against the current host — see the
+        // comment above. Not a full security boundary (senderId is a
+        // self-reported claim a determined client could forge to match the
+        // real host's id) — the actual, unforgeable enforcement is the DB
+        // trigger on room_activity_state (migration 0060) checking the
+        // real auth.uid() at persist time. This check exists to stop a
+        // stale/demoted host's broadcast from clobbering the live view
+        // during the brief propagation window of a legitimate transition.
+        if (hasReplayed && event.senderId !== hostUserIdRef.current) {
+          return;
+        }
         setTournament(event.tournament);
         if (event.outcome === "champion") {
           fireConfetti();
@@ -192,11 +231,16 @@ export function TournamentActivity() {
         } else if (event.outcome === "grand-final-set") {
           toast.success("Grand Final is set!", { id: "grand-final-set" });
         }
+      } else if (event.kind === "tournament_format_selected") {
+        setTournamentType(event.format);
       } else if (event.kind === "activity_reset") {
         setTournament(null);
         setEditingMatch(null);
       }
     });
+
+    hasReplayed = true;
+    return unregister;
   }, [registerEventListener]);
 
   const generateBracket = useCallback(() => {
@@ -206,9 +250,13 @@ export function TournamentActivity() {
       return;
     }
 
-    const { rounds, losersBracket } = generateBracketForType(tournamentType, names, []);
+    // type may differ from tournamentType (silently downgraded for <3
+    // players) — must use the returned value, not the original UI
+    // selection, or recordMatchResult takes the wrong branch against
+    // bracket data shaped for a different format (see tournament-engine.ts).
+    const { type, rounds, losersBracket } = generateBracketForType(tournamentType, names, []);
     const next: Tournament = {
-      type: tournamentType,
+      type,
       rounds,
       participants: names,
       seeds: [],
@@ -216,8 +264,8 @@ export function TournamentActivity() {
       winner: null,
       losersBracket,
     };
-    sendActivityEvent({ kind: "tournament_update", tournament: next });
-  }, [participants, tournamentType, sendActivityEvent]);
+    sendActivityEvent({ kind: "tournament_update", tournament: next, senderId: currentUser.id });
+  }, [participants, tournamentType, sendActivityEvent, currentUser.id]);
 
   // Returns true if the match is safe to edit; shows a toast and returns false otherwise.
   const guardMatchEdit = useCallback(
@@ -231,10 +279,25 @@ export function TournamentActivity() {
         bracketKey !== "grandFinal" &&
         (tournament?.type === "single-elimination" || tournament?.type === "double-elimination")
       ) {
-        toast.error(
-          "This match is already completed. Re-editing would corrupt the bracket because the winner has already advanced."
-        );
-        return false;
+        const winnerNextMatch = bracketKey === "rounds"
+          ? tournament.rounds[match.round]?.find((m: BracketMatch) => m.position === Math.floor(match.position / 2))
+          : tournament.losersBracket?.[match.round]?.find((m: BracketMatch) => m.position === (match.round % 2 !== 0 ? Math.floor(match.position / 2) : match.position));
+        
+        if (winnerNextMatch && winnerNextMatch.status === "completed") {
+          toast.error("This match's winner has already played their next match. Re-editing would corrupt the bracket.");
+          return false;
+        }
+
+        if (tournament.type === "double-elimination" && bracketKey === "rounds" && tournament.losersBracket) {
+           const rw = match.round;
+           const targetRound = rw === 1 ? 0 : 2 * rw - 3;
+           const targetPos = rw === 1 ? Math.floor(match.position / 2) : match.position;
+           const loserNextMatch = tournament.losersBracket[targetRound]?.find((m: BracketMatch) => m.position === targetPos);
+           if (loserNextMatch && loserNextMatch.status === "completed") {
+             toast.error("This match's loser has already played their next match in the losers bracket. Re-editing would corrupt the bracket.");
+             return false;
+           }
+        }
       }
       return true;
     },
@@ -244,6 +307,10 @@ export function TournamentActivity() {
   const handleScoreSave = useCallback(
     (s1: number, s2: number) => {
       if (!editingMatch || !tournament) return;
+      if (s1 < 0 || s2 < 0) {
+        toast.error("Scores cannot be negative.");
+        return;
+      }
 
       const outcome = recordMatchResult(tournament, editingMatch, s1, s2);
       setEditingMatch(null);
@@ -263,9 +330,10 @@ export function TournamentActivity() {
         kind: "tournament_update",
         tournament: outcome.tournament,
         outcome: outcome.kind === "advanced" ? "advanced" : outcome.kind,
+        senderId: currentUser.id,
       });
     },
-    [editingMatch, tournament, soundEnabled, sendActivityEvent]
+    [editingMatch, tournament, soundEnabled, sendActivityEvent, currentUser.id]
   );
 
   return (
@@ -281,21 +349,28 @@ export function TournamentActivity() {
       </h2>
 
       {!tournament && isHost && (
-        <div className="glass-card p-4 space-y-3">
+        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 space-y-3">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Format</p>
-          <Tabs value={tournamentType} onValueChange={(v) => setTournamentType(v as TournamentType)}>
-            <TabsList className="w-full">
-              <TabsTrigger value="single-elimination" className="flex-1 text-xs">Single Elim</TabsTrigger>
-              <TabsTrigger value="double-elimination" className="flex-1 text-xs">Double Elim</TabsTrigger>
-              <TabsTrigger value="round-robin" className="flex-1 text-xs">Round Robin</TabsTrigger>
-              <TabsTrigger value="swiss" className="flex-1 text-xs">Swiss</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <ChipGroup
+            ariaLabel="Tournament format"
+            value={tournamentType}
+            onChange={(v) => {
+              const format = v as TournamentType;
+              setTournamentType(format);
+              sendActivityEvent({ kind: "tournament_format_selected", format });
+            }}
+            options={[
+              { value: "single-elimination", label: "Single Elim" },
+              { value: "double-elimination", label: "Double Elim" },
+              { value: "round-robin", label: "Round Robin" },
+              { value: "swiss", label: "Swiss" },
+            ]}
+          />
         </div>
       )}
 
       {!tournament ? (
-        <div className="glass-card p-12 rounded-3xl text-center w-full border border-border shadow-xl">
+        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-3xl p-12 text-center w-full shadow-xl">
           <p className="mb-4 flex justify-center">
             <Emoji name="trophy" size={48} />
           </p>
@@ -316,7 +391,7 @@ export function TournamentActivity() {
             />
           )}
 
-          <div className="glass-card p-4 overflow-x-auto">
+          <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 overflow-x-auto">
             {tournament.type === "single-elimination" && (
               <BracketColumns
                 rounds={tournament.rounds}
@@ -410,7 +485,7 @@ export function TournamentActivity() {
                           key={match.id}
                           match={match}
                           onClick={
-                            isHost && match.player1 !== "BYE" && match.player2 !== "BYE"
+                            isHost && match.player1 !== "__BYE__" && match.player2 !== "__BYE__"
                               ? () => {
                                   if (!guardMatchEdit(match, "rounds")) return;
                                   setEditingMatch({ match, roundIdx: ri, position: mi, bracketKey: "rounds" });
@@ -422,6 +497,44 @@ export function TournamentActivity() {
                     </div>
                   </div>
                 ))}
+                
+                {(() => {
+                  const standings = calculateStandings(tournament.rounds, tournament.participants);
+                  return (
+                    <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 mt-6">
+                      <h3 className="text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground">Standings</h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                          <thead>
+                            <tr className="border-b border-(--border-hairline)">
+                              <th className="pb-2 font-medium">Rank</th>
+                              <th className="pb-2 font-medium">Player</th>
+                              <th className="pb-2 font-medium text-center">W</th>
+                              <th className="pb-2 font-medium text-center">L</th>
+                              <th className="pb-2 font-medium text-center">D</th>
+                              <th className="pb-2 font-medium text-right text-amber-500">Pts</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {standings.map((row, idx) => (
+                              <tr key={row.player} className="border-b border-(--border-hairline) last:border-0">
+                                <td className="py-2 font-mono text-muted-foreground">{idx + 1}</td>
+                                <td className="py-2 font-semibold flex items-center gap-2">
+                                  {idx === 0 && row.points > 0 ? <Trophy className="w-4 h-4 text-amber-400" /> : null}
+                                  {row.player}
+                                </td>
+                                <td className="py-2 text-center text-emerald-500">{row.wins}</td>
+                                <td className="py-2 text-center text-red-500">{row.losses}</td>
+                                <td className="py-2 text-center text-muted-foreground">{row.draws}</td>
+                                <td className="py-2 text-right font-bold text-amber-500">{row.points}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -430,7 +543,7 @@ export function TournamentActivity() {
             <Button
               variant="outline"
               onClick={() => sendActivityEvent({ kind: "activity_reset" })}
-              className="w-full glass border-border"
+              className="w-full"
             >
               <RotateCcw className="w-4 h-4 mr-2" /> Start a New Bracket
             </Button>
