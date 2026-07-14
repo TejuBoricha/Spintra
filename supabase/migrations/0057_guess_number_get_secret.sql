@@ -5,7 +5,7 @@ returns smallint
 language plpgsql
 security definer
 set search_path = public
-as $body
+as $body$
 declare
   v_secret smallint;
 begin
@@ -16,10 +16,10 @@ begin
   end if;
 
   select secret into v_secret from public.guess_number_secrets where room_code = p_room_code;
-  
+
   return v_secret;
 end;
-$body;
+$body$;
 
 -- Revoke public execution on all guess number RPCs as best practice
 revoke execute on function public.get_guess_number_secret(text) from public;
