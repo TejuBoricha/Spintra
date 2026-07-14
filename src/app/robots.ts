@@ -8,6 +8,6 @@ export default function robots(): MetadataRoute.Robots {
       // Rooms are private, ephemeral, and code-gated; /api has no crawlable content.
       disallow: ["/room/", "/api/"],
     },
-    sitemap: "https://spintra.com/sitemap.xml",
+    sitemap: "https://spintra.io/sitemap.xml",
   };
 }

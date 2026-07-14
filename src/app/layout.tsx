@@ -29,7 +29,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://spintra.com"),
+  metadataBase: new URL("https://spintra.io"),
   title: "Spintra — Decisions. Games. Teams. Together.",
   description:
     "Create rooms, invite friends, spin wheels, draw names, build teams, run tournaments, and play together in real time.",
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Spintra — Decisions. Games. Teams. Together.",
     description: "Turn every decision into an experience.",
-    url: "https://spintra.com",
+    url: "https://spintra.io",
     siteName: "Spintra",
     images: [{ url: "/og-image.png" }],
     locale: "en_US",

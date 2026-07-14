@@ -345,7 +345,7 @@ export default function TournamentPage() {
     }
 
     lines.push("");
-    lines.push("Powered by Spintra — spintra.com");
+    lines.push("Powered by Spintra — spintra.io");
 
     try {
       await navigator.clipboard.writeText(lines.join("\n"));
