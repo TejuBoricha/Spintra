@@ -839,7 +839,7 @@ test('moderation dashboard: kick, ban list, unban, and rejoin all work end to en
     await guestPage.waitForURL(/\/explore/, { timeout: 15000 });
 
     // Bans tab shows the ban; History shows the kick_ban entry.
-    await page.getByRole('tab', { name: /bans/i }).click();
+    await page.getByRole('tab', { name: /banned/i }).click();
     await expect(page.getByRole('button', { name: 'Unban' })).toBeVisible({ timeout: 15000 });
     await page.getByRole('tab', { name: /history/i }).click();
     await expect(page.getByText(/Removed and banned/i)).toBeVisible({ timeout: 10000 });
@@ -850,7 +850,7 @@ test('moderation dashboard: kick, ban list, unban, and rejoin all work end to en
     await expect(guestPage.getByRole('heading', { name: /you've been removed/i })).toBeVisible({ timeout: 15000 });
 
     // Unban, then confirm the Bans tab empties and History gains the unban entry.
-    await page.getByRole('tab', { name: /bans/i }).click();
+    await page.getByRole('tab', { name: /banned/i }).click();
     await page.getByRole('button', { name: 'Unban' }).click();
     await expect(page.getByRole('dialog').filter({ hasText: 'Unban this participant?' })).toBeVisible({ timeout: 5000 });
     await page.getByRole('button', { name: 'Unban', exact: true }).click();
