@@ -588,7 +588,7 @@ export default function LuckyWheelPage() {
             <span className="gradient-text">Lucky Wheel</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Spin to decide — customize entries, weights, and colors.
+            A free online spinner wheel — spin to decide, with custom entries, weights, and colors.
           </p>
         </motion.div>
 

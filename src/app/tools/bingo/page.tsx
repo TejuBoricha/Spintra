@@ -80,7 +80,7 @@ export default function BingoPage() {
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Bingo</h1>
           <div className="flex items-center justify-center gap-3 mb-8">
-            <p className="text-muted-foreground">Call numbers and mark your card.</p>
+            <p className="text-muted-foreground">Play free online bingo — call numbers, mark your card, and shout bingo first.</p>
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
               title={soundEnabled ? "Sound On" : "Sound Off"}

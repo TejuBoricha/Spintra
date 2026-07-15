@@ -51,7 +51,7 @@ export default function TruthOrDarePage() {
             <span className="text-sm text-muted-foreground">Spicy questions</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Truth or Dare</h1>
-          <p className="text-muted-foreground mb-8">Spice up any gathering.</p>
+          <p className="text-muted-foreground mb-8">Play Truth or Dare online — draw truths and dares to spice up any gathering.</p>
         </motion.div>
 
         {/* Category Selection */}

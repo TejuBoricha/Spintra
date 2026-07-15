@@ -90,7 +90,7 @@ export default function TriviaPage() {
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Trivia</h1>
           <div className="flex items-center justify-center gap-3 mb-8">
-            <p className="text-muted-foreground">How much do you really know?</p>
+            <p className="text-muted-foreground">Play free online trivia — how much do you really know?</p>
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
               title={soundEnabled ? "Sound On" : "Sound Off"}

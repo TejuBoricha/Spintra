@@ -61,7 +61,7 @@ export default function CoinFlipPage() {
             <span className="text-sm text-muted-foreground">50/50 chance</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Coin Flip</h1>
-          <p className="text-muted-foreground mb-12">Heads or tails — let fate decide.</p>
+          <p className="text-muted-foreground mb-12">Flip a coin online — heads or tails to settle any debate.</p>
         </motion.div>
 
         {/* Coin Display */}

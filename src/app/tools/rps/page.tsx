@@ -68,7 +68,7 @@ export default function RPSPage() {
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Rock Paper Scissors</h1>
           <div className="flex items-center justify-center gap-3 mb-8">
-            <p className="text-muted-foreground">Challenge the AI — classic showdown.</p>
+            <p className="text-muted-foreground">Play Rock Paper Scissors online — challenge the AI to a classic showdown.</p>
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
               title={soundEnabled ? "Sound On" : "Sound Off"}

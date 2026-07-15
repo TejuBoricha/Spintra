@@ -295,8 +295,8 @@ export default function NameDrawPage() {
             Name <span className="gradient-text">Draw</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-lg mx-auto">
-            Pick a random winner with style. Perfect for giveaways, raffles, and
-            fair decisions.
+            A free random name picker — pick a random winner for giveaways, raffles,
+            and fair draws.
           </p>
         </motion.div>
 

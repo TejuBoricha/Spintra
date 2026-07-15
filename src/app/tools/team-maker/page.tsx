@@ -213,7 +213,7 @@ export default function TeamMakerPage() {
             <span className="gradient-text">Team Maker</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Build balanced teams in seconds — shuffle, customize, and export with ease.
+            A free random team generator — build balanced teams in seconds, then shuffle, customize, and export.
           </p>
         </motion.div>
 

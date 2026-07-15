@@ -546,8 +546,8 @@ export default function TournamentPage() {
             <span className="gradient-text">Generator</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-lg mx-auto">
-            Create professional brackets for any tournament format. Single elim,
-            double elim, round robin, or Swiss.
+            A free tournament bracket generator — build professional brackets for any
+            format: single elim, double elim, round robin, or Swiss.
           </p>
         </motion.div>
 

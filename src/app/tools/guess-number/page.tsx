@@ -77,7 +77,7 @@ export default function GuessNumberPage() {
             <span className="text-sm text-muted-foreground">Pick a mode to start</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Guess The Number</h1>
-          <p className="text-muted-foreground mb-8">Can you find the secret number?</p>
+          <p className="text-muted-foreground mb-8">Play the number guessing game — can you find the secret number in the fewest guesses?</p>
         </motion.div>
 
         {/* Mode Selection */}

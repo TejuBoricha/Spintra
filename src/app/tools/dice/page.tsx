@@ -204,7 +204,7 @@ export default function DicePage() {
             DICE <span className="gradient-text">ROLLER</span>
           </h1>
           <p className="text-muted-foreground text-sm max-w-md mx-auto">
-            Choose polyhedral shapes, adjust counts, and roll inside the neon-lit velvet tray.
+            Roll dice online — choose polyhedral shapes, adjust counts, and roll inside the neon-lit velvet tray.
           </p>
         </motion.div>
 

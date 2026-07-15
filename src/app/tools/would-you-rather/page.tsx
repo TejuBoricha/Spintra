@@ -73,7 +73,7 @@ export default function WouldYouRatherPage() {
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Would You Rather</h1>
           <div className="flex items-center justify-center gap-3 mb-8">
-            <p className="text-muted-foreground">Pick your side — no middle ground.</p>
+            <p className="text-muted-foreground">Play Would You Rather online — pick your side, no middle ground.</p>
             <Button
               variant="ghost"
               size="icon-sm"

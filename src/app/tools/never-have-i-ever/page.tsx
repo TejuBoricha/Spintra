@@ -82,7 +82,7 @@ export default function NeverHaveIEverPage() {
             <span className="text-sm text-muted-foreground">Group confessions</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Never Have I Ever</h1>
-          <p className="text-muted-foreground mb-4">Put a finger down if you have...</p>
+          <p className="text-muted-foreground mb-4">Play Never Have I Ever online — put a finger down if you have...</p>
         </motion.div>
 
         {/* Score */}
