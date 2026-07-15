@@ -48,10 +48,13 @@ export default function PrivacyPolicyPage() {
                 notice. We do not use advertising cookies.
               </li>
               <li>
-                <strong>Analytics cookies</strong> — if enabled, Google Analytics sets cookies
-                (e.g. <code>_ga</code>, <code>_gid</code>) to measure aggregate site traffic and
-                usage (pages visited, approximate location, device/browser type). We do not use
-                this data for advertising or to identify you individually. See{" "}
+                <strong>Analytics cookies</strong> — <strong>only with your consent</strong>,
+                Google Analytics sets cookies (e.g. <code>_ga</code>, <code>{"_ga_<id>"}</code>)
+                to measure aggregate site traffic and usage (pages visited, approximate location,
+                device/browser type). These are off by default: no analytics cookies are set and
+                no data is sent to Google until you choose <strong>Accept</strong> in our cookie
+                banner, and you can choose <strong>Decline</strong> to keep them off. We do not
+                use this data for advertising or to identify you individually. See{" "}
                 <a
                   href="https://policies.google.com/privacy"
                   target="_blank"

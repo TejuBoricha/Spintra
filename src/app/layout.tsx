@@ -87,11 +87,23 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
-        {/* Google Analytics (GA4) — no-ops entirely without
-            NEXT_PUBLIC_GA_MEASUREMENT_ID set, same optional-integration
-            pattern as Sentry (src/instrumentation-client.ts). The
-            googletagmanager.com script-src allowlist in next.config.ts is
-            itself gated on this same env var. */}
+        {/* Google Analytics (GA4) with Google Consent Mode v2 — no-ops
+            entirely without NEXT_PUBLIC_GA_MEASUREMENT_ID set, same
+            optional-integration pattern as Sentry (src/instrumentation-client.ts).
+            The googletagmanager.com script-src allowlist in next.config.ts is
+            itself gated on this same env var.
+
+            Consent defaults to DENIED for all storage before config runs, so
+            no analytics cookies are set and no identifiable data is sent until
+            the visitor clicks Accept in the cookie banner
+            (src/components/cookie-consent-banner.tsx), which calls
+            gtag('consent','update',...). A previously stored grant is
+            re-applied here on load so returning visitors are tracked from the
+            first pageview. gtag() queues onto dataLayer, so ordering across
+            these two afterInteractive scripts doesn't matter — gtag.js
+            processes the queue (consent default first) when it loads. The
+            'spintra-cookie-consent' key must match CONSENT_STORAGE_KEY in the
+            banner. */}
         {gaMeasurementId && (
           <>
             <Script
@@ -102,6 +114,17 @@ export default function RootLayout({
               {`
                 window.dataLayer = window.dataLayer || [];
                 function gtag(){dataLayer.push(arguments);}
+                gtag('consent', 'default', {
+                  ad_storage: 'denied',
+                  ad_user_data: 'denied',
+                  ad_personalization: 'denied',
+                  analytics_storage: 'denied',
+                });
+                try {
+                  if (window.localStorage.getItem('spintra-cookie-consent') === 'granted') {
+                    gtag('consent', 'update', { analytics_storage: 'granted' });
+                  }
+                } catch (e) {}
                 gtag('js', new Date());
                 gtag('config', '${gaMeasurementId}');
               `}
