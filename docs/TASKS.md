@@ -342,6 +342,7 @@ Title, completion date, and a pointer to the full implementation detail in `CHAN
 
 | Title | Completed | CHANGELOG_AI.md Session |
 |---|---|---|
+| Google Analytics (GA4) Integration | 2026-07-15 | Session 62 |
 | Room Auto-Expiry (pg_cron scheduling) + Migration 0009 Live-Recovery + Full Migration Audit + Spectator Role Cleanup | 2026-07-05 | Session 40 |
 | Platform QA Audit: Live Trending Feed (auth init fix), Privacy Bypass (is_public filter), Explore Filters (real data), Banned-User Toast Flow, Fake Homepage Stats, Tournament Integrity (ties/TBD/re-edit), Party vs Classroom Distinction (classroomSafe), CRLF drift-check fix | 2026-07-05 | Session 39 |
 | Pre-Launch Audit Backlog: RLS Tightening, DB-Level Lock Enforcement, Broken Migrations Discovered & Fixed, Message Reports UI, Presence Reconciliation, Dead Code, UX/A11y Fixes, React Query Removal | 2026-07-05 | Session 38 |

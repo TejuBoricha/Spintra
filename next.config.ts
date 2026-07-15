@@ -54,6 +54,16 @@ if (!process.env.SKIP_ENV_VALIDATION) {
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const isLoopbackSupabase = /^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(supabaseUrl);
 
+// Google Analytics (gtag.js) is loaded from a remote googletagmanager.com
+// script (see layout.tsx), unlike Sentry which ships bundled in-app and
+// needs no script-src entry. Gated on the same env var that gates loading
+// it at all, so a deployment without NEXT_PUBLIC_GA_MEASUREMENT_ID set gets
+// a CSP byte-for-byte identical to before this integration existed.
+// connect-src needs no change: it already allows any https: origin, which
+// covers gtag.js's own calls to google-analytics.com/analytics.google.com.
+const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "";
+const gaScriptSrc = gaMeasurementId ? " https://www.googletagmanager.com" : "";
+
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -64,7 +74,9 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      process.env.NODE_ENV === "production" ? "script-src 'self' 'unsafe-inline'" : "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      process.env.NODE_ENV === "production"
+        ? `script-src 'self' 'unsafe-inline'${gaScriptSrc}`
+        : `script-src 'self' 'unsafe-inline' 'unsafe-eval'${gaScriptSrc}`,
       // style-src keeps 'unsafe-inline' deliberately — Framer Motion and
       // Radix primitives set inline style="" attributes directly via JS at
       // runtime (not <style> tags), which CSP nonces cannot cover (nonces

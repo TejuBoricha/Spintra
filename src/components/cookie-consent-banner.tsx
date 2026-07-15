@@ -36,8 +36,8 @@ export function CookieConsentBanner() {
             <Cookie className="w-5 h-5 text-(--brand-secondary) shrink-0 mt-0.5" />
             <div className="space-y-3 font-body text-sm">
               <p className="text-foreground/90 leading-relaxed">
-                Spintra uses local storage to remember your session and preferences while you
-                play — no advertising or third-party tracking. See our{" "}
+                Spintra uses local storage to remember your session and preferences, and
+                Google Analytics to understand overall site usage — no advertising. See our{" "}
                 <Link href="/legal/privacy" className="text-(--text-link) underline hover:text-foreground">
                   Privacy Policy
                 </Link>{" "}

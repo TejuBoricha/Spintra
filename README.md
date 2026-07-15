@@ -105,6 +105,7 @@ built on top of it.
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | For real multiplayer | Supabase anon public key |
 | `NEXT_PUBLIC_SENTRY_DSN` | Optional | Error monitoring. Without it, Sentry never initializes (see `sentry.*.config.ts`) — the app runs exactly the same |
 | `SENTRY_ORG` / `SENTRY_PROJECT` / `SENTRY_AUTH_TOKEN` | Optional | Only needed to upload source maps for readable production stack traces |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Optional | Google Analytics (GA4). Without it, gtag.js never loads (see `src/app/layout.tsx`) and the CSP stays unchanged (see `next.config.ts`) |
 
 ## Scripts
 

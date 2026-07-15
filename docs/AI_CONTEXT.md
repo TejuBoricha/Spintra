@@ -4,7 +4,7 @@
 > DB schema live in `ARCHITECTURE.md`. Session-to-session handoff lives in `HANDOFF.md`. Backlog
 > and roadmap live in `TASKS.md`. Do not duplicate those here — link to them instead.
 > Always update this file after every significant milestone.
-> Last updated: 2026-07-14 IST
+> Last updated: 2026-07-15 IST
 
 ---
 
@@ -41,6 +41,8 @@ Same session, pivoted to production readiness: `deploy.yml` and `db-backup.yml` 
 
 Session closed with the actual first production deployment: Vercel project created, connected to this GitHub repo, environment variables configured, Vercel Authentication (which was blocking all public access by default) disabled, custom domain `spintra.io` connected via Cloudflare DNS (CNAME, DNS-only/unproxied per Vercel's requirement), and the default `.vercel.app` alias set to redirect (308) to `spintra.io` as the one canonical URL. Verified end-to-end against the live production URL: `/api/health` reachable, a real room created successfully against production Supabase, zero console/network errors.
 
+**Session 62: Google Analytics (GA4) Integration — COMPLETE.** User asked to add Google Analytics. Before writing any code, found a direct conflict: the Privacy Policy and the cookie-consent banner both explicitly promised "no advertising or third-party tracking," which standard GA4 (third-party `_ga`/`_gid` cookies, data sent to Google) would make false. Asked the user whether GA should fire unconditionally (matching the existing Sentry pattern — no gate, just accurate disclosure) or be held behind a real accept/decline choice; user chose unconditional firing with the legal copy corrected instead. Delivered: `NEXT_PUBLIC_GA_MEASUREMENT_ID` env var, optional and no-op when absent (same degrade-gracefully pattern as Sentry's DSN); `gtag.js` loaded via `next/script` in `layout.tsx`, gated on that var; `next.config.ts`'s CSP `script-src` allowlists `googletagmanager.com` only when the var is set, so an unconfigured deployment's CSP stays byte-for-byte identical to before this integration (`connect-src` needed no change — it already allows any `https:` origin, which covers gtag.js's own calls to Google's collection endpoints); Privacy Policy §1/§3 and the cookie banner rewritten to disclose GA and its cookies instead of denying third-party tracking; the now-stale comment in `src/lib/analytics.ts` (which cited the old "no third-party tool" promise to explain why that file exists) corrected to describe the actual, still-true reason that file is separate from GA (first-party product-event telemetry GA can't provide). Verified live via two real dev-server runs, not just typecheck: with no Measurement ID set, the response's CSP header and served HTML are unchanged from the pre-change baseline (diffed via `curl`); with a test ID set, the CSP grows exactly the one expected `googletagmanager.com` directive and the gtag script tag/config call both appear in the served HTML. `npm run verify` clean (0 errors; 4 pre-existing warnings in unrelated files, untouched by this change). GA itself is not yet actually collecting data — no real Measurement ID is configured in `.env.local` or Vercel's production environment yet; that's the immediate next step to actually activate it.
+
 ---
 
 ## Overall Progress
@@ -75,6 +77,7 @@ Monitor Sentry for real production errors now that strangers (not just known tes
 - **Bingo's async win-verification has no arbitration between two simultaneous valid winners.** Found via code review during Session 61's stress-testing pass, not live-reproduced — deliberately not chased further (see `TASKS.md` for the exact mechanism and why).
 - **Concurrent double-kick can write a duplicate `moderation_actions` audit-log entry.** Found live during Session 61 — cosmetic only, the actual ban state is never duplicated. See `TASKS.md`.
 - **"Verified live" in past session notes throughout this file described single-scenario checks, not genuine concurrent multi-client load** (the gap Session 61 exists to close for the multiplayer core specifically). Treat older "verified live"/"confirmed working" claims about realtime/host-election/presence behavior with that caveat unless a session explicitly says it used multiple simultaneous real clients.
+- **Google Analytics is code-complete but not yet activated.** `NEXT_PUBLIC_GA_MEASUREMENT_ID` isn't set in `.env.local` or Vercel's production environment — until it is, `gtag.js` never loads and no data reaches Google. Add a real GA4 Measurement ID in both places to start actually collecting data (see Session 62).
 
 ---
 
@@ -93,7 +96,7 @@ Load-bearing assumptions a new session should be aware of before making changes:
 
 Visual Scoreboard, XP/Leveling, and a real Moderation Dashboard (beyond direct SQL-editor querying) — all listed as net-new in earlier sessions — **have since shipped** (see PR #24, "new design system, settings page, and moderation dashboard v2"); this file's prior "Next Recommended Task" section was stale on that point and has been corrected.
 
-Nothing urgent is currently queued. The two narrow items from Session 61 (Bingo dual-winner race, duplicate audit-log entry — both in `TASKS.md`) are explicitly deferred by the user's own choice, not oversights — don't pick them up unprompted. Reasonable next threads if asked "what's next": watch Sentry for real production error patterns now that strangers can reach the site; consider whether the Bingo/audit-log items are worth fixing once there's real usage data on how often they'd actually trigger.
+Add a real GA4 Measurement ID to `.env.local` and Vercel's production environment (see Session 62) — GA is wired up but silent until that's done. Beyond that, nothing urgent is currently queued. The two narrow items from Session 61 (Bingo dual-winner race, duplicate audit-log entry — both in `TASKS.md`) are explicitly deferred by the user's own choice, not oversights — don't pick them up unprompted. Reasonable next threads if asked "what's next": watch Sentry for real production error patterns now that strangers can reach the site; consider whether the Bingo/audit-log items are worth fixing once there's real usage data on how often they'd actually trigger.
 
 ---
 

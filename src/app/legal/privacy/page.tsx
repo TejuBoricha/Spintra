@@ -13,7 +13,7 @@ export default function PrivacyPolicyPage() {
         <h1 className="text-4xl sm:text-5xl font-bold mb-2">
           Privacy <span className="gradient-text">Policy</span>
         </h1>
-        <p className="text-muted-foreground mb-10">Effective date: July 4, 2026</p>
+        <p className="text-muted-foreground mb-10">Effective date: July 15, 2026</p>
 
         <div className="space-y-8 text-foreground/90 leading-relaxed">
           <p>
@@ -45,23 +45,40 @@ export default function PrivacyPolicyPage() {
               <li>
                 <strong>Local storage / functional cookies</strong> — used to remember your
                 session ID, theme preference, and whether you&apos;ve dismissed the cookie
-                notice. We do not currently use advertising or third-party tracking cookies.
+                notice. We do not use advertising cookies.
+              </li>
+              <li>
+                <strong>Analytics cookies</strong> — if enabled, Google Analytics sets cookies
+                (e.g. <code>_ga</code>, <code>_gid</code>) to measure aggregate site traffic and
+                usage (pages visited, approximate location, device/browser type). We do not use
+                this data for advertising or to identify you individually. See{" "}
+                <a
+                  href="https://policies.google.com/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-foreground"
+                >
+                  Google&apos;s Privacy Policy
+                </a>{" "}
+                for how Google handles this data.
               </li>
             </ul>
           </section>
 
           <section>
             <h2 className="text-2xl font-semibold mb-3">2. How We Use This Information</h2>
-            <p>To operate the Service: creating and syncing rooms, delivering chat and game events in real time, enforcing room limits and locks, and preventing abuse.</p>
+            <p>To operate the Service: creating and syncing rooms, delivering chat and game events in real time, enforcing room limits and locks, and preventing abuse. Aggregate analytics (see above) help us understand overall usage and improve the Service.</p>
           </section>
 
           <section>
             <h2 className="text-2xl font-semibold mb-3">3. Who We Share Data With</h2>
             <p>
               We use third-party infrastructure providers to run the Service, including{" "}
-              <strong>Supabase</strong> (database, authentication, realtime messaging) and a
-              hosting provider (e.g. Vercel). These providers process data on our behalf and
-              do not use it for their own purposes. We do not sell personal data.
+              <strong>Supabase</strong> (database, authentication, realtime messaging), a
+              hosting provider (e.g. Vercel), and, where enabled,{" "}
+              <strong>Google Analytics</strong> (aggregate traffic and usage analytics). These
+              providers process data on our behalf and do not use it for their own purposes. We
+              do not sell personal data.
             </p>
           </section>
 

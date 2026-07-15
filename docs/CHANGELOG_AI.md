@@ -1772,3 +1772,40 @@
 - The crash-confirmation grace window (4 seconds) is a judgment call between false-positive avoidance and how long a genuinely offline participant's row stays stale before correction. Not tuned against real production traffic patterns yet — revisit if either false-positives or slow-to-correct stale rows are observed live.
 - Bingo's dual-winner race and the duplicate audit-log entry (both above) remain open by explicit user choice — see `TASKS.md` for exact reproduction conditions if picked up later.
 - `spintra-xi.vercel.app`'s `308` redirect to `spintra.io` means any external link or bookmark using the old `.vercel.app` URL will continue to work (redirected), not break — but anything hardcoding that URL for API calls rather than browser navigation should be pointed at `spintra.io` directly.
+
+---
+
+## [2026-07-15] — Session 62: Google Analytics (GA4) Integration
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** User asked to add Google Analytics after confirming it wasn't already present (the project's only existing analytics, migration `0041`'s `analytics_events` table, is a separate first-party product-telemetry system, not GA).
+
+**Files Modified:**
+- `.env.example`
+- `next.config.ts`
+- `src/app/layout.tsx`
+- `src/app/legal/privacy/page.tsx`
+- `src/components/cookie-consent-banner.tsx`
+- `src/lib/analytics.ts` (comment only)
+- `README.md`
+- `docs/AI_CONTEXT.md`
+- `docs/TASKS.md`
+- `docs/HANDOFF.md`
+
+**Purpose:**
+- Give the now-live production site (spintra.io, since Session 61) traffic/usage analytics via Google Analytics.
+- Do so without silently breaking the two existing, explicit written promises of "no advertising or third-party tracking" in the Privacy Policy and cookie-consent banner — a direct conflict found during the pre-implementation assessment, before any code was written.
+
+**Outcome:**
+- **Conflict surfaced and resolved with the user first.** Standard GA4 sets third-party cookies (`_ga`/`_gid`) and sends data to Google — incompatible with the existing "no third-party tracking" copy in both `src/app/legal/privacy/page.tsx` and `src/components/cookie-consent-banner.tsx` (the latter dating to Session 30's legal basics work; `src/lib/analytics.ts` even had a comment explicitly citing that promise as the reason it stayed first-party-only). Asked the user whether GA should fire unconditionally (matching the existing Sentry pattern of "just works once configured, no consent gate") or be held behind a real accept/decline choice on the banner. User chose unconditional firing, with the legal copy corrected to disclose GA honestly instead of rewriting the consent UX.
+- **`NEXT_PUBLIC_GA_MEASUREMENT_ID` added, optional.** Same degrade-gracefully pattern as `NEXT_PUBLIC_SENTRY_DSN`: absent means `gtag.js` never loads and the app behaves exactly as before (see `.env.example`'s comment).
+- **`gtag.js` wired into `src/app/layout.tsx`** via two `next/script` tags (`strategy="afterInteractive"`), rendered only when the env var is set.
+- **CSP updated with the narrowest possible change.** `next.config.ts`'s `script-src` allowlists `https://www.googletagmanager.com`, but only when `NEXT_PUBLIC_GA_MEASUREMENT_ID` is set — an unconfigured deployment's CSP header is byte-for-byte identical to before this change. `connect-src` needed no change at all: it already allows any `https:` origin (`'self' https: wss:'`), which covers gtag.js's own calls to `google-analytics.com`/`analytics.google.com`.
+- **Privacy Policy (`src/app/legal/privacy/page.tsx`) and cookie banner corrected.** §1 gained an "Analytics cookies" bullet describing `_ga`/`_gid`, linking to Google's privacy policy, and disclaiming advertising/individual-identification use; §3 ("Who We Share Data With") now names Google Analytics alongside Supabase/Vercel; the banner's copy no longer claims "no advertising or third-party tracking," instead naming GA specifically. Effective date bumped to July 15, 2026 per the policy's own "material changes update the effective date" rule (§7).
+- **Stale comment fixed in `src/lib/analytics.ts`.** Its header comment cited the cookie banner's now-superseded "no third-party tracking" promise as the reason that file is first-party-only; corrected to state the actual, still-true reason (it answers specific product questions — rooms created/joined, activities played — that GA's page/session-level tracking can't, by writing straight to this project's own DB).
+- **README.md's environment-variable table** gained a row for the new var, matching the existing Sentry rows' format.
+- **Verified live, not just via typecheck.** Ran the dev server twice: once with no `NEXT_PUBLIC_GA_MEASUREMENT_ID` set — confirmed via `curl` that the response's `Content-Security-Policy` header and served HTML contain zero trace of `googletagmanager`/`gtag`, i.e. fully unchanged from the pre-change baseline; once with a test Measurement ID (`G-TESTID12345`) — confirmed the CSP header grew exactly the one expected `googletagmanager.com` directive and the served HTML contained both the `gtag.js` script tag and the `gtag('config', 'G-TESTID12345')` call. `npm run verify` (typecheck + lint + docs:check) clean — 0 errors; the 4 warnings reported are pre-existing and in files this change never touched (`use-room-subscription.ts`, `room-client.tsx`).
+
+**Risks:**
+- GA is code-complete but inert until a real Measurement ID is set in `.env.local` and Vercel's production environment — no data will reach Google until then.
+- This makes GA's presence unconditional once configured (no accept/decline gate) — an explicit, informed choice by the user in this session, not an oversight; if that changes later, the cookie banner's single "Got it" acknowledgment button would need to become a real two-choice control, and the GA script tags in `layout.tsx` would need to additionally check a stored consent value before rendering.
+- No new npm dependency was added — this uses the plain `gtag.js` snippet via `next/script` rather than the `@next/third-parties` package, consistent with keeping the dependency surface minimal.

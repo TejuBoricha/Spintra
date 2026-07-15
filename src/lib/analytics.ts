@@ -1,12 +1,12 @@
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-// First-party analytics only (migration 0041) — no third-party tool, per
-// the cookie banner's "no advertising or third-party tracking" promise.
-// Deliberately just 3 events answering real product questions (rooms
-// created, rooms actually joined, which games get played), not
-// instrumentation of every click. No-ops entirely in demo mode: there's no
-// backend to log to, and that's fine — this is internal telemetry, never a
-// feature a user depends on.
+// First-party product-event telemetry (migration 0041), separate from
+// Google Analytics (src/app/layout.tsx): this answers specific product
+// questions (rooms created, rooms actually joined, which games get played)
+// that GA's page/session-level tracking can't, by writing straight to our
+// own DB. Deliberately just 3 events, not instrumentation of every click.
+// No-ops entirely in demo mode: there's no backend to log to, and that's
+// fine — this is internal telemetry, never a feature a user depends on.
 export type AnalyticsEventName = "room_created" | "room_joined" | "activity_started";
 
 export function trackEvent(eventName: AnalyticsEventName, actorId: string, activityType?: string | null): void {
