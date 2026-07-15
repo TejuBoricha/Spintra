@@ -16,6 +16,7 @@ import { ROOM_MIN_CAPACITY, ROOM_MAX_CAPACITY, ROOM_DEFAULT_CAPACITY } from "@/l
 import { getOrCreateRoomUser, setLocalRoomCreator } from "@/lib/room-user";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { trackEvent } from "@/lib/analytics";
+import { getRoomByCode } from "@/lib/room-lookup";
 
 declare global {
   interface Window {
@@ -158,7 +159,7 @@ export default function CreateRoomClient() {
         // Regenerate on collision so we never silently reuse an existing room's code.
         for (let attempt = 0; attempt < 10; attempt++) {
           const { data: existing } = await withTimeout(
-            supabase.from("rooms").select("code").eq("code", code).maybeSingle(),
+            getRoomByCode(supabase, code),
             2000
           );
           if (!existing) break;

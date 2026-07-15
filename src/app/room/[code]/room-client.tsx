@@ -8,6 +8,7 @@ import type { User, ChatMessage, RoomType } from "@/lib/types";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getOrCreateRoomUser, getLocalRoomCreatorId } from "@/lib/room-user";
 import { isUserBannedFromRoom } from "@/lib/room-bans";
+import { getRoomByCode } from "@/lib/room-lookup";
 import { isDuplicateMessage, capMessageHistory } from "@/lib/utils";
 import { tierOf } from "@/lib/xp";
 import { fireConfetti } from "@/components/celebration";
@@ -239,11 +240,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         // 1. Fetch room details (all columns useRoomSubscription's
         // loadRoomDetails also needs, so it can reuse this instead of
         // re-fetching the same row a second time right after).
-        const { data: room, error: roomError } = await supabase
-          .from("rooms")
-          .select("name, type, is_locked, max_participants, host_id")
-          .eq("code", roomCode)
-          .maybeSingle();
+        const { data: room, error: roomError } = await getRoomByCode(supabase, roomCode);
 
         if (roomError) {
           // A real fetch failure (network error, Supabase outage, RLS/

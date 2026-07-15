@@ -7,6 +7,7 @@ import { fireConfetti } from "@/components/celebration";
 import { banUserFromRoom } from "@/lib/room-bans";
 import { moderationKickBan } from "@/lib/moderation";
 import { getDeviceFingerprint } from "@/lib/utils";
+import { getRoomByCode } from "@/lib/room-lookup";
 import { trackEvent } from "@/lib/analytics";
 import type { User, ChatMessage, RoomParticipant, RoomType, ActivityEvent } from "@/lib/types";
 import type { Json } from "@/lib/supabase/database.types";
@@ -572,14 +573,7 @@ export function useRoomSubscription({
         // the same row again — falls back to a real fetch if it's somehow
         // unavailable (e.g. this hook ever runs without that gate).
         const roomRow =
-          prefetchedRoom ??
-          (
-            await supabaseClient
-              .from("rooms")
-              .select("is_locked, max_participants, host_id")
-              .eq("code", roomCode)
-              .maybeSingle()
-          ).data;
+          prefetchedRoom ?? (await getRoomByCode(supabaseClient, roomCode)).data;
 
         if (!roomRow) {
           if (isMounted) {
@@ -816,11 +810,7 @@ export function useRoomSubscription({
         let data = hasConsumedPrefetchedRoomRef.current ? null : prefetchedRoom;
         hasConsumedPrefetchedRoomRef.current = true;
         if (!data) {
-          const result = await supabaseClient
-            .from("rooms")
-            .select("name, type, is_locked, max_participants, host_id")
-            .eq("code", roomCode)
-            .maybeSingle();
+          const result = await getRoomByCode(supabaseClient, roomCode);
           if (result.error) {
             console.error("Failed to load room details:", result.error);
             return null;
@@ -1492,11 +1482,7 @@ export function useRoomSubscription({
                 const supabaseClient = getSupabaseBrowserClient();
                 let roomExists = false;
                 if (supabaseClient) {
-                  const { data } = await supabaseClient
-                    .from("rooms")
-                    .select("id")
-                    .eq("code", roomCode)
-                    .maybeSingle();
+                  const { data } = await getRoomByCode(supabaseClient, roomCode);
                   roomExists = !!data;
                 }
                 if (roomExists) {

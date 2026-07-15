@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./supabase/database.types";
+import { getRoomByCode } from "./room-lookup";
 
 // Found in the Session 41 audit: this same pre-join validation (room
 // exists? locked? full? banned? already a member?) was copy-pasted across
@@ -51,11 +52,7 @@ async function runCheck(
     // avoidable round trips even after Session 41's fix to the room page's
     // own verifyAccess).
     const [{ data: room, error: roomError }, { data: existingPart }] = await Promise.all([
-      supabase
-        .from("rooms")
-        .select("is_locked, max_participants, host_id")
-        .eq("code", roomCode)
-        .maybeSingle(),
+      getRoomByCode(supabase, roomCode),
       supabase
         .from("room_participants")
         .select("id")

@@ -584,6 +584,18 @@ export type Database = {
         Args: { p_room_code: string }
         Returns: number
       }
+      get_room_by_code: {
+        Args: { p_code: string }
+        Returns: {
+          code: string
+          host_id: string
+          id: string
+          is_locked: boolean
+          max_participants: number
+          name: string
+          type: string
+        }[]
+      }
       is_member_of_room: {
         Args: { room_code: string; user_uuid: string }
         Returns: boolean
