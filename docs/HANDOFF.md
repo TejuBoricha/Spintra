@@ -6,6 +6,24 @@ Portable session-continuity note for any AI assistant to resume work immediately
 
 ## Last Completed Task
 
+**Session 64: `/for-teachers` landing page — COMPLETE, verified, not yet committed.**
+
+User asked to make the site "go viral" and to check Google Analytics for real traffic/conversion data. The GA4 check was declined rather than guessed at — this environment has no connected Google Analytics tool (only Gmail/Calendar/Drive), so that needs the user to check the dashboard directly or share numbers/grant access. Instead built the concrete, buildable lever: the `/for-teachers` landing page that Session 63 had logged but not built.
+
+- **New `src/app/for-teachers/page.tsx`** — hero, trust-point row (free, no student sign-ups, Chromebook-compatible, 50-student room cap — all facts already backed by the existing Privacy Policy/`ARCHITECTURE.md`), a curated 6-tool "Ideas for your classroom" section, the full `GAMES.filter(g => g.classroomSafe)` grid (11 tools, reuses the existing registry), an FAQ with `FAQPage` JSON-LD, and a closing CTA to `/create?type=classroom`.
+- **Compliance check done before writing content:** `legal/privacy/page.tsx` §6 states the Service isn't directed at children under 13. Resolved by framing the whole page around the **teacher as operator**, not "give this to your students" — zero new compliance claims added anywhere.
+- **New `src/app/for-teachers/opengraph-image.tsx`** — reuses Bingo's already Playwright-verified gradient rather than guessing a fresh `sky-500`/`cyan-500` hex pair (the exact mistake Session 63's OG-image work explicitly avoided).
+- **`src/lib/og-image.tsx` refactored, non-breaking** — extracted a generic `renderOgImage()` so the new page doesn't duplicate the existing JSX tree; `renderToolOgImage()`'s output for all 14 tool pages is byte-for-byte unchanged.
+- **`sitemap.ts`** gained `/for-teachers` (the same "new route invisible to crawlers unless listed here" gap Session 63 found for bare `/tools`); homepage footer got a "For Teachers" link.
+
+Verified via `npm run verify`/`npm run build` (both clean; `/for-teachers` + its OG image prerender static `○`) and a real dev-server pass driven with Playwright: screenshotted the page in light and dark color schemes, clicked a FAQ item to confirm the accordion works, fetched and visually inspected the generated OG image (`200 image/png`, correct gradient/text/no artifacts), zero console errors across both theme passes. Dev server and scratch Playwright script both cleaned up afterward.
+
+**Not committed** — left on the working tree per the standing instruction to only commit when explicitly asked. Full detail: `docs/CHANGELOG_AI.md` Session 64.
+
+---
+
+## Prior Session (Session 63 — full detail retained below)
+
 **Session 63: Tool-page SEO content, `/api/health` hardening, per-tool OpenGraph images, and a Critical rooms-table privacy fix — COMPLETE, all merged to `main` and deployed.**
 
 User asked how to bring more traffic to the site. Built the highest-leverage code lever: SEO content sections (intro/how-to/use-cases/FAQ + `FAQPage` JSON-LD) added to all 14 `/tools/*` pages via a shared `src/lib/tool-seo-content.ts` registry and server component, plus above-the-fold copy enriched on all 14 pages to lead with each tool's head search term (branded H1s kept as-is — renaming them is left as a user branding call). Followed by three more fixes the same session:

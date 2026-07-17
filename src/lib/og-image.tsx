@@ -33,18 +33,26 @@ const TOOL_GRADIENT_HEX: Record<string, [string, string]> = {
 };
 
 /**
- * JSX tree for a tool's OG/social-share image, rendered via Satori (Next's
+ * JSX tree for a Spintra OG/social-share image, rendered via Satori (Next's
  * next/og ImageResponse) — a constrained CSS/HTML subset, not a real browser.
  * Deliberately sticks to the reliably-supported subset (flexbox, solid
  * colors, linear-gradient, borderRadius) and avoids anything with uncertain
- * Satori support (blur filters, arbitrary nested SVG icons) so every one of
- * the 14 tool cards renders correctly rather than silently breaking on some
- * subset of them.
+ * Satori support (blur filters, arbitrary nested SVG icons) so every card
+ * renders correctly rather than silently breaking on some subset of them.
+ * Shared by every route that needs a share-card image, not just the 14 tools.
  */
-export function renderToolOgImage(href: string) {
-  const game = GAMES.find((g) => g.href === href);
-  if (!game) throw new Error(`renderToolOgImage: no GAMES entry with href ${href}`);
-  const [fromHex, toHex] = TOOL_GRADIENT_HEX[href] ?? ["#6d3ee0", "#3ddaee"];
+export function renderOgImage({
+  title,
+  desc,
+  gradient,
+  tagline = "Free · No sign-up · Play instantly",
+}: {
+  title: string;
+  desc: string;
+  gradient: [string, string];
+  tagline?: string;
+}) {
+  const [fromHex, toHex] = gradient;
 
   return (
     <div
@@ -75,10 +83,10 @@ export function renderToolOgImage(href: string) {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         <div style={{ display: "flex", fontSize: 78, fontWeight: 800, color: "#ffffff", lineHeight: 1.05 }}>
-          {game.label}
+          {title}
         </div>
         <div style={{ display: "flex", fontSize: 34, color: "rgba(255,255,255,0.9)" }}>
-          {game.desc}
+          {desc}
         </div>
       </div>
 
@@ -94,9 +102,17 @@ export function renderToolOgImage(href: string) {
             padding: "12px 28px",
           }}
         >
-          Free · No sign-up · Play instantly
+          {tagline}
         </div>
       </div>
     </div>
   );
+}
+
+export function renderToolOgImage(href: string) {
+  const game = GAMES.find((g) => g.href === href);
+  if (!game) throw new Error(`renderToolOgImage: no GAMES entry with href ${href}`);
+  const gradient = TOOL_GRADIENT_HEX[href] ?? (["#6d3ee0", "#3ddaee"] as [string, string]);
+
+  return renderOgImage({ title: game.label, desc: game.desc, gradient });
 }
