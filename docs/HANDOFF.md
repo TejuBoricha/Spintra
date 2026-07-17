@@ -20,6 +20,8 @@ Verified via `npm run verify`/`npm run build` (both clean; `/for-teachers` + its
 
 **Committed and pushed to `main` (`72ad257`)** after the user explicitly confirmed — Vercel auto-deploys on every push to `main`. Full detail: `docs/CHANGELOG_AI.md` Session 64.
 
+**Same-session follow-up: `/create`'s game-type grid didn't actually enforce classroom-safe restriction.** The user asked to cross-check what "Start a Classroom Room" leads to. Found `/create?type=classroom` preselected "Classroom" but still showed all 16 games unfiltered — Truth or Dare/Would You Rather/Never Have I Ever included, directly clickable. The real classroom-safe filter only existed one layer deeper, inside an already-created room's in-room activity picker. Fixed in `src/app/create/create-client.tsx`: the grid now filters to `classroomSafe !== false` whenever "Classroom" is selected, reusing the exact condition already proven in `activity-picker-dialog.tsx`. Verified via Playwright (13 cards in classroom-intent mode vs. 16 in default), `npm run verify`/`npm run build` clean. Committed and pushed to `main` after user confirmation.
+
 ---
 
 ## Prior Session (Session 63 — full detail retained below)

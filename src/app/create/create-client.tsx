@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Sparkles, Copy, Check } from "lucide-react";
+import { Sparkles, Copy, Check, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -246,14 +246,28 @@ export default function CreateRoomClient() {
 
   const selectedGame = GAMES.find((game) => game.type === selectedType);
   const SelectedGameIcon = selectedGame?.icon;
+  const isClassroom = selectedType === "classroom";
+  // Mirrors activity-picker-dialog.tsx's in-room filter so a classroom-intent
+  // visitor never sees party/social games as clickable room-type options here
+  // either — previously this grid was unfiltered, so "Classroom" was just one
+  // card among 16 with no restriction stopping a direct click on Truth or Dare.
+  const visibleGames = isClassroom ? GAMES.filter((g) => g.classroomSafe !== false) : GAMES;
 
   return (
     <div className="grid lg:grid-cols-3 gap-8">
       {/* Room Types */}
       <div className="lg:col-span-2 space-y-4">
-        <h2 className="font-body text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Choose Game Type</h2>
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="font-body text-sm font-medium text-muted-foreground uppercase tracking-wider">Choose Game Type</h2>
+          {isClassroom && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-sky-400">
+              <GraduationCap className="w-3.5 h-3.5" />
+              Classroom mode — party/social games are hidden
+            </span>
+          )}
+        </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {GAMES.map((rt, i) => (
+          {visibleGames.map((rt, i) => (
             <motion.button
               key={rt.type}
               initial={{ opacity: 0, y: 20 }}

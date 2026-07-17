@@ -1942,3 +1942,20 @@ User asked to prep `/api/health` for an external monitor. The endpoint (`src/app
 
 **Not committed** — left on the working tree per this session's standing instruction to only commit when explicitly asked.
 
+
+---
+
+## [2026-07-17] — Session 64 (continued): `/create` didn't actually enforce the classroom-safe restriction it implied
+
+**Context:** After the `/for-teachers` page shipped, the user asked to cross-check what its "Start a Classroom Room" CTA (`/create?type=classroom`) actually leads to — specifically, whether the create page genuinely shows only classroom-appropriate games or "all games are there."
+
+**Finding:** They were right. `src/app/create/create-client.tsx`'s "Choose Game Type" grid rendered the full, unfiltered 16-entry `GAMES` array unconditionally — the `?type=classroom` URL param only preselected the "Classroom" card as the initial `selectedType`; it never filtered which cards were shown. Truth or Dare, Would You Rather, and Never Have I Ever (all `classroomSafe: false`) sat right there as normal, equally-clickable options next to "Classroom." Since `handleCreate()` inserts `type: selectedType` directly as the new room's type, clicking one of those would create that literal room — not a classroom room, and with zero restriction. The only place classroom-safe filtering actually existed was one layer deeper: `activity-picker-dialog.tsx:30`'s in-room "choose an activity" dialog (`if (isClassroom && g.classroomSafe === false) return false`), which only ever runs *after* a classroom-type room already exists.
+
+**Fix — `src/app/create/create-client.tsx`:**
+- Added `isClassroom = selectedType === "classroom"` and `visibleGames = isClassroom ? GAMES.filter(g => g.classroomSafe !== false) : GAMES`, reusing the identical condition already proven correct in `activity-picker-dialog.tsx` rather than inventing new filter logic. The grid now maps over `visibleGames` instead of the raw `GAMES` array.
+- Added a "Classroom mode — party/social games are hidden" caption next to the "Choose Game Type" header when `isClassroom`, mirroring the in-room picker's own `DialogDescription` wording — so the narrower grid reads as intentional curation, not missing content. Required adding the `GraduationCap` icon import (`lucide-react`).
+- **Scope, deliberately minimal:** only triggers when the *currently selected* type is `"classroom"`. The default `/create` flow (no `?type=` param, or any other type) is completely unaffected — still shows all 16 entries, unchanged behavior. "Party Mode" stays visible even in classroom-intent view (its `classroomSafe` is `undefined`, not `false`) — it's a distinct, honestly-labeled room type ("All games unlocked"), not a bait-and-switch into hidden content, and hiding it wasn't necessary to close the actual gap (a teacher who deliberately picks Party Mode has made an informed choice about a differently-named room type).
+
+**Verified, not just typechecked:** `npm run verify` and `npm run build` both clean (0 errors, same 4 pre-existing unrelated warnings). Real dev-server + Playwright check: `/create?type=classroom` renders exactly 13 cards (the 11 `classroomSafe` games + Party Mode + Classroom, alphabetically/registry-ordered, Truth or Dare/Would You Rather/Never Have I Ever absent) with the new caption visible; `/create` with no param renders the full, unchanged 16. Zero `pageerror` events. Screenshot visually confirmed the caption and highlighted "Classroom" selection render correctly. Dev server and scratch script cleaned up afterward.
+
+**Committed and pushed to `main` after user confirmation** — Vercel auto-deploys on every push to `main`.
