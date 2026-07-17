@@ -60,7 +60,11 @@ export function ActivityPickerDialog({
                     : "border-(--border-hairline) bg-(--surface-panel) text-muted-foreground"
                 }`}
               >
-                <Icon className="w-6 h-6" />
+                <div
+                  className={`w-9 h-9 rounded-control border-2 border-(--border-strong) bg-gradient-to-br ${g.color} flex items-center justify-center`}
+                >
+                  <Icon className="w-5 h-5 text-white" />
+                </div>
                 <span>{g.label}</span>
               </button>
             );

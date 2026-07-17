@@ -1959,3 +1959,17 @@ User asked to prep `/api/health` for an external monitor. The endpoint (`src/app
 **Verified, not just typechecked:** `npm run verify` and `npm run build` both clean (0 errors, same 4 pre-existing unrelated warnings). Real dev-server + Playwright check: `/create?type=classroom` renders exactly 13 cards (the 11 `classroomSafe` games + Party Mode + Classroom, alphabetically/registry-ordered, Truth or Dare/Would You Rather/Never Have I Ever absent) with the new caption visible; `/create` with no param renders the full, unchanged 16. Zero `pageerror` events. Screenshot visually confirmed the caption and highlighted "Classroom" selection render correctly. Dev server and scratch script cleaned up afterward.
 
 **Committed and pushed to `main` after user confirmation** — Vercel auto-deploys on every push to `main`.
+
+---
+
+## [2026-07-17] — Session 64 (continued): in-room activity picker's icon styling was inconsistent with the rest of the app
+
+**Context:** After the `/create` classroom-safe fix above, the user shared a screenshot of the in-room "Choose an Activity" dialog and asked what the "UI & design mess" was.
+
+**Finding:** `src/app/room/[code]/activities/activity-picker-dialog.tsx` — the dialog every multi-game room (Party or Classroom) uses to switch its current game — was the one game-picker grid in the app that never received the colored gradient-icon-badge treatment used everywhere else a game grid appears (`/create`'s "Choose Game Type", `/tools`, `/for-teachers`'s tool grid and ideas section). Its cards rendered `<Icon className="w-6 h-6" />` directly with no background, so every game showed as a flat, uncolored gray glyph — visually flat and inconsistent next to the rest of the app's vibrant per-game colors. Pre-existing (this component predates this session entirely); not introduced by the `/for-teachers` work or the `/create` fix earlier in this session.
+
+**Fix:** Wrapped each card's icon in the identical `w-9 h-9 rounded-control border-2 border-(--border-strong) bg-gradient-to-br ${g.color}` badge already used in `create-client.tsx`'s grid, reusing the existing `GameDefinition.color` field on each `GAMES` entry — no new data, no behavior change, purely a rendering fix.
+
+**Verified live, not just visually reviewed in isolation:** started the dev server, scripted a full real flow with Playwright — navigated to `/create?type=classroom`, created an actual room, clicked "Choose Activity" on the idle screen, and screenshotted the resulting dialog. Confirmed all 11 visible classroom-safe cards now render their correct colored gradient badges (Team Maker purple/pink, Lucky Wheel cyan/blue, Tournament green/teal, etc.), matching the site's established icon-badge convention. Zero `pageerror` events during the flow. `npm run verify`/`npm run build` clean (0 errors, same 4 pre-existing unrelated warnings). Dev server and scratch script cleaned up afterward.
+
+**Committed and pushed to `main` after user confirmation** — Vercel auto-deploys on every push to `main`.
