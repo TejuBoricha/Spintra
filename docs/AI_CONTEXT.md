@@ -53,6 +53,10 @@ Session closed with the actual first production deployment: Vercel project creat
 
 **Session 64 (continued): in-room "Choose an Activity" dialog was visually inconsistent — user spotted it from a screenshot, fixed.** `src/app/room/[code]/activities/activity-picker-dialog.tsx` (used by every multi-game room, not just Classroom) was the one game-picker grid in the app that never got the colored gradient-icon-badge treatment `/create`, `/tools`, and `/for-teachers` all use — its cards rendered bare flat-gray icons. Pre-existing, not introduced by this session's earlier changes. Fixed by adding the same `bg-gradient-to-br ${g.color}` icon badge (reusing the existing `color` field already on each `GAMES` entry, no new data). Verified live: created a real classroom room via the dev server, opened the dialog, screenshotted all 11 visible cards showing correct colored badges. `npm run verify`/`npm run build` clean. Committed and pushed to `main` after user confirmation.
 
+**Session 64 (continued): fixing the icon badges exposed uneven card heights in the same dialog — fixed.** User immediately caught it from a screenshot: `activity-picker-dialog.tsx`'s cards had no fixed height, so a 3-line label ("Rock Paper Scissors") made its card visibly taller than 1-2 line neighbors in the same row. Fixed with `min-h-36 justify-center text-center` on the card button — uniform height, centered content, regardless of label length. Verified via a real local run/screenshot. `npm run verify` clean. Committed and pushed to `main` after user confirmation.
+
+**Also worth recording:** an earlier verification step against production this session used a poll loop with a broken CSS selector — it silently retried every 10s for several minutes, and each retry created a real (private, unlisted) room on the live DB before failing. Caught and stopped mid-session; no manual cleanup performed, since the existing `cleanup_inactive_rooms()` cron already handles zero-participant rooms after 2 hours. Worth remembering: verify a check script once, standalone, before ever wrapping it in a retry loop against production.
+
 ---
 
 ## Overall Progress

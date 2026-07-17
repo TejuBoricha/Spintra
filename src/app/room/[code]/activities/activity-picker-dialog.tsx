@@ -54,7 +54,7 @@ export function ActivityPickerDialog({
                 key={g.type}
                 onClick={() => onSelect(g.type)}
                 aria-label={`Select ${g.label}`}
-                className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all text-sm font-medium hover:border-primary/50 hover:bg-primary/10 ${
+                className={`flex flex-col items-center justify-center gap-2 p-4 min-h-36 text-center rounded-xl border transition-all text-sm font-medium hover:border-primary/50 hover:bg-primary/10 ${
                   activeActivityType === g.type
                     ? "border-primary bg-primary/20 text-(--brand-primary-strong)"
                     : "border-(--border-hairline) bg-(--surface-panel) text-muted-foreground"
