@@ -6,7 +6,7 @@ Portable session-continuity note for any AI assistant to resume work immediately
 
 ## Last Completed Task
 
-**Session 64: `/for-teachers` landing page — COMPLETE, verified, not yet committed.**
+**Session 64: `/for-teachers` landing page — COMPLETE, committed and pushed to `main`, deployed.**
 
 User asked to make the site "go viral" and to check Google Analytics for real traffic/conversion data. The GA4 check was declined rather than guessed at — this environment has no connected Google Analytics tool (only Gmail/Calendar/Drive), so that needs the user to check the dashboard directly or share numbers/grant access. Instead built the concrete, buildable lever: the `/for-teachers` landing page that Session 63 had logged but not built.
 
@@ -18,7 +18,7 @@ User asked to make the site "go viral" and to check Google Analytics for real tr
 
 Verified via `npm run verify`/`npm run build` (both clean; `/for-teachers` + its OG image prerender static `○`) and a real dev-server pass driven with Playwright: screenshotted the page in light and dark color schemes, clicked a FAQ item to confirm the accordion works, fetched and visually inspected the generated OG image (`200 image/png`, correct gradient/text/no artifacts), zero console errors across both theme passes. Dev server and scratch Playwright script both cleaned up afterward.
 
-**Not committed** — left on the working tree per the standing instruction to only commit when explicitly asked. Full detail: `docs/CHANGELOG_AI.md` Session 64.
+**Committed and pushed to `main` (`72ad257`)** after the user explicitly confirmed — Vercel auto-deploys on every push to `main`. Full detail: `docs/CHANGELOG_AI.md` Session 64.
 
 ---
 
