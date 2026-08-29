@@ -540,11 +540,176 @@ export type Database = {
         }
         Relationships: []
       }
+      city_matches: {
+        Row: {
+          building_supply_limit: number | null
+          created_at: string
+          created_by: string
+          current_seat: number | null
+          finished_at: string | null
+          id: string
+          mode: string
+          phase: string | null
+          rng_counter: number
+          rng_seed: number
+          room_code: string
+          started_at: string | null
+          status: string
+          time_limit_minutes: number | null
+          turn_started_at: string | null
+        }
+        Insert: {
+          building_supply_limit?: number | null
+          created_at?: string
+          created_by: string
+          current_seat?: number | null
+          finished_at?: string | null
+          id?: string
+          mode?: string
+          phase?: string | null
+          rng_counter?: number
+          rng_seed: number
+          room_code: string
+          started_at?: string | null
+          status?: string
+          time_limit_minutes?: number | null
+          turn_started_at?: string | null
+        }
+        Update: {
+          building_supply_limit?: number | null
+          created_at?: string
+          created_by?: string
+          current_seat?: number | null
+          finished_at?: string | null
+          id?: string
+          mode?: string
+          phase?: string | null
+          rng_counter?: number
+          rng_seed?: number
+          room_code?: string
+          started_at?: string | null
+          status?: string
+          time_limit_minutes?: number | null
+          turn_started_at?: string | null
+        }
+        Relationships: []
+      }
+      city_match_players: {
+        Row: {
+          cash: number
+          consecutive_autopilot_turns: number
+          final_net_worth: number | null
+          id: string
+          is_ready: boolean
+          joined_at: string
+          match_id: string
+          position: number
+          seat: number
+          status: string
+          time_reserve_ms: number
+          user_id: string
+          username: string
+        }
+        Insert: {
+          cash?: number
+          consecutive_autopilot_turns?: number
+          final_net_worth?: number | null
+          id?: string
+          is_ready?: boolean
+          joined_at?: string
+          match_id: string
+          position?: number
+          seat: number
+          status?: string
+          time_reserve_ms?: number
+          user_id: string
+          username: string
+        }
+        Update: {
+          cash?: number
+          consecutive_autopilot_turns?: number
+          final_net_worth?: number | null
+          id?: string
+          is_ready?: boolean
+          joined_at?: string
+          match_id?: string
+          position?: number
+          seat?: number
+          status?: string
+          time_reserve_ms?: number
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      city_command_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          room_code: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          room_code: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          room_code?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      city_create_match: {
+        Args: {
+          p_mode?: string
+          p_room_code: string
+          p_seed?: number
+          p_time_limit_minutes?: number
+        }
+        Returns: string
+      }
+      city_join_seat: {
+        Args: {
+          p_match_id: string
+          p_username: string
+        }
+        Returns: number
+      }
+      city_leave_seat: {
+        Args: {
+          p_match_id: string
+        }
+        Returns: undefined
+      }
+      city_set_ready: {
+        Args: {
+          p_match_id: string
+          p_ready: boolean
+        }
+        Returns: undefined
+      }
+      city_start_match: {
+        Args: {
+          p_match_id: string
+        }
+        Returns: undefined
+      }
+      is_seated_in_match: {
+        Args: {
+          p_match_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       _record_award: {
         Args: {
           p_activity_type: string
