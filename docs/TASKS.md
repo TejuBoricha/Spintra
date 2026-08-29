@@ -302,6 +302,26 @@ Pre-launch hardening — required before publishing the site publicly on the ope
 
 ## Medium Priority
 
+### Spintra City — new multiplayer feature (design phase, no code yet)
+
+- `[ ]` **"Spintra City" (Monopoly-style property-trading game).** Large new feature, currently in
+  design only — a multiplayer board-trading game for 2–8 players, server-authoritative (PostgreSQL
+  as referee, not the existing lightweight activity-event-log pattern the other 14 games use).
+  Product/architecture decisions (no bots, human-first; server-authoritative match engine; the
+  5-table match-engine data model) were confirmed by the user in a design conversation held outside
+  a repo session; a turn-flow/reliability proposal (90s turn clock, disconnect/autopilot/retire
+  rules) was presented but never confirmed before the user switched AI tools. A later research pass
+  independently verified the richup.io claims (found and corrected one error), did deep player-UX
+  research across richup.io and a second comparable product, and produced a concrete file-level
+  integration plan against this repo's actual current code (exact files to touch, which existing
+  infra reuses cleanly vs. needs a product decision, DB/RPC conventions to match).
+  **Start at `docs/SPINTRA_CITY_SPEC.md`** — the wired-up engineering spec: 49 numbered
+  requirements, technology, exactly which existing subsystems are reused/adapted/new (with verified
+  file references), the 7-slice implementation plan, verification strategy, risks, and a
+  requirement→build→proof traceability matrix. `docs/SPINTRA_CITY_DESIGN.md` holds the decision log
+  and rationale; `docs/SPINTRA_CITY_CONTENT.md` holds the board content. Only 2 items block schema
+  work (randomness test seam, building supply limits — both in the spec's §11).
+
 - `[x]` **Room auto-expiry / lifecycle cleanup:** Done Session 40 — migration `0020` enables `pg_cron` and schedules the `cleanup_inactive_rooms()` function (already defined in migration `0009`, deletes rooms with no online participants that are >2h old) to run every 30 minutes. Along the way, discovered `0009` itself had never actually executed live (see the new item below) — re-ran it for real, which deleted 23 genuinely abandoned rooms on the spot.
 - `[x]` **Systematic migration-history audit:** Done Session 40 — cross-checked all 20 migrations' expected live objects (tables, columns, functions, triggers, policies, constraints, indexes, extensions, realtime publication membership, replica identity, seed-data row counts) against the live database. No further gaps found beyond `0009` (already fixed same session); `0001`–`0008` and `0010`–`0019` all confirmed genuinely live and matching source exactly, seed data counts clean (44 prompts, 50 trivia questions, no duplicates).
 - `[x]` **DB constraint still permitted the dead `'spectator'` role value:** Done Session 40 — surfaced by the migration audit above. Client-side `UserRole.spectator` was already removed as dead code in Session 38, but `room_participants_role_check` was never updated to match. Migration `0021` tightens it to `('host', 'participant')`; verified zero live rows used `'spectator'` before applying.

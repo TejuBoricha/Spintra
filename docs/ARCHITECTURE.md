@@ -43,7 +43,10 @@ spintra/
 │   ├── ENGINEERING_GOVERNANCE_REVIEW.md     ← Point-in-time audit, dated 2026-07-03 (historical)
 │   ├── ENGINEERING_GOVERNANCE_REVIEW_V2.md  ← Current point-in-time audit, dated 2026-07-04
 │   ├── ZUSTAND_INVESTIGATION.md    ← Zustand vs. Context state investigation report
-│   └── HOST_MIGRATION_AUDIT.md     ← Host-migration investigation report (all 14 games + infra)
+│   ├── HOST_MIGRATION_AUDIT.md     ← Host-migration investigation report (all 14 games + infra)
+│   ├── SPINTRA_CITY_SPEC.md        ← "Spintra City" engineering spec — START HERE for that feature
+│   ├── SPINTRA_CITY_DESIGN.md      ← "Spintra City" feature: decisions, research, build plan
+│   └── SPINTRA_CITY_CONTENT.md     ← "Spintra City" board content (spaces, economy, card decks)
 ├── src/
 │   ├── app/
 │   │   ├── globals.css             ← Global styles + glass/glass-card utilities

@@ -6,6 +6,24 @@ Portable session-continuity note for any AI assistant to resume work immediately
 
 ## Last Completed Task
 
+**Session 65: "Spintra City" — design, research, and planning only. ZERO CODE WRITTEN.**
+
+A new large feature is in the design phase: a Monopoly-style multiplayer property-trading game mode. **Nothing is built** — no migration, no component, no art. All work this session was documentation.
+
+**Read `docs/SPINTRA_CITY_DESIGN.md` in full before doing anything on this feature.** It carefully separates three different kinds of claim, and collapsing them would be a real mistake: **APPROVED** (the user directly said yes), **DECIDED (by delegation)** (the user asked an AI to pick what's best suited — not their own product judgment, so surface it back if it seems worth a second look), and still-open/proposed. `docs/SPINTRA_CITY_CONTENT.md` holds the board content draft (theme "The Wheelworks," currency "Spins," full 40-space layout, economy tables, both card decks, tokens).
+
+What happened, briefly: transcribed a design conversation the user had with a different AI outside this repo → reviewed that design against this repo's own bug history (12 findings, 2 Critical) → independently verified the richup.io research it relied on and **found a real factual error** (richup *does* have bots; the original claim that it doesn't was wrong and had been load-bearing) → ran two parallel deep-research passes (genre-wide player UX; a file-level integration plan read from the actual code) → the user delegated 7 open product questions which were decided and tagged → the user picked a board theme from three original pitches and the full board was drafted.
+
+**Where to pick up:** `SPINTRA_CITY_DESIGN.md` §8 is the phased build plan with owner tags. The immediate next items are the user reviewing the content draft, then closing ~6 remaining design gaps (turn state-machine detail, reconnect grace period, late-arrival rule, net-worth formula, auction flow, bankruptcy sequence), then schema (migration `0063`+), then 7 vertical implementation slices. **Do not skip Slice 1** (room type + lobby + seats, no gameplay) — it's deliberately scoped as the architectural proof for the whole feature, while course-correcting is still cheap.
+
+**Two things worth knowing before touching code for this:**
+- `rooms.type` has a DB CHECK constraint (migration `0039`) — adding `"city"` to the TypeScript `RoomType` union alone will fail at the database layer. The migration must land first.
+- **Unrelated pre-existing bug found and NOT fixed:** `ARCHITECTURE.md` documents `.glass`/`.glass-card` Tailwind classes that don't exist. The real pattern is CSS custom properties via Tailwind v4 arbitrary-value syntax (`bg-(--surface-glass-strong)`). Worth a separate fix.
+
+---
+
+## Prior Session (Session 64 — full detail retained below)
+
 **Session 64: `/for-teachers` landing page — COMPLETE, committed and pushed to `main`, deployed.**
 
 User asked to make the site "go viral" and to check Google Analytics for real traffic/conversion data. The GA4 check was declined rather than guessed at — this environment has no connected Google Analytics tool (only Gmail/Calendar/Drive), so that needs the user to check the dashboard directly or share numbers/grant access. Instead built the concrete, buildable lever: the `/for-teachers` landing page that Session 63 had logged but not built.
@@ -78,5 +96,9 @@ None.
 ---
 
 ## Next Steps
+
+**Active thread: Spintra City** (see Last Completed Task above and `docs/SPINTRA_CITY_DESIGN.md` §8 for the full phased plan with owner tags). Immediate order: user reviews the board content draft → close the ~6 remaining design gaps → schema (migration `0063`+) → 7 vertical implementation slices, starting with Slice 1 as the architectural proof.
+
+Everything below predates that thread and is unchanged:
 
 Nothing urgent queued. Google Search Console indexing is pending on Google's own timeline (domain verified, indexing requested 2026-07-15/16) — once the Performance report has real impression data, check which tool queries earn impressions but few clicks to steer which tool pages get further content enrichment. Beyond that: monitor Sentry for real production error/abuse patterns now that strangers can reach the site, and reassess the two Session 61-deferred items (Bingo dual-winner race, duplicate audit-log entry) once there's real usage data on how often they'd actually trigger — both are explicitly deferred by the user's choice, not oversights, so don't start them unprompted.
