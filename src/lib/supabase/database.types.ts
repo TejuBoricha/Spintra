@@ -140,6 +140,241 @@ export type Database = {
           },
         ]
       }
+      city_assets: {
+        Row: {
+          acquired_at: string
+          buildings: number
+          id: string
+          is_mortgaged: boolean
+          match_id: string
+          owner_seat: number
+          space_idx: number
+        }
+        Insert: {
+          acquired_at?: string
+          buildings?: number
+          id?: string
+          is_mortgaged?: boolean
+          match_id: string
+          owner_seat: number
+          space_idx: number
+        }
+        Update: {
+          acquired_at?: string
+          buildings?: number
+          id?: string
+          is_mortgaged?: boolean
+          match_id?: string
+          owner_seat?: number
+          space_idx?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_assets_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "city_assets_space_idx_fkey"
+            columns: ["space_idx"]
+            isOneToOne: false
+            referencedRelation: "city_board_spaces"
+            referencedColumns: ["idx"]
+          },
+        ]
+      }
+      city_board_spaces: {
+        Row: {
+          build_cost: number | null
+          country: string | null
+          deck: string | null
+          idx: number
+          kind: string
+          name: string
+          price: number | null
+          rent: number[] | null
+          tax_amount: number | null
+        }
+        Insert: {
+          build_cost?: number | null
+          country?: string | null
+          deck?: string | null
+          idx: number
+          kind: string
+          name: string
+          price?: number | null
+          rent?: number[] | null
+          tax_amount?: number | null
+        }
+        Update: {
+          build_cost?: number | null
+          country?: string | null
+          deck?: string | null
+          idx?: number
+          kind?: string
+          name?: string
+          price?: number | null
+          rent?: number[] | null
+          tax_amount?: number | null
+        }
+        Relationships: []
+      }
+      city_command_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          room_code: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          room_code: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          room_code?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      city_match_players: {
+        Row: {
+          cash: number
+          consecutive_autopilot_turns: number
+          final_net_worth: number | null
+          id: string
+          is_ready: boolean
+          joined_at: string
+          match_id: string
+          position: number
+          seat: number
+          status: string
+          time_reserve_ms: number
+          user_id: string
+          username: string
+        }
+        Insert: {
+          cash?: number
+          consecutive_autopilot_turns?: number
+          final_net_worth?: number | null
+          id?: string
+          is_ready?: boolean
+          joined_at?: string
+          match_id: string
+          position?: number
+          seat: number
+          status?: string
+          time_reserve_ms?: number
+          user_id: string
+          username: string
+        }
+        Update: {
+          cash?: number
+          consecutive_autopilot_turns?: number
+          final_net_worth?: number | null
+          id?: string
+          is_ready?: boolean
+          joined_at?: string
+          match_id?: string
+          position?: number
+          seat?: number
+          status?: string
+          time_reserve_ms?: number
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_match_players_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      city_matches: {
+        Row: {
+          building_supply_limit: number | null
+          created_at: string
+          created_by: string
+          current_seat: number | null
+          doubles_count: number
+          finished_at: string | null
+          id: string
+          last_roll: number[] | null
+          mode: string
+          pace_seconds: number
+          phase: string | null
+          rng_counter: number
+          rng_seed: number
+          room_code: string
+          started_at: string | null
+          status: string
+          time_limit_minutes: number | null
+          turn_clock_elapsed_ms: number
+          turn_clock_paused_at: string | null
+          turn_started_at: string | null
+        }
+        Insert: {
+          building_supply_limit?: number | null
+          created_at?: string
+          created_by: string
+          current_seat?: number | null
+          doubles_count?: number
+          finished_at?: string | null
+          id?: string
+          last_roll?: number[] | null
+          mode?: string
+          pace_seconds?: number
+          phase?: string | null
+          rng_counter?: number
+          rng_seed: number
+          room_code: string
+          started_at?: string | null
+          status?: string
+          time_limit_minutes?: number | null
+          turn_clock_elapsed_ms?: number
+          turn_clock_paused_at?: string | null
+          turn_started_at?: string | null
+        }
+        Update: {
+          building_supply_limit?: number | null
+          created_at?: string
+          created_by?: string
+          current_seat?: number | null
+          doubles_count?: number
+          finished_at?: string | null
+          id?: string
+          last_roll?: number[] | null
+          mode?: string
+          pace_seconds?: number
+          phase?: string | null
+          rng_counter?: number
+          rng_seed?: number
+          room_code?: string
+          started_at?: string | null
+          status?: string
+          time_limit_minutes?: number | null
+          turn_clock_elapsed_ms?: number
+          turn_clock_paused_at?: string | null
+          turn_started_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_matches_room_code_fkey"
+            columns: ["room_code"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       guess_number_attempts: {
         Row: {
           created_at: string
@@ -540,176 +775,11 @@ export type Database = {
         }
         Relationships: []
       }
-      city_matches: {
-        Row: {
-          building_supply_limit: number | null
-          created_at: string
-          created_by: string
-          current_seat: number | null
-          finished_at: string | null
-          id: string
-          mode: string
-          phase: string | null
-          rng_counter: number
-          rng_seed: number
-          room_code: string
-          started_at: string | null
-          status: string
-          time_limit_minutes: number | null
-          turn_started_at: string | null
-        }
-        Insert: {
-          building_supply_limit?: number | null
-          created_at?: string
-          created_by: string
-          current_seat?: number | null
-          finished_at?: string | null
-          id?: string
-          mode?: string
-          phase?: string | null
-          rng_counter?: number
-          rng_seed: number
-          room_code: string
-          started_at?: string | null
-          status?: string
-          time_limit_minutes?: number | null
-          turn_started_at?: string | null
-        }
-        Update: {
-          building_supply_limit?: number | null
-          created_at?: string
-          created_by?: string
-          current_seat?: number | null
-          finished_at?: string | null
-          id?: string
-          mode?: string
-          phase?: string | null
-          rng_counter?: number
-          rng_seed?: number
-          room_code?: string
-          started_at?: string | null
-          status?: string
-          time_limit_minutes?: number | null
-          turn_started_at?: string | null
-        }
-        Relationships: []
-      }
-      city_match_players: {
-        Row: {
-          cash: number
-          consecutive_autopilot_turns: number
-          final_net_worth: number | null
-          id: string
-          is_ready: boolean
-          joined_at: string
-          match_id: string
-          position: number
-          seat: number
-          status: string
-          time_reserve_ms: number
-          user_id: string
-          username: string
-        }
-        Insert: {
-          cash?: number
-          consecutive_autopilot_turns?: number
-          final_net_worth?: number | null
-          id?: string
-          is_ready?: boolean
-          joined_at?: string
-          match_id: string
-          position?: number
-          seat: number
-          status?: string
-          time_reserve_ms?: number
-          user_id: string
-          username: string
-        }
-        Update: {
-          cash?: number
-          consecutive_autopilot_turns?: number
-          final_net_worth?: number | null
-          id?: string
-          is_ready?: boolean
-          joined_at?: string
-          match_id?: string
-          position?: number
-          seat?: number
-          status?: string
-          time_reserve_ms?: number
-          user_id?: string
-          username?: string
-        }
-        Relationships: []
-      }
-      city_command_attempts: {
-        Row: {
-          created_at: string
-          id: string
-          room_code: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          room_code: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          room_code?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      city_create_match: {
-        Args: {
-          p_mode?: string
-          p_room_code: string
-          p_seed?: number
-          p_time_limit_minutes?: number
-        }
-        Returns: string
-      }
-      city_join_seat: {
-        Args: {
-          p_match_id: string
-          p_username: string
-        }
-        Returns: number
-      }
-      city_leave_seat: {
-        Args: {
-          p_match_id: string
-        }
-        Returns: undefined
-      }
-      city_set_ready: {
-        Args: {
-          p_match_id: string
-          p_ready: boolean
-        }
-        Returns: undefined
-      }
-      city_start_match: {
-        Args: {
-          p_match_id: string
-        }
-        Returns: undefined
-      }
-      is_seated_in_match: {
-        Args: {
-          p_match_id: string
-          p_user_id: string
-        }
-        Returns: boolean
-      }
       _record_award: {
         Args: {
           p_activity_type: string
@@ -740,6 +810,35 @@ export type Database = {
         Args: { p_guess: number; p_room_code: string }
         Returns: string
       }
+      city_create_match: {
+        Args: {
+          p_mode?: string
+          p_room_code: string
+          p_seed?: number
+          p_time_limit_minutes?: number
+        }
+        Returns: string
+      }
+      city_derive_dice: {
+        Args: { p_counter: number; p_seed: number }
+        Returns: number[]
+      }
+      city_end_turn: { Args: { p_match_id: string }; Returns: Json }
+      city_join_seat: {
+        Args: { p_match_id: string; p_username: string }
+        Returns: number
+      }
+      city_leave_seat: { Args: { p_match_id: string }; Returns: undefined }
+      city_rate_limit_check: {
+        Args: { p_room_code: string; p_user_id: string }
+        Returns: undefined
+      }
+      city_roll_dice: { Args: { p_match_id: string }; Returns: Json }
+      city_set_ready: {
+        Args: { p_match_id: string; p_ready: boolean }
+        Returns: undefined
+      }
+      city_start_match: { Args: { p_match_id: string }; Returns: undefined }
       cleanup_inactive_rooms: { Args: never; Returns: undefined }
       elect_room_host: {
         Args: { p_room_code: string; p_user_id: string }
@@ -763,6 +862,10 @@ export type Database = {
       }
       is_member_of_room: {
         Args: { room_code: string; user_uuid: string }
+        Returns: boolean
+      }
+      is_seated_in_match: {
+        Args: { p_match_id: string; p_user_id: string }
         Returns: boolean
       }
       log_moderation_event: {
@@ -927,3 +1030,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+

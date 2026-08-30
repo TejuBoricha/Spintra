@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Building2, Check, Crown, Loader2, LogOut, Play, UserPlus } from "lucide-react";
+import { Building2, Check, Crown, Dices, Loader2, LogOut, Play, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useRoomActivity } from "../context/room-activity-context";
+import { CityBoard } from "./city-board";
 import { useCityMatch } from "./use-city-match";
 
 // Slice 1: lobby only — create a match, take a seat, ready up, start.
@@ -20,18 +22,25 @@ const MIN_PLAYERS = 2;
 
 export function CityMatchShell() {
   const { roomCode, isHost, currentUser } = useRoomActivity();
+  const [selected, setSelected] = useState<number | null>(null);
   const {
     match,
     seats,
+    board,
+    assets,
     isLoading,
     error,
     isDemoMode,
     mySeat,
+    isMyTurn,
+    lastRoll,
     createMatch,
     joinSeat,
     leaveSeat,
     setReady,
     startMatch,
+    rollDice,
+    endTurn,
   } = useCityMatch(roomCode, currentUser.id);
 
   if (isDemoMode) {
@@ -80,23 +89,73 @@ export function CityMatchShell() {
     );
   }
 
-  // Slice 1 stops here: the board itself arrives in Slice 2.
+  // Slice 2: the board, the roll, and the turn. Landing effects — rent, buying,
+  // cards, tax — arrive in Slice 3, so a turn currently ends by choice rather
+  // than by resolving the space you stopped on.
   if (match.status !== "lobby") {
+    const active = seats.find((s) => s.seat === match.current_seat);
+    const canRoll = isMyTurn && match.phase === "awaiting_roll";
+    const canEnd = isMyTurn && match.phase !== "awaiting_roll";
+
     return (
-      <Shell>
-        <IconBadge />
-        <p className="text-lg font-semibold">Match in progress</p>
-        <p className="text-sm text-muted-foreground max-w-md">
-          The board is coming in the next update. Your seat and the match are saved.
-        </p>
-        <div className="flex flex-wrap gap-2 justify-center mt-2">
-          {seats.map((s) => (
-            <Badge key={s.id} variant="secondary">
-              Seat {s.seat + 1} · {s.username}
-            </Badge>
-          ))}
+      <div className="max-w-5xl mx-auto">
+        <div className="flex flex-wrap items-center gap-3 mb-3">
+          <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
+            {seats.map((s) => (
+              <Badge
+                key={s.id}
+                variant={s.seat === match.current_seat ? "default" : "secondary"}
+                className="gap-1"
+              >
+                {s.username}
+                <span className="font-mono opacity-80">{s.cash.toLocaleString()}</span>
+              </Badge>
+            ))}
+          </div>
         </div>
-      </Shell>
+
+        {error && (
+          <div className="mb-3">
+            <ErrorNote message={error} />
+          </div>
+        )}
+
+        <CityBoard
+          board={board}
+          seats={seats}
+          assets={assets}
+          currentSeat={match.current_seat}
+          selectedIdx={selected}
+          onSelect={setSelected}
+        />
+
+        <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+          <Button onClick={() => void rollDice()} disabled={!canRoll}>
+            <Dices className="w-4 h-4" aria-hidden="true" />
+            Roll dice
+          </Button>
+          <Button variant="outline" onClick={() => void endTurn()} disabled={!canEnd}>
+            End turn
+          </Button>
+        </div>
+
+        {/* aria-live so a screen reader hears the roll, not just sighted players. */}
+        <p
+          className="text-sm text-muted-foreground text-center mt-3"
+          role="status"
+          aria-live="polite"
+        >
+          {lastRoll
+            ? `Rolled ${lastRoll.dice[0]} and ${lastRoll.dice[1]}. ` +
+              (lastRoll.detained
+                ? "Three doubles — off to Customs."
+                : `Moved to ${board[lastRoll.to]?.name ?? "the next space"}.`) +
+              (lastRoll.salary ? ` Collected ${lastRoll.salary} for passing Departure.` : "")
+            : isMyTurn
+              ? "Your turn — roll the dice."
+              : `Waiting for ${active?.username ?? "the next player"}.`}
+        </p>
+      </div>
     );
   }
 
@@ -231,7 +290,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 function IconBadge() {
   return (
-    <div className="inline-flex w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-500 items-center justify-center">
+    <div className="inline-flex w-14 h-14 rounded-2xl bg-linear-to-br from-amber-500 to-yellow-500 items-center justify-center">
       <Building2 className="w-7 h-7 text-white" aria-hidden="true" />
     </div>
   );

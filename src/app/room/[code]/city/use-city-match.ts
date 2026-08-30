@@ -15,6 +15,14 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export type CityMatchStatus = "lobby" | "active" | "paused" | "finished" | "abandoned";
 
+export type CityPhase =
+  | "awaiting_roll"
+  | "movement"
+  | "space_resolution"
+  | "required_decision"
+  | "optional_actions"
+  | "auction";
+
 export interface CityMatch {
   id: string;
   room_code: string;
@@ -22,9 +30,13 @@ export interface CityMatch {
   mode: "classic" | "timed";
   time_limit_minutes: number | null;
   current_seat: number | null;
-  phase: string | null;
+  phase: CityPhase | null;
   created_by: string;
   started_at: string | null;
+  turn_started_at: string | null;
+  pace_seconds: number;
+  last_roll: number[] | null;
+  doubles_count: number;
 }
 
 export interface CitySeat {
@@ -35,6 +47,39 @@ export interface CitySeat {
   username: string;
   is_ready: boolean;
   status: "seated" | "active" | "bankrupt" | "retired";
+  position: number;
+  cash: number;
+}
+
+/** Reference data from `city_board_spaces` — the same 40 rows for every match. */
+export interface CityBoardSpace {
+  idx: number;
+  name: string;
+  kind: "corner" | "property" | "airport" | "utility" | "tax" | "card";
+  country: string | null;
+  price: number | null;
+  build_cost: number | null;
+  rent: number[] | null;
+  tax_amount: number | null;
+  deck: "boarding_pass" | "city_fund" | null;
+}
+
+export interface CityAsset {
+  space_idx: number;
+  owner_seat: number;
+  buildings: number;
+  is_mortgaged: boolean;
+}
+
+/** What `city_roll_dice` hands back, so the UI can narrate the move. */
+export interface CityRollResult {
+  dice: number[];
+  from: number;
+  to: number;
+  passed_departure: boolean;
+  salary: number;
+  doubles: boolean;
+  detained: boolean;
 }
 
 // The RNG columns (rng_seed, rng_counter) are intentionally absent from both
@@ -43,25 +88,38 @@ export interface CitySeat {
 // than silently leak. Listing columns explicitly (not `*`) keeps the client
 // honest about that boundary.
 const MATCH_COLUMNS =
-  "id, room_code, status, mode, time_limit_minutes, current_seat, phase, created_by, started_at";
+  "id, room_code, status, mode, time_limit_minutes, current_seat, phase, created_by, " +
+  "started_at, turn_started_at, pace_seconds, last_roll, doubles_count";
+
+const SEAT_COLUMNS =
+  "id, match_id, user_id, seat, username, is_ready, status, position, cash";
 
 interface UseCityMatchResult {
   match: CityMatch | null;
   seats: CitySeat[];
+  board: CityBoardSpace[];
+  assets: CityAsset[];
   isLoading: boolean;
   error: string | null;
   isDemoMode: boolean;
   mySeat: CitySeat | null;
+  isMyTurn: boolean;
+  lastRoll: CityRollResult | null;
   createMatch: (mode: "classic" | "timed", timeLimitMinutes?: number) => Promise<void>;
   joinSeat: (username: string) => Promise<void>;
   leaveSeat: () => Promise<void>;
   setReady: (ready: boolean) => Promise<void>;
   startMatch: () => Promise<void>;
+  rollDice: () => Promise<void>;
+  endTurn: () => Promise<void>;
 }
 
 export function useCityMatch(roomCode: string, currentUserId: string): UseCityMatchResult {
   const [match, setMatch] = useState<CityMatch | null>(null);
   const [seats, setSeats] = useState<CitySeat[]>([]);
+  const [board, setBoard] = useState<CityBoardSpace[]>([]);
+  const [assets, setAssets] = useState<CityAsset[]>([]);
+  const [lastRoll, setLastRoll] = useState<CityRollResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,15 +171,46 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     const nextMatch = matchRow as unknown as CityMatch;
     setMatch(nextMatch);
 
-    const { data: seatRows } = await supabase
-      .from("city_match_players")
-      .select("id, match_id, user_id, seat, username, is_ready, status")
-      .eq("match_id", nextMatch.id)
-      .order("seat", { ascending: true });
+    const [{ data: seatRows }, { data: assetRows }] = await Promise.all([
+      supabase
+        .from("city_match_players")
+        .select(SEAT_COLUMNS)
+        .eq("match_id", nextMatch.id)
+        .order("seat", { ascending: true }),
+      supabase
+        .from("city_assets")
+        .select("space_idx, owner_seat, buildings, is_mortgaged")
+        .eq("match_id", nextMatch.id),
+    ]);
 
     setSeats((seatRows ?? []) as unknown as CitySeat[]);
+    setAssets((assetRows ?? []) as unknown as CityAsset[]);
     setIsLoading(false);
   }, [supabase, roomCode]);
+
+  // The board is immutable reference data shared by every match, so it is
+  // fetched once and never refetched by the realtime notifier below. Prices
+  // and rents live server-side deliberately: a client that can redefine the
+  // rent table can rewrite the economy (migration 0064 §1).
+  useEffect(() => {
+    if (!supabase) return;
+    let cancelled = false;
+    void (async () => {
+      const { data, error: boardError } = await supabase
+        .from("city_board_spaces")
+        .select("idx, name, kind, country, price, build_cost, rent, tax_amount, deck")
+        .order("idx", { ascending: true });
+      if (cancelled) return;
+      if (boardError) {
+        console.error("Failed to load the city board:", boardError);
+        return;
+      }
+      setBoard((data ?? []) as unknown as CityBoardSpace[]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
 
   // queueMicrotask defers the state updates out of the effect body, matching
   // the pattern room-client.tsx uses for its `hasMounted` effect to satisfy
@@ -232,18 +321,53 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     await runCommand(() => supabase!.rpc("city_start_match", { p_match_id: id }));
   }, [runCommand, supabase]);
 
+  // Unlike the lobby commands, the roll returns a payload the UI needs (the
+  // dice, where the token moved from and to, whether salary was paid), so it
+  // can't go through runCommand — that discards `data`. The payload is a
+  // *narration* of a move the server already committed, never the source of
+  // truth: the refetch below re-reads the authoritative rows.
+  const rollDice = useCallback(async () => {
+    const id = matchIdRef.current;
+    if (!supabase || !id) return;
+    const { data, error: rpcError } = await supabase.rpc("city_roll_dice", { p_match_id: id });
+    if (rpcError) {
+      console.error("City roll failed:", rpcError);
+      setError(friendlyCommandError(rpcError.message));
+      return;
+    }
+    setError(null);
+    setLastRoll(data as unknown as CityRollResult);
+    await refetch();
+  }, [supabase, refetch]);
+
+  const endTurn = useCallback(async () => {
+    const id = matchIdRef.current;
+    if (!id) return;
+    setLastRoll(null);
+    await runCommand(() => supabase!.rpc("city_end_turn", { p_match_id: id }));
+  }, [runCommand, supabase]);
+
+  const mySeat = seats.find((s) => s.user_id === currentUserId) ?? null;
+
   return {
     match,
     seats,
+    board,
+    assets,
     isLoading,
     error,
     isDemoMode,
-    mySeat: seats.find((s) => s.user_id === currentUserId) ?? null,
+    mySeat,
+    isMyTurn:
+      match?.status === "active" && mySeat != null && match.current_seat === mySeat.seat,
+    lastRoll,
     createMatch,
     joinSeat,
     leaveSeat,
     setReady,
     startMatch,
+    rollDice,
+    endTurn,
   };
 }
 
@@ -256,5 +380,10 @@ function friendlyCommandError(message: string): string {
   if (message.includes("CITY_MATCH_ALREADY_EXISTS")) return "A match is already open in this room.";
   if (message.includes("CITY_NOT_ROOM_MEMBER")) return "Join the room before taking a seat.";
   if (message.includes("CITY_RATE_LIMIT")) return "Slow down a moment, then try again.";
+  if (message.includes("CITY_NOT_YOUR_TURN")) return "It's not your turn yet.";
+  if (message.includes("CITY_WRONG_PHASE")) return "You've already rolled this turn.";
+  if (message.includes("CITY_MUST_ROLL_FIRST")) return "Roll the dice before ending your turn.";
+  if (message.includes("CITY_MATCH_NOT_ACTIVE")) return "This match isn't running.";
+  if (message.includes("CITY_NOT_SEATED")) return "You're spectating this match.";
   return "That didn't work. Please try again.";
 }
