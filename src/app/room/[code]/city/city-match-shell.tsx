@@ -9,6 +9,7 @@ import { useRoomActivity } from "../context/room-activity-context";
 import { CityBoard } from "./city-board";
 import { CityHoldings } from "./city-holdings";
 import { CityTrade } from "./city-trade";
+import { CityAuction } from "./city-auction";
 import type { CityBoardSpace, CityRollResult, CitySeat } from "./use-city-match";
 import { useCityMatch } from "./use-city-match";
 
@@ -56,6 +57,10 @@ export function CityMatchShell() {
     declineTrade,
     withdrawTrade,
     leaveDetention,
+    auction,
+    placeBid,
+    passAuction,
+    settleAuction,
   } = useCityMatch(roomCode, currentUser.id);
 
   if (isDemoMode) {
@@ -104,10 +109,9 @@ export function CityMatchShell() {
     );
   }
 
-  // Slice 6a: the full turn — roll, land, buy or pay, manage property, trade,
-  // draw cards, and get out of Customs. Still to come: auctions (Slice 6b), so
-  // a declined property currently stays unowned rather than going under the
-  // hammer.
+  // The full match loop: roll, land, buy or auction, pay rent and tax, draw
+  // cards, get out of Customs, build, mortgage, trade, and go bankrupt. What
+  // remains is Slice 7 — timed mode, the recap, and XP.
   if (match.status !== "lobby") {
     const active = seats.find((s) => s.seat === match.current_seat);
     const inDebt = (mySeat?.pending_debt ?? 0) > 0;
@@ -150,7 +154,12 @@ export function CityMatchShell() {
           onSelect={setSelected}
         />
 
-        <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+        <div
+          className={
+            "flex flex-wrap items-center justify-center gap-2 mt-4" +
+            (auction ? " hidden" : "")
+          }
+        >
           {isMyTurn && detained && match.phase === "awaiting_roll" ? (
             // Detention replaces the roll entirely: three ways out, and the
             // third failed attempt pays the fee whether you like it or not.
@@ -202,6 +211,18 @@ export function CityMatchShell() {
             </>
           )}
         </div>
+
+        {auction && (
+          <CityAuction
+            auction={auction}
+            board={board}
+            seats={seats}
+            mySeat={mySeat}
+            onBid={(n) => void placeBid(n)}
+            onPass={() => void passAuction()}
+            onSettle={() => void settleAuction()}
+          />
+        )}
 
         <CityHoldings
           board={board}

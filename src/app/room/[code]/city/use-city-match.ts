@@ -77,6 +77,16 @@ export interface CityAsset {
   is_mortgaged: boolean;
 }
 
+export interface CityAuction {
+  id: string;
+  space_idx: number;
+  high_bid: number;
+  high_seat: number | null;
+  passed_seats: number[];
+  ends_at: string;
+  hard_ends_at: string;
+}
+
 export interface CityTradeOffer {
   id: string;
   from_seat: number;
@@ -183,6 +193,10 @@ interface UseCityMatchResult {
   declineTrade: (offerId: string) => Promise<void>;
   withdrawTrade: (offerId: string) => Promise<void>;
   leaveDetention: (method: "pay" | "visa" | "roll") => Promise<void>;
+  auction: CityAuction | null;
+  placeBid: (amount: number) => Promise<void>;
+  passAuction: () => Promise<void>;
+  settleAuction: () => Promise<void>;
 }
 
 export function useCityMatch(roomCode: string, currentUserId: string): UseCityMatchResult {
@@ -192,6 +206,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   const [assets, setAssets] = useState<CityAsset[]>([]);
   const [lastRoll, setLastRoll] = useState<CityRollResult | null>(null);
   const [offers, setOffers] = useState<CityTradeOffer[]>([]);
+  const [auction, setAuction] = useState<CityAuction | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -243,7 +258,8 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     const nextMatch = matchRow as unknown as CityMatch;
     setMatch(nextMatch);
 
-    const [{ data: seatRows }, { data: assetRows }, { data: offerRows }] = await Promise.all([
+    const [{ data: seatRows }, { data: assetRows }, { data: offerRows }, { data: auctionRow }] =
+      await Promise.all([
       supabase
         .from("city_match_players")
         .select(SEAT_COLUMNS)
@@ -258,11 +274,18 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
         .select("id, from_seat, to_seat, give_spaces, get_spaces, give_cash, get_cash, status, expires_at")
         .eq("match_id", nextMatch.id)
         .eq("status", "pending"),
+      supabase
+        .from("city_auctions")
+        .select("id, space_idx, high_bid, high_seat, passed_seats, ends_at, hard_ends_at")
+        .eq("match_id", nextMatch.id)
+        .eq("status", "running")
+        .maybeSingle(),
     ]);
 
     setSeats((seatRows ?? []) as unknown as CitySeat[]);
     setAssets((assetRows ?? []) as unknown as CityAsset[]);
     setOffers((offerRows ?? []) as unknown as CityTradeOffer[]);
+    setAuction((auctionRow ?? null) as unknown as CityAuction | null);
     setIsLoading(false);
   }, [supabase, roomCode]);
 
@@ -309,6 +332,11 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "city_matches", filter: `room_code=eq.${roomCode}` },
+        () => void refetch()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "city_auctions" },
         () => void refetch()
       )
       .on(
@@ -519,6 +547,31 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     [runCommand, supabase]
   );
 
+  const placeBid = useCallback(
+    async (amount: number) => {
+      const id = matchIdRef.current;
+      if (!id) return;
+      await runCommand(() => supabase!.rpc("city_place_bid", { p_match_id: id, p_amount: amount }));
+    },
+    [runCommand, supabase]
+  );
+
+  const passAuction = useCallback(async () => {
+    const id = matchIdRef.current;
+    if (!id) return;
+    await runCommand(() => supabase!.rpc("city_pass_auction", { p_match_id: id }));
+  }, [runCommand, supabase]);
+
+  // Called by whichever client notices the deadline pass. The server re-derives
+  // whether it actually has, so an early or lying call is simply refused — which
+  // is why this can be fired optimistically without a scheduler.
+  const settleAuction = useCallback(async () => {
+    const id = matchIdRef.current;
+    if (!supabase || !id) return;
+    const { error: e } = await supabase.rpc("city_settle_auction", { p_match_id: id });
+    if (!e) await refetch();
+  }, [supabase, refetch]);
+
   const mySeat = seats.find((s) => s.user_id === currentUserId) ?? null;
 
   return {
@@ -553,6 +606,10 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     declineTrade,
     withdrawTrade,
     leaveDetention,
+    auction,
+    placeBid,
+    passAuction,
+    settleAuction,
   };
 }
 
@@ -597,5 +654,10 @@ function friendlyCommandError(message: string): string {
   if (message.includes("CITY_IN_DETENTION")) return "You're in Customs — get out first.";
   if (message.includes("CITY_NOT_DETAINED")) return "You're not in Customs.";
   if (message.includes("CITY_NO_VISA")) return "You don't have a Transit Visa.";
+  if (message.includes("CITY_AUCTION_RUNNING")) return "Finish the auction first.";
+  if (message.includes("CITY_BID_TOO_LOW")) return "Bid higher than the standing bid.";
+  if (message.includes("CITY_BID_NOT_A_STEP")) return "Bids go up in tens.";
+  if (message.includes("CITY_AUCTION_CLOSED")) return "That auction has closed.";
+  if (message.includes("CITY_NO_AUCTION")) return "There's no auction running.";
   return "That didn't work. Please try again.";
 }

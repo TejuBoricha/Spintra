@@ -185,6 +185,63 @@ export type Database = {
           },
         ]
       }
+      city_auctions: {
+        Row: {
+          created_at: string
+          ends_at: string
+          hard_ends_at: string
+          high_bid: number
+          high_seat: number | null
+          id: string
+          match_id: string
+          passed_seats: number[]
+          settled_at: string | null
+          space_idx: number
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          ends_at: string
+          hard_ends_at: string
+          high_bid?: number
+          high_seat?: number | null
+          id?: string
+          match_id: string
+          passed_seats?: number[]
+          settled_at?: string | null
+          space_idx: number
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          ends_at?: string
+          hard_ends_at?: string
+          high_bid?: number
+          high_seat?: number | null
+          id?: string
+          match_id?: string
+          passed_seats?: number[]
+          settled_at?: string | null
+          space_idx?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_auctions_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "city_auctions_space_idx_fkey"
+            columns: ["space_idx"]
+            isOneToOne: false
+            referencedRelation: "city_board_spaces"
+            referencedColumns: ["idx"]
+          },
+        ]
+      }
       city_board_spaces: {
         Row: {
           build_cost: number | null
@@ -981,10 +1038,7 @@ export type Database = {
         Args: { p_match_id: string }
         Returns: undefined
       }
-      city_decline_purchase: {
-        Args: { p_match_id: string }
-        Returns: undefined
-      }
+      city_decline_purchase: { Args: { p_match_id: string }; Returns: Json }
       city_derive_dice: {
         Args: { p_counter: number; p_seed: number }
         Returns: number[]
@@ -1020,6 +1074,11 @@ export type Database = {
       }
       city_mortgage: {
         Args: { p_match_id: string; p_space_idx: number }
+        Returns: Json
+      }
+      city_pass_auction: { Args: { p_match_id: string }; Returns: Json }
+      city_place_bid: {
+        Args: { p_amount: number; p_match_id: string }
         Returns: Json
       }
       city_propose_trade: {
@@ -1062,6 +1121,10 @@ export type Database = {
       city_set_ready: {
         Args: { p_match_id: string; p_ready: boolean }
         Returns: undefined
+      }
+      city_settle_auction: {
+        Args: { p_force?: boolean; p_match_id: string }
+        Returns: Json
       }
       city_space_is_tradeable: {
         Args: { p_match_id: string; p_space_idx: number }
