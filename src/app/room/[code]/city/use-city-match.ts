@@ -77,6 +77,18 @@ export interface CityAsset {
   is_mortgaged: boolean;
 }
 
+/** One row of a finished match's standings, from the `city_match_results` view. */
+export interface CityResult {
+  match_id: string;
+  seat: number;
+  username: string;
+  status: string;
+  final_net_worth: number | null;
+  place: number;
+  finished_at: string;
+  mode: string;
+}
+
 export interface CityAuction {
   id: string;
   space_idx: number;
@@ -194,6 +206,7 @@ interface UseCityMatchResult {
   withdrawTrade: (offerId: string) => Promise<void>;
   leaveDetention: (method: "pay" | "visa" | "roll") => Promise<void>;
   auction: CityAuction | null;
+  results: CityResult[];
   placeBid: (amount: number) => Promise<void>;
   passAuction: () => Promise<void>;
   settleAuction: () => Promise<void>;
@@ -207,6 +220,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   const [lastRoll, setLastRoll] = useState<CityRollResult | null>(null);
   const [offers, setOffers] = useState<CityTradeOffer[]>([]);
   const [auction, setAuction] = useState<CityAuction | null>(null);
+  const [results, setResults] = useState<CityResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -251,9 +265,24 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     if (!matchRow) {
       setMatch(null);
       setSeats([]);
+      // No live match. There may still be a finished one to report — the recap
+      // has to survive the match leaving the live set, or it would vanish the
+      // instant it was produced.
+      const { data: last } = await supabase
+        .from("city_match_results")
+        .select("match_id, seat, username, status, final_net_worth, place, finished_at, mode")
+        .eq("room_code", roomCode)
+        .order("finished_at", { ascending: false })
+        .order("place", { ascending: true })
+        .limit(16);
+      const rows = (last ?? []) as unknown as CityResult[];
+      const newest = rows[0]?.match_id;
+      setResults(newest ? rows.filter((r) => r.match_id === newest) : []);
       setIsLoading(false);
       return;
     }
+
+    setResults([]);
 
     const nextMatch = matchRow as unknown as CityMatch;
     setMatch(nextMatch);
@@ -607,6 +636,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     withdrawTrade,
     leaveDetention,
     auction,
+    results,
     placeBid,
     passAuction,
     settleAuction,

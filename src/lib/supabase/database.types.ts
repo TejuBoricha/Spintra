@@ -173,6 +173,13 @@ export type Database = {
             foreignKeyName: "city_assets_match_id_fkey"
             columns: ["match_id"]
             isOneToOne: false
+            referencedRelation: "city_match_results"
+            referencedColumns: ["match_id"]
+          },
+          {
+            foreignKeyName: "city_assets_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
             referencedRelation: "city_matches"
             referencedColumns: ["id"]
           },
@@ -226,6 +233,13 @@ export type Database = {
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "city_auctions_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_match_results"
+            referencedColumns: ["match_id"]
+          },
           {
             foreignKeyName: "city_auctions_match_id_fkey"
             columns: ["match_id"]
@@ -386,6 +400,13 @@ export type Database = {
             foreignKeyName: "city_match_players_match_id_fkey"
             columns: ["match_id"]
             isOneToOne: false
+            referencedRelation: "city_match_results"
+            referencedColumns: ["match_id"]
+          },
+          {
+            foreignKeyName: "city_match_players_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
             referencedRelation: "city_matches"
             referencedColumns: ["id"]
           },
@@ -524,6 +545,13 @@ export type Database = {
           to_seat?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "city_trade_offers_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_match_results"
+            referencedColumns: ["match_id"]
+          },
           {
             foreignKeyName: "city_trade_offers_match_id_fkey"
             columns: ["match_id"]
@@ -935,7 +963,28 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      city_match_results: {
+        Row: {
+          final_net_worth: number | null
+          finished_at: string | null
+          match_id: string | null
+          mode: string | null
+          place: number | null
+          room_code: string | null
+          seat: number | null
+          status: string | null
+          username: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_matches_room_code_fkey"
+            columns: ["room_code"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
     }
     Functions: {
       _record_award: {
@@ -1059,6 +1108,10 @@ export type Database = {
         }
       }
       city_end_turn: { Args: { p_match_id: string }; Returns: Json }
+      city_finish_match: {
+        Args: { p_match_id: string; p_reason: string }
+        Returns: Json
+      }
       city_join_seat: {
         Args: { p_match_id: string; p_username: string }
         Returns: number
@@ -1075,6 +1128,10 @@ export type Database = {
       city_mortgage: {
         Args: { p_match_id: string; p_space_idx: number }
         Returns: Json
+      }
+      city_net_worth: {
+        Args: { p_match_id: string; p_seat: number }
+        Returns: number
       }
       city_pass_auction: { Args: { p_match_id: string }; Returns: Json }
       city_place_bid: {

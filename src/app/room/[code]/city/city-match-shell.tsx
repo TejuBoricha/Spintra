@@ -61,6 +61,7 @@ export function CityMatchShell() {
     placeBid,
     passAuction,
     settleAuction,
+    results,
   } = useCityMatch(roomCode, currentUser.id);
 
   if (isDemoMode) {
@@ -83,6 +84,63 @@ export function CityMatchShell() {
           Loading the match…
         </p>
       </Shell>
+    );
+  }
+
+  // No live match. If one just finished, the recap stands in its place until
+  // somebody opens the next — a result that disappears the moment it is
+  // produced may as well not exist.
+  if (!match && results.length > 0) {
+    const winner = results.find((r) => r.place === 1);
+    return (
+      <motion.div
+        key="city-recap"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-lg mx-auto text-center"
+      >
+        <IconBadge />
+        <h2 className="text-xl font-bold mt-3">
+          {winner ? `${winner.username} wins` : "Match over"}
+        </h2>
+        <p className="text-sm text-muted-foreground mb-5">
+          Final standings by net worth — cash, cities and everything built on them.
+        </p>
+
+        <ol className="grid gap-1.5 text-left mb-6">
+          {results.map((r) => (
+            <li
+              key={r.seat}
+              className={
+                "flex items-center gap-3 rounded-xl border p-3 " +
+                (r.place === 1
+                  ? "border-(--brand-primary)/50 bg-(--brand-primary)/10"
+                  : "border-(--border-hairline) bg-(--surface-panel)")
+              }
+            >
+              <span className="font-mono text-sm w-6 text-(--text-secondary)">{r.place}</span>
+              <span className="font-medium flex-1 truncate">
+                {r.username}
+                {r.status === "bankrupt" && (
+                  <span className="text-muted-foreground text-sm"> · bankrupt</span>
+                )}
+              </span>
+              <span className="font-mono text-sm">
+                {(r.final_net_worth ?? 0).toLocaleString()}
+              </span>
+            </li>
+          ))}
+        </ol>
+
+        {error && <ErrorNote message={error} />}
+        {isHost ? (
+          <Button onClick={() => void createMatch("classic")}>Play again</Button>
+        ) : (
+          <p className="text-sm text-muted-foreground" role="status">
+            Waiting for the host to start another match…
+          </p>
+        )}
+      </motion.div>
     );
   }
 
@@ -109,9 +167,10 @@ export function CityMatchShell() {
     );
   }
 
-  // The full match loop: roll, land, buy or auction, pay rent and tax, draw
-  // cards, get out of Customs, build, mortgage, trade, and go bankrupt. What
-  // remains is Slice 7 — timed mode, the recap, and XP.
+  // The full match: roll, land, buy or auction, pay rent and tax, draw cards,
+  // get out of Customs, build, mortgage, trade, go bankrupt, and finish — by
+  // last player standing or on the timed-mode limit — into a recap that awards
+  // through the room's existing scoreboard.
   if (match.status !== "lobby") {
     const active = seats.find((s) => s.seat === match.current_seat);
     const inDebt = (mySeat?.pending_debt ?? 0) > 0;
