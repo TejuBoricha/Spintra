@@ -251,6 +251,8 @@ export type Database = {
           is_ready: boolean
           joined_at: string
           match_id: string
+          pending_creditor_seat: number | null
+          pending_debt: number
           position: number
           seat: number
           status: string
@@ -266,6 +268,8 @@ export type Database = {
           is_ready?: boolean
           joined_at?: string
           match_id: string
+          pending_creditor_seat?: number | null
+          pending_debt?: number
           position?: number
           seat: number
           status?: string
@@ -281,6 +285,8 @@ export type Database = {
           is_ready?: boolean
           joined_at?: string
           match_id?: string
+          pending_creditor_seat?: number | null
+          pending_debt?: number
           position?: number
           seat?: number
           status?: string
@@ -810,9 +816,39 @@ export type Database = {
         Args: { p_guess: number; p_room_code: string }
         Returns: string
       }
+      city_assert_can_manage: {
+        Args: { p_match_id: string; p_user_id: string }
+        Returns: {
+          cash: number
+          consecutive_autopilot_turns: number
+          final_net_worth: number | null
+          id: string
+          is_ready: boolean
+          joined_at: string
+          match_id: string
+          pending_creditor_seat: number | null
+          pending_debt: number
+          position: number
+          seat: number
+          status: string
+          time_reserve_ms: number
+          user_id: string
+          username: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "city_match_players"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       city_bankrupt_seat: {
         Args: { p_creditor_seat: number; p_match_id: string; p_seat: number }
         Returns: undefined
+      }
+      city_build: {
+        Args: { p_match_id: string; p_space_idx: number }
+        Returns: Json
       }
       city_buy_property: { Args: { p_match_id: string }; Returns: Json }
       city_create_match: {
@@ -823,6 +859,10 @@ export type Database = {
           p_time_limit_minutes?: number
         }
         Returns: string
+      }
+      city_declare_bankruptcy: {
+        Args: { p_match_id: string }
+        Returns: undefined
       }
       city_decline_purchase: {
         Args: { p_match_id: string }
@@ -838,6 +878,14 @@ export type Database = {
         Returns: number
       }
       city_leave_seat: { Args: { p_match_id: string }; Returns: undefined }
+      city_max_liquidation: {
+        Args: { p_match_id: string; p_seat: number }
+        Returns: number
+      }
+      city_mortgage: {
+        Args: { p_match_id: string; p_space_idx: number }
+        Returns: Json
+      }
       city_rate_limit_check: {
         Args: { p_room_code: string; p_user_id: string }
         Returns: undefined
@@ -856,11 +904,23 @@ export type Database = {
         Returns: Json
       }
       city_roll_dice: { Args: { p_match_id: string }; Returns: Json }
+      city_sell_building: {
+        Args: { p_match_id: string; p_space_idx: number }
+        Returns: Json
+      }
       city_set_ready: {
         Args: { p_match_id: string; p_ready: boolean }
         Returns: undefined
       }
       city_start_match: { Args: { p_match_id: string }; Returns: undefined }
+      city_try_settle_debt: {
+        Args: { p_match_id: string; p_seat: number }
+        Returns: boolean
+      }
+      city_unmortgage: {
+        Args: { p_match_id: string; p_space_idx: number }
+        Returns: Json
+      }
       cleanup_inactive_rooms: { Args: never; Returns: undefined }
       elect_room_host: {
         Args: { p_room_code: string; p_user_id: string }

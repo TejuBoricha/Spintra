@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useRoomActivity } from "../context/room-activity-context";
 import { CityBoard } from "./city-board";
+import { CityHoldings } from "./city-holdings";
 import type { CityBoardSpace, CityRollResult, CitySeat } from "./use-city-match";
 import { useCityMatch } from "./use-city-match";
 
@@ -43,6 +44,11 @@ export function CityMatchShell() {
     endTurn,
     buyProperty,
     declinePurchase,
+    build,
+    sellBuilding,
+    mortgage,
+    unmortgage,
+    declareBankruptcy,
   } = useCityMatch(roomCode, currentUser.id);
 
   if (isDemoMode) {
@@ -91,16 +97,16 @@ export function CityMatchShell() {
     );
   }
 
-  // Slice 3: the board, the roll, and what the space you land on demands —
-  // buy-or-pass, rent, tax, and bankruptcy. Still to come: building and
-  // mortgaging (Slice 4), trading (Slice 5), and auctions, card decks and
-  // detention (Slice 6), so a declined property currently stays unowned and a
-  // card space is a no-op.
+  // Slice 4: the board, the roll, what the space demands, and the property
+  // management that makes a debt survivable. Still to come: trading (Slice 5),
+  // and auctions, card decks and detention (Slice 6) — so a declined property
+  // currently stays unowned and a card space is a no-op.
   if (match.status !== "lobby") {
     const active = seats.find((s) => s.seat === match.current_seat);
+    const inDebt = (mySeat?.pending_debt ?? 0) > 0;
     const mustDecide = isMyTurn && match.phase === "required_decision";
-    const canRoll = isMyTurn && match.phase === "awaiting_roll";
-    const canEnd = isMyTurn && !canRoll && !mustDecide;
+    const canRoll = isMyTurn && match.phase === "awaiting_roll" && !inDebt;
+    const canEnd = isMyTurn && match.phase !== "awaiting_roll" && !mustDecide && !inDebt;
     const onSale = mySeat ? board[mySeat.position] : undefined;
     const iAmOut = mySeat?.status === "bankrupt" || mySeat?.status === "retired";
 
@@ -137,7 +143,7 @@ export function CityMatchShell() {
         />
 
         <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
-          {mustDecide && onSale ? (
+          {mustDecide && onSale && !inDebt ? (
             // A pending purchase blocks the turn, so it replaces the normal
             // controls rather than sitting alongside them — there is exactly
             // one thing to do here and it should be unmissable.
@@ -164,6 +170,18 @@ export function CityMatchShell() {
             </>
           )}
         </div>
+
+        <CityHoldings
+          board={board}
+          assets={assets}
+          mySeat={mySeat}
+          isMyTurn={isMyTurn}
+          onBuild={(i) => void build(i)}
+          onSell={(i) => void sellBuilding(i)}
+          onMortgage={(i) => void mortgage(i)}
+          onUnmortgage={(i) => void unmortgage(i)}
+          onGiveUp={() => void declareBankruptcy()}
+        />
 
         {/* aria-live so a screen reader hears the roll, not just sighted players. */}
         <p
@@ -323,6 +341,8 @@ function narrate(roll: CityRollResult, board: CityBoardSpace[], seats: CitySeat[
       return `${head} Paid ${l.amount} in tax.`;
     case "may_buy":
       return `${head} It's unclaimed — buy it for ${l.price}, or pass.`;
+    case "must_raise_funds":
+      return `${head} Rent is ${l.owed} and you're ${l.short_by} short — sell or mortgage to cover it.`;
     case "bankrupt":
       return `${head} Couldn't cover ${l.owed} — bankrupt.`;
     case "mortgaged_no_rent":

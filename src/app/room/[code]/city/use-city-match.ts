@@ -49,6 +49,9 @@ export interface CitySeat {
   status: "seated" | "active" | "bankrupt" | "retired";
   position: number;
   cash: number;
+  /** >0 while this seat owes money it could not cover in cash (DESIGN.md §3.1D). */
+  pending_debt: number;
+  pending_creditor_seat: number | null;
 }
 
 /** Reference data from `city_board_spaces` — the same 40 rows for every match. */
@@ -86,12 +89,14 @@ export interface CityLanding {
     | "paid_rent"
     | "paid_tax"
     | "bankrupt"
+    | "must_raise_funds"
     | "detained"
     | "card_pending";
   price?: number;
   space?: number;
   amount?: number;
   owed?: number;
+  short_by?: number;
   to_seat?: number | null;
   to?: number;
   deck?: string;
@@ -119,7 +124,8 @@ const MATCH_COLUMNS =
   "started_at, turn_started_at, pace_seconds, last_roll, doubles_count";
 
 const SEAT_COLUMNS =
-  "id, match_id, user_id, seat, username, is_ready, status, position, cash";
+  "id, match_id, user_id, seat, username, is_ready, status, position, cash, " +
+  "pending_debt, pending_creditor_seat";
 
 interface UseCityMatchResult {
   match: CityMatch | null;
@@ -141,6 +147,11 @@ interface UseCityMatchResult {
   endTurn: () => Promise<void>;
   buyProperty: () => Promise<void>;
   declinePurchase: () => Promise<void>;
+  build: (spaceIdx: number) => Promise<void>;
+  sellBuilding: (spaceIdx: number) => Promise<void>;
+  mortgage: (spaceIdx: number) => Promise<void>;
+  unmortgage: (spaceIdx: number) => Promise<void>;
+  declareBankruptcy: () => Promise<void>;
 }
 
 export function useCityMatch(roomCode: string, currentUserId: string): UseCityMatchResult {
@@ -388,6 +399,30 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     await runCommand(() => supabase!.rpc("city_decline_purchase", { p_match_id: id }));
   }, [runCommand, supabase]);
 
+  // Every property command takes the same shape: one space index, validated
+  // entirely server-side. The client never decides whether a move is legal —
+  // it only decides what to ask for.
+  const spaceCommand = useCallback(
+    (fn: "city_build" | "city_sell_building" | "city_mortgage" | "city_unmortgage") =>
+      async (spaceIdx: number) => {
+        const id = matchIdRef.current;
+        if (!id) return;
+        await runCommand(() => supabase!.rpc(fn, { p_match_id: id, p_space_idx: spaceIdx }));
+      },
+    [runCommand, supabase]
+  );
+
+  const build = spaceCommand("city_build");
+  const sellBuilding = spaceCommand("city_sell_building");
+  const mortgage = spaceCommand("city_mortgage");
+  const unmortgage = spaceCommand("city_unmortgage");
+
+  const declareBankruptcy = useCallback(async () => {
+    const id = matchIdRef.current;
+    if (!id) return;
+    await runCommand(() => supabase!.rpc("city_declare_bankruptcy", { p_match_id: id }));
+  }, [runCommand, supabase]);
+
   const mySeat = seats.find((s) => s.user_id === currentUserId) ?? null;
 
   return {
@@ -411,6 +446,11 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     endTurn,
     buyProperty,
     declinePurchase,
+    build,
+    sellBuilding,
+    mortgage,
+    unmortgage,
+    declareBankruptcy,
   };
 }
 
@@ -433,5 +473,15 @@ function friendlyCommandError(message: string): string {
   if (message.includes("CITY_ALREADY_OWNED")) return "Someone already owns that.";
   if (message.includes("CITY_NOTHING_TO_BUY")) return "There's nothing to buy here.";
   if (message.includes("CITY_SEAT_OUT")) return "You're out of this match.";
+  if (message.includes("CITY_SETTLE_DEBT_FIRST")) return "Settle what you owe first.";
+  if (message.includes("CITY_SET_INCOMPLETE")) return "You need the whole country before building.";
+  if (message.includes("CITY_EVEN_BUILD")) return "Build and sell evenly across a country.";
+  if (message.includes("CITY_SELL_BUILDINGS_FIRST")) return "Sell its buildings before mortgaging.";
+  if (message.includes("CITY_FULLY_BUILT")) return "That's fully built already.";
+  if (message.includes("CITY_NOTHING_BUILT")) return "There's nothing built there.";
+  if (message.includes("CITY_ALREADY_MORTGAGED")) return "That's already mortgaged.";
+  if (message.includes("CITY_NOT_MORTGAGED")) return "That isn't mortgaged.";
+  if (message.includes("CITY_NOT_YOURS")) return "You don't own that.";
+  if (message.includes("CITY_CAN_PAY")) return "You can still cover this — sell or mortgage instead.";
   return "That didn't work. Please try again.";
 }
