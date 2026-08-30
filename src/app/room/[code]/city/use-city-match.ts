@@ -74,6 +74,18 @@ export interface CityAsset {
   is_mortgaged: boolean;
 }
 
+export interface CityTradeOffer {
+  id: string;
+  from_seat: number;
+  to_seat: number;
+  give_spaces: number[];
+  get_spaces: number[];
+  give_cash: number;
+  get_cash: number;
+  status: "pending" | "accepted" | "declined" | "withdrawn" | "expired";
+  expires_at: string;
+}
+
 /**
  * What landing on the space actually did. Resolved inside the same transaction
  * as the roll — if this were a second RPC the client had to make, a client
@@ -152,6 +164,17 @@ interface UseCityMatchResult {
   mortgage: (spaceIdx: number) => Promise<void>;
   unmortgage: (spaceIdx: number) => Promise<void>;
   declareBankruptcy: () => Promise<void>;
+  offers: CityTradeOffer[];
+  proposeTrade: (args: {
+    toSeat: number;
+    giveSpaces: number[];
+    getSpaces: number[];
+    giveCash: number;
+    getCash: number;
+  }) => Promise<void>;
+  acceptTrade: (offerId: string) => Promise<void>;
+  declineTrade: (offerId: string) => Promise<void>;
+  withdrawTrade: (offerId: string) => Promise<void>;
 }
 
 export function useCityMatch(roomCode: string, currentUserId: string): UseCityMatchResult {
@@ -160,6 +183,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   const [board, setBoard] = useState<CityBoardSpace[]>([]);
   const [assets, setAssets] = useState<CityAsset[]>([]);
   const [lastRoll, setLastRoll] = useState<CityRollResult | null>(null);
+  const [offers, setOffers] = useState<CityTradeOffer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -211,7 +235,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     const nextMatch = matchRow as unknown as CityMatch;
     setMatch(nextMatch);
 
-    const [{ data: seatRows }, { data: assetRows }] = await Promise.all([
+    const [{ data: seatRows }, { data: assetRows }, { data: offerRows }] = await Promise.all([
       supabase
         .from("city_match_players")
         .select(SEAT_COLUMNS)
@@ -221,10 +245,16 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
         .from("city_assets")
         .select("space_idx, owner_seat, buildings, is_mortgaged")
         .eq("match_id", nextMatch.id),
+      supabase
+        .from("city_trade_offers")
+        .select("id, from_seat, to_seat, give_spaces, get_spaces, give_cash, get_cash, status, expires_at")
+        .eq("match_id", nextMatch.id)
+        .eq("status", "pending"),
     ]);
 
     setSeats((seatRows ?? []) as unknown as CitySeat[]);
     setAssets((assetRows ?? []) as unknown as CityAsset[]);
+    setOffers((offerRows ?? []) as unknown as CityTradeOffer[]);
     setIsLoading(false);
   }, [supabase, roomCode]);
 
@@ -271,6 +301,11 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "city_matches", filter: `room_code=eq.${roomCode}` },
+        () => void refetch()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "city_trade_offers" },
         () => void refetch()
       )
       .on(
@@ -423,6 +458,48 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     await runCommand(() => supabase!.rpc("city_declare_bankruptcy", { p_match_id: id }));
   }, [runCommand, supabase]);
 
+  const proposeTrade = useCallback(
+    async (args: {
+      toSeat: number;
+      giveSpaces: number[];
+      getSpaces: number[];
+      giveCash: number;
+      getCash: number;
+    }) => {
+      const id = matchIdRef.current;
+      if (!id) return;
+      await runCommand(() =>
+        supabase!.rpc("city_propose_trade", {
+          p_match_id: id,
+          p_to_seat: args.toSeat,
+          p_give_spaces: args.giveSpaces,
+          p_get_spaces: args.getSpaces,
+          p_give_cash: args.giveCash,
+          p_get_cash: args.getCash,
+        })
+      );
+    },
+    [runCommand, supabase]
+  );
+
+  const acceptTrade = useCallback(
+    async (offerId: string) => {
+      await runCommand(() => supabase!.rpc("city_accept_trade", { p_offer_id: offerId }));
+    },
+    [runCommand, supabase]
+  );
+
+  const resolveTrade = useCallback(
+    (action: "declined" | "withdrawn") => async (offerId: string) => {
+      await runCommand(() =>
+        supabase!.rpc("city_resolve_trade", { p_offer_id: offerId, p_action: action })
+      );
+    },
+    [runCommand, supabase]
+  );
+  const declineTrade = resolveTrade("declined");
+  const withdrawTrade = resolveTrade("withdrawn");
+
   const mySeat = seats.find((s) => s.user_id === currentUserId) ?? null;
 
   return {
@@ -451,6 +528,11 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     mortgage,
     unmortgage,
     declareBankruptcy,
+    offers,
+    proposeTrade,
+    acceptTrade,
+    declineTrade,
+    withdrawTrade,
   };
 }
 
@@ -483,5 +565,14 @@ function friendlyCommandError(message: string): string {
   if (message.includes("CITY_NOT_MORTGAGED")) return "That isn't mortgaged.";
   if (message.includes("CITY_NOT_YOURS")) return "You don't own that.";
   if (message.includes("CITY_CAN_PAY")) return "You can still cover this — sell or mortgage instead.";
+  if (message.includes("CITY_OFFER_STALE"))
+    return "The terms changed since this was offered, so it wasn't applied.";
+  if (message.includes("CITY_OFFER_EXPIRED")) return "That offer has expired.";
+  if (message.includes("CITY_OFFER_CLOSED")) return "That offer is no longer open.";
+  if (message.includes("CITY_NOT_YOUR_OFFER")) return "That isn't your offer to answer.";
+  if (message.includes("CITY_DEVELOPED_CANNOT_TRADE"))
+    return "Sell the buildings in that country before trading it.";
+  if (message.includes("CITY_THEY_CANT_AFFORD")) return "They don't have that much cash.";
+  if (message.includes("CITY_NOT_THEIRS")) return "They don't own that.";
   return "That didn't work. Please try again.";
 }

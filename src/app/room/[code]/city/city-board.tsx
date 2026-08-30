@@ -36,7 +36,7 @@ const SEAT_COLOURS: { light: string; dark: string }[] = [
 // regional-indicator pairs that Windows renders as bare letter pairs (a real
 // defect hit in prototyping — a card displayed "ZA"), so every flag here is
 // CSS gradient geometry instead.
-const COUNTRY: Record<string, { name: string; band: string; flag: string }> = {
+export const COUNTRY: Record<string, { name: string; band: string; flag: string }> = {
   pt: { name: "Portugal", band: "#2c8f5e", flag: "linear-gradient(90deg,#046a38 0 40%,#da291c 40%)" },
   pl: { name: "Poland", band: "#c2334a", flag: "linear-gradient(180deg,#fff 0 50%,#dc143c 50%)" },
   jp: { name: "Japan", band: "#c8415c", flag: "radial-gradient(circle at 50% 50%,#bc002d 0 30%,#fff 31%)" },

@@ -325,6 +325,7 @@ export type Database = {
           time_limit_minutes: number | null
           turn_clock_elapsed_ms: number
           turn_clock_paused_at: string | null
+          turn_number: number
           turn_started_at: string | null
         }
         Insert: {
@@ -347,6 +348,7 @@ export type Database = {
           time_limit_minutes?: number | null
           turn_clock_elapsed_ms?: number
           turn_clock_paused_at?: string | null
+          turn_number?: number
           turn_started_at?: string | null
         }
         Update: {
@@ -369,6 +371,7 @@ export type Database = {
           time_limit_minutes?: number | null
           turn_clock_elapsed_ms?: number
           turn_clock_paused_at?: string | null
+          turn_number?: number
           turn_started_at?: string | null
         }
         Relationships: [
@@ -378,6 +381,62 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "rooms"
             referencedColumns: ["code"]
+          },
+        ]
+      }
+      city_trade_offers: {
+        Row: {
+          created_at: string
+          created_turn: number
+          expires_at: string
+          from_seat: number
+          get_cash: number
+          get_spaces: number[]
+          give_cash: number
+          give_spaces: number[]
+          id: string
+          match_id: string
+          resolved_at: string | null
+          status: string
+          to_seat: number
+        }
+        Insert: {
+          created_at?: string
+          created_turn: number
+          expires_at: string
+          from_seat: number
+          get_cash?: number
+          get_spaces?: number[]
+          give_cash?: number
+          give_spaces?: number[]
+          id?: string
+          match_id: string
+          resolved_at?: string | null
+          status?: string
+          to_seat: number
+        }
+        Update: {
+          created_at?: string
+          created_turn?: number
+          expires_at?: string
+          from_seat?: number
+          get_cash?: number
+          get_spaces?: number[]
+          give_cash?: number
+          give_spaces?: number[]
+          id?: string
+          match_id?: string
+          resolved_at?: string | null
+          status?: string
+          to_seat?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_trade_offers_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_matches"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -816,6 +875,7 @@ export type Database = {
         Args: { p_guess: number; p_room_code: string }
         Returns: string
       }
+      city_accept_trade: { Args: { p_offer_id: string }; Returns: Json }
       city_assert_can_manage: {
         Args: { p_match_id: string; p_user_id: string }
         Returns: {
@@ -886,6 +946,17 @@ export type Database = {
         Args: { p_match_id: string; p_space_idx: number }
         Returns: Json
       }
+      city_propose_trade: {
+        Args: {
+          p_get_cash?: number
+          p_get_spaces: number[]
+          p_give_cash?: number
+          p_give_spaces: number[]
+          p_match_id: string
+          p_to_seat: number
+        }
+        Returns: string
+      }
       city_rate_limit_check: {
         Args: { p_room_code: string; p_user_id: string }
         Returns: undefined
@@ -903,6 +974,10 @@ export type Database = {
         }
         Returns: Json
       }
+      city_resolve_trade: {
+        Args: { p_action: string; p_offer_id: string }
+        Returns: undefined
+      }
       city_roll_dice: { Args: { p_match_id: string }; Returns: Json }
       city_sell_building: {
         Args: { p_match_id: string; p_space_idx: number }
@@ -911,6 +986,10 @@ export type Database = {
       city_set_ready: {
         Args: { p_match_id: string; p_ready: boolean }
         Returns: undefined
+      }
+      city_space_is_tradeable: {
+        Args: { p_match_id: string; p_space_idx: number }
+        Returns: boolean
       }
       city_start_match: { Args: { p_match_id: string }; Returns: undefined }
       city_try_settle_debt: {

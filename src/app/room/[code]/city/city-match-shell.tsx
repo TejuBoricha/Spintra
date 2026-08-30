@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useRoomActivity } from "../context/room-activity-context";
 import { CityBoard } from "./city-board";
 import { CityHoldings } from "./city-holdings";
+import { CityTrade } from "./city-trade";
 import type { CityBoardSpace, CityRollResult, CitySeat } from "./use-city-match";
 import { useCityMatch } from "./use-city-match";
 
@@ -49,6 +50,11 @@ export function CityMatchShell() {
     mortgage,
     unmortgage,
     declareBankruptcy,
+    offers,
+    proposeTrade,
+    acceptTrade,
+    declineTrade,
+    withdrawTrade,
   } = useCityMatch(roomCode, currentUser.id);
 
   if (isDemoMode) {
@@ -97,10 +103,10 @@ export function CityMatchShell() {
     );
   }
 
-  // Slice 4: the board, the roll, what the space demands, and the property
-  // management that makes a debt survivable. Still to come: trading (Slice 5),
-  // and auctions, card decks and detention (Slice 6) — so a declined property
-  // currently stays unowned and a card space is a no-op.
+  // Slice 5: the board, the roll, what the space demands, property management
+  // that makes a debt survivable, and trading. Still to come: auctions, card
+  // decks and detention (Slice 6) — so a declined property currently stays
+  // unowned and a card space is a no-op.
   if (match.status !== "lobby") {
     const active = seats.find((s) => s.seat === match.current_seat);
     const inDebt = (mySeat?.pending_debt ?? 0) > 0;
@@ -181,6 +187,18 @@ export function CityMatchShell() {
           onMortgage={(i) => void mortgage(i)}
           onUnmortgage={(i) => void unmortgage(i)}
           onGiveUp={() => void declareBankruptcy()}
+        />
+
+        <CityTrade
+          board={board}
+          assets={assets}
+          seats={seats}
+          mySeat={mySeat}
+          offers={offers}
+          onPropose={(a) => void proposeTrade(a)}
+          onAccept={(id) => void acceptTrade(id)}
+          onDecline={(id) => void declineTrade(id)}
+          onWithdraw={(id) => void withdrawTrade(id)}
         />
 
         {/* aria-live so a screen reader hears the roll, not just sighted players. */}
