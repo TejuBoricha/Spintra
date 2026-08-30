@@ -1095,7 +1095,7 @@ export function useRoomSubscription({
                     const history = JSON.parse(stored).filter((h: { code: string }) => h.code !== roomCode);
                     window.localStorage.setItem("spintra-room-history", JSON.stringify(history));
                   }
-                } catch (e) {}
+                } catch {}
               }
               toast.error("You were removed from the room by the host.", { id: "kicked-toast" });
               router.push("/explore");
@@ -1112,7 +1112,7 @@ export function useRoomSubscription({
                   const history = JSON.parse(stored).filter((h: { code: string }) => h.code !== roomCode);
                   window.localStorage.setItem("spintra-room-history", JSON.stringify(history));
                 }
-              } catch (e) {}
+              } catch {}
             }
             toast.error("The host closed this room.", { id: "room-closed-toast" });
             router.push("/explore");

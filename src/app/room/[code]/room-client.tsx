@@ -292,7 +292,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                 const history = JSON.parse(stored).filter((h: { code: string }) => h.code !== roomCode);
                 window.localStorage.setItem("spintra-room-history", JSON.stringify(history));
               }
-            } catch (e) {}
+            } catch {}
           }
           return;
         }
@@ -326,7 +326,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                 const history = JSON.parse(stored).filter((h: { code: string }) => h.code !== roomCode);
                 window.localStorage.setItem("spintra-room-history", JSON.stringify(history));
               }
-            } catch (e) {}
+            } catch {}
           }
           return;
         }
