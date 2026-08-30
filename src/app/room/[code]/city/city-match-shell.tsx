@@ -55,6 +55,7 @@ export function CityMatchShell() {
     acceptTrade,
     declineTrade,
     withdrawTrade,
+    leaveDetention,
   } = useCityMatch(roomCode, currentUser.id);
 
   if (isDemoMode) {
@@ -103,15 +104,16 @@ export function CityMatchShell() {
     );
   }
 
-  // Slice 5: the board, the roll, what the space demands, property management
-  // that makes a debt survivable, and trading. Still to come: auctions, card
-  // decks and detention (Slice 6) — so a declined property currently stays
-  // unowned and a card space is a no-op.
+  // Slice 6a: the full turn — roll, land, buy or pay, manage property, trade,
+  // draw cards, and get out of Customs. Still to come: auctions (Slice 6b), so
+  // a declined property currently stays unowned rather than going under the
+  // hammer.
   if (match.status !== "lobby") {
     const active = seats.find((s) => s.seat === match.current_seat);
     const inDebt = (mySeat?.pending_debt ?? 0) > 0;
+    const detained = !!mySeat?.in_detention;
     const mustDecide = isMyTurn && match.phase === "required_decision";
-    const canRoll = isMyTurn && match.phase === "awaiting_roll" && !inDebt;
+    const canRoll = isMyTurn && match.phase === "awaiting_roll" && !inDebt && !detained;
     const canEnd = isMyTurn && match.phase !== "awaiting_roll" && !mustDecide && !inDebt;
     const onSale = mySeat ? board[mySeat.position] : undefined;
     const iAmOut = mySeat?.status === "bankrupt" || mySeat?.status === "retired";
@@ -149,7 +151,31 @@ export function CityMatchShell() {
         />
 
         <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
-          {mustDecide && onSale && !inDebt ? (
+          {isMyTurn && detained && match.phase === "awaiting_roll" ? (
+            // Detention replaces the roll entirely: three ways out, and the
+            // third failed attempt pays the fee whether you like it or not.
+            <>
+              <Button onClick={() => void leaveDetention("roll")}>
+                <Dices className="w-4 h-4" aria-hidden="true" />
+                Roll for doubles
+                {mySeat && mySeat.detention_turns < 2
+                  ? ` (${2 - mySeat.detention_turns} left)`
+                  : " (last try)"}
+              </Button>
+              {(mySeat?.transit_visas ?? 0) > 0 && (
+                <Button variant="outline" onClick={() => void leaveDetention("visa")}>
+                  Use Transit Visa
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                disabled={(mySeat?.cash ?? 0) < 90}
+                onClick={() => void leaveDetention("pay")}
+              >
+                Pay 90
+              </Button>
+            </>
+          ) : mustDecide && onSale && !inDebt ? (
             // A pending purchase blocks the turn, so it replaces the normal
             // controls rather than sitting alongside them — there is exactly
             // one thing to do here and it should be unmissable.
@@ -209,7 +235,9 @@ export function CityMatchShell() {
         >
           {iAmOut
             ? "You're out of this match — watching from here."
-            : lastRoll
+            : detained && isMyTurn
+              ? `You're held at Customs. Roll doubles, spend a Transit Visa, or pay 90 to leave.`
+              : lastRoll
               ? narrate(lastRoll, board, seats)
               : mustDecide && onSale
                 ? `${onSale.name} is unclaimed. Buy it for ${onSale.price}, or pass.`
@@ -367,8 +395,26 @@ function narrate(roll: CityRollResult, board: CityBoardSpace[], seats: CitySeat[
       return `${head} It's mortgaged, so no rent is due.`;
     case "own_space":
       return `${head} You own it.`;
-    case "card_pending":
-      return `${head} Card decks arrive in a later update.`;
+    case "card": {
+      // The card's own effect may itself be a landing (an advance that then
+      // charges rent), so the sentence has to nest.
+      const r = l.result;
+      const inner = r?.landing?.action ?? r?.action;
+      // Only add what the printed card cannot say for itself. "Collect 70
+      // Spins" followed by "Collected 70." is noise; rent charged on arrival
+      // after an advance is not.
+      const tail =
+        inner === "paid_rent"
+          ? ` Paid ${r?.landing?.amount ?? r?.amount} rent on arrival.`
+          : inner === "paid_tax" && r?.kind !== "pay" && r?.kind !== "per_building"
+            ? ` Paid ${r?.landing?.amount ?? r?.amount} on arrival.`
+            : inner === "may_buy"
+              ? " It's unclaimed — buy it, or pass."
+              : inner === "must_raise_funds"
+                ? ` You're ${r?.landing?.short_by ?? r?.short_by} short — sell or mortgage.`
+                : "";
+      return `${head} ${l.text ?? "Drew a card."}${tail}`;
+    }
     default:
       return head;
   }

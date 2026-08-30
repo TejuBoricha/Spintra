@@ -52,6 +52,9 @@ export interface CitySeat {
   /** >0 while this seat owes money it could not cover in cash (DESIGN.md §3.1D). */
   pending_debt: number;
   pending_creditor_seat: number | null;
+  in_detention: boolean;
+  detention_turns: number;
+  transit_visas: number;
 }
 
 /** Reference data from `city_board_spaces` — the same 40 rows for every match. */
@@ -103,7 +106,7 @@ export interface CityLanding {
     | "bankrupt"
     | "must_raise_funds"
     | "detained"
-    | "card_pending";
+    | "card";
   price?: number;
   space?: number;
   amount?: number;
@@ -112,6 +115,10 @@ export interface CityLanding {
   to_seat?: number | null;
   to?: number;
   deck?: string;
+  /** printed card text, when action is "card" */
+  text?: string;
+  /** what the card then did — its own landing may nest inside */
+  result?: CityLanding & { kind?: string; landing?: CityLanding };
 }
 
 /** What `city_roll_dice` hands back, so the UI can narrate the move. */
@@ -137,7 +144,7 @@ const MATCH_COLUMNS =
 
 const SEAT_COLUMNS =
   "id, match_id, user_id, seat, username, is_ready, status, position, cash, " +
-  "pending_debt, pending_creditor_seat";
+  "pending_debt, pending_creditor_seat, in_detention, detention_turns, transit_visas";
 
 interface UseCityMatchResult {
   match: CityMatch | null;
@@ -175,6 +182,7 @@ interface UseCityMatchResult {
   acceptTrade: (offerId: string) => Promise<void>;
   declineTrade: (offerId: string) => Promise<void>;
   withdrawTrade: (offerId: string) => Promise<void>;
+  leaveDetention: (method: "pay" | "visa" | "roll") => Promise<void>;
 }
 
 export function useCityMatch(roomCode: string, currentUserId: string): UseCityMatchResult {
@@ -500,6 +508,17 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   const declineTrade = resolveTrade("declined");
   const withdrawTrade = resolveTrade("withdrawn");
 
+  const leaveDetention = useCallback(
+    async (method: "pay" | "visa" | "roll") => {
+      const id = matchIdRef.current;
+      if (!id) return;
+      await runCommand(() =>
+        supabase!.rpc("city_leave_detention", { p_match_id: id, p_method: method })
+      );
+    },
+    [runCommand, supabase]
+  );
+
   const mySeat = seats.find((s) => s.user_id === currentUserId) ?? null;
 
   return {
@@ -533,6 +552,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     acceptTrade,
     declineTrade,
     withdrawTrade,
+    leaveDetention,
   };
 }
 
@@ -574,5 +594,8 @@ function friendlyCommandError(message: string): string {
     return "Sell the buildings in that country before trading it.";
   if (message.includes("CITY_THEY_CANT_AFFORD")) return "They don't have that much cash.";
   if (message.includes("CITY_NOT_THEIRS")) return "They don't own that.";
+  if (message.includes("CITY_IN_DETENTION")) return "You're in Customs — get out first.";
+  if (message.includes("CITY_NOT_DETAINED")) return "You're not in Customs.";
+  if (message.includes("CITY_NO_VISA")) return "You don't have a Transit Visa.";
   return "That didn't work. Please try again.";
 }

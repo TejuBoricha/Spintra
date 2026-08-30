@@ -221,6 +221,27 @@ export type Database = {
         }
         Relationships: []
       }
+      city_cards: {
+        Row: {
+          deck: string
+          effect: Json
+          id: number
+          text: string
+        }
+        Insert: {
+          deck: string
+          effect: Json
+          id: number
+          text: string
+        }
+        Update: {
+          deck?: string
+          effect?: Json
+          id?: number
+          text?: string
+        }
+        Relationships: []
+      }
       city_command_attempts: {
         Row: {
           created_at: string
@@ -246,8 +267,10 @@ export type Database = {
         Row: {
           cash: number
           consecutive_autopilot_turns: number
+          detention_turns: number
           final_net_worth: number | null
           id: string
+          in_detention: boolean
           is_ready: boolean
           joined_at: string
           match_id: string
@@ -257,14 +280,17 @@ export type Database = {
           seat: number
           status: string
           time_reserve_ms: number
+          transit_visas: number
           user_id: string
           username: string
         }
         Insert: {
           cash?: number
           consecutive_autopilot_turns?: number
+          detention_turns?: number
           final_net_worth?: number | null
           id?: string
+          in_detention?: boolean
           is_ready?: boolean
           joined_at?: string
           match_id: string
@@ -274,14 +300,17 @@ export type Database = {
           seat: number
           status?: string
           time_reserve_ms?: number
+          transit_visas?: number
           user_id: string
           username: string
         }
         Update: {
           cash?: number
           consecutive_autopilot_turns?: number
+          detention_turns?: number
           final_net_worth?: number | null
           id?: string
+          in_detention?: boolean
           is_ready?: boolean
           joined_at?: string
           match_id?: string
@@ -291,6 +320,7 @@ export type Database = {
           seat?: number
           status?: string
           time_reserve_ms?: number
+          transit_visas?: number
           user_id?: string
           username?: string
         }
@@ -306,7 +336,9 @@ export type Database = {
       }
       city_matches: {
         Row: {
+          bp_draw: number
           building_supply_limit: number | null
+          cf_draw: number
           created_at: string
           created_by: string
           current_seat: number | null
@@ -329,7 +361,9 @@ export type Database = {
           turn_started_at: string | null
         }
         Insert: {
+          bp_draw?: number
           building_supply_limit?: number | null
+          cf_draw?: number
           created_at?: string
           created_by: string
           current_seat?: number | null
@@ -352,7 +386,9 @@ export type Database = {
           turn_started_at?: string | null
         }
         Update: {
+          bp_draw?: number
           building_supply_limit?: number | null
+          cf_draw?: number
           created_at?: string
           created_by?: string
           current_seat?: number | null
@@ -876,13 +912,24 @@ export type Database = {
         Returns: string
       }
       city_accept_trade: { Args: { p_offer_id: string }; Returns: Json }
+      city_apply_card: {
+        Args: {
+          p_card: Database["public"]["Tables"]["city_cards"]["Row"]
+          p_dice_total: number
+          p_match_id: string
+          p_seat: number
+        }
+        Returns: Json
+      }
       city_assert_can_manage: {
         Args: { p_match_id: string; p_user_id: string }
         Returns: {
           cash: number
           consecutive_autopilot_turns: number
+          detention_turns: number
           final_net_worth: number | null
           id: string
+          in_detention: boolean
           is_ready: boolean
           joined_at: string
           match_id: string
@@ -892,6 +939,7 @@ export type Database = {
           seat: number
           status: string
           time_reserve_ms: number
+          transit_visas: number
           user_id: string
           username: string
         }
@@ -911,6 +959,15 @@ export type Database = {
         Returns: Json
       }
       city_buy_property: { Args: { p_match_id: string }; Returns: Json }
+      city_charge: {
+        Args: {
+          p_amount: number
+          p_creditor_seat: number
+          p_match_id: string
+          p_seat: number
+        }
+        Returns: Json
+      }
       city_create_match: {
         Args: {
           p_mode?: string
@@ -932,10 +989,29 @@ export type Database = {
         Args: { p_counter: number; p_seed: number }
         Returns: number[]
       }
+      city_draw_card: {
+        Args: { p_deck: string; p_match_id: string }
+        Returns: {
+          deck: string
+          effect: Json
+          id: number
+          text: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "city_cards"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       city_end_turn: { Args: { p_match_id: string }; Returns: Json }
       city_join_seat: {
         Args: { p_match_id: string; p_username: string }
         Returns: number
+      }
+      city_leave_detention: {
+        Args: { p_match_id: string; p_method: string }
+        Returns: Json
       }
       city_leave_seat: { Args: { p_match_id: string }; Returns: undefined }
       city_max_liquidation: {
