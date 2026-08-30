@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useRoomActivity } from "../context/room-activity-context";
 import { CityBoard } from "./city-board";
+import type { CityBoardSpace, CityRollResult, CitySeat } from "./use-city-match";
 import { useCityMatch } from "./use-city-match";
 
-// Slice 1: lobby only — create a match, take a seat, ready up, start.
-// There is no board yet; starting a match intentionally lands on a placeholder.
-// See docs/SPINTRA_CITY_SPEC.md §7 for why the first slice is scoped this way.
+// The lobby and the live match. See docs/SPINTRA_CITY_SPEC.md §7 for the slice
+// plan that governs what is and isn't wired up yet.
 //
 // Rendered directly by room-client.tsx's RoomGameArea rather than through
 // ACTIVITY_REGISTRY — Spintra City is server-authoritative and doesn't use the
@@ -41,6 +41,8 @@ export function CityMatchShell() {
     startMatch,
     rollDice,
     endTurn,
+    buyProperty,
+    declinePurchase,
   } = useCityMatch(roomCode, currentUser.id);
 
   if (isDemoMode) {
@@ -89,13 +91,18 @@ export function CityMatchShell() {
     );
   }
 
-  // Slice 2: the board, the roll, and the turn. Landing effects — rent, buying,
-  // cards, tax — arrive in Slice 3, so a turn currently ends by choice rather
-  // than by resolving the space you stopped on.
+  // Slice 3: the board, the roll, and what the space you land on demands —
+  // buy-or-pass, rent, tax, and bankruptcy. Still to come: building and
+  // mortgaging (Slice 4), trading (Slice 5), and auctions, card decks and
+  // detention (Slice 6), so a declined property currently stays unowned and a
+  // card space is a no-op.
   if (match.status !== "lobby") {
     const active = seats.find((s) => s.seat === match.current_seat);
+    const mustDecide = isMyTurn && match.phase === "required_decision";
     const canRoll = isMyTurn && match.phase === "awaiting_roll";
-    const canEnd = isMyTurn && match.phase !== "awaiting_roll";
+    const canEnd = isMyTurn && !canRoll && !mustDecide;
+    const onSale = mySeat ? board[mySeat.position] : undefined;
+    const iAmOut = mySeat?.status === "bankrupt" || mySeat?.status === "retired";
 
     return (
       <div className="max-w-5xl mx-auto">
@@ -130,13 +137,32 @@ export function CityMatchShell() {
         />
 
         <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
-          <Button onClick={() => void rollDice()} disabled={!canRoll}>
-            <Dices className="w-4 h-4" aria-hidden="true" />
-            Roll dice
-          </Button>
-          <Button variant="outline" onClick={() => void endTurn()} disabled={!canEnd}>
-            End turn
-          </Button>
+          {mustDecide && onSale ? (
+            // A pending purchase blocks the turn, so it replaces the normal
+            // controls rather than sitting alongside them — there is exactly
+            // one thing to do here and it should be unmissable.
+            <>
+              <Button
+                onClick={() => void buyProperty()}
+                disabled={!!(mySeat && onSale.price && mySeat.cash < onSale.price)}
+              >
+                Buy {onSale.name} · {onSale.price}
+              </Button>
+              <Button variant="outline" onClick={() => void declinePurchase()}>
+                Pass
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button onClick={() => void rollDice()} disabled={!canRoll}>
+                <Dices className="w-4 h-4" aria-hidden="true" />
+                Roll dice
+              </Button>
+              <Button variant="outline" onClick={() => void endTurn()} disabled={!canEnd}>
+                End turn
+              </Button>
+            </>
+          )}
         </div>
 
         {/* aria-live so a screen reader hears the roll, not just sighted players. */}
@@ -145,15 +171,15 @@ export function CityMatchShell() {
           role="status"
           aria-live="polite"
         >
-          {lastRoll
-            ? `Rolled ${lastRoll.dice[0]} and ${lastRoll.dice[1]}. ` +
-              (lastRoll.detained
-                ? "Three doubles — off to Customs."
-                : `Moved to ${board[lastRoll.to]?.name ?? "the next space"}.`) +
-              (lastRoll.salary ? ` Collected ${lastRoll.salary} for passing Departure.` : "")
-            : isMyTurn
-              ? "Your turn — roll the dice."
-              : `Waiting for ${active?.username ?? "the next player"}.`}
+          {iAmOut
+            ? "You're out of this match — watching from here."
+            : lastRoll
+              ? narrate(lastRoll, board, seats)
+              : mustDecide && onSale
+                ? `${onSale.name} is unclaimed. Buy it for ${onSale.price}, or pass.`
+                : isMyTurn
+                  ? "Your turn — roll the dice."
+                  : `Waiting for ${active?.username ?? "the next player"}.`}
         </p>
       </div>
     );
@@ -272,6 +298,42 @@ export function CityMatchShell() {
       )}
     </motion.div>
   );
+}
+
+/**
+ * Turns a roll result into one sentence. Money moving is the part players most
+ * need told to them — a number quietly changing in a badge is easy to miss, and
+ * it is the difference between "I lost" and "I don't know what happened".
+ */
+function narrate(roll: CityRollResult, board: CityBoardSpace[], seats: CitySeat[]): string {
+  const where = board[roll.to]?.name ?? "the next space";
+  const who = (seat?: number | null) =>
+    seats.find((s) => s.seat === seat)?.username ?? "another player";
+
+  const head = roll.detained
+    ? `Rolled ${roll.dice[0]} and ${roll.dice[1]} — three doubles, off to Customs.`
+    : `Rolled ${roll.dice[0]} and ${roll.dice[1]}, moved to ${where}.` +
+      (roll.salary ? ` Collected ${roll.salary} for passing Departure.` : "");
+
+  const l = roll.landing;
+  switch (l?.action) {
+    case "paid_rent":
+      return `${head} Paid ${l.amount} rent to ${who(l.to_seat)}.`;
+    case "paid_tax":
+      return `${head} Paid ${l.amount} in tax.`;
+    case "may_buy":
+      return `${head} It's unclaimed — buy it for ${l.price}, or pass.`;
+    case "bankrupt":
+      return `${head} Couldn't cover ${l.owed} — bankrupt.`;
+    case "mortgaged_no_rent":
+      return `${head} It's mortgaged, so no rent is due.`;
+    case "own_space":
+      return `${head} You own it.`;
+    case "card_pending":
+      return `${head} Card decks arrive in a later update.`;
+    default:
+      return head;
+  }
 }
 
 function Shell({ children }: { children: React.ReactNode }) {

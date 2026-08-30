@@ -810,6 +810,11 @@ export type Database = {
         Args: { p_guess: number; p_room_code: string }
         Returns: string
       }
+      city_bankrupt_seat: {
+        Args: { p_creditor_seat: number; p_match_id: string; p_seat: number }
+        Returns: undefined
+      }
+      city_buy_property: { Args: { p_match_id: string }; Returns: Json }
       city_create_match: {
         Args: {
           p_mode?: string
@@ -818,6 +823,10 @@ export type Database = {
           p_time_limit_minutes?: number
         }
         Returns: string
+      }
+      city_decline_purchase: {
+        Args: { p_match_id: string }
+        Returns: undefined
       }
       city_derive_dice: {
         Args: { p_counter: number; p_seed: number }
@@ -832,6 +841,19 @@ export type Database = {
       city_rate_limit_check: {
         Args: { p_room_code: string; p_user_id: string }
         Returns: undefined
+      }
+      city_rent_for: {
+        Args: { p_dice_total: number; p_match_id: string; p_space_idx: number }
+        Returns: number
+      }
+      city_resolve_landing: {
+        Args: {
+          p_dice_total: number
+          p_match_id: string
+          p_seat: number
+          p_space_idx: number
+        }
+        Returns: Json
       }
       city_roll_dice: { Args: { p_match_id: string }; Returns: Json }
       city_set_ready: {

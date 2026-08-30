@@ -71,6 +71,32 @@ export interface CityAsset {
   is_mortgaged: boolean;
 }
 
+/**
+ * What landing on the space actually did. Resolved inside the same transaction
+ * as the roll — if this were a second RPC the client had to make, a client
+ * could simply never call it and never pay rent.
+ */
+export interface CityLanding {
+  action:
+    | "none"
+    | "own_space"
+    | "no_rent"
+    | "mortgaged_no_rent"
+    | "may_buy"
+    | "paid_rent"
+    | "paid_tax"
+    | "bankrupt"
+    | "detained"
+    | "card_pending";
+  price?: number;
+  space?: number;
+  amount?: number;
+  owed?: number;
+  to_seat?: number | null;
+  to?: number;
+  deck?: string;
+}
+
 /** What `city_roll_dice` hands back, so the UI can narrate the move. */
 export interface CityRollResult {
   dice: number[];
@@ -80,6 +106,7 @@ export interface CityRollResult {
   salary: number;
   doubles: boolean;
   detained: boolean;
+  landing: CityLanding;
 }
 
 // The RNG columns (rng_seed, rng_counter) are intentionally absent from both
@@ -112,6 +139,8 @@ interface UseCityMatchResult {
   startMatch: () => Promise<void>;
   rollDice: () => Promise<void>;
   endTurn: () => Promise<void>;
+  buyProperty: () => Promise<void>;
+  declinePurchase: () => Promise<void>;
 }
 
 export function useCityMatch(roomCode: string, currentUserId: string): UseCityMatchResult {
@@ -347,6 +376,18 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     await runCommand(() => supabase!.rpc("city_end_turn", { p_match_id: id }));
   }, [runCommand, supabase]);
 
+  const buyProperty = useCallback(async () => {
+    const id = matchIdRef.current;
+    if (!id) return;
+    await runCommand(() => supabase!.rpc("city_buy_property", { p_match_id: id }));
+  }, [runCommand, supabase]);
+
+  const declinePurchase = useCallback(async () => {
+    const id = matchIdRef.current;
+    if (!id) return;
+    await runCommand(() => supabase!.rpc("city_decline_purchase", { p_match_id: id }));
+  }, [runCommand, supabase]);
+
   const mySeat = seats.find((s) => s.user_id === currentUserId) ?? null;
 
   return {
@@ -368,6 +409,8 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     startMatch,
     rollDice,
     endTurn,
+    buyProperty,
+    declinePurchase,
   };
 }
 
@@ -385,5 +428,10 @@ function friendlyCommandError(message: string): string {
   if (message.includes("CITY_MUST_ROLL_FIRST")) return "Roll the dice before ending your turn.";
   if (message.includes("CITY_MATCH_NOT_ACTIVE")) return "This match isn't running.";
   if (message.includes("CITY_NOT_SEATED")) return "You're spectating this match.";
+  if (message.includes("CITY_DECISION_PENDING")) return "Decide on this space before ending your turn.";
+  if (message.includes("CITY_INSUFFICIENT_FUNDS")) return "You can't afford that.";
+  if (message.includes("CITY_ALREADY_OWNED")) return "Someone already owns that.";
+  if (message.includes("CITY_NOTHING_TO_BUY")) return "There's nothing to buy here.";
+  if (message.includes("CITY_SEAT_OUT")) return "You're out of this match.";
   return "That didn't work. Please try again.";
 }
