@@ -53,3 +53,6 @@ next-env.d.ts
 
 # dev server logs
 dev-server.log
+
+# ai tool scratch state (idle timers, session markers — not source)
+.superpowers/
