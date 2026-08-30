@@ -266,12 +266,14 @@ exact types/constraints/indexes still need real schema design before a migration
 
 ## 3. Proposed but NOT yet confirmed — Design 2: Match Flow & Reliability
 
-**This is the open item.** It was presented as "Design 2" and the conversation ended on the
-question *"Does this flow and the 90-second default feel right?"* — **no answer was given before
-the user switched to a different AI tool.** Do not treat any of the following as decided. Surface
-it back to the user as an open question before building on it; they may confirm it as-is, want
-changes, or want to reconsider it entirely — **and now have a real shipped alternative to weigh it
-against (richup's chess-clock turn timer, §1c)**.
+**Mostly open.** It was presented as "Design 2" and the conversation ended on the question *"Does
+this flow and the 90-second default feel right?"* — **no answer was given before the user switched
+to a different AI tool.** Items below tagged **APPROVED** or **DECIDED** have since been settled and
+may be built on; treat everything still tagged *(proposed)* as an open question and surface it back
+to the user before relying on it.
+
+**The turn clock is settled** as of 2026-08-30 — see the entry below. It is the one item in this
+section the user reviewed directly, and it supersedes an earlier delegated decision.
 
 Proposed content, verbatim intent:
 
@@ -279,16 +281,158 @@ Proposed content, verbatim intent:
   Classic or Timed mode, then starts the match; roster locks immediately at start.
 - **Turn state machine (proposed):**
   `awaiting roll → movement → space resolution → required decision → optional actions → end turn`
-- **Turn clock — DECIDED (by delegation, 2026-08-29):** adopt richup's chess-clock model instead
-  of a flat 90s reset (§1c) — a fixed amount of free thinking time at the start of each turn
-  (suggested default: 20s, tunable), after which the player draws down a personal time reserve
-  that carries across turns (suggested starting reserve: 3 minutes per match, tunable).
-  **Rationale:** trading/negotiation between real people is explicitly the stated core value of
-  Spintra City (§2.1) — a flat per-turn timer penalizes a genuine trade negotiation exactly as
-  harshly as a simple dice roll, working against that core value. The reserve model self-balances:
-  simple turns barely touch it, trade-heavy turns can draw on it. This is a proven, shipped
-  mechanic (richup v1.17), not a speculative alternative — exact seconds are a tunable balance
-  parameter, not locked in by this decision.
+- **Turn clock — APPROVED (2026-08-30). Supersedes the chess-clock decision of 2026-08-29.**
+
+  **The rule, in full:** *40 seconds per turn. The clock stops while you're waiting on someone
+  else.* There is no time reserve and no per-player time budget.
+
+  Formally, one principle generates the entire design:
+
+  > The clock runs when the game is waiting on **you alone**. It pauses when the game is waiting
+  > on **another player**, or on a **sequence the game itself imposed**.
+
+  | Phase | Waiting on | Clock |
+  |---|---|---|
+  | `awaiting_roll` | you alone | runs |
+  | `movement` (animation) | the engine | paused — the player cannot act |
+  | `space resolution` | the engine | paused |
+  | `required_decision` (buy / auction) | you alone | runs |
+  | `optional_actions` (build / mortgage) | you alone | runs |
+  | trade — opponent's move | another human | paused |
+  | trade — **your** move | you alone | **runs** |
+  | auction | all players | paused (auction has its own bid clock) |
+  | forced liquidation | game-imposed sequence | paused (own window) |
+
+  Row 7 is what stops the obvious exploit: a trade pauses your clock *only while the other party
+  holds the ball*, so your own clock resumes the instant it is your move again.
+
+  **It is not sufficient on its own, and an earlier draft of this section wrongly claimed it was.**
+  Row 7 bounds what the *proposer* can do, not what the *responder* can. A responder who lets every
+  45s trade window expire costs the table 45 seconds and costs themselves nothing — they are not on
+  their own turn clock. Repeat the proposal and that loop is unbounded, and it needs no collusion:
+  proposing repeatedly at an AFK player achieves it. Hence:
+
+  **Balance corollary — pausing the turn clock always starts a shorter one, and total pause per
+  turn is itself capped. Nothing is unbounded.**
+
+  | Sub-clock | Length | On expiry |
+  |---|---|---|
+  | Trade exchange | 45s, resets on each counter-offer | offer withdrawn |
+  | **Trade-pause budget** | **90s total per turn, across all proposals** | further trades no longer pause the turn clock; it simply runs |
+  | Forced liquidation | 90s per decision, **3-minute hard cap on the whole phase** | auto-sell cheapest assets until the debt is covered, else bankrupt |
+  | Auction | 15s opening, resets to 10s per bid, 2-minute hard cap (§3.1E) | standing high bid wins; if none, property stays unowned |
+
+  The liquidation phase needs its own cap because §3.1D explicitly permits *trading* to raise
+  funds. Without a phase cap, "pause for a trade" reopens the same unbounded hole inside
+  liquidation that the trade-pause budget closes on a normal turn.
+
+  **Turn clock resets on each doubles re-roll.** FR-16 grants another turn on doubles (up to three).
+  Each re-roll is a fresh decision cycle, so it gets a fresh 40s. Charging one 40s window for what
+  can legitimately be three roll-resolve cycles would cut off a player for being lucky. Worst case
+  becomes 3 × 40s of turn clock, which is bounded and rare (three consecutive doubles is ~1/216).
+
+  **Offers arriving while you are the active player are queued, not shown, until your turn ends.**
+  Otherwise a non-active player can repeatedly interrupt whoever is on the clock. Charging the
+  active player for reading an offer they did not ask for is unfair; pausing their clock for it
+  hands any player a freeze button. Queueing removes both. Trades *between two non-active players*
+  proceed normally — neither is on a turn clock, so the 45s window is the only bound needed, and
+  the active player is unaffected.
+
+  **Host pace preset:** Relaxed 60s / **Standard 40s (default)** / Blitz 25s. The trade window
+  scales with the preset. Forced liquidation stays at 90s regardless: it is a fairness floor for
+  the player who is losing, and must not be something a host can turn against them.
+
+  **Where the preset lives — APPROVED (2026-08-30):** in the **City match lobby**, beside the
+  existing Classic/Timed mode choice, persisted as a `city_matches` column by `city_create_match`
+  and **locked at match start alongside the roster**. It does *not* go in `RoomSettingsPanel`
+  (`src/app/room/[code]/components/room-settings-panel.tsx`). **Rationale:** that panel is
+  room-level and editable at any time — every field in it (name, capacity, visibility, lock) is
+  safe to change mid-session. Turn length is not: changing it mid-match would silently re-balance
+  a game in progress. This follows the panel's own stated principle, which already "deliberately
+  excludes" changing the game type because that disturbs live activity state. Same reasoning,
+  same conclusion.
+
+  **Rationale:** trading/negotiation between real people is the stated core value of Spintra City
+  (§2.1), and a flat per-turn timer penalises a genuine negotiation exactly as harshly as a dice
+  roll. The 2026-08-29 decision solved that by *paying* for deliberation out of a reserve; this
+  decision solves it by *not charging* for time the player could not use. Both are valid. This one
+  was chosen because:
+  - **Bounded worst case.** The superseded model had no cap on per-turn reserve spend, so at 8
+    seats one player could legally hold the table for 5m35s — a 39-minute round-trip wait. Under
+    this model a heavily-traded turn tops out around 2m10s, and a realistic turn is ~12s.
+  - **One concept, not two.** Spintra is a party-games site with 14 activities; a large share of
+    City players will play once or twice. Asking a first-timer to manage a time budget *alongside*
+    a money budget is a second resource-management layer the audience did not ask for.
+  - **Audience, not quality.** A reserve is a *rationing* device, correct against strangers in
+    public matchmaking (richup's context). Spintra rooms are private and code-joined — the player
+    stalling is someone who can simply be told to hurry up.
+
+  **Honest limits of the comparison:** what is first-party confirmed about richup's timer (§1c) is
+  only that free time plus a carrying reserve exists. Their numbers, whether they cap per-turn
+  spend, and whether they pause for trades are **not known**. It is possible the two designs
+  largely converge. What was rejected here is the *under-specified copy in this document* — which
+  had no per-turn cap, 20s/3min values that ordinary turns would consume before any trading
+  occurred, and no phase classification at all — not richup's shipped implementation.
+
+  **Known cost of this choice:** the reserve model is easier to implement correctly, because it
+  never has to classify anything — it just measures wall-clock time on a turn. This model requires
+  the server to know at every instant who the game is waiting on. A bug in that classification
+  either charges a player for time they could not use, or opens a stall exploit. The phase table
+  above is therefore a test target, not just documentation.
+
+- **Turn-clock timeout defaults — APPROVED (2026-08-30).** Every expiry resolves to a *neutral*
+  default, so a match can never reach an undefined state. Full per-phase list in §3.1A; the
+  governing rule is **a timeout never spends a resource the player did not choose to spend.**
+  - `awaiting_roll` → **auto-roll**, not auto-pass. The dice must be rolled or the game state is
+    undefined, and a roll is random either way, so it costs the player nothing in expectation.
+  - `required_decision` → decline to buy → the property goes to auction. This is the standard rule
+    of the genre, not a penalty invented for timeouts.
+  - `optional_actions` → end turn. Zero penalty; the player builds next turn.
+
+- **Clock enforcement — APPROVED (2026-08-30).** Three rules, all server-side:
+  - **Every clock needs an enforcement path, not just the turn clock.** Each sub-clock in the table
+    above is enforced the same way: any RPC first checks whether the current clock has expired and
+    resolves it before proceeding, and any client observing an expiry may call
+    `city_claim_timeout(match_id)`, which the server **independently re-validates** rather than
+    trusting. No background job is required; a client that lies about an early expiry is rejected.
+  - `city_claim_timeout` is a player-triggered write and therefore gets the same `*_attempts` table
+    + `BEFORE INSERT` trigger rate limiting as every other command RPC (§5).
+  - **The animation pause needs a server-side maximum.** `movement`/`space_resolution` pause the
+    clock, but the server must not wait indefinitely on a client's "animation finished" signal — a
+    slow device would stall the table and a modified client could stall it deliberately. The clock
+    resumes on the client's ready signal **or after a 3-second server-side ceiling, whichever comes
+    first.**
+
+- **Exhaustive clock scenario coverage — APPROVED (2026-08-30).** The phase table says what happens
+  during a normal turn. This table exists so that *no* reachable state is left without a rule. Every
+  row was found by sweeping the cross-product of match status × seat status × phase.
+
+  | Scenario | Rule |
+  |---|---|
+  | Match resumes after an all-players pause | The active player gets a **fresh full turn clock**, not the remainder. A 3-second remainder inherited from six hours ago is absurd and would instantly time them out. |
+  | Active player is kicked, retires, or goes bankrupt **mid-turn** | Their clock is discarded, the turn advances immediately, and the next player starts a **fresh** clock. Never inherit a partial clock across a seat change. |
+  | Active player disconnects and returns mid-turn | The clock kept running (see above); the UI shows the **true remaining** time, never a restarted one. |
+  | Doubles re-roll and the trade-pause budget | The 40s turn clock resets per re-roll (FR-44); the **90s trade-pause budget does not** — it is per *turn*, not per roll segment. Otherwise triple doubles would grant 270s of pause. |
+  | Timed mode's match limit expires mid-turn | The match clock is pure wall-clock and never pauses for turn-clock pauses (only for a full-match pause). On expiry the **current round completes** so every player has had equal turns, then the match ends on net worth (§3.1H). |
+  | Auction runs while a player is disconnected | Absent seats **auto-pass**. Autopilot otherwise only acts on turn arrival (§3.1B), and an auction is not their turn — without this rule an auction would wait out its full 2-minute cap on someone who is gone. |
+  | Eliminated / bankrupt / spectating players | Hold **no clocks** and cannot pause anyone else's. They cannot propose trades, so they cannot consume another player's trade-pause budget. |
+  | Detention, third failed turn | The "roll doubles within three turns" allowance (CONTENT.md) is exhausted, so exit is no longer optional and **paying the fee becomes the timeout default** — a deliberate, single exception to "never auto-spends," because the rule leaves no free option. If cash is short this cascades into raise-funds → liquidation (§3.1D), which is already defined. |
+  | An action lands at the same instant the clock expires | Clock expiry is resolved **inside the same per-match `pg_advisory_xact_lock`** as every command (§5), so the two can never interleave. Whichever transaction takes the lock first wins; the other observes the resulting state. |
+  | `end_turn` transition | Takes no player input and carries no clock. |
+
+- **Autopilot acts immediately — APPROVED (2026-08-30).** Once a seat is autopilot-eligible
+  (§3.1, FR-26), autopilot resolves the turn *as soon as it arrives* rather than waiting out the
+  40s clock. **Rationale:** the largest source of dead air in this genre is absent players, not
+  slow ones. Making seven people watch a full countdown for a seat the server already knows is
+  gone is pure waste, and this is the single biggest pace win available — without touching the
+  timer rules at all.
+
+- **Disconnect does *not* pause the turn clock — APPROVED (2026-08-30).** This resolves a
+  contradiction with the 60s grace period (FR-25): if the clock paused on disconnect, then
+  disconnecting would be a *free pause* — strictly better than being present — and the table would
+  wait on it. FR-25's protection is therefore scoped to **seat retention and not being retired**,
+  which is what actually matters to the player. Losing a single turn to a neutral auto-roll is not
+  a consequence worth protecting against.
 - **Timeout behavior (proposed):** on expiry, the engine only resolves *safe defaults* — e.g.
   skip an optional purchase/build, or trigger a required auction — **never** an arbitrary trade or
   a risky investment on the player's behalf.
@@ -354,7 +498,12 @@ Landing on Gearfall ends the turn immediately with no optional-actions window.
 trades. Available to the active player each turn, and never blocking.
 
 **Timeout behavior per phase** (consistent with §3's "safe defaults only" rule):
-- `awaiting_roll` → auto-roll. Rolling is never a risky choice.
+- `awaiting_roll` → auto-roll. Rolling is never a risky choice. **Caveat:** this holds only when no
+  pre-roll decision is pending — see detention, next.
+- **Detention exit → attempt doubles.** This decision was previously missing a timeout default,
+  which would have left the turn unable to resolve. Of the three options, paying the fee and
+  spending a Release Papers card both consume a resource; attempting doubles is the only one that
+  spends nothing, so it is the sole choice consistent with the "never auto-spends" rule above.
 - Buy-or-decline → **decline** (property goes to auction). Never auto-spends a player's money.
 - Raise funds → the server runs the mandated liquidation sequence (§D) automatically. This is not
   a "risky choice" — the debt is owed either way, and the sequence is deterministic.
@@ -367,10 +516,14 @@ trades. Available to the active player each turn, and never blocking.
 - Still away after 60s → the seat becomes *autopilot-eligible*, but **autopilot only acts when
   that seat's turn actually arrives.** A disconnected player whose turn is three seats away loses
   nothing.
-- **Autopilot must not drain the player's personal time reserve** (§3's chess-clock model). It may
-  consume only the per-turn free thinking time before acting. Rationale: the reserve is an earned,
-  strategic resource — burning it because someone's wifi dropped would compound bad luck with a
-  real competitive penalty.
+- **Autopilot resolves the turn immediately on arrival** — it does not wait out the 40s clock
+  (§3, superseding the earlier "must not drain the reserve" rule, which the pause model made
+  moot). Rationale: the server already knows the seat is absent, so a full countdown for a ghost
+  is dead air for everyone else.
+- **The turn clock does keep running during the 60s grace period.** Pausing it would make
+  disconnecting a free pause — strictly better than being present — and would stall the table. The
+  grace period protects **seat retention and not being retired** (§3), which is what actually
+  matters; a single turn resolving to a neutral auto-roll is not a consequence worth protecting.
 - 2 consecutive fully-autopiloted turns → forced retire (already decided, §3).
 
 #### C. Spectators, hidden information, and late arrivals
@@ -842,12 +995,12 @@ by §5's research — marked inline below.**
   richup's own proven answer to this exact problem rather than a mechanism invented from scratch.
 - **Turn clock doesn't account for trades happening off-turn.** Trades are conventionally
   proposable/answerable at any time, not just during the proposer's own turn, but §3's clock is
-  scoped to "the active player's turn." **Now largely resolved by the chess-clock decision (§3)
-  plus §3.1E's pause rule**: since time is a per-player reserve rather than a shared per-turn
-  window, answering a trade off-turn naturally draws on the responder's own reserve, and global
-  phases (auctions) pause the active player's clock. **Residual:** whether a *trade* should also
-  pause the active player's clock the way an auction does is still unspecified — decide when
-  Slice 5 is built, with real feel to test against.
+  scoped to "the active player's turn." **Now fully resolved by the turn-clock decision (§3)** —
+  including the residual this entry previously left open. The governing principle ("the clock runs
+  when the game is waiting on you alone") answers it directly: a trade pauses the active player's
+  clock *only while the opponent holds the ball*, and resumes the instant it is the active
+  player's move again. That also removes the stalling exploit an unconditional trade-pause would
+  have created, with no arbitrary per-turn trade cap needed.
 - **No rate-limiting mentioned for the new command RPCs.** Every other player-triggered write in
   this codebase is rate-limited (five separate migrations: `0011`, `0025`, `0030`, `0033`,
   `0038`). **Resolved direction (§5): apply the same `*_attempts` table + `BEFORE INSERT` trigger
@@ -870,11 +1023,11 @@ by §5's research — marked inline below.**
   (suggested 24h, tunable) in that same cron, and `city_matches` does not cascade-delete on the
   standard 2h rule** — resolves the conflict with §3's "pauses durably" proposal without a new
   subsystem.
-- **Unclear whether turn deadlines freeze during a full-disconnect pause.** **Resolved by
-  §3.1B's principle**: autopilot may consume only per-turn free thinking time and never the
-  player's personal reserve, and a fully-paused match has no active clock to burn — so nobody can
-  lose their earned reserve to a disconnection they didn't cause. Implement the pause as a genuine
-  clock stop, not a wall-clock deadline that keeps running.
+- **Unclear whether turn deadlines freeze during a full-disconnect pause.** **Resolved (§3, §3.1B):**
+  distinguish the two cases. A *single* player disconnecting does **not** stop their turn clock —
+  otherwise disconnecting is a free pause. An *all-players* disconnect pauses the match durably,
+  and that pause is a genuine clock stop, not a wall-clock deadline that keeps running while
+  nobody is present to act on it.
 
 ### Low
 - Timed mode's net-worth formula. **Resolved (§3.1H):** cash + unmortgaged at full price +
@@ -900,8 +1053,8 @@ confirm. Nothing below is started — no code, schema, or art exists yet.
   names and the "Spins" currency name, since the whole board's tone hangs off them.
   **← the only remaining Phase 0 blocker.**
 - `[x]` ~~Close the 4 remaining §3 gaps~~ — **done, §3.1A–C, H** (turn state machine's three
-  mandatory decisions + per-phase timeout defaults; 60s reconnect grace with autopilot barred from
-  spending the personal reserve; spectator/hidden-information model; net-worth formula).
+  mandatory decisions + per-phase timeout defaults; 60s reconnect grace protecting seat retention;
+  spectator/hidden-information model; net-worth formula).
 - `[x]` ~~Design the auction flow~~ — **done, §3.1E** (ascending, 10-Spin floor/increment, 15s
   countdown resetting to 10s per bid, 2-minute cap, no bidding on credit, clock pauses).
 - `[x]` ~~Design the bankruptcy/liquidation sequence~~ — **done, §3.1D** (one sequence serving

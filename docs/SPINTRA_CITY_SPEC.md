@@ -91,15 +91,26 @@ may slip a slice; **MAY** = optional.
 
 | ID | Requirement | Priority |
 |---|---|---|
-| FR-25 | A disconnected player has a 60-second grace period with no gameplay consequence. | MUST |
+| FR-25 | A disconnected player keeps their seat and is not retired for a 60-second grace period. The turn clock still runs during it — see `DESIGN.md` §3. | MUST |
 | FR-26 | After grace, a seat becomes autopilot-eligible and acts only when its turn arrives. | MUST |
-| FR-27 | Autopilot takes only safe defaults and **never spends the player's time reserve**. | MUST |
+| FR-27 | Autopilot takes only safe defaults, and resolves the turn **immediately** on arrival rather than waiting out the turn clock. | MUST |
 | FR-28 | Two consecutive fully-autopiloted turns forces retire/liquidation. | MUST |
 | FR-29 | A player can voluntarily retire; a host can kick mid-match. Both route through the same liquidation sequence. | MUST |
 | FR-30 | Reconnecting restores the player's own seat and full authoritative state — never spectator-only. | MUST |
 | FR-31 | If all players disconnect, the match pauses durably and is not destroyed by the standard room-cleanup cron. | MUST |
-| FR-32 | Turn timing uses a chess-clock model (free thinking time, then a personal reserve). | MUST |
-| FR-33 | Global phases (auctions) pause the active player's clock. | MUST |
+| FR-32 | The turn clock runs only while the game is waiting on the active player alone; it pauses while waiting on another player or on an engine-imposed sequence. Phase table in `DESIGN.md` §3. | MUST |
+| FR-33 | Every paused context has its own bounded sub-clock (trade 45s, liquidation 90s/3-min phase cap, auction per §3.1E), **and total trade-pause per turn is capped at 90s**. No context is unbounded. | MUST |
+| FR-41 | Every turn-clock expiry resolves to a defined neutral default (auto-roll, decline-to-auction, end-turn) so a match can never reach an undefined state. | MUST |
+| FR-42 | The host selects a pace preset in the City match lobby at match creation — **not** in `RoomSettingsPanel` — and it locks at match start alongside the roster. Forced liquidation's 90s window is fixed and not host-tunable. | SHOULD |
+| FR-43 | A trade offer arriving while the recipient is the active player is queued and surfaced when their turn ends, so it can neither consume nor freeze their turn clock. | MUST |
+| FR-44 | The turn clock resets on each doubles re-roll granted by FR-16. | MUST |
+| FR-45 | Clock expiry is enforced server-side: every command RPC resolves an expired clock first, and `city_claim_timeout` is independently re-validated (never trusted) and rate-limited like every other command RPC. | MUST |
+| FR-46 | The engine-animation pause resumes on the client's ready signal or a 3-second server ceiling, whichever comes first, so a slow or modified client cannot stall the table. | MUST |
+| FR-47 | A seat change mid-turn (kick, retire, bankruptcy) discards the departing player's clock and starts the next player on a fresh one; a clock is never inherited across seats. | MUST |
+| FR-48 | Resuming an all-players-paused match grants the active player a fresh full turn clock, not the stored remainder. | MUST |
+| FR-49 | Disconnected seats auto-pass in auctions, so an auction never waits out its cap on an absent player. | MUST |
+| FR-50 | In timed mode the match clock is wall-clock and never pauses for turn-clock pauses; on expiry the current round completes before the match ends. | MUST |
+| FR-51 | Eliminated, bankrupt, and spectating players hold no clocks and cannot pause or consume another player's. | MUST |
 
 ### 2.5 Functional — social and spectating
 
@@ -139,7 +150,7 @@ may slip a slice; **MAY** = optional.
 |---|---|---|
 | Architecture | Server-authoritative Postgres match engine; realtime is a **notifier**, not a state carrier | `DESIGN.md` §2.2, §5 |
 | Data model | 5 tables: `city_matches`, `city_match_players`, `city_assets`, `city_trade_offers`, `city_action_log` | `DESIGN.md` §2.3 |
-| Turn model | Chess-clock timing; 3 mandatory decisions only; defined safe default per timeout | `DESIGN.md` §3, §3.1A |
+| Turn model | 40s turn clock that pauses while waiting on others; 3 mandatory decisions only; defined neutral default per timeout | `DESIGN.md` §3, §3.1A |
 | Disconnects | 60s grace → autopilot on own turn only → forced retire after 2 | `DESIGN.md` §3, §3.1B |
 | Information model | Deck order is the only secret; everything else public | `DESIGN.md` §3.1C |
 | Bankruptcy | One sequence for insolvency/retire/forced-retire/kick | `DESIGN.md` §3.1D |
@@ -384,7 +395,7 @@ only surfaced when code actually ran against a real database.
 | 5 | Trading | FR-20…FR-24 |
 | 6 | Auctions, detention, both card decks | FR-15, FR-17, FR-19 |
 | 7 | Timed mode, recap, XP, post-match flow | FR-07…FR-09 |
-| Cross-cutting | Disconnect/autopilot/retire; clock; rate limits | FR-25…FR-33, NFR-04, NFR-05 |
+| Cross-cutting | Disconnect/autopilot/retire; clock; rate limits | FR-25…FR-33, FR-41…FR-51, NFR-04, NFR-05 |
 
 **Slice 1 is the architectural proof.** It exercises the room-shell reuse, the RPC pattern, the
 identity model, and realtime-as-notifier end to end, while course-correcting is still cheap. It
@@ -443,7 +454,7 @@ Concurrency here is a first-class test target, not a spot check.
 | FR-15, FR-19 | `CONTENT.md` §3, §6, §7 | Slice 6 | Deck exhaustion/reshuffle test |
 | FR-17 | `DESIGN.md` §3.1E | Slice 6 | Multi-client auction race test |
 | FR-20…FR-24 | `DESIGN.md` §3.1F | Slice 5 | Concurrent double-accept test |
-| FR-25…FR-33 | `DESIGN.md` §3, §3.1B | Cross-cutting | Reconnect/disconnect browser tests |
+| FR-25…FR-33, FR-41…FR-51 | `DESIGN.md` §3, §3.1B | Cross-cutting | Reconnect/disconnect browser tests; per-phase clock run/pause unit tests (see §3 phase table) |
 | FR-34…FR-36 | `DESIGN.md` §3.1C | Slices 1, 7 | Spectator + chat test |
 | NFR-01…NFR-06 | `DESIGN.md` §5 | Phase 1 | Direct SQL/RPC probing, spoofed identity |
 | NFR-07…NFR-09 | §2.6 (this file) | Every UI slice | Keyboard/SR/mobile passes |
