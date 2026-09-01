@@ -1206,7 +1206,70 @@ expected additions (`city_retire_self`'s signature, `disconnected_at` on
 `city_match_players`). Nothing has touched production; migrations `0083`
 and `0084` are local-only, same as every migration before them.
 
-Next: round B (per-phase `city_claim_timeout` defaults, the `_core`
-extraction of `city_roll_dice`/`city_decline_purchase`/
-`city_leave_detention`'s roll-attempt path, and the auction
-`turn_started_at`-shift bugfix).
+**Round B (migration `0085`) — per-phase `city_claim_timeout` defaults
+(FR-41, FR-45 partial).** `0076` shipped exactly one of FR-41's three
+named defaults (end-turn), uniformly, for every phase — a disclosed scope
+reduction at the time, not a bug. Closed the other two by splitting
+`city_roll_dice`, `city_decline_purchase`, and `city_leave_detention`'s
+`'roll'` method each into a thin public shell (every original check kept in
+100% original order — a real client's behavior does not change by one
+error code) delegating to a new internal `..._core(match_id, seat, ...)`
+taking the acting seat explicitly instead of deriving it from `auth.uid()`.
+`city_claim_timeout` now branches four ways: `pending_debt > 0` still
+bankrupts immediately (round C upgrades this to a real
+auto-liquidation-first attempt); `in_detention` attempts doubles (the core
+function's own cascade already force-pays on the 3rd failed attempt, for
+free); `awaiting_roll` auto-rolls; `required_decision` (debt already ruled
+out above, so this can only be a lapsed buy/decline) declines.
+
+**A real, pre-existing bug found while reading `city_settle_auction` for
+this round, fixed here since it shares the exact "shift the deadline
+forward by the paused duration" mechanism:** settling an auction cleared
+`turn_clock_paused_at` but never shifted `turn_started_at` forward by
+however long the auction actually ran, so a long auction could leave the
+active player's clock already expired the instant they got control back —
+contradicting DESIGN.md's explicit "the active player's turn clock pauses
+for its duration." Not introduced by this round's own work. Fixed and
+verified against the exact arithmetic (5s into a 40s turn, a 90s auction,
+the original 35s must still be there after settling), then confirmed
+discriminating by temporarily redeploying the pre-fix function and
+watching the new assertion go red with the exact expected drift before
+restoring the fix.
+
+**The re-run-immediately discipline caught a real, expected behavior
+change, not a regression:** re-running the full 35-assertion suite right
+after the `_core` extractions (before adding any new claim_timeout logic)
+turned up one failure — `BUG-003b`, written in round 3 against the OLD
+uniform "always end-turn" behavior. Traced by hand: its own setup
+leaves the match in `awaiting_roll`, so the new (correct) behavior is to
+auto-roll, not end the turn — current_seat correctly stays put. Updated
+the assertion to check for the new `auto_roll` resolution its own setup
+now genuinely exercises, rather than reverting the fix or loosening the
+check.
+
+Also added, since nothing had ever directly asserted either before this
+round despite both already being correct: FR-44 (turn clock resets on a
+doubles re-roll — `city_end_turn` already did this unconditionally) and
+FR-50 (timed mode is wall-clock and only ends at a round boundary —
+`city_end_turn`'s own `v_expired` check already did this too).
+
+SQL regression harness: 35/35 (29 pre-existing + BUG-007-A/E + 5 new
+BUG-007-B assertions). Live-verified: reran the full existing live suite
+(`qa-x9`, `qa-x11`, `qa-x12`) since this round touches `city_roll_dice`
+directly — 6/6, including a live roll that landed on a real property and
+charged rent correctly through the extracted `_core` path. No client
+changes this round (the RPC's return shape gained `resolution`/`seat`
+metadata the UI doesn't yet consume). `npm run verify`: clean.
+`database.types.ts` regenerated and diffed — only the three new `_core`
+function signatures, plus a harmless, more-accurate optional-arg
+correction for `city_settle_auction`'s pre-existing (unchanged) default
+that the generator apparently hadn't captured precisely before. Grants on
+every touched function double-checked directly, not just via the
+`META-OVERLOAD-GRANTS` guard: all three new `_core` functions confirmed
+unreachable by `anon`/`authenticated`, all four public shells confirmed
+unchanged. Nothing has touched production; `0085` is local-only.
+
+Next: round C (`city_advance_turn` extraction, the shared
+safe-default-resolution engine including the new auto-liquidation loop,
+the autopilot cascade, and forced retire at 2 — the single riskiest
+round in this plan).
