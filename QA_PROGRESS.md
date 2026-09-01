@@ -1367,6 +1367,71 @@ rather than new confidence. `npm run verify`: clean. `database.types.ts`
 regenerated and diffed — exactly the 7 new internal function signatures,
 nothing else. Nothing has touched production; `0086` is local-only.
 
-Next: round D (`status='paused'` transition, resume-on-reconnect
-completion, FR-48's fresh clock, and the timed-mode `started_at` shift on
-resume — no cron work needed, already shipped in `0063`).
+**Round D (migration `0087`) — durable full-match pause (FR-31, FR-48).**
+No cron work needed — `cleanup_inactive_rooms()` (`0063`) already gives
+City rooms a 24h threshold instead of 2h, specifically for this
+requirement, per that migration's own long-standing comment. New
+`paused_at` column on `city_matches` (explicitly granted — the one table
+in this plan with a real column allowlist). `city_run_autopilot_from_current`
+already tracked whether it found anyone present but never acted on it —
+now sets `status='paused'` once it cycles every active seat and finds no
+one home. `city_track_disconnect` gains the resume branch `0084`
+deliberately deferred: on reconnect to a paused match, restores
+`status='active'`, grants a **fresh** full turn clock per FR-48's own
+explicit wording (not the stored remainder — a preserved remainder from a
+pause spanning minutes or hours would be absurd, unlike the much shorter
+auction/trade pauses, which correctly do preserve the true remainder), and
+shifts `started_at` forward by the exact pause duration so a long pause
+doesn't eat into a timed-mode limit. Re-runs the cascade immediately after
+resuming, since the reconnecting player isn't necessarily `current_seat`.
+
+**A real, structural bug — found and fixed while testing the pause
+transition itself, in `0086`'s own loop bound, not in anything new this
+round.** The cascade's bound was `seat_count + 1`, one iteration more than
+the number of distinct seats. By the pigeonhole principle, with every seat
+away that guarantees the loop revisits one seat a second time before
+giving up — and that "extra" revisit counted toward the *same*
+forced-retire streak a genuine second turn would (FR-28). Purely
+detecting "is anyone home" could therefore spuriously force-retire
+whichever seat happened to be resolved first: a real player, exactly as
+away as the rest of the table, penalised only for being first in line.
+Observed live, not theorized: a deliberately simple 1-active-seat test
+scenario (designed to isolate the pause transition cleanly) came back with
+`status='finished'` instead of `'paused'` — traced to seat 0 hitting its
+own forced-retire threshold on the loop's second, spurious pass, which
+then triggered last-player-standing since it was the only seat left.
+Fixed by changing the bound from `seat_count + 1` to exactly `seat_count`
+— checking each seat once is sufficient to conclude nobody is present, and
+never revisits a seat within one pause-detection pass. Confirmed
+discriminating: temporarily redeployed the original `+ 1` bound, watched
+`BUG-007-D-pause` fail with the identical `finished`-instead-of-`paused`
+symptom, restored the real fix and confirmed green.
+
+Getting the resume test itself right needed one more fix along the way: the
+first draft flipped `room_participants.is_online` from `true` to `true` (a
+no-op) to simulate "reconnecting", which the trigger's own `WHEN
+old.is_online IS DISTINCT FROM new.is_online` clause correctly never fires
+for — `rg_match` already leaves every participant online from the join, so
+the test needed a genuine `true -> false -> true` round trip to exercise a
+real transition, not just the final flip.
+
+Small client addition: a "Match paused" banner in `city-match-shell.tsx`,
+and the Retire button hidden while paused (`city_retire_self` requires
+`status='active'` like every other command RPC, so showing it while
+paused would just error).
+
+SQL regression harness: 42/42 (40 pre-existing + 2 new: the pause
+transition and the resume/fresh-clock/timed-shift behavior together).
+Live-verified via the full existing suite (9/9) after rebuilding both
+local servers with the client changes — no regressions. `npm run verify`:
+clean. `database.types.ts` regenerated and diffed — exactly the one new
+`paused_at` column, nothing else. A dedicated live Playwright test for the
+pause/resume banner itself was deliberately not attempted — it would need
+either a genuine 60+-second-idle disconnect or fragile DB-state-plus-
+live-browser mixing, and the SQL suite already proves the exact mechanism
+directly, including a real discriminating check on the one genuine bug
+found this round. Nothing has touched production; `0087` is local-only.
+
+Next: round F (trade-pause budget + queued offers, FR-33/FR-43) or round G
+(auction auto-pass for away seats + FR-50 verification-only) — both
+independent of each other and of everything built so far.
