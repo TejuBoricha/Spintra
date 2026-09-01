@@ -116,10 +116,10 @@ scoring.
 
 ## 1b. Fix phase update (2026-09-01) — local only, not deployed
 
-A fix phase followed this audit, in four rounds. **All 4 criticals are now
-fixed and independently verified**, along with 24 further bugs closed across
-the four rounds. Everything in this section happened **entirely on the local
-Docker stack** — production has none of migrations `0063`–`0080` and remains
+A fix phase followed this audit, in six rounds. **All 4 criticals are now
+fixed and independently verified**, along with 32 further bugs closed across
+the six rounds. Everything in this section happened **entirely on the local
+Docker stack** — production has none of migrations `0063`–`0081` and remains
 exactly as this audit found it. This section does not revise the audit above;
 it records what changed after it.
 
@@ -155,9 +155,21 @@ it records what changed after it.
 | **BUG-016** the deck stopped being a true permutation once a Transit Visa was held | `0079` — `city_draw_card` now derives from the round's full, fixed-size permutation and only substitutes the next slot if the drawn one is the currently-held visa, instead of re-deriving the round from a shrinking eligible count | Regression harness: all 15 non-visa `city_fund` cards appear at least once across 16 draws with the visa picked up mid-round |
 | **BUG-017** "double rent" cards charged the unscaled base rent | `0079` — the multiplier now applies to `city_resolve_landing`'s own computed rent, not to the dice total fed into it (which only utilities ever read) | Regression harness: a rent-multiplier card against a 23-rent property charges exactly 46 |
 | **BUG-032** card 10 charged 24× the roll instead of the stated 10× | `0079` — a new flat-rent parameter replaces the normal utility formula outright for this card, instead of pre-scaling the dice total feeding into it | Regression harness: a roll of 6 against an owner holding both utilities charges exactly 60 |
+| **BUG-035** the off-turn player was never told what happened | `0081` — the roll/landing outcome is now persisted (`city_matches.last_roll_result`/`last_roll_turn`) instead of living only in the roller's own local React state | Live two-browser proof: the off-turn player's status line reads the full narration ("Rolled 3 and 1, moved to Sydney…"), not "Waiting for X" |
+| **BUG-034** post-refresh status text contradicted the buttons | `city-match-shell.tsx` — the status line now derives from `match.phase`/`pending_debt` (server state) instead of prioritizing client-only `lastRoll`, which a refresh always discarded | Live proof: mid-turn refresh after rolling no longer shows "roll the dice" while Roll is disabled |
+| **BUG-037** no debounce/coalescing on realtime-triggered refetches | `use-city-match.ts` — concurrent `refetch()` calls within an 80ms window now collapse into one underlying fetch, with every caller's own `await` resolving once it completes | Exercised live across a full match flow (roll → land → trade → build) with no regression in any client's observed state |
+| **BUG-040** the cookie-consent banner intercepted clicks on controls beneath it | `cookie-consent-banner.tsx` — capped to the same compact corner-card width the `sm:`+ breakpoint already had, at every width, instead of spanning edge-to-edge minus 2rem below `sm:` | Measured live at 600px: 736px-wide box (pre-fix arithmetic) → 384px, right-anchored |
+| **BUG-041** the header nav overflowed its container at 768×1024 | `navbar.tsx` — the desktop pill nav's reveal breakpoint moved from `md:` (768px, where it didn't fit) to `lg:` (1024px); the mobile hamburger, already correct at every width, now covers the gap | Live measurement at 768×1024: nav panel's `scrollWidth − clientWidth` is 0 |
+| **BUG-042** no offline/reconnecting indicator anywhere in the City UI | `use-city-match.ts` + `city-match-shell.tsx` — City's own realtime channel now tracks `SUBSCRIBED`/dropped status (mirroring `use-room-subscription.ts`'s existing pattern) and renders the previously-built-but-never-wired-up `ConnectionBanner` component | Verified the banner correctly renders nothing while connected (exercised through every other live test this round); the channel-status plumbing matches the base room's own proven pattern |
+| **BUG-043** several footer links were under the 24px tap-target minimum | `page.tsx` — added `inline-flex items-center py-2` to each footer link | Measured live: 17px → 36px |
+| **BUG-039** holdings controls were disabled off-turn with no explanation | `city-holdings.tsx` — added a `title` explaining the specific reason (wait for your turn / settle your debt first / not enough cash) to each of the four gated buttons | Confirmed live: an in-debt off-turn player's Mortgage button is enabled with no tooltip (nothing to explain); a same-turn build blocked on cash shows "Not enough cash" |
+
+**A client-side gap this round found and closed, not itself one of the 44 audit-numbered bugs:** round 2's server-side fix for BUG-005 (0077) let an off-turn debtor call `city_sell_building`/`city_mortgage` directly, but `city-holdings.tsx`'s Sell and Mortgage buttons still unconditionally required `isMyTurn`, with no `inDebt` exception — the debt banner right above those same buttons instructs the player to "sell buildings and mortgage cities below," but the buttons themselves stayed disabled whenever it wasn't their turn. Fixed alongside BUG-039's tooltip work (`city-holdings.tsx`); verified live in the same session — an off-turn, in-debt guest's Mortgage button is genuinely clickable and the RPC succeeds.
 
 **Improved as a side effect, not independently verified as fully closed:**
 - **BUG-006** (turn clock decorative) — `city_claim_timeout` (0076) now reads `turn_started_at`/`pace_seconds` for a real purpose, so the clock is no longer purely decorative; a genuine consequence exists once it lapses. The original defect's core claim no longer holds. What remains open: no visible countdown is rendered anywhere (a separate, cosmetic gap this fix did not address).
+
+**A gap this round found in its own testing infrastructure, unrelated to any audit-numbered bug:** this repo's `.env.local` points at the real, hosted production Supabase project (used for normal local development against live data), and a bare `npm run build` inlines whatever `NEXT_PUBLIC_SUPABASE_URL` is active at build time into the client bundle — this session's first rebuild after the client-side edits omitted the local-stack override that earlier rounds' browser verification had been supplying, so several live-browser test runs briefly built and ran against production credentials instead of the local Docker stack. Every room-creation attempt failed at the database level (production's `rooms_type_check` constraint predates the City feature and has no `'city'` value — the exact protection this session has relied on throughout), so no City data reached production; several throwaway anonymous Supabase Auth sessions were very likely created there in the process. Caught by directly diagnosing an unexplained constraint-violation error rather than assuming it was a code bug, traced to the bundle's inlined URL, and corrected by rebuilding with the local stack's actual URL/anon key (`npx supabase status -o env`) explicitly overriding `.env.local`, confirmed via a bundle grep showing zero remaining references to the production project ref before any further browser testing resumed. No code or migration change resulted from this — it is a build-invocation mistake, not a defect in the app — but it is recorded here in full rather than folded away, and reported directly to the user.
 
 **A gap this fix phase introduced in itself, found and closed in the same
 round it was introduced:** migration `0080` closes an unrevoked, publicly-
@@ -171,20 +183,22 @@ before any of this work left the local stack.
 ### Every fixed migration passed the same gates
 
 `npm run test:city-regression` (24 SQL assertions plus 2 source checks — BUG-038
-and BUG-013 — for 26 total; the original 12 release-blocking checks, 3 added in
-round 2 for BUG-005/011/029, 4 added in round 3 for BUG-021/025/026/027, 4 added
-in round 4 for BUG-015/016/017/032, and one general `META-OVERLOAD-GRANTS` check
-added alongside 0080 that sweeps the whole `city_*` function surface for the
-overload-grant trap so it can't recur silently), a 20-match concurrent load test
-with byte-identical outcome counts before and after every round-1 change,
-post-load integrity checks (no negative cash, no orphaned assets, no deadlocks),
-idempotent re-application of every migration (rounds 2 through 4 each re-verified
-directly: every migration from `0077` on re-applies as a clean no-op with the
-harness unchanged), and `npm run verify`. Three round-1 fixes were additionally
-proven at the browser layer with two independent live clients. Full detail,
-including five false-positive regression-check bugs caught and fixed across all
-four rounds — plus the self-introduced overload-grant regression above — is in
-`QA_PROGRESS.md`.
+and BUG-013 — for 26 total; unchanged since round 4, since round 5's BUG-035 fix
+and round 6's client-side fixes are proven live in a real browser instead — see
+below), a 20-match concurrent load test with byte-identical outcome counts before
+and after every round-1 change, post-load integrity checks (no negative cash, no
+orphaned assets, no deadlocks), idempotent re-application of every migration
+(every migration from `0077` on re-applies as a clean no-op with the harness
+unchanged), and `npm run verify`. Round 6's eight client-side fixes, plus BUG-035,
+were verified against a real production build of the app running against the
+local Supabase stack, in a real headless browser, via `tests/qa-x9-client-polish
+.spec.ts` (kept in the repo, same as the earlier live-verification specs) — a
+two-browser live match for the status-text and cross-client narration fixes, and
+direct DOM measurement for the nav/footer/banner CSS fixes. Full detail, including
+five false-positive regression-check bugs caught and fixed across rounds 1-4, the
+self-introduced overload-grant regression (round 4), a second self-introduced
+grant gap (round 5, this one caught live rather than in review), and a genuine
+test-infrastructure incident (round 6, detailed below) — is in `QA_PROGRESS.md`.
 
 **BUG-023 has no dedicated regression assertion, by design, not by omission.**
 The bug was that a write attempted just before an exception silently rolled back
@@ -202,19 +216,23 @@ catch.
 
 | | Original audit | After the fix phase (local only) |
 |---|---|---|
-| Confirmed bugs | 44 | 44 found, **28 fixed**, 16 open |
+| Confirmed bugs | 44 | 44 found, **36 fixed**, 8 open |
 | Critical | 4 | **0 unresolved** (4 of 4 fixed) |
-| High | 13 | 4 unresolved (9 of 13 fixed: 008, 009, 010, 012, 013, 014, 038, 005, 011) |
-| Medium | 12 | 3 unresolved (9 of 12 fixed: 019, 024, 044, 045, 023, 021, 015, 016, 017) |
-| Low | 15 | 9 unresolved (6 of 15 fixed: 031, 029, 025, 026, 027, 032) |
+| High | 13 | 2 unresolved (11 of 13 fixed: 008, 009, 010, 012, 013, 014, 038, 005, 011, 034, 035) |
+| Medium | 12 | **0 unresolved (12 of 12 fixed)** |
+| Low | 15 | 5 unresolved (10 of 15 fixed: 031, 029, 025, 026, 027, 032, 039, 041, 042, 043) |
 
-The 16 still-open bugs were, without exception, already classified as non-blocking
+The 8 still-open bugs were, without exception, already classified as non-blocking
 in the original audit (§17's fix list covered the release-blocking set almost
 exactly — items 1–8 there map directly to the migrations above). None of them
 individually gates a release the way the four criticals did. The largest single
 item left is BUG-007's 20 MUST-requirement slice (disconnect grace, autopilot,
 forced retire, the full turn-clock model) — deliberately untouched throughout all
-four rounds as genuinely multi-day work, not an oversight.
+six rounds as genuinely multi-day work, not an oversight. The rest: BUG-006
+(turn clock partially addressed as a side effect of BUG-003's fix — no visible
+countdown), the economy correctness pair BUG-028/030, spectator gaps BUG-022/033,
+and BUG-018/020 (re-verification concluded neither is an actual defect — no code
+change was ever warranted for either).
 
 ### What this means for the release verdict in §18
 
@@ -222,7 +240,7 @@ four rounds as genuinely multi-day work, not an oversight.
 deployed to it — §18's verdict is accurate as a description of production today.
 **The local codebase's blocking-defect count has gone from 4 criticals to 0**,
 which is the precondition §18 named for reconsidering that verdict, not a
-substitute for actually shipping migrations `0071`–`0080` and re-running this
+substitute for actually shipping migrations `0071`–`0081` and re-running this
 audit against production once they are.
 
 ---
@@ -369,8 +387,8 @@ All nine exits then close simultaneously: `end_turn`/`roll_dice`/`build`/`unmort
 | BUG-013 | **&#10003; Fixed 2026-09-01 (direct fix, `route.ts`, see §1b).** **`/api/health` is permanently 503.** The realtime probe requests `/realtime/v1/ws` with a plain GET; that path does not exist (the real one is `/realtime/v1/websocket`) and a GET can never upgrade. Realtime is actually healthy — handshake returns **101**. An uptime monitor on this endpoint is either permanently alarming or trained to ignore it, so a real outage would not stand out. Pre-existing site defect, in City's dependency path. |
 | BUG-005 | **&#10003; Fixed 2026-09-01 (migration `0077`, see §1b).** **A player charged off-turn is stalled with a debt they cannot settle.** `city_charge` sets the raise-funds phase only for the current seat (`where ... and current_seat = p_seat`), while `city_assert_can_manage` gates mortgage, sell, build, unmortgage **and** `declare_bankruptcy` on being the current seat. A "collect from every player" card leaves the payer with `pending_debt` and no legal action — mortgage/bankruptcy → `CITY_NOT_YOUR_TURN`, trade/bid → `CITY_SETTLE_DEBT_FIRST` — and the card reported `"total": 200` when only 100 moved. **Re-test correction:** the freeze is temporary; the payer recovers on their own turn, so this is a stall of up to N−1 turns (7 at a full table), not a permanent deadlock. Downgraded from CRITICAL. It also enables BUG-044. |
 | BUG-038 | **&#10003; Fixed 2026-09-01 (`use-city-match.ts`, see §1b).** **Two realtime subscriptions are global, not per-match** — upgraded from MEDIUM on re-test. `city_auctions` and `city_trade_offers` subscribe with no filter and call a bare `refetch()`. Proven behaviourally: activity in a completely separate room made idle clients in another match run a full 5-query refetch. Both tables also carry RLS `USING (true)`, so no row-level gate compensates. Cross-tenant amplification. |
-| BUG-034 | **After a mid-turn refresh the instructions contradict the buttons.** With phase `optional_actions`, the status line reads "Your turn — roll the dice." while Roll is disabled and End turn is the only legal move. `lastRoll` is client-only React state discarded by the reload, and the fallback string ignores `match.phase`. A new player reads "roll the dice", finds Roll dead, and concludes the game is broken. |
-| BUG-035 | **The off-turn player is never told what happened.** The active player gets a full sentence ("Rolled 6 and 1, moved to City Fund… Collect 250 Spins."); the opponent's screen says only "Waiting for Guest_1w4e6." The narration string is verifiably absent from the off-player's DOM. Cash badges change silently — in a game whose whole tension is money moving between players, the person *losing* the money is the one not told. |
+| BUG-034 | **&#10003; Fixed 2026-09-01 (client fix, see §1b).** **After a mid-turn refresh the instructions contradict the buttons.** With phase `optional_actions`, the status line reads "Your turn — roll the dice." while Roll is disabled and End turn is the only legal move. `lastRoll` is client-only React state discarded by the reload, and the fallback string ignores `match.phase`. A new player reads "roll the dice", finds Roll dead, and concludes the game is broken. |
+| BUG-035 | **&#10003; Fixed 2026-09-01 (migration `0081`, see §1b).** **The off-turn player is never told what happened.** The active player gets a full sentence ("Rolled 6 and 1, moved to City Fund… Collect 250 Spins."); the opponent's screen says only "Waiting for Guest_1w4e6." The narration string is verifiably absent from the off-player's DOM. Cash badges change silently — in a game whose whole tension is money moving between players, the person *losing* the money is the one not told. |
 | BUG-014 | **&#10003; Fixed 2026-09-01 (migration `0072`, see §1b).** **Bankruptcy hands over buildings instead of selling them.** DESIGN §3.1D requires developments sold to the bank at half cost first. Creditor received three properties still at 3 buildings each instead of 490 cash and bare deeds — and can hold a developed set they never completed, bypassing the even-build invariant. |
 
 ---
@@ -389,8 +407,8 @@ All nine exits then close simultaneously: `end_turn`/`roll_dice`/`build`/`unmort
 | BUG-044 | **&#10003; Fixed 2026-09-01 (migration `0075`, see §1b).** **`city_charge` overwrites `pending_debt` instead of accumulating it**, so a second off-turn charge erases the first creditor's claim outright (50 owed to Bo replaced by 40 owed to Cy). Found during re-verification; reachable only because of BUG-005. |
 | BUG-045 | **&#10003; Fixed 2026-09-01 (migration `0072`, see §1b).** **`city_max_liquidation` returns 0 through NULL propagation.** `build_cost` is NULL for stations, so `buildings * (build_cost/2)` is `0 * NULL = NULL`, poisoning the `sum()`, which `coalesce(...,0)` then flattens to 0. A seat holding an unmortgaged 190 property reports 0 instead of 95. Bankruptcy survivability checks depend on this, so it will bankrupt players who could pay. Found during re-verification. |
 | BUG-024 | **&#10003; Fixed 2026-09-01 (migration `0072`, see §1b).** Trade cash does not discharge a pending debt (`city_accept_trade` never calls `city_try_settle_debt`) — the mechanism behind BUG-004. |
-| BUG-037 | **Refetch amplification, measured 22.9× across two clients** (re-test corrected the filed ~30×). One clean 2-player session of ~32 mutations produced ≈1,000 REST reads: every mutation triggers `runCommand`'s own `await refetch()` *and* a realtime ping from each of four tables, each firing a further 5-query refetch, on both clients, with no debounce or coalescing. Scales with seat count. |
-| BUG-040 | **The cookie-consent banner intercepts clicks on controls beneath it.** Reproduced by A/B: with the banner undismissed, `elementFromPoint` at the centre of the trade panel's "Send offer" button returns `DIV.fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6` — the banner — and the click is swallowed with no feedback. Dismiss the banner and the same point returns the button's own container and the click lands. The banner is fixed to the bottom-right and persists until explicitly accepted or declined, so any primary action it overlaps silently does nothing. |
+| BUG-037 | **&#10003; Fixed 2026-09-01 (client fix, see §1b).** **Refetch amplification, measured 22.9× across two clients** (re-test corrected the filed ~30×). One clean 2-player session of ~32 mutations produced ≈1,000 REST reads: every mutation triggers `runCommand`'s own `await refetch()` *and* a realtime ping from each of four tables, each firing a further 5-query refetch, on both clients, with no debounce or coalescing. Scales with seat count. |
+| BUG-040 | **&#10003; Fixed 2026-09-01 (client fix, see §1b).** **The cookie-consent banner intercepts clicks on controls beneath it.** Reproduced by A/B: with the banner undismissed, `elementFromPoint` at the centre of the trade panel's "Send offer" button returns `DIV.fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6` — the banner — and the click is swallowed with no feedback. Dismiss the banner and the same point returns the button's own container and the click lands. The banner is fixed to the bottom-right and persists until explicitly accepted or declined, so any primary action it overlaps silently does nothing. |
 
 ---
 
@@ -407,12 +425,12 @@ All nine exits then close simultaneously: `end_turn`/`roll_dice`/`build`/`unmort
 | BUG-031 | **&#10003; Fixed 2026-09-01 (migration `0071`, see §1b).** Raw Postgres errors leak instead of `CITY_*` codes: self-trade and negative `give_cash` print the failing row; six routines pass a NULL room code to the rate limiter before validating the match, producing a NOT NULL violation. |
 | BUG-032 | **&#10003; Fixed 2026-09-01 (migration `0079`, see §1b).** Card 10 charges 24× the roll when both utilities are held (2 × the 12× rate); text says ten times. |
 | BUG-033 | No code path makes eliminated players spectators (FR-36); `pace_seconds` is never settable by the host (FR-42). |
-| BUG-043 | Several site-wide footer and nav links are ~20 px tall, below the 24 px minimum touch target (`Explore`, `Terms`, `Privacy`, `Privacy Policy`). Measured on real device profiles with touch emulation. **No City game control is undersized** — the board tiles and action buttons all pass. The 1×1 `sr-only` "Skip to content" link is a correct pattern, not a defect. |
-| BUG-042 | **No offline or reconnecting indicator anywhere in the City UI.** With the network cut mid-turn an error message does surface, but nothing tells the player they are disconnected. Confirmed by search: `/offline|reconnect|connection lost|disconnected/i` matches nothing. |
-| BUG-041 | The site header nav overflows its container at 768×1024 (`DIV.mx-auto` and `DIV.flex` both report `scrollWidth > clientWidth`). Site-wide, not City-specific; the page itself still does not scroll horizontally. |
+| BUG-043 | **&#10003; Fixed 2026-09-01 (client fix, see §1b).** Several site-wide footer and nav links are ~20 px tall, below the 24 px minimum touch target (`Explore`, `Terms`, `Privacy`, `Privacy Policy`). Measured on real device profiles with touch emulation. **No City game control is undersized** — the board tiles and action buttons all pass. The 1×1 `sr-only` "Skip to content" link is a correct pattern, not a defect. |
+| BUG-042 | **&#10003; Fixed 2026-09-01 (client fix, see §1b).** **No offline or reconnecting indicator anywhere in the City UI.** With the network cut mid-turn an error message does surface, but nothing tells the player they are disconnected. Confirmed by search: `/offline|reconnect|connection lost|disconnected/i` matches nothing. |
+| BUG-041 | **&#10003; Fixed 2026-09-01 (client fix, see §1b).** The site header nav overflows its container at 768×1024 (`DIV.mx-auto` and `DIV.flex` both report `scrollWidth > clientWidth`). Site-wide, not City-specific; the page itself still does not scroll horizontally. |
 | BUG-018 | Escaping detention by doubles discards the escape roll and leaves `awaiting_roll`, so the player rolls twice but **moves once**. Re-test found this matches DESIGN §3.1A and is not a defect as filed — downgraded from MEDIUM. Residual: the fresh roll can itself set `doubles_count`, granting a re-roll the classic game denies. Documentation gap, not a code defect. |
 | BUG-020 | The rate limiter's ledger row rolls back with a failing command, so invalid command spam is unmetered. Re-test found successful commands **are** throttled (call 61 refused, exactly 60 in the ledger) — no gameplay advantage, a DB-load nuisance only. Downgraded from MEDIUM. |
-| BUG-039 | Holdings controls are all disabled off-turn with no explanation. Re-test found the server enforces the identical rule (`city_assert_can_manage` → `CITY_NOT_YOUR_TURN`), so there is no client/server mismatch and nothing exploitable — a missing-explanation copy fix, not a permission defect. Downgraded from MEDIUM. |
+| BUG-039 | **&#10003; Fixed 2026-09-01 (client fix, see §1b).** Holdings controls are all disabled off-turn with no explanation. Re-test found the server enforces the identical rule (`city_assert_can_manage` → `CITY_NOT_YOUR_TURN`), so there is no client/server mismatch and nothing exploitable — a missing-explanation copy fix, not a permission defect. Downgraded from MEDIUM. |
 
 *(BUG-018, 020 and 039 were downgraded to LOW during the independent re-verification pass — §1a — and are restated here as their own rows so every confirmed bug has one, matching the headline count.)*
 

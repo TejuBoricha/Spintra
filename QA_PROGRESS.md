@@ -715,7 +715,7 @@ call shape changed) and no public RPC's argument list changed, so no
 Nothing has touched production. `supabase/migrations/0079_*.sql` and
 `0080_*.sql` are both local-only, same as every migration before them.
 
-## Fix phase running total (all four rounds)
+## Fix phase running total (rounds 1-4)
 
 28 of 44 bugs fixed: 4 Critical, 9 of 13 High, 9 of 12 Medium, 6 of 15 Low.
 16 remain open, headlined by BUG-007 (the 20 MUST-requirement disconnect/
@@ -726,3 +726,210 @@ spectator gaps (022/033), and the client-side polish items
 general, non-audit-numbered check — `META-OVERLOAD-GRANTS` — added after
 this round's own self-introduced-and-self-caught overload-grant regression).
 `npm run verify`: green. Nothing has touched production.
+
+## ROUND 5 — closing BUG-035 (migration 0081), and a second self-introduced
+## grant gap caught live
+
+User confirmed "yes" to continuing into the client-side polish group. Started
+with BUG-035 since it required a small server-side change (persisting the
+roll outcome) before any client work could show it off-turn.
+
+Read `use-city-match.ts` and `city-match-shell.tsx` in full via a research
+agent before deciding an approach, rather than guessing at the client
+architecture. Confirmed: `lastRoll` is pure client React state, set directly
+from `city_roll_dice`'s own RPC return value, never read from
+`city_matches.last_roll` (which only ever held the bare two-die array) and
+never broadcast — so nobody but the roller's own tab, in the same turn,
+before their next refresh, ever saw the narration sentence. Considered two
+fixes: (a) client-side realtime broadcast of the roll result to other
+clients, or (b) persist the full result server-side and let it ride the
+existing `city_matches` postgres_changes subscription every client already
+has. Chose (b): it also fixes a second problem the research surfaced that
+wasn't in the audit at all — the roller's own narration vanishing on their
+*own* refresh mid-turn — and needs no new realtime channel or broadcast
+authorization pattern. Staleness is derived by comparing a new
+`last_roll_turn` column to `turn_number`, the same pattern
+`city_trade_offers.created_turn` already uses — confirmed every turn-
+advancing path (`city_end_turn`, `city_retire_seat`, `city_claim_timeout`)
+increments `turn_number`, so no explicit clearing was needed.
+
+**Caught live, not in review, the second instance of a grant-hygiene mistake
+this fix phase has now made:** applied 0081, then ran the actual app in a
+browser to open a match — got `42501 permission denied for table
+city_matches` the instant the client's select list included the new column.
+`city_matches` has been column-grant-restricted since migration 0063 (an
+explicit allowlist, not a blanket table grant, precisely so
+`rng_seed`/`rng_counter` stay unreachable via PostgREST) — a newly added
+column is invisible to `anon`/`authenticated` until it's explicitly added to
+that allowlist too, and PostgREST denies the *entire* query if even one
+requested column lacks a grant. Unlike round 4's overload-grant regression
+(caught by habitually re-running a privilege-audit query, not by symptom),
+this one was caught by literally trying to use the feature and reading the
+actual error — a reminder that "did I remember the grant" needs checking for
+*every* kind of schema change this session has made (new function overloads,
+and now new columns), not just the one shape already burned once. Fixed
+directly in 0081 (not yet committed at the time this was found), rather than
+a follow-up migration, since editing an in-progress uncommitted file is not
+the same thing as editing history.
+
+Verified end-to-end in a real two-browser Playwright run against a real
+production build of the app (not just the SQL regression harness, which
+doesn't exercise column-grant enforcement the way PostgREST does): the
+off-turn guest's status line read the full narration ("Rolled 3 and 1, moved
+to Sydney. It's unclaimed — buy it for 235, or pass."), not "Waiting for
+Host". `npm run verify` green.
+
+## ROUND 6 — the client-side polish group (BUG-034, 037, 039, 040, 041, 042,
+## 043; plus a client-side gap in round 2's own BUG-005 fix)
+
+Continued straight through into the remaining client-side items, using a
+research agent first to locate every relevant file (the cookie-consent
+banner, the site header nav, the footer, any existing offline/reconnect
+pattern, the status-line logic, the narration gating, every `refetch()` call
+site, and the holdings buttons' disabled logic) before touching anything —
+the same read-first discipline as every SQL round, just aimed at React/CSS
+instead.
+
+**BUG-034** (status text ignoring server phase): extended the same status-
+line ternary already touched for BUG-035's `effectiveRoll` fallback with two
+more phase-aware branches — an explicit `isMyTurn && inDebt` message (there
+wasn't one at all before, a related gap the research surfaced: a debtor on
+their own turn saw "your turn — roll the dice" with no mention of the debt
+blocking that exact roll) and a `match.phase === 'awaiting_roll'` check
+before falling back to the "roll the dice" text, so a post-roll refresh
+correctly shows "you've rolled — build, trade, or end your turn" instead.
+
+**BUG-037** (no refetch debounce): added a coalescing wrapper around the
+hook's `refetch` — concurrent calls within an 80ms window share one
+in-flight fetch, with every caller's own `await` resolving once it actually
+completes. Deliberately not a leading-edge throttle (which would risk
+dropping a solo action's own update) or a long window (which would make
+every single action feel laggy) — 80ms is comfortably longer than same-
+transaction realtime events arrive apart, comfortably shorter than
+perceptible latency.
+
+**BUG-040** (cookie banner overlap): root-caused to the banner having *no*
+max-width below the `sm:` (640px) breakpoint at all — `left-4 right-4` alone
+gives a ~700px+ box at tablet-ish widths, while `sm:`+ already had a compact
+`max-w-md` corner-card treatment. Extended the same compact treatment
+downward (`max-w-sm` + `ml-auto` to hug the right edge) rather than
+redesigning the banner. First test draft checked a 390px phone viewport and
+failed — worked out by hand that 390px was never actually the problem width
+(edge-to-edge on a real phone is close to unavoidable and not what the audit
+reproduced); re-scoped the check to 600px, just below `sm:`, where the fix
+actually changes anything (736px-equivalent arithmetic → 384px, confirmed
+live).
+
+**BUG-041** (nav overflow at 768×1024): traced to the desktop pill nav (logo
++ 4 center buttons + right icons) not fitting inside its own
+`overflow-hidden` panel at exactly the `md:` breakpoint (768px) where it
+first turns on. Raised every toggle controlling that reveal (4 occurrences
+in `navbar.tsx`) from `md:` to `lg:` (1024px) rather than trying to squeeze
+the existing spacing into 768px — the mobile hamburger menu was already
+correct at every width per the research, so it now simply covers the gap.
+
+**BUG-042** (no offline indicator): found `ConnectionBanner` already fully
+built and exported but never imported anywhere in the codebase — reused it
+rather than building a new one. Added the missing `.subscribe((status) =>
+...)` status callback to City's own realtime channel (it had none at all),
+mirroring `use-room-subscription.ts`'s proven SUBSCRIBED/else handling and
+20s reconnecting→offline escalation, since City's channel is genuinely
+separate from the room's base chat/participants channel and can drop
+independently.
+
+**BUG-043** (footer tap targets): `inline-flex items-center py-2` on each of
+the 5 footer links in `page.tsx` — no shared `<Footer>` component exists in
+this codebase, confirmed via the research pass, so this is the only place
+it needed fixing.
+
+**BUG-039 plus a related gap it wasn't originally about:** while wiring up
+the disabled-reason tooltips (`city-holdings.tsx`), noticed the Sell and
+Mortgage buttons still had `disabled={!isMyTurn}` with no debt exception —
+but round 2's BUG-005 fix (0077) specifically gave the *server* an
+off-turn-debt bypass for exactly these two actions. The client was never
+updated to match, meaning BUG-005's fix was real but practically invisible:
+an off-turn debtor still couldn't click anything to raise funds, even though
+the RPC would now accept it. Fixed the disabled conditions to
+`!isMyTurn && !inDebt` for Sell/Mortgage specifically (Build and Unmortgage
+correctly stay `!isMyTurn`-only, matching that they never got the server-
+side bypass either), and added the explanatory tooltips BUG-039 actually
+asked for. This is not itself one of the 44 audit-numbered bugs — it's a
+client-side completion of an already-"fixed" bug — documented as such rather
+than folded silently into BUG-039's own entry.
+
+### A testing-infrastructure incident during this round's live verification
+
+Building the app for browser verification (`npm run build`, bare, no env
+override) and starting it revealed `type=city` room creation failing with
+`rooms_type_check` violated — but a direct SQL insert of the identical value
+succeeded immediately. Spent real effort chasing this as if it were a
+caching bug: restarted PostgREST, restarted Kong, restarted Postgres itself,
+enabled full statement logging, checked for duplicate constraints/tables,
+checked column-level grants, checked `pg_stat_statements` for the literal
+query PostgREST sent — all consistent with the constraint being correct and
+the request being well-formed. The actual cause, found by capturing the
+browser's real request headers instead of continuing to guess: the
+Authorization JWT and API key were both issued by the **real, hosted
+production Supabase project** (`qjxaehxwuqntyqrdmihs.supabase.co`), not the
+local Docker stack. `.env.local` has pointed at production the entire time
+(unmodified since July, for normal day-to-day local development against
+live data) — `NEXT_PUBLIC_SUPABASE_URL`/`ANON_KEY` are inlined into the
+client bundle at *build* time, not read at runtime, so an env-var override
+has to be supplied to `npm run build` itself, not to `next start`. Every
+earlier round's browser verification this session supplied that override
+(matching this repo's own documented CI pattern: extract
+`NEXT_PUBLIC_SUPABASE_URL`/`ANON_KEY` from `npx supabase status -o env` and
+pass them to the build) — this round's first rebuild, after the client-side
+edits, was issued as a bare `npm run build` and silently baked in the
+production URL instead.
+
+**Impact, assessed directly rather than assumed:** every room-creation
+attempt during the confused debugging window failed at the database level,
+because production's `rooms_type_check` constraint predates the City
+feature entirely and has no `'city'` value — the same protection this whole
+session has relied on to guarantee production stays untouched held here too,
+just from an unexpected angle. No room, match, or City game data of any kind
+reached production. The one real, if minor, consequence: each attempt's
+anonymous-sign-in step very likely succeeded against production's real Auth
+service before the room insert failed, so a handful of throwaway anonymous
+Supabase Auth sessions were probably created there — harmless, no PII, no
+associated data, but a genuine unintended write to a live system this
+session is explicitly never supposed to touch.
+
+**Corrected immediately:** rebuilt with `NEXT_PUBLIC_SUPABASE_URL=http://
+127.0.0.1:54321` and the local anon key (from `npx supabase status -o env`)
+explicitly set, confirmed via `grep -rl "127.0.0.1:54321" .next/static/
+chunks/*.js` (present) and `grep -rl "qjxaehxwuqntyqrdmihs" .next/static/
+chunks/*.js` (zero matches) *before* resuming any further browser testing.
+All subsequent live verification this round (the full `qa-x9-client-polish
+.spec.ts` suite, the tooltip/off-turn-debt check) ran against the correctly-
+scoped local build. Did not attempt any cleanup on production — deciding
+whether a handful of orphaned anonymous accounts are worth acting on is the
+user's call, not something to unilaterally act on. Reported in full in
+`QA_REPORT.md`/`.html` and directly to the user, rather than treated as a
+solved problem to move past quietly.
+
+**Verification for this round overall:** typecheck/lint green after every
+edit. Live browser verification via `tests/qa-x9-client-polish.spec.ts`
+(kept in the repo): nav non-overflow at 768×1024, footer tap-target heights,
+cookie-banner width at 600px, and a full two-browser match (status text
+through `awaiting_roll` → rolled → refreshed, off-turn narration) — all
+against the correctly-rebuilt local-stack build. A separate throwaway script
+confirmed the off-turn-debt Mortgage button is genuinely clickable (not just
+visually different) and that an enabled button correctly carries no
+tooltip. `npm run test:city-regression`: 26/26 (unchanged — none of this
+round's fixes are SQL-testable; round 5's BUG-035 fix is the last one that
+touched the database). `npm run verify`: green throughout. Nothing has
+touched production, aside from the incident above, which involved no
+deliberate action and no code or migration of any kind.
+
+## Fix phase running total (all six rounds)
+
+36 of 44 bugs fixed: 4 Critical, 11 of 13 High, **12 of 12 Medium (all
+closed)**, 10 of 15 Low. 8 remain open: BUG-007 (still explicitly out of
+scope as multi-day work), BUG-006 (partially addressed as a side effect of
+BUG-003, no visible countdown), the economy correctness pair BUG-028/030,
+the spectator gaps BUG-022/033, and BUG-018/020 (re-verification concluded
+neither is an actual defect — no code change was ever warranted for either).
+Regression harness: 26/26. `npm run verify`: green. Nothing has touched
+production.
