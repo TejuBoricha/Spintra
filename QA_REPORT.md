@@ -116,10 +116,10 @@ scoring.
 
 ## 1b. Fix phase update (2026-09-01) — local only, not deployed
 
-A fix phase followed this audit, in six rounds. **All 4 criticals are now
-fixed and independently verified**, along with 32 further bugs closed across
-the six rounds. Everything in this section happened **entirely on the local
-Docker stack** — production has none of migrations `0063`–`0081` and remains
+A fix phase followed this audit, in seven rounds. **All 4 criticals are now
+fixed and independently verified**, along with 35 further bugs closed across
+the seven rounds. Everything in this section happened **entirely on the local
+Docker stack** — production has none of migrations `0063`–`0082` and remains
 exactly as this audit found it. This section does not revise the audit above;
 it records what changed after it.
 
@@ -163,8 +163,32 @@ it records what changed after it.
 | **BUG-042** no offline/reconnecting indicator anywhere in the City UI | `use-city-match.ts` + `city-match-shell.tsx` — City's own realtime channel now tracks `SUBSCRIBED`/dropped status (mirroring `use-room-subscription.ts`'s existing pattern) and renders the previously-built-but-never-wired-up `ConnectionBanner` component | Verified the banner correctly renders nothing while connected (exercised through every other live test this round); the channel-status plumbing matches the base room's own proven pattern |
 | **BUG-043** several footer links were under the 24px tap-target minimum | `page.tsx` — added `inline-flex items-center py-2` to each footer link | Measured live: 17px → 36px |
 | **BUG-039** holdings controls were disabled off-turn with no explanation | `city-holdings.tsx` — added a `title` explaining the specific reason (wait for your turn / settle your debt first / not enough cash) to each of the four gated buttons | Confirmed live: an in-debt off-turn player's Mortgage button is enabled with no tooltip (nothing to explain); a same-turn build blocked on cash shows "Not enough cash" |
+| **BUG-030** mortgage/unmortgage truncated the half-price instead of rounding it | `0082` — both now divide as `numeric` before rounding (`round()` for the mortgage payout, the existing `ceil()` left as the final step for unmortgage, now fed the correct fractional value) | Regression harness and a live match: Porto (price 55) mortgages for 28, not 27 |
+| **BUG-022** a city room's capacity silently capped spectators | `0082` — `type = 'city'` rooms skip the room-capacity trigger entirely (FR-38); match seats already carry their own independent 8-seat cap | Regression harness: a 3rd, non-seated joiner succeeds in a full 2-capacity city room; a same-capacity non-city room still refuses one, proving the fix is scoped |
+| **BUG-033** the host could not set the match pace, and no code path made an eliminated/never-seated player a spectator | `0082` (pace) + client fix (spectator status text) — `city_create_match` gained an optional, validated `p_pace_seconds` parameter with a lobby UI to choose it (FR-42); the status line's `iAmOut` condition now also covers a never-seated room member (FR-36) | Regression harness (invalid pace refused, valid pace persists) plus two live proofs: the host's chosen "Slow · 60s" preset lands in the match row; a never-seated onlooker reads "You're spectating this match," not "Waiting for X" |
 
 **A client-side gap this round found and closed, not itself one of the 44 audit-numbered bugs:** round 2's server-side fix for BUG-005 (0077) let an off-turn debtor call `city_sell_building`/`city_mortgage` directly, but `city-holdings.tsx`'s Sell and Mortgage buttons still unconditionally required `isMyTurn`, with no `inDebt` exception — the debt banner right above those same buttons instructs the player to "sell buildings and mortgage cities below," but the buttons themselves stayed disabled whenever it wasn't their turn. Fixed alongside BUG-039's tooltip work (`city-holdings.tsx`); verified live in the same session — an off-turn, in-debt guest's Mortgage button is genuinely clickable and the RPC succeeds.
+
+**BUG-028, re-classified rather than fixed.** Re-checked against DESIGN.md
+§3.2B before writing any enforcement code: "Decision: unlimited buildings
+in v1" is stated there explicitly and deliberately, with the nullable
+`building_supply_limit` column disclosed as schema-only groundwork for a
+*future* scarcity decision ("needs a deliberate call, not a default") — and
+no path anywhere in this codebase, client or RPC, ever sets it away from
+`NULL`. The audit's repro required manually writing a non-null value
+directly into the database, a state no real game ever reaches. Same shape
+of correction §1a already made for BUG-018/020/027: a real behavior, but
+not a defect relative to the actual documented design. No code change was
+made or warranted.
+
+**A correction to this section's own previous numbers.** Round 6's table
+below stated Medium severity as "0 unresolved (12 of 12 fixed)" — wrong at
+the time it was written: BUG-022 (Medium) was not touched until this round.
+The 44-bug total and the enumerated list of 8 still-open bugs elsewhere in
+that update were both already correct and included BUG-022 — only that one
+row's arithmetic was inconsistent with the rest of the same section. Caught
+while preparing this round's own numbers and corrected here rather than
+silently overwritten.
 
 **Improved as a side effect, not independently verified as fully closed:**
 - **BUG-006** (turn clock decorative) — `city_claim_timeout` (0076) now reads `turn_started_at`/`pace_seconds` for a real purpose, so the clock is no longer purely decorative; a genuine consequence exists once it lapses. The original defect's core claim no longer holds. What remains open: no visible countdown is rendered anywhere (a separate, cosmetic gap this fix did not address).
@@ -182,23 +206,25 @@ before any of this work left the local stack.
 
 ### Every fixed migration passed the same gates
 
-`npm run test:city-regression` (24 SQL assertions plus 2 source checks — BUG-038
-and BUG-013 — for 26 total; unchanged since round 4, since round 5's BUG-035 fix
-and round 6's client-side fixes are proven live in a real browser instead — see
-below), a 20-match concurrent load test with byte-identical outcome counts before
-and after every round-1 change, post-load integrity checks (no negative cash, no
-orphaned assets, no deadlocks), idempotent re-application of every migration
-(every migration from `0077` on re-applies as a clean no-op with the harness
-unchanged), and `npm run verify`. Round 6's eight client-side fixes, plus BUG-035,
-were verified against a real production build of the app running against the
-local Supabase stack, in a real headless browser, via `tests/qa-x9-client-polish
-.spec.ts` (kept in the repo, same as the earlier live-verification specs) — a
-two-browser live match for the status-text and cross-client narration fixes, and
-direct DOM measurement for the nav/footer/banner CSS fixes. Full detail, including
-five false-positive regression-check bugs caught and fixed across rounds 1-4, the
-self-introduced overload-grant regression (round 4), a second self-introduced
-grant gap (round 5, this one caught live rather than in review), and a genuine
-test-infrastructure incident (round 6, detailed below) — is in `QA_PROGRESS.md`.
+`npm run test:city-regression` (27 SQL assertions plus 2 source checks — BUG-038
+and BUG-013 — for 29 total; 3 added this round for BUG-022/030/033, none since
+round 4 before that, since round 5's BUG-035 fix and round 6's client-side fixes
+are proven live in a real browser instead — see below), a 20-match concurrent
+load test with byte-identical outcome counts before and after every round-1
+change, post-load integrity checks (no negative cash, no orphaned assets, no
+deadlocks), idempotent re-application of every migration (every migration from
+`0077` on re-applies as a clean no-op with the harness unchanged), and
+`npm run verify`. Round 6's eight client-side fixes, round 7's pace/spectator
+fixes, and BUG-035 were all verified against a real production build of the app
+running against the local Supabase stack, in a real headless browser, via
+`tests/qa-x9-client-polish.spec.ts` and `tests/qa-x10-pace-mortgage-spectator
+.spec.ts` (both kept in the repo, same as the earlier live-verification specs).
+Full detail, including five false-positive regression-check bugs caught and
+fixed across rounds 1-4, the self-introduced overload-grant regression (round
+4), a second self-introduced grant gap (round 5, caught live rather than in
+review), a genuine test-infrastructure incident (round 6), and a flawed first
+draft of the BUG-022 fix caught by hand-tracing before it was ever applied
+(round 7) — is in `QA_PROGRESS.md`.
 
 **BUG-023 has no dedicated regression assertion, by design, not by omission.**
 The bug was that a write attempted just before an exception silently rolled back
@@ -216,23 +242,24 @@ catch.
 
 | | Original audit | After the fix phase (local only) |
 |---|---|---|
-| Confirmed bugs | 44 | 44 found, **36 fixed**, 8 open |
+| Confirmed bugs | 44 | 44 found, **39 fixed**, 5 open |
 | Critical | 4 | **0 unresolved** (4 of 4 fixed) |
 | High | 13 | 2 unresolved (11 of 13 fixed: 008, 009, 010, 012, 013, 014, 038, 005, 011, 034, 035) |
 | Medium | 12 | **0 unresolved (12 of 12 fixed)** |
-| Low | 15 | 5 unresolved (10 of 15 fixed: 031, 029, 025, 026, 027, 032, 039, 041, 042, 043) |
+| Low | 15 | 3 unresolved (12 of 15 fixed: 031, 029, 025, 026, 027, 032, 039, 041, 042, 043, 030, 033) |
 
-The 8 still-open bugs were, without exception, already classified as non-blocking
+The 5 still-open bugs were, without exception, already classified as non-blocking
 in the original audit (§17's fix list covered the release-blocking set almost
 exactly — items 1–8 there map directly to the migrations above). None of them
 individually gates a release the way the four criticals did. The largest single
 item left is BUG-007's 20 MUST-requirement slice (disconnect grace, autopilot,
 forced retire, the full turn-clock model) — deliberately untouched throughout all
-six rounds as genuinely multi-day work, not an oversight. The rest: BUG-006
+seven rounds as genuinely multi-day work, not an oversight. The rest: BUG-006
 (turn clock partially addressed as a side effect of BUG-003's fix — no visible
-countdown), the economy correctness pair BUG-028/030, spectator gaps BUG-022/033,
-and BUG-018/020 (re-verification concluded neither is an actual defect — no code
-change was ever warranted for either).
+countdown), BUG-028 (re-verification concluded it is not an actual defect — the
+unlimited-buildings behavior is DESIGN.md's own explicit v1 decision), and
+BUG-018/020 (re-verification concluded neither is an actual defect either — no
+code change was ever warranted for any of these three).
 
 ### What this means for the release verdict in §18
 
@@ -240,7 +267,7 @@ change was ever warranted for either).
 deployed to it — §18's verdict is accurate as a description of production today.
 **The local codebase's blocking-defect count has gone from 4 criticals to 0**,
 which is the precondition §18 named for reconsidering that verdict, not a
-substitute for actually shipping migrations `0071`–`0081` and re-running this
+substitute for actually shipping migrations `0071`–`0082` and re-running this
 audit against production once they are.
 
 ---
@@ -402,7 +429,7 @@ All nine exits then close simultaneously: `end_turn`/`roll_dice`/`build`/`unmort
 | BUG-017 | **&#10003; Fixed 2026-09-01 (migration `0079`, see §1b).** Cards 2 and 3 charge **half** their printed rent — the multiplier is passed as a dice-total scale, which only utilities consume. "Double the usual rent" charged 35, not 70. |
 | BUG-019 | **&#10003; Fixed 2026-09-01 (migration `0071`, see §1b).** `city_net_worth` leaks RLS-protected cash to an outsider in no room. Because `city_assets` is world-readable, the outsider computes the asset term and inverts the RPC exactly (`cash = 1590 − 190 = 1400`). **Re-test correction:** the `city_max_liquidation` half of the original claim does not hold — it returns 0, which turned out to be BUG-045 instead. |
 | BUG-021 | **&#10003; Fixed 2026-09-01 (migration `0078`, see §1b).** `city_match_results` view bypasses RLS (owner-executed, not `security_invoker`): bare anon reads room codes, usernames and net worth for every finished match in every room. |
-| BUG-022 | Spectators silently capped by room capacity — a third person could not enter a 2-capacity room. Violates FR-38. |
+| BUG-022 | **&#10003; Fixed 2026-09-01 (migration `0082`, see §1b).** Spectators silently capped by room capacity — a third person could not enter a 2-capacity room. Violates FR-38. |
 | BUG-023 | **&#10003; Fixed 2026-09-01 (migration `0077`, see §1b).** `city_accept_trade` marks an expired offer `'expired'` then raises in the same transaction, rolling the update back; the offer stays `pending` forever. |
 | BUG-044 | **&#10003; Fixed 2026-09-01 (migration `0075`, see §1b).** **`city_charge` overwrites `pending_debt` instead of accumulating it**, so a second off-turn charge erases the first creditor's claim outright (50 owed to Bo replaced by 40 owed to Cy). Found during re-verification; reachable only because of BUG-005. |
 | BUG-045 | **&#10003; Fixed 2026-09-01 (migration `0072`, see §1b).** **`city_max_liquidation` returns 0 through NULL propagation.** `build_cost` is NULL for stations, so `buildings * (build_cost/2)` is `0 * NULL = NULL`, poisoning the `sum()`, which `coalesce(...,0)` then flattens to 0. A seat holding an unmortgaged 190 property reports 0 instead of 95. Bankruptcy survivability checks depend on this, so it will bankrupt players who could pay. Found during re-verification. |
@@ -419,12 +446,12 @@ All nine exits then close simultaneously: `end_turn`/`roll_dice`/`build`/`unmort
 | BUG-025 | **&#10003; Fixed 2026-09-01 (migration `0078`, see §1b).** `city_assets`, `city_auctions`, `city_trade_offers` have RLS `USING (true)` — world-readable cross-room with the public anon key. |
 | BUG-026 | **&#10003; Fixed 2026-09-01 (migration `0078`, see §1b).** Blanket INSERT/UPDATE/DELETE grants on `city_matches`/`city_match_players` including `rng_seed`. Currently blocked by RLS having no write policy (verified), but one permissive policy would expose cash and seed writes. |
 | BUG-027 | **&#10003; Fixed 2026-09-01 (migration `0078`, see §1b).** `city_derive_dice` exposed to clients — latent oracle, harmless only while the seed stays hidden. |
-| BUG-028 | `building_supply_limit` is never read; with it set to 2, a 5th building still built. |
+| BUG-028 | **Not a defect as filed (corrected 2026-09-01 during the fix phase, see §1b).** `building_supply_limit` is never read; with it set to 2, a 5th building still built. DESIGN.md §3.2B states "unlimited buildings in v1" as a deliberate decision, and no path in this codebase ever sets the column away from `NULL` — the repro required a direct, non-gameplay database write. |
 | BUG-029 | **&#10003; Fixed 2026-09-01 (migration `0077`, see §1b).** `city_assert_can_manage` never checks phase, so building/mortgaging succeed during `auction` and `required_decision`. |
-| BUG-030 | Mortgage uses integer truncation (Porto 55 → 27, not 27.5); a mortgage round-trip silently costs 3 Spins. |
+| BUG-030 | **&#10003; Fixed 2026-09-01 (migration `0082`, see §1b).** Mortgage uses integer truncation (Porto 55 → 27, not 27.5); a mortgage round-trip silently costs 3 Spins. |
 | BUG-031 | **&#10003; Fixed 2026-09-01 (migration `0071`, see §1b).** Raw Postgres errors leak instead of `CITY_*` codes: self-trade and negative `give_cash` print the failing row; six routines pass a NULL room code to the rate limiter before validating the match, producing a NOT NULL violation. |
 | BUG-032 | **&#10003; Fixed 2026-09-01 (migration `0079`, see §1b).** Card 10 charges 24× the roll when both utilities are held (2 × the 12× rate); text says ten times. |
-| BUG-033 | No code path makes eliminated players spectators (FR-36); `pace_seconds` is never settable by the host (FR-42). |
+| BUG-033 | **&#10003; Fixed 2026-09-01 (migration `0082` + client fix, see §1b).** No code path makes eliminated players spectators (FR-36); `pace_seconds` is never settable by the host (FR-42). |
 | BUG-043 | **&#10003; Fixed 2026-09-01 (client fix, see §1b).** Several site-wide footer and nav links are ~20 px tall, below the 24 px minimum touch target (`Explore`, `Terms`, `Privacy`, `Privacy Policy`). Measured on real device profiles with touch emulation. **No City game control is undersized** — the board tiles and action buttons all pass. The 1×1 `sr-only` "Skip to content" link is a correct pattern, not a defect. |
 | BUG-042 | **&#10003; Fixed 2026-09-01 (client fix, see §1b).** **No offline or reconnecting indicator anywhere in the City UI.** With the network cut mid-turn an error message does surface, but nothing tells the player they are disconnected. Confirmed by search: `/offline|reconnect|connection lost|disconnected/i` matches nothing. |
 | BUG-041 | **&#10003; Fixed 2026-09-01 (client fix, see §1b).** The site header nav overflows its container at 768×1024 (`DIV.mx-auto` and `DIV.flex` both report `scrollWidth > clientWidth`). Site-wide, not City-specific; the page itself still does not scroll horizontally. |

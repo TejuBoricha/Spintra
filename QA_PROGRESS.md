@@ -923,13 +923,146 @@ touched the database). `npm run verify`: green throughout. Nothing has
 touched production, aside from the incident above, which involved no
 deliberate action and no code or migration of any kind.
 
-## Fix phase running total (all six rounds)
+## Fix phase running total (rounds 1-6) — CORRECTION, see round 7 below
 
-36 of 44 bugs fixed: 4 Critical, 11 of 13 High, **12 of 12 Medium (all
-closed)**, 10 of 15 Low. 8 remain open: BUG-007 (still explicitly out of
-scope as multi-day work), BUG-006 (partially addressed as a side effect of
-BUG-003, no visible countdown), the economy correctness pair BUG-028/030,
-the spectator gaps BUG-022/033, and BUG-018/020 (re-verification concluded
-neither is an actual defect — no code change was ever warranted for either).
-Regression harness: 26/26. `npm run verify`: green. Nothing has touched
-production.
+36 of 44 bugs fixed: 4 Critical, 11 of 13 High, ~~12 of 12 Medium (all
+closed)~~, 10 of 15 Low. This Medium figure was wrong the moment it was
+written — BUG-022 (Medium) was not touched in round 6 at all, so the true
+state at the end of round 6 was **11 of 12 Medium fixed, 1 unresolved**.
+Caught while computing round 7's own numbers (below), not at the time.
+8 remained open: BUG-007 (still explicitly out of scope as multi-day work),
+BUG-006 (partially addressed as a side effect of BUG-003, no visible
+countdown), the economy correctness pair BUG-028/030, the spectator gaps
+BUG-022/033, and BUG-018/020 (re-verification concluded neither is an
+actual defect — no code change was ever warranted for either). Regression
+harness: 26/26. `npm run verify`: green. Nothing has touched production.
+
+## ROUND 7 — closing BUG-022, 030 and the pace_seconds half of BUG-033
+## (migration 0082), plus correcting BUG-028 and round 6's own Medium count
+
+User said "what next?" a third time; recommended and proceeded directly
+into the last batch of real, actionable bugs: BUG-028 (building supply
+never enforced), BUG-030 (mortgage rounding), BUG-022 (spectator capacity),
+BUG-033 (spectator conversion + host-settable pace). That leaves only
+BUG-007 (still out of scope) and the two confirmed non-defects (018/020)
+once this round lands.
+
+**BUG-028 turned out not to need a fix at all — checked DESIGN.md before
+writing any code, not after.** §3.2B states, in so many words, "Decision:
+unlimited buildings in v1," with the nullable `building_supply_limit`
+column explicitly disclosed as schema-only groundwork for a *future*,
+deliberate scarcity decision ("needs a deliberate call, not a default").
+Grepped the whole client tree for the column name: zero references outside
+the auto-generated types file — no path, anywhere, ever sets it away from
+`NULL`. The audit's own repro required manually writing a non-null value
+directly into the database, a state no real game reaches. This is the exact
+shape of correction §1a's independent re-verification pass already made for
+BUG-018/020/027 — a real, reproducible behavior, but not a defect relative
+to what the project actually decided to ship. Recorded as a report
+correction; no migration written for it.
+
+**BUG-030:** read CONTENT.md's own wording ("mortgage value is 50% of the
+listed price") before picking a rounding rule — it states no direction, so
+`round()` (nearest) was the least-biased choice for the mortgage payout.
+Checking `city_unmortgage` for consistency surfaced a second, compounding
+instance of the *same* bug the audit only named for mortgage: its own
+`ceil((price / 2) * 1.1)` computed `price / 2` as integer division too, so
+the 10% interest was already being calculated on a truncated base (Porto:
+`ceil(27 * 1.1)` = 30, not the mathematically correct `ceil(27.5 * 1.1)` =
+31). Both now divide as `numeric` before their respective rounding step.
+
+**BUG-022 — a real design mistake caught by hand-tracing before it was ever
+applied, not by symptom.** First instinct: change the room-capacity trigger
+to count only already-*seated* existing participants against the cap,
+reasoning that spectators shouldn't count. Traced through a concrete
+scenario by hand before running it: the trigger fires when someone joins
+the *room*, before they've taken a city seat at all (seating is a separate,
+later RPC) — so it can only ever inspect *existing* members' seated status,
+never the joining person's own future intent. A room already holding "2
+seated players" at a 2-capacity limit would still reject a 3rd, purely-
+spectating joiner exactly as before the fix — the exact bug FR-38 exists to
+close, reproduced by my own first draft. Re-read FR-38's actual wording
+("spectators need to bypass the capacity check") and realized the fix isn't
+narrower counting at all: for `type = 'city'` rooms, room-level capacity
+has no remaining job to do, full stop — match seats already carry their
+own, independent 8-seat cap. Simplified to that before ever applying
+anything.
+
+**BUG-033, pace half:** `city_create_match` already had three defaulted
+trailing parameters (`p_mode`, `p_time_limit_minutes`, `p_seed`) — adding a
+4th `p_pace_seconds` hits the exact overload-duplication trap 0080 already
+documented and fixed twice this fix phase. This time, planned for it up
+front instead of finding it after the fact: `drop function if exists
+(text, text, integer, bigint)` before the `create or replace` of the new
+5-arg signature, and an explicit `grant execute ... to anon, authenticated`
+on the new signature (rather than relying on the implicit PUBLIC-by-default
+grant a fresh overload gets) so the intent is stated, not assumed. First
+apply attempt still failed once — used a plain `create function` for the
+new signature (matching 0080's drop-then-create pattern exactly), which
+isn't idempotent for a *second* re-application within the same session
+(the migration's own standard re-apply check). Switched to
+`create or replace` for the new signature; `drop function if exists` on the
+old one stays correctly idempotent (a NOTICE + skip once it's already gone).
+
+**BUG-033, spectator half (FR-36):** re-read `city-match-shell.tsx`'s status
+logic and found `iAmOut` only covered `mySeat?.status === 'bankrupt' ||
+'retired'` — a player who was *never seated at all* (a genuine spectator,
+a late arrival to an already-active match) fell through every other branch
+to "Waiting for X", the same generic text an actively-playing off-turn
+player sees. Extended `iAmOut` to `!mySeat || ...`, with distinct copy for
+each case ("watching from here" for an eliminated player who was in the
+game; "spectating this match" for someone who never was).
+
+**Verification:** wrote 3 new regression-harness blocks (BUG-022, 030,
+033-pace). Did a live discriminating check for BUG-022 specifically —
+reverted just `check_room_limit_before_join` to its pre-fix body, confirmed
+the harness goes red with the exact "reached its maximum participant limit"
+message the audit described, restored the fix, confirmed green again — same
+discipline as every prior round's discriminating checks. Full SQL suite:
+29/29 (26 pre-existing + 3 new). `0082` re-applies a second time as a clean
+no-op with the harness unchanged; confirmed via the overload-count query
+that `city_create_match` has exactly one live signature both before and
+after re-application. Regenerated `database.types.ts` (`city_matches`
+gained `last_roll_result`/`last_roll_turn` from round 5, `city_create_match`
+gained `p_pace_seconds`, and two internal-function signature changes from
+earlier rounds — 0077's `city_assert_can_manage`, 0079's
+`city_resolve_landing` — had never actually been regenerated into this file
+before now; diffed against the previous committed version to confirm the
+only changes were these exact, expected ones).
+
+All three client-visible pieces (pace preset selection, mortgage rounding,
+spectator status text) were additionally proven live: rebuilt the app with
+the local Supabase URL/key explicitly overriding `.env.local` (learned from
+round 6's incident — verified via the same bundle-grep check before running
+anything), then a fresh two-browser Playwright suite
+(`tests/qa-x10-pace-mortgage-spectator.spec.ts`, kept in the repo)
+confirmed: selecting "Slow · 60s" in the lobby persists `pace_seconds=60` to
+the match row; mortgaging Porto live raises cash by exactly 28; a genuine
+onlooker (joins the room, never takes a seat) reads "You're spectating this
+match." First run of the pace-preset test itself failed — `getByRole
+('button', ...)` couldn't find the preset controls, because they're
+rendered with `role="radio"`/`aria-checked` (a real, correctly-recognized
+accessible radiogroup, confirmed via the same failure's own accessibility
+snapshot) — fixed by querying `getByRole('radio', ...)` instead; not a
+product bug, a test using the wrong role selector. Re-ran the full round-6
+spec (`qa-x9-client-polish.spec.ts`) afterward too, to confirm this round's
+`iAmOut` change didn't regress anything from round 6 — still 4/4.
+
+No client-facing signature changed in a way that broke existing callers —
+`city_create_match`'s new parameter is trailing and defaulted, and every
+existing call site (including the SQL harness's own `rg_match` helper,
+which calls it with exactly 4 positional arguments) continues to resolve
+correctly against the new 5-arg signature.
+
+Nothing has touched production. `supabase/migrations/0082_*.sql` is
+local-only, same as every migration before it.
+
+## Fix phase running total (all seven rounds)
+
+39 of 44 bugs fixed: 4 Critical, 11 of 13 High, **12 of 12 Medium (all
+closed, for real this time)**, 12 of 15 Low. 5 remain open: BUG-007 (still
+explicitly out of scope as multi-day work), BUG-006 (partially addressed as
+a side effect of BUG-003, no visible countdown), and BUG-018/020/028
+(re-verification concluded none of the three is an actual defect — no code
+change was ever warranted for any of them). Regression harness: 29/29.
+`npm run verify`: green. Nothing has touched production.
