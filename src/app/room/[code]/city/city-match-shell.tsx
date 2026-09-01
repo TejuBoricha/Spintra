@@ -27,6 +27,9 @@ const MIN_PLAYERS = 2;
 export function CityMatchShell() {
   const { roomCode, isHost, currentUser } = useRoomActivity();
   const [selected, setSelected] = useState<number | null>(null);
+  // FR-42: chosen here, at match creation, not in RoomSettingsPanel — and
+  // never touched again once city_create_match has written it.
+  const [pacePreset, setPacePreset] = useState<25 | 40 | 60>(40);
   const {
     match,
     seats,
@@ -198,9 +201,29 @@ export function CityMatchShell() {
         </p>
         {error && <ErrorNote message={error} />}
         {isHost ? (
-          <Button onClick={() => void createMatch("classic")} className="mt-2">
-            Open a match
-          </Button>
+          <>
+            <div className="flex items-center gap-1.5 mt-3" role="radiogroup" aria-label="Turn pace">
+              {([25, 40, 60] as const).map((secs) => (
+                <Button
+                  key={secs}
+                  type="button"
+                  size="sm"
+                  variant={pacePreset === secs ? "default" : "outline"}
+                  role="radio"
+                  aria-checked={pacePreset === secs}
+                  onClick={() => setPacePreset(secs)}
+                >
+                  {secs === 25 ? "Fast" : secs === 40 ? "Normal" : "Slow"} · {secs}s
+                </Button>
+              ))}
+            </div>
+            <Button
+              onClick={() => void createMatch("classic", undefined, pacePreset)}
+              className="mt-2"
+            >
+              Open a match
+            </Button>
+          </>
         ) : (
           <p className="text-sm text-muted-foreground mt-2" role="status">
             Waiting for the host to open a match…
@@ -222,7 +245,11 @@ export function CityMatchShell() {
     const canRoll = isMyTurn && match.phase === "awaiting_roll" && !inDebt && !detained;
     const canEnd = isMyTurn && match.phase !== "awaiting_roll" && !mustDecide && !inDebt;
     const onSale = mySeat ? board[mySeat.position] : undefined;
-    const iAmOut = mySeat?.status === "bankrupt" || mySeat?.status === "retired";
+    // A never-seated room member (a genuine spectator, FR-36) falls under
+    // this too — before this fix their status line fell through to
+    // "Waiting for X" instead of the same clear framing an eliminated
+    // player already got.
+    const iAmOut = !mySeat || mySeat.status === "bankrupt" || mySeat.status === "retired";
     // lastRoll is this tab's own optimistic state (instant, no round-trip) --
     // set only for whoever actually clicked Roll. Every other viewer, and
     // this same player after a refresh, falls back to the server-persisted
@@ -375,7 +402,9 @@ export function CityMatchShell() {
           aria-live="polite"
         >
           {iAmOut
-            ? "You're out of this match — watching from here."
+            ? mySeat
+              ? "You're out of this match — watching from here."
+              : "You're spectating this match."
             : detained && isMyTurn
               ? `You're held at Customs. Roll doubles, spend a Transit Visa, or pay 90 to leave.`
               : effectiveRoll

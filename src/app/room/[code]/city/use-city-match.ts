@@ -191,7 +191,11 @@ interface UseCityMatchResult {
   mySeat: CitySeat | null;
   isMyTurn: boolean;
   lastRoll: CityRollResult | null;
-  createMatch: (mode: "classic" | "timed", timeLimitMinutes?: number) => Promise<void>;
+  createMatch: (
+    mode: "classic" | "timed",
+    timeLimitMinutes?: number,
+    paceSeconds?: 25 | 40 | 60
+  ) => Promise<void>;
   joinSeat: (username: string) => Promise<void>;
   leaveSeat: () => Promise<void>;
   setReady: (ready: boolean) => Promise<void>;
@@ -514,14 +518,15 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   );
 
   const createMatch = useCallback(
-    async (mode: "classic" | "timed", timeLimitMinutes?: number) => {
+    async (mode: "classic" | "timed", timeLimitMinutes?: number, paceSeconds?: 25 | 40 | 60) => {
       await runCommand(() =>
-        // p_time_limit_minutes is omitted rather than passed as null so the
-        // function's own default applies (it derives 60 for timed mode).
+        // p_time_limit_minutes/p_pace_seconds are omitted rather than passed
+        // as null so the function's own defaults apply.
         supabase!.rpc("city_create_match", {
           p_room_code: roomCode,
           p_mode: mode,
           ...(timeLimitMinutes !== undefined ? { p_time_limit_minutes: timeLimitMinutes } : {}),
+          ...(paceSeconds !== undefined ? { p_pace_seconds: paceSeconds } : {}),
         })
       );
     },
