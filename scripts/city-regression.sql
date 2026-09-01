@@ -159,8 +159,14 @@ end $blk$;
 -- real fairness exploit, not a stalled-match inconvenience. This also proves
 -- a genuinely expired, debt-free claim actually resolves the turn, not just
 -- that the function exists and is granted.
+-- BUG-007-B (round B) narrowed what "resolves" means here: since a stall in
+-- awaiting_roll now gets FR-41's real auto-roll default (not a blanket
+-- end-turn), current_seat correctly stays put -- rolling doesn't end a turn,
+-- only a subsequent optional_actions stall would. Checked via the RPC's own
+-- 'resolution' field rather than inferred from the post-roll phase, which
+-- depends on wherever this seed's roll happens to land.
 do $blk$
-declare m uuid; ok boolean := true; act text := ''; cs int; ph text;
+declare m uuid; ok boolean := true; act text := ''; cs int; res jsonb;
 begin
   m := pg_temp.rg_match('CITYRG03B', 5003);
   update public.city_matches set current_seat=1, phase='awaiting_roll',
@@ -179,19 +185,22 @@ begin
   update public.city_matches set turn_started_at = now() - interval '41 seconds' where id=m;
   perform pg_temp.rg_as(0);
   begin
-    perform public.city_claim_timeout(m);
+    select public.city_claim_timeout(m) into res;
   exception when others then
     ok := false; act := act || 'a genuinely expired claim was refused: '||SQLERRM||'; ';
   end;
 
-  select current_seat, phase into cs, ph from public.city_matches where id=m;
-  if cs <> 2 or ph <> 'awaiting_roll' then
-    ok := false; act := act || format('turn did not advance correctly, got seat=%s phase=%s; ', cs, ph);
+  select current_seat into cs from public.city_matches where id=m;
+  if res->>'resolution' <> 'auto_roll' or (res->>'seat')::int <> 1 then
+    ok := false; act := act || format('expected an auto_roll resolution for seat 1, got %s; ', res);
+  end if;
+  if cs <> 1 then
+    ok := false; act := act || format('current_seat moved to %s -- an auto-roll must not end the turn; ', cs);
   end if;
 
   insert into rg values (default,'BUG-003b','claim_timeout never fires early, and resolves a genuine expiry',
-    'refused before the deadline; resolves cleanly (seat 2, awaiting_roll) once it genuinely passes',
-    case when ok then 'refused early claim; resolved correctly once expired' else act end,
+    'refused before the deadline; once it genuinely passes, an awaiting_roll stall auto-rolls for the stalled seat without ending their turn',
+    case when ok then 'refused early claim; resolved to auto_roll for seat 1, current_seat unchanged' else act end,
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 
@@ -1056,6 +1065,222 @@ begin
   insert into rg values (default,'BUG-007-A','a disconnect is tracked from the existing presence system (FR-25)',
     'is_online flipping false stamps disconnected_at; flipping back true clears it and resets consecutive_autopilot_turns; a terminal (bankrupt) seat is never tracked',
     case when ok then 'disconnect/reconnect tracking behaves correctly in all three scenarios' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-B (FR-41) — every claim_timeout resolution branch: auto-roll,
+-- auto-decline, a detention attempt, end-turn, and bankrupt (the last two
+-- already existed and must stay exactly as they were).
+-- ===========================================================================
+do $blk$
+declare m uuid; res jsonb; cs int; prop_idx int; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGB1', 73);
+  select min(idx) into prop_idx from public.city_board_spaces where price is not null;
+
+  -- (a) awaiting_roll -> auto-roll. Already re-verified in BUG-003b above
+  -- with its own dedicated setup; not repeated here.
+
+  -- (b) required_decision (may_buy, no debt -- the only way this phase is
+  -- reached once the debt branch above has already been ruled out) ->
+  -- decline. 3 active debt-free seats means this also opens a real auction
+  -- as a side effect, exactly like a human declining would.
+  update public.city_match_players set position = prop_idx where match_id=m and seat=0;
+  update public.city_matches set current_seat=0, phase='required_decision',
+    turn_clock_paused_at=null,
+    turn_started_at = now() - interval '41 seconds' where id=m;
+  update public.city_match_players set in_detention=false, pending_debt=0, pending_creditor_seat=null
+   where match_id=m and seat=0;
+  perform pg_temp.rg_as(1);
+  select public.city_claim_timeout(m) into res;
+  if res->>'resolution' <> 'auto_decline' or (res->>'seat')::int <> 0 then
+    ok := false; act := act || format('expected auto_decline for seat 0, got %s; ', res);
+  end if;
+  select current_seat into cs from public.city_matches where id=m;
+  if cs <> 0 then
+    ok := false; act := act || format('current_seat moved to %s -- a decline must not end the turn; ', cs);
+  end if;
+
+  -- (c) detention -> attempt doubles. city_leave_detention_core's own
+  -- 'roll' method requires phase='awaiting_roll' (matching a real detained
+  -- player, who can never advance past it) -- not phase-branched on by
+  -- claim_timeout itself, which checks in_detention before phase at all.
+  update public.city_matches set current_seat=0, phase='awaiting_roll',
+    turn_clock_paused_at=null, turn_started_at = now() - interval '41 seconds' where id=m;
+  update public.city_match_players set in_detention=true, detention_turns=0,
+    pending_debt=0, pending_creditor_seat=null where match_id=m and seat=0;
+  perform pg_temp.rg_as(1);
+  select public.city_claim_timeout(m) into res;
+  if res->>'resolution' <> 'detention_roll' or (res->>'seat')::int <> 0 then
+    ok := false; act := act || format('expected detention_roll for seat 0, got %s; ', res);
+  end if;
+  select current_seat into cs from public.city_matches where id=m;
+  if cs <> 0 then
+    ok := false; act := act || format('current_seat moved to %s -- a detention attempt must not end the turn; ', cs);
+  end if;
+
+  -- (d) optional_actions -> end-turn, unchanged from 0076.
+  update public.city_match_players set in_detention=false where match_id=m and seat=0;
+  update public.city_matches set current_seat=0, phase='optional_actions',
+    turn_clock_paused_at=null, turn_started_at = now() - interval '41 seconds' where id=m;
+  perform pg_temp.rg_as(1);
+  select public.city_claim_timeout(m) into res;
+  if res->>'resolution' <> 'end_turn' or (res->>'seat')::int <> 0 then
+    ok := false; act := act || format('expected end_turn for seat 0, got %s; ', res);
+  end if;
+  select current_seat into cs from public.city_matches where id=m;
+  if cs = 0 then
+    ok := false; act := act || 'current_seat did not advance on an end_turn resolution; ';
+  end if;
+
+  -- (e) pending_debt -> bankrupt, unchanged from 0076. Reset current_seat
+  -- back to 0 explicitly, since (d) just moved it on.
+  update public.city_matches set current_seat=0, phase='required_decision',
+    turn_clock_paused_at=null, turn_started_at = now() - interval '41 seconds' where id=m;
+  update public.city_match_players set pending_debt=9999, pending_creditor_seat=null
+   where match_id=m and seat=0;
+  perform pg_temp.rg_as(1);
+  select public.city_claim_timeout(m) into res;
+  if res->>'resolution' <> 'bankrupt' or (res->>'seat')::int <> 0 then
+    ok := false; act := act || format('expected bankrupt for seat 0, got %s; ', res);
+  end if;
+  perform 1 from public.city_match_players where match_id=m and seat=0 and status='bankrupt';
+  if not found then
+    ok := false; act := act || 'seat 0 was not actually marked bankrupt; ';
+  end if;
+
+  insert into rg values (default,'BUG-007-B','every claim_timeout resolution branch behaves correctly (FR-41)',
+    'required_decision defaults to decline, detention defaults to a doubles attempt, optional_actions still ends the turn, and pending_debt still bankrupts -- none of the turn-preserving defaults advance current_seat',
+    case when ok then 'all five resolution branches behave correctly' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-B (auction clock shift) — settling an auction must preserve the
+-- active player's true remaining time, not silently expire or reset it.
+-- ===========================================================================
+do $blk$
+declare m uuid; before_deadline timestamptz; after_deadline timestamptz;
+  remaining_before numeric; remaining_after numeric; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGB2', 74);
+
+  -- 5 seconds into a 40s turn, an auction opens (mirrors city_decline_purchase
+  -- opening one) and runs for a simulated 90 seconds -- longer than the
+  -- entire base turn clock, the exact scenario the bug allowed to silently
+  -- expire the player's clock.
+  update public.city_matches
+     set current_seat=0, phase='auction', pace_seconds=40,
+         turn_started_at = now() - interval '5 seconds',
+         turn_clock_paused_at = now() - interval '90 seconds'
+   where id=m;
+  before_deadline := (select turn_started_at + make_interval(secs => pace_seconds) from public.city_matches where id=m);
+  remaining_before := extract(epoch from (before_deadline - (now() - interval '90 seconds')));
+
+  insert into public.city_auctions (match_id, space_idx, ends_at, hard_ends_at, status)
+  values (m, (select min(idx) from public.city_board_spaces where price is not null),
+    now() - interval '80 seconds', now() - interval '80 seconds', 'running');
+
+  perform public.city_settle_auction(m, true);
+
+  select turn_started_at + make_interval(secs => pace_seconds) into after_deadline
+    from public.city_matches where id=m;
+  remaining_after := extract(epoch from (after_deadline - now()));
+
+  -- The true remaining time at the moment the auction opened (35s: 40s base
+  -- minus the 5s already spent) must survive the settle, within a couple of
+  -- seconds of wall-clock slop for the test itself running.
+  if abs(remaining_after - remaining_before) > 2 then
+    ok := false; act := act || format(
+      'remaining time drifted across settle: %s before opening the auction vs %s after settling, expected them to match; ',
+      round(remaining_before::numeric, 1), round(remaining_after::numeric, 1));
+  end if;
+
+  insert into rg values (default,'BUG-007-B-auction','settling an auction shifts the deadline forward by the pause duration',
+    'the true remaining turn-clock time at the moment the auction opened survives the settle, not silently docked by however long the auction ran',
+    case when ok then format('remaining time preserved (%s before, %s after)',
+      round(remaining_before::numeric, 1), round(remaining_after::numeric, 1)) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-B (FR-44) — the turn clock resets on every doubles re-roll, not
+-- just a genuine new turn. Already correct behavior (city_end_turn sets
+-- turn_started_at unconditionally, even on the re-roll branch) -- this locks
+-- it in with a real assertion, since nothing tested it before this round.
+-- ===========================================================================
+do $blk$
+declare m uuid; before_ts timestamptz; after_ts timestamptz; cs int;
+  ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGB3', 75);
+  update public.city_matches set current_seat=0, phase='optional_actions',
+    doubles_count=1, turn_started_at = now() - interval '30 seconds' where id=m;
+  select turn_started_at into before_ts from public.city_matches where id=m;
+
+  perform pg_temp.rg_as(0);
+  perform public.city_end_turn(m);
+
+  select current_seat, turn_started_at into cs, after_ts from public.city_matches where id=m;
+  if cs <> 0 then
+    ok := false; act := act || format('a doubles re-roll changed current_seat to %s, expected it to stay 0; ', cs);
+  end if;
+  if after_ts <= before_ts then
+    ok := false; act := act || 'turn_started_at was not reset on a doubles re-roll; ';
+  end if;
+
+  insert into rg values (default,'BUG-007-B-doubles','the turn clock resets on a doubles re-roll (FR-44)',
+    'current_seat stays the same seat, but turn_started_at is reset to a fresh value',
+    case when ok then 'doubles re-roll kept current_seat and reset the clock' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-B (FR-50) — timed mode is pure wall-clock and only ends the match
+-- at a round boundary. Already correct behavior (city_end_turn's own
+-- v_expired check) -- locked in with a real assertion for the first time.
+-- ===========================================================================
+do $blk$
+declare m uuid; st text; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGB4', 76);
+  -- Already past its own (minimum allowed, 10-minute) limit -- proves
+  -- expiry is wall-clock (started_at-based), not dependent on the per-turn
+  -- clock at all.
+  update public.city_matches set mode='timed', time_limit_minutes=10,
+    started_at = now() - interval '15 minutes', current_seat=0,
+    phase='optional_actions' where id=m;
+
+  -- Seat 0 -> seat 1: not a round boundary (1 > 0), so the match must stay
+  -- active even though the time limit has already passed.
+  perform pg_temp.rg_as(0);
+  perform public.city_end_turn(m);
+  select status into st from public.city_matches where id=m;
+  if st <> 'active' then
+    ok := false; act := act || format('match ended mid-round (seat 0->1) with status %L, expected still active; ', st);
+  end if;
+
+  update public.city_matches set phase='optional_actions' where id=m;
+  perform pg_temp.rg_as(1);
+  perform public.city_end_turn(m);
+  select status into st from public.city_matches where id=m;
+  if st <> 'active' then
+    ok := false; act := act || format('match ended mid-round (seat 1->2) with status %L, expected still active; ', st);
+  end if;
+
+  -- Seat 2 -> seat 0: wraps around, a genuine round boundary. Now it may end.
+  update public.city_matches set phase='optional_actions' where id=m;
+  perform pg_temp.rg_as(2);
+  perform public.city_end_turn(m);
+  select status into st from public.city_matches where id=m;
+  if st <> 'finished' then
+    ok := false; act := act || format('match did not end at the round boundary (seat 2->0), status is %L; ', st);
+  end if;
+
+  insert into rg values (default,'BUG-007-B-timed','timed mode is wall-clock and only ends at a round boundary (FR-50)',
+    'an expired time limit does not end the match mid-round, only once every seat has had an equal turn',
+    case when ok then 'match stayed active mid-round and correctly finished at the round boundary' else act end,
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 

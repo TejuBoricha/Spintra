@@ -1142,6 +1142,10 @@ export type Database = {
         Returns: undefined
       }
       city_decline_purchase: { Args: { p_match_id: string }; Returns: Json }
+      city_decline_purchase_core: {
+        Args: { p_match_id: string; p_seat: number }
+        Returns: Json
+      }
       city_derive_dice: {
         Args: { p_counter: number; p_seed: number }
         Returns: number[]
@@ -1172,6 +1176,10 @@ export type Database = {
       }
       city_leave_detention: {
         Args: { p_match_id: string; p_method: string }
+        Returns: Json
+      }
+      city_leave_detention_core: {
+        Args: { p_match_id: string; p_method: string; p_seat: number }
         Returns: Json
       }
       city_leave_seat: { Args: { p_match_id: string }; Returns: undefined }
@@ -1232,6 +1240,10 @@ export type Database = {
       }
       city_retire_self: { Args: { p_match_id: string }; Returns: undefined }
       city_roll_dice: { Args: { p_match_id: string }; Returns: Json }
+      city_roll_dice_core: {
+        Args: { p_match_id: string; p_seat: number }
+        Returns: Json
+      }
       city_sell_building: {
         Args: { p_match_id: string; p_space_idx: number }
         Returns: Json
@@ -1242,7 +1254,7 @@ export type Database = {
       }
       city_settle_auction:
         | { Args: { p_match_id: string }; Returns: Json }
-        | { Args: { p_force: boolean; p_match_id: string }; Returns: Json }
+        | { Args: { p_force?: boolean; p_match_id: string }; Returns: Json }
       city_space_is_tradeable: {
         Args: { p_match_id: string; p_space_idx: number }
         Returns: boolean
