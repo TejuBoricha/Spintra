@@ -111,6 +111,15 @@ export function CityHoldings({
                       size="sm"
                       variant="outline"
                       disabled={!isMyTurn || inDebt || mySeat.cash < buildCost}
+                      title={
+                        !isMyTurn
+                          ? "Wait for your turn"
+                          : inDebt
+                            ? "Settle your debt first"
+                            : mySeat.cash < buildCost
+                              ? "Not enough cash"
+                              : undefined
+                      }
                       onClick={() => onBuild(a.space_idx)}
                     >
                       Build · {buildCost}
@@ -120,7 +129,13 @@ export function CityHoldings({
                     <Button
                       size="sm"
                       variant="outline"
-                      disabled={!isMyTurn}
+                      // Selling is one of the raise-funds actions the server
+                      // allows off-turn while in debt (migration 0077) — the
+                      // button has to follow, or the debt banner above is
+                      // telling the player to do something this button won't
+                      // let them do.
+                      disabled={!isMyTurn && !inDebt}
+                      title={!isMyTurn && !inDebt ? "Wait for your turn" : undefined}
                       onClick={() => onSell(a.space_idx)}
                     >
                       Sell · +{Math.floor(buildCost / 2)}
@@ -130,7 +145,9 @@ export function CityHoldings({
                     <Button
                       size="sm"
                       variant="outline"
-                      disabled={!isMyTurn}
+                      // Same off-turn-while-in-debt allowance as Sell, above.
+                      disabled={!isMyTurn && !inDebt}
+                      title={!isMyTurn && !inDebt ? "Wait for your turn" : undefined}
                       onClick={() => onMortgage(a.space_idx)}
                     >
                       Mortgage · +{Math.floor((s.price ?? 0) / 2)}
@@ -141,6 +158,13 @@ export function CityHoldings({
                       size="sm"
                       variant="outline"
                       disabled={!isMyTurn || inDebt}
+                      title={
+                        !isMyTurn
+                          ? "Wait for your turn"
+                          : inDebt
+                            ? "Settle your debt first"
+                            : undefined
+                      }
                       onClick={() => onUnmortgage(a.space_idx)}
                     >
                       Lift · {Math.ceil(Math.floor((s.price ?? 0) / 2) * 1.1)}

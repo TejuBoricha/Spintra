@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Building2, Check, Crown, Dices, Loader2, LogOut, Play, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ConnectionBanner } from "@/components/ui/connection-banner";
 import { useRoomActivity } from "../context/room-activity-context";
 import { CityBoard } from "./city-board";
 import { CityHoldings } from "./city-holdings";
@@ -63,6 +64,8 @@ export function CityMatchShell() {
     settleAuction,
     claimTimeout,
     results,
+    realtimeStatus,
+    refetch,
   } = useCityMatch(roomCode, currentUser.id);
 
   // The escape hatch for a turn stuck on a player who is still in the room
@@ -220,9 +223,27 @@ export function CityMatchShell() {
     const canEnd = isMyTurn && match.phase !== "awaiting_roll" && !mustDecide && !inDebt;
     const onSale = mySeat ? board[mySeat.position] : undefined;
     const iAmOut = mySeat?.status === "bankrupt" || mySeat?.status === "retired";
+    // lastRoll is this tab's own optimistic state (instant, no round-trip) --
+    // set only for whoever actually clicked Roll. Every other viewer, and
+    // this same player after a refresh, falls back to the server-persisted
+    // copy, which is only trusted while it still describes the CURRENT turn
+    // (BUG-035: nobody but the roller's original tab ever saw this before).
+    const freshServerRoll =
+      match.last_roll_turn === match.turn_number ? match.last_roll_result : null;
+    const effectiveRoll = lastRoll ?? freshServerRoll;
 
     return (
       <div className="max-w-5xl mx-auto">
+        {/* BUG-042: City's own realtime channel had no visible failure state
+            at all — cash badges and the board could silently stop updating
+            with nothing telling the player why. */}
+        {realtimeStatus !== "connected" && (
+          <ConnectionBanner
+            state={realtimeStatus}
+            onRetry={() => void refetch()}
+            className="mb-3 rounded-xl"
+          />
+        )}
         <div className="flex flex-wrap items-center gap-3 mb-3">
           <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
             {seats.map((s) => (
@@ -357,13 +378,17 @@ export function CityMatchShell() {
             ? "You're out of this match — watching from here."
             : detained && isMyTurn
               ? `You're held at Customs. Roll doubles, spend a Transit Visa, or pay 90 to leave.`
-              : lastRoll
-              ? narrate(lastRoll, board, seats)
+              : effectiveRoll
+              ? narrate(effectiveRoll, board, seats)
               : mustDecide && onSale
                 ? `${onSale.name} is unclaimed. Buy it for ${onSale.price}, or pass.`
-                : isMyTurn
-                  ? "Your turn — roll the dice."
-                  : `Waiting for ${active?.username ?? "the next player"}.`}
+                : isMyTurn && inDebt
+                  ? "You're short on cash — sell, mortgage, or trade to raise funds, or declare bankruptcy."
+                  : isMyTurn && match.phase === "awaiting_roll"
+                    ? "Your turn — roll the dice."
+                    : isMyTurn
+                      ? "You've rolled — build, trade, or end your turn when you're ready."
+                      : `Waiting for ${active?.username ?? "the next player"}.`}
         </p>
       </div>
     );
@@ -380,6 +405,13 @@ export function CityMatchShell() {
       exit={{ opacity: 0, y: -8 }}
       className="max-w-2xl mx-auto"
     >
+      {realtimeStatus !== "connected" && (
+        <ConnectionBanner
+          state={realtimeStatus}
+          onRetry={() => void refetch()}
+          className="mb-4 rounded-xl"
+        />
+      )}
       <div className="text-center mb-6">
         <IconBadge />
         <h2 className="text-xl font-bold mt-3">Spintra City</h2>

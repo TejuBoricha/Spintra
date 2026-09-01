@@ -139,7 +139,14 @@ export function Navbar() {
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      className="fixed top-4 inset-x-4 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 z-50 md:min-w-[600px] md:max-w-4xl w-[calc(100%-2rem)] transition-all duration-500"
+      // The desktop pill nav (logo + 4 center items + right icons) clipped
+      // itself against this panel's own overflow-hidden at exactly 768px —
+      // md:'s breakpoint — with no page-level scroll to reveal it (BUG-041).
+      // Raised every toggle in this file from md: to lg: so the mobile
+      // hamburger (already correct at every width) covers the range where
+      // the desktop row doesn't actually fit, instead of redesigning the
+      // pill row's spacing to squeeze into 768px.
+      className="fixed top-4 inset-x-4 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 z-50 lg:min-w-[600px] lg:max-w-4xl w-[calc(100%-2rem)] transition-all duration-500"
     >
       <div
         className={cn(
@@ -175,7 +182,7 @@ export function Navbar() {
           </Link>
 
           {/* Center: Main Navigation (Desktop Only) */}
-          <div className="hidden md:flex items-center p-1 rounded-[1.5rem] bg-gradient-to-b from-(--surface-sunken)/80 to-transparent border border-(--border-hairline) shadow-inner gap-1 backdrop-blur-md">
+          <div className="hidden lg:flex items-center p-1 rounded-[1.5rem] bg-gradient-to-b from-(--surface-sunken)/80 to-transparent border border-(--border-hairline) shadow-inner gap-1 backdrop-blur-md">
             <Link href="/explore">
               <Button
                 variant="ghost"
@@ -250,7 +257,7 @@ export function Navbar() {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden rounded-full text-foreground hover:bg-(--surface-sunken) h-10 w-10"
+              className="lg:hidden rounded-full text-foreground hover:bg-(--surface-sunken) h-10 w-10"
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
             >
@@ -266,7 +273,7 @@ export function Navbar() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden border-t border-(--border-hairline) bg-transparent"
+              className="lg:hidden border-t border-(--border-hairline) bg-transparent"
             >
               <div className="px-4 py-4 flex flex-col gap-2">
                 <Button

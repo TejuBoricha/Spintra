@@ -40,6 +40,12 @@ export interface CityMatch {
   turn_clock_paused_at: string | null;
   pace_seconds: number;
   last_roll: number[] | null;
+  /** The full roll/landing outcome, same shape as CityRollResult below —
+   *  lets every client narrate the most recent roll, not just the one
+   *  browser tab that made it. Compare `last_roll_turn` to `turn_number`
+   *  before trusting it: once the turn advances, it's describing the past. */
+  last_roll_result: CityRollResult | null;
+  last_roll_turn: number | null;
   doubles_count: number;
   turn_number: number;
 }
@@ -167,7 +173,8 @@ export interface CityRollResult {
 // honest about that boundary.
 const MATCH_COLUMNS =
   "id, room_code, status, mode, time_limit_minutes, current_seat, phase, created_by, " +
-  "started_at, turn_started_at, turn_clock_paused_at, pace_seconds, last_roll, doubles_count, turn_number";
+  "started_at, turn_started_at, turn_clock_paused_at, pace_seconds, last_roll, " +
+  "last_roll_result, last_roll_turn, doubles_count, turn_number";
 
 const SEAT_COLUMNS =
   "id, match_id, user_id, seat, username, is_ready, status, position, cash, " +
@@ -216,6 +223,12 @@ interface UseCityMatchResult {
   passAuction: () => Promise<void>;
   settleAuction: () => Promise<void>;
   claimTimeout: () => Promise<void>;
+  /** City's own postgres_changes channel status — separate from the room's
+   *  base chat/participants channel (use-room-subscription.ts), which can
+   *  stay connected while this one drops. "connected" in demo mode too:
+   *  there's no channel to lose. */
+  realtimeStatus: "connected" | "reconnecting" | "offline";
+  refetch: () => Promise<void>;
 }
 
 export function useCityMatch(roomCode: string, currentUserId: string): UseCityMatchResult {
@@ -229,6 +242,9 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   const [results, setResults] = useState<CityResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [realtimeStatus, setRealtimeStatus] =
+    useState<"connected" | "reconnecting" | "offline">("connected");
+  const realtimeOfflineTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const supabase = getSupabaseBrowserClient();
   const isDemoMode = !supabase;
@@ -243,7 +259,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     matchIdRef.current = match?.id ?? null;
   }, [match?.id]);
 
-  const refetch = useCallback(async () => {
+  const doRefetch = useCallback(async () => {
     if (!supabase) {
       setIsLoading(false);
       return;
@@ -323,6 +339,43 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     setAuction((auctionRow ?? null) as unknown as CityAuction | null);
     setIsLoading(false);
   }, [supabase, roomCode]);
+
+  // BUG-037: every mutating command already calls refetch() itself once it
+  // succeeds, and each row it touched also pings back over realtime — a
+  // single build, for instance, changes both city_assets (no subscription,
+  // so no ping) and city_match_players (cash), but a multi-seat effect like
+  // collect_from_each changes several match_players rows in one
+  // transaction, each firing its own realtime event to every connected
+  // client. Un-coalesced, that is N nearly-simultaneous refetch() calls per
+  // client for what is functionally one update. This collapses any calls
+  // that land within one short window into a single underlying fetch, and
+  // every caller's await resolves once that one fetch actually completes —
+  // not a leading-edge throttle that would drop a solo action's own update.
+  const refetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refetchPromiseRef = useRef<Promise<void> | null>(null);
+  const REFETCH_COALESCE_MS = 80;
+
+  const refetch = useCallback(() => {
+    if (refetchPromiseRef.current) return refetchPromiseRef.current;
+    const p = new Promise<void>((resolve) => {
+      refetchTimerRef.current = setTimeout(() => {
+        refetchTimerRef.current = null;
+        void doRefetch().finally(() => {
+          refetchPromiseRef.current = null;
+          resolve();
+        });
+      }, REFETCH_COALESCE_MS);
+    });
+    refetchPromiseRef.current = p;
+    return p;
+  }, [doRefetch]);
+
+  useEffect(
+    () => () => {
+      if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current);
+    },
+    []
+  );
 
   // The board is immutable reference data shared by every match, so it is
   // fetched once and never refetched by the realtime notifier below. Prices
@@ -408,9 +461,34 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
         { event: "*", schema: "public", table: "city_match_players" },
         refetchIfCurrentMatch
       )
-      .subscribe();
+      // BUG-042: this channel had no status callback at all, so a dropped
+      // subscription here was invisible — the UI kept showing whatever data
+      // it last had with no signal anything was wrong. Mirrors
+      // use-room-subscription.ts's own SUBSCRIBED/else handling and its
+      // 20s escalation from "still retrying" to a harder "offline" state.
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          if (realtimeOfflineTimerRef.current) {
+            clearTimeout(realtimeOfflineTimerRef.current);
+            realtimeOfflineTimerRef.current = null;
+          }
+          setRealtimeStatus("connected");
+        } else {
+          setRealtimeStatus("reconnecting");
+          if (!realtimeOfflineTimerRef.current) {
+            realtimeOfflineTimerRef.current = setTimeout(() => {
+              realtimeOfflineTimerRef.current = null;
+              setRealtimeStatus("offline");
+            }, 20_000);
+          }
+        }
+      });
 
     return () => {
+      if (realtimeOfflineTimerRef.current) {
+        clearTimeout(realtimeOfflineTimerRef.current);
+        realtimeOfflineTimerRef.current = null;
+      }
       void supabase.removeChannel(channel);
     };
   }, [supabase, roomCode, refetch]);
@@ -650,6 +728,8 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     isMyTurn:
       match?.status === "active" && mySeat != null && match.current_seat === mySeat.seat,
     lastRoll,
+    realtimeStatus: isDemoMode ? "connected" : realtimeStatus,
+    refetch,
     createMatch,
     joinSeat,
     leaveSeat,
