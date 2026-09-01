@@ -2,7 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Building2, Check, Crown, Dices, Loader2, LogOut, Play, UserPlus } from "lucide-react";
+import {
+  Building2,
+  Check,
+  Clock,
+  Crown,
+  Dices,
+  Loader2,
+  LogOut,
+  Play,
+  UserPlus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConnectionBanner } from "@/components/ui/connection-banner";
@@ -284,6 +294,18 @@ export function CityMatchShell() {
               </Badge>
             ))}
           </div>
+          {/* BUG-006: turn_started_at/pace_seconds have driven a real
+              consequence (city_claim_timeout) since BUG-003's fix, but
+              nothing ever showed a player the clock was running at all —
+              same gating as the auto-claim effect above. */}
+          {match.status === "active" &&
+            match.phase !== "auction" &&
+            !match.turn_clock_paused_at &&
+            match.turn_started_at && (
+              <TurnCountdown
+                deadline={new Date(match.turn_started_at).getTime() + match.pace_seconds * 1000}
+              />
+            )}
         </div>
 
         {error && (
@@ -599,6 +621,29 @@ function narrate(roll: CityRollResult, board: CityBoardSpace[], seats: CitySeat[
     default:
       return head;
   }
+}
+
+/**
+ * BUG-006: the turn clock had a real consequence (city_claim_timeout) with
+ * no visible countdown anywhere. Ticks client-side against a server-derived
+ * deadline — purely a display; the deadline itself is never trusted for
+ * anything authoritative, city_claim_timeout re-derives it server-side.
+ */
+function TurnCountdown({ deadline }: { deadline: number }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const remaining = Math.max(0, Math.round((deadline - now) / 1000));
+  const mm = Math.floor(remaining / 60);
+  const ss = String(remaining % 60).padStart(2, "0");
+  return (
+    <Badge variant="outline" className="gap-1 font-mono" role="timer" aria-live="off">
+      <Clock className="w-3 h-3" aria-hidden="true" />
+      {mm}:{ss}
+    </Badge>
+  );
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
