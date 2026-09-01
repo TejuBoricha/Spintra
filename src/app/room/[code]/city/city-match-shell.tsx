@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Building2, Check, Crown, Dices, Loader2, LogOut, Play, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -61,8 +61,48 @@ export function CityMatchShell() {
     placeBid,
     passAuction,
     settleAuction,
+    claimTimeout,
     results,
   } = useCityMatch(roomCode, currentUser.id);
+
+  // The escape hatch for a turn stuck on a player who is still in the room
+  // but silent (a departed player is handled server-side the moment they
+  // leave — see city_retire_seat). Any client — including the stalled
+  // player's own, if their tab is merely idle — offers to claim a timeout
+  // once its local clock says pace_seconds has genuinely elapsed. This is
+  // only ever a convenience trigger: city_claim_timeout re-derives the
+  // deadline from the match row itself, so an early or duplicate attempt is
+  // simply refused. Same shape as city-auction.tsx's own auto-settle.
+  //
+  // Must be called unconditionally (Rules of Hooks) even though it only does
+  // anything once the match is live — every early return below happens after
+  // this, so the guards live inside the effect instead of around the call.
+  const claimedTurnRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      !match ||
+      match.status !== "active" ||
+      match.phase === "auction" ||
+      match.turn_clock_paused_at ||
+      !match.turn_started_at
+    ) {
+      return;
+    }
+
+    const turnKey = `${match.id}:${match.turn_number}`;
+    if (claimedTurnRef.current === turnKey) return;
+
+    const deadline = new Date(match.turn_started_at).getTime() + match.pace_seconds * 1000;
+    const remaining = deadline - Date.now();
+
+    if (remaining > 0) {
+      const t = setTimeout(() => void claimTimeout(), remaining + 250);
+      return () => clearTimeout(t);
+    }
+
+    claimedTurnRef.current = turnKey;
+    void claimTimeout();
+  }, [match, claimTimeout]);
 
   if (isDemoMode) {
     return (

@@ -34,9 +34,14 @@ export interface CityMatch {
   created_by: string;
   started_at: string | null;
   turn_started_at: string | null;
+  /** Set while a context outside the active player's control owns the clock —
+   *  an auction, mainly. A client offering to claim a timeout must treat this
+   *  the same as "not running": there is nothing stalled to resolve. */
+  turn_clock_paused_at: string | null;
   pace_seconds: number;
   last_roll: number[] | null;
   doubles_count: number;
+  turn_number: number;
 }
 
 export interface CitySeat {
@@ -162,7 +167,7 @@ export interface CityRollResult {
 // honest about that boundary.
 const MATCH_COLUMNS =
   "id, room_code, status, mode, time_limit_minutes, current_seat, phase, created_by, " +
-  "started_at, turn_started_at, pace_seconds, last_roll, doubles_count";
+  "started_at, turn_started_at, turn_clock_paused_at, pace_seconds, last_roll, doubles_count, turn_number";
 
 const SEAT_COLUMNS =
   "id, match_id, user_id, seat, username, is_ready, status, position, cash, " +
@@ -210,6 +215,7 @@ interface UseCityMatchResult {
   placeBid: (amount: number) => Promise<void>;
   passAuction: () => Promise<void>;
   settleAuction: () => Promise<void>;
+  claimTimeout: () => Promise<void>;
 }
 
 export function useCityMatch(roomCode: string, currentUserId: string): UseCityMatchResult {
@@ -353,8 +359,32 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   // RLS-gated rows rather than trusting a broadcast payload to carry state.
   // This is what keeps authoritative data behind row-level security instead of
   // on a channel any room member could read (SPEC.md §5.1).
+  //
+  // city_auctions and city_match_players carry no server-side filter here —
+  // Realtime bakes a `filter:` value in at subscribe time, but matchIdRef can
+  // change mid-session (a post-match flow opens a fresh match in the same
+  // room without remounting this hook), so a baked-in match_id would go stale
+  // exactly when a new match starts. The guard below is client-side and reads
+  // matchIdRef live on every event instead, which is what city_match_players
+  // already did; city_auctions and city_trade_offers previously had no guard
+  // at all, so a trade or auction in ANY match, in ANY room, forced this
+  // client to run a full refetch — proven behaviourally in the 2026-08-30 QA
+  // audit (BUG-038): activity in a wholly separate room and match caused an
+  // idle client's five-query refetch to fire.
   useEffect(() => {
     if (!supabase) return;
+
+    const refetchIfCurrentMatch = (payload: {
+      new: object;
+      old: object;
+    }) => {
+      const changedMatchId =
+        (payload.new as { match_id?: string })?.match_id ??
+        (payload.old as { match_id?: string })?.match_id;
+      if (!matchIdRef.current || changedMatchId === matchIdRef.current) {
+        void refetch();
+      }
+    };
 
     const channel = supabase
       .channel(`city:${roomCode}`)
@@ -366,24 +396,17 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "city_auctions" },
-        () => void refetch()
+        refetchIfCurrentMatch
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "city_trade_offers" },
-        () => void refetch()
+        refetchIfCurrentMatch
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "city_match_players" },
-        (payload) => {
-          const changedMatchId =
-            (payload.new as { match_id?: string })?.match_id ??
-            (payload.old as { match_id?: string })?.match_id;
-          if (!matchIdRef.current || changedMatchId === matchIdRef.current) {
-            void refetch();
-          }
-        }
+        refetchIfCurrentMatch
       )
       .subscribe();
 
@@ -601,6 +624,18 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     if (!e) await refetch();
   }, [supabase, refetch]);
 
+  // Same shape as settleAuction: any client — including the stalled player's
+  // own, if their tab is merely idle — may attempt this once its local clock
+  // says the turn has run past pace_seconds. city_claim_timeout re-derives the
+  // deadline from the match row itself, so an early or duplicate call is just
+  // refused; nothing here is trusted, only offered.
+  const claimTimeout = useCallback(async () => {
+    const id = matchIdRef.current;
+    if (!supabase || !id) return;
+    const { error: e } = await supabase.rpc("city_claim_timeout", { p_match_id: id });
+    if (!e) await refetch();
+  }, [supabase, refetch]);
+
   const mySeat = seats.find((s) => s.user_id === currentUserId) ?? null;
 
   return {
@@ -640,6 +675,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     placeBid,
     passAuction,
     settleAuction,
+    claimTimeout,
   };
 }
 

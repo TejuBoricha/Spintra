@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -333,6 +328,48 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      city_debt_queue: {
+        Row: {
+          amount: number
+          creditor_seat: number | null
+          debtor_seat: number
+          id: string
+          match_id: string
+          queued_at: string
+        }
+        Insert: {
+          amount: number
+          creditor_seat?: number | null
+          debtor_seat: number
+          id?: string
+          match_id: string
+          queued_at?: string
+        }
+        Update: {
+          amount?: number
+          creditor_seat?: number | null
+          debtor_seat?: number
+          id?: string
+          match_id?: string
+          queued_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_debt_queue_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_match_results"
+            referencedColumns: ["match_id"]
+          },
+          {
+            foreignKeyName: "city_debt_queue_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_matches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       city_match_players: {
         Row: {
@@ -1074,6 +1111,7 @@ export type Database = {
         }
         Returns: Json
       }
+      city_claim_timeout: { Args: { p_match_id: string }; Returns: Json }
       city_create_match: {
         Args: {
           p_mode?: string
@@ -1170,6 +1208,10 @@ export type Database = {
         Args: { p_action: string; p_offer_id: string }
         Returns: undefined
       }
+      city_retire_seat: {
+        Args: { p_match_id: string; p_seat: number }
+        Returns: undefined
+      }
       city_roll_dice: { Args: { p_match_id: string }; Returns: Json }
       city_sell_building: {
         Args: { p_match_id: string; p_space_idx: number }
@@ -1179,10 +1221,9 @@ export type Database = {
         Args: { p_match_id: string; p_ready: boolean }
         Returns: undefined
       }
-      city_settle_auction: {
-        Args: { p_force?: boolean; p_match_id: string }
-        Returns: Json
-      }
+      city_settle_auction:
+        | { Args: { p_match_id: string }; Returns: Json }
+        | { Args: { p_force: boolean; p_match_id: string }; Returns: Json }
       city_space_is_tradeable: {
         Args: { p_match_id: string; p_space_idx: number }
         Returns: boolean
