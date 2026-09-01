@@ -1,0 +1,889 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spintra City — QA Report</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --ink:#12151a; --ink-2:#5a6472; --line:#e3e7ec;
+    --crit:#b3261e; --crit-bg:#fdecea;
+    --high:#c2410c; --high-bg:#fff1e8; --med:#8a6100; --med-bg:#fff8e1;
+    --low:#3a6ea5; --low-bg:#eef4fb; --pass:#1b6b3a; --pass-bg:#e9f6ee;
+    --fail:#b3261e; --fail-bg:#fdecea; --nt:#5a6472; --nt-bg:#eef0f3;
+    --accent:#3d5afe;
+  }
+  :root:not([data-theme="light"]){}
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0f1216; --panel:#161a20; --ink:#e8ecf1; --ink-2:#9aa5b1; --line:#262c34;
+      --crit:#ff6b5e; --crit-bg:#2a1512; --high:#ffa15e; --high-bg:#2a1c11;
+      --med:#e8c15a; --med-bg:#26200e; --low:#7fb4ec; --low-bg:#121d2a;
+      --pass:#5fd18b; --pass-bg:#10241a; --fail:#ff6b5e; --fail-bg:#2a1512;
+      --nt:#9aa5b1; --nt-bg:#1c2129; --accent:#8fa4ff;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f1216; --panel:#161a20; --ink:#e8ecf1; --ink-2:#9aa5b1; --line:#262c34;
+    --crit:#ff6b5e; --crit-bg:#2a1512; --high:#ffa15e; --high-bg:#2a1c11;
+    --med:#e8c15a; --med-bg:#26200e; --low:#7fb4ec; --low-bg:#121d2a;
+    --pass:#5fd18b; --pass-bg:#10241a; --fail:#ff6b5e; --fail-bg:#2a1512;
+    --nt:#9aa5b1; --nt-bg:#1c2129; --accent:#8fa4ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 20px 80px}
+  header.top{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:28px}
+  h1{font-size:30px;letter-spacing:-.02em;margin:0 0 6px}
+  .sub{color:var(--ink-2);font-size:14px}
+  .verdict{display:inline-block;margin-top:16px;padding:10px 16px;border-radius:8px;
+    background:var(--crit-bg);color:var(--crit);font-weight:700;letter-spacing:.02em;
+    border:1px solid color-mix(in srgb, var(--crit) 30%, transparent)}
+  h2{font-size:19px;margin:38px 0 14px;letter-spacing:-.01em}
+  h3{font-size:15px;margin:26px 0 10px;color:var(--ink-2);text-transform:uppercase;letter-spacing:.06em}
+  .grid{display:grid;gap:12px}
+  .stats{grid-template-columns:repeat(auto-fit,minmax(132px,1fr))}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .card .n{font-size:26px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+  .card .l{font-size:12px;color:var(--ink-2);text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+  .sev-crit .n{color:var(--crit)} .sev-high .n{color:var(--high)}
+  .sev-med .n{color:var(--med)} .sev-low .n{color:var(--low)}
+  .ok .n{color:var(--pass)} .bad .n{color:var(--fail)}
+  .bar{height:10px;border-radius:5px;background:var(--nt-bg);overflow:hidden;display:flex;margin:6px 0 2px}
+  .bar i{display:block;height:100%}
+  .bar .p{background:var(--pass)} .bar .f{background:var(--fail)} .bar .n{background:var(--nt)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);
+    position:sticky;top:0;background:var(--panel);z-index:1}
+  tbody tr:last-child td{border-bottom:0}
+  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap}
+  .b-pass{background:var(--pass-bg);color:var(--pass)}
+  .b-fail{background:var(--fail-bg);color:var(--fail)}
+  .b-nt{background:var(--nt-bg);color:var(--nt)}
+  .b-crit{background:var(--crit-bg);color:var(--crit)}
+  .b-high{background:var(--high-bg);color:var(--high)}
+  .b-med{background:var(--med-bg);color:var(--med)}
+  .b-low{background:var(--low-bg);color:var(--low)}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+  input[type=search],select{font:inherit;font-size:13.5px;padding:8px 11px;border:1px solid var(--line);
+    border-radius:8px;background:var(--panel);color:var(--ink);min-width:150px}
+  input[type=search]{flex:1;min-width:210px}
+  details{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:0;margin-bottom:10px;overflow:hidden}
+  details>summary{cursor:pointer;padding:13px 16px;font-weight:600;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  details>summary::-webkit-details-marker{display:none}
+  details>summary:before{content:"▸";color:var(--ink-2);font-size:12px}
+  details[open]>summary:before{content:"▾"}
+  .body{padding:0 16px 16px;border-top:1px solid var(--line);margin-top:2px}
+  .body p{margin:12px 0}
+  .kv{display:grid;grid-template-columns:132px 1fr;gap:6px 14px;font-size:13.5px;margin:12px 0}
+  .kv dt{color:var(--ink-2);text-transform:uppercase;font-size:11.5px;letter-spacing:.05em;padding-top:2px}
+  .kv dd{margin:0}
+  code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px}
+  code{background:var(--nt-bg);padding:1px 5px;border-radius:4px}
+  pre{background:var(--nt-bg);padding:11px 13px;border-radius:8px;overflow-x:auto;margin:10px 0}
+  .note{background:var(--low-bg);border-left:3px solid var(--low);padding:12px 15px;border-radius:0 8px 8px 0;margin:14px 0;font-size:14px}
+  .muted{color:var(--ink-2)}
+  footer{margin-top:52px;padding-top:20px;border-top:1px solid var(--line);color:var(--ink-2);font-size:13px}
+  @media (max-width:640px){ .kv{grid-template-columns:1fr} h1{font-size:24px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>Spintra City — QA Audit Report</h1>
+  <div class="sub">
+    Branch <code>feat/spintra-city-design</code> @ <code>cb08868</code> ·
+    Migrations <code>0063</code>–<code>0070</code> (local only — none on production) ·
+    Audited 2026-08-30
+  </div>
+  <div class="verdict">NOT READY FOR RELEASE</div>
+  <div style="margin-top:10px;display:inline-block;padding:10px 16px;border-radius:8px;
+    background:var(--pass-bg);color:var(--pass);font-weight:700;letter-spacing:.02em;
+    border:1px solid color-mix(in srgb, var(--pass) 30%, transparent)">
+    UPDATE 2026-09-01 — all 4 criticals fixed &amp; verified locally · see "Fix phase update" below
+  </div>
+</header>
+
+<p>
+  Spintra City's core game loop <strong>works</strong>: two players can create a room, seat, ready,
+  start, roll, move, buy, pay rent, build, trade, auction, go bankrupt, and be scored into the
+  existing room scoreboard. Realtime sync between clients is verified. The rules engine is
+  largely correct — 101 of 120 executed rule tests pass, including the whole rent matrix,
+  even-build, the insolvency ladder, and 30 of 32 cards. The strongest control in the system,
+  server-derived randomness, is <strong>properly protected</strong>.
+</p>
+<p>
+  It is not releasable because <strong>four independent defects can each permanently end a match
+  that is going fine</strong>, one of them bricks the whole room for 24 hours, and
+  <strong>moderation does not work</strong> — a kicked and banned player keeps full control of
+  their seat. A slice of 20 MUST requirements (disconnect handling, autopilot, forced retire,
+  and the turn clock itself) was never implemented.
+</p>
+
+<div class="note">
+  <strong>Every finding was independently re-verified by testers instructed to falsify it.</strong>
+  That pass changed this report: <strong>BUG-018</strong> is not a defect as filed (the behaviour
+  matches DESIGN §3.1A — the player rolls twice but moves once); <strong>BUG-027</strong>'s premise
+  is false (<code>city_derive_dice</code>'s algorithm is published in the migration, so revoking its
+  grant gives zero benefit — re-filed against seed entropy); and half of <strong>BUG-019</strong>
+  does not hold. <strong>BUG-005</strong> dropped CRITICAL→HIGH (the freeze is temporary),
+  <strong>BUG-020</strong> and <strong>BUG-039</strong> dropped to LOW, <strong>BUG-034</strong> to
+  MEDIUM, while <strong>BUG-038</strong> rose to HIGH and <strong>BUG-008</strong> proved worse than
+  filed (six concurrent unauthenticated force-settles charged the winner six times, destroying
+  1,000). BUG-037's magnitude was corrected from ~30× to a measured 22.9×. The pass also found two
+  new bugs: <strong>BUG-044</strong> (<code>city_charge</code> overwrites <code>pending_debt</code>,
+  erasing a creditor's claim) and <strong>BUG-045</strong> (<code>city_max_liquidation</code> returns
+  0 via NULL propagation, so bankruptcy checks will bankrupt players who could pay).
+</div>
+
+<h2 id="fix-phase">Fix phase update — 2026-09-01</h2>
+<p>
+  A fix phase followed this audit. <strong>All 4 criticals are now fixed and independently
+  verified</strong>, along with 12 further bugs closed as documented side effects of the same
+  migrations. Everything below happened <strong>entirely on the local Docker stack</strong> —
+  production has none of migrations <code>0063</code>–<code>0076</code> and remains exactly as
+  this audit found it. This section records what changed after the audit; the report above is
+  left exactly as originally written, as the historical record of what was found.
+</p>
+
+<div class="scroll">
+<table>
+  <thead><tr><th style="width:90px">Fixed</th><th>Closed by</th><th>Verified how</th></tr></thead>
+  <tbody>
+    <tr><td><code>BUG-001</code></td><td>Migration <code>0074</code> — a trigger on <code>room_participants</code> retires the seat and hands the turn on</td><td>Load test (20 concurrent matches, byte-identical counts); 3 hand-checked departure scenarios</td></tr>
+    <tr><td><code>BUG-002</code></td><td>Migration <code>0071</code> — membership re-checked in the one chokepoint all 19 command RPCs already call</td><td>Regression harness; re-verified against the real pre-fix committed source</td></tr>
+    <tr><td><code>BUG-003</code></td><td>Migration <code>0076</code> (<code>city_claim_timeout</code>) + a client auto-claim effect mirroring the auction panel's own pattern</td><td>5 behavioral SQL proofs; a live two-browser test where a stalled opponent recovers with <strong>zero manual clicks</strong></td></tr>
+    <tr><td><code>BUG-004</code></td><td>Migration <code>0072</code> — debt settles on any cash inflow, not only mortgage/sell</td><td>Regression harness; load test</td></tr>
+    <tr><td><code>BUG-008</code></td><td>Migration <code>0071</code> — <code>p_force</code> dropped from the client-callable signature entirely</td><td>Confirmed <code>42501 permission denied</code> over real HTTP with a minted JWT</td></tr>
+    <tr><td><code>BUG-009</code></td><td>Migration <code>0071</code> — added the missing ownership check</td><td>Regression harness</td></tr>
+    <tr><td><code>BUG-010</code></td><td>Migration <code>0071</code> — null-safe status/phase guards</td><td>Regression harness</td></tr>
+    <tr><td><code>BUG-012</code></td><td>Migration <code>0073</code> — engine-owned columns excluded from self-update</td><td>Refused (HTTP 400) over real HTTP; legitimate self-updates confirmed still working</td></tr>
+    <tr><td><code>BUG-013</code></td><td>Direct fix, <code>src/app/api/health/route.ts</code></td><td><code>/api/health</code> now returns <code>200, status: "ok", realtime: "reachable"</code></td></tr>
+    <tr><td><code>BUG-014</code></td><td>Migration <code>0072</code> — developments sold to the bank first, per DESIGN §3.1D</td><td>Regression harness</td></tr>
+    <tr><td><code>BUG-019</code></td><td>Migration <code>0071</code> — both leaking functions revoked from clients</td><td>Confirmed unused by the client</td></tr>
+    <tr><td><code>BUG-024</code></td><td>Migration <code>0072</code> — same auto-settle-on-cash trigger as BUG-004</td><td>Regression harness</td></tr>
+    <tr><td><code>BUG-031</code></td><td>Migration <code>0071</code> — raises <code>CITY_MATCH_NOT_FOUND</code> before it can hit the NOT NULL violation</td><td>—</td></tr>
+    <tr><td><code>BUG-038</code></td><td><code>use-city-match.ts</code> — extended the existing <code>matchIdRef</code> guard to all three subscriptions</td><td>Two live matches: match-2 activity produced <strong>0</strong> requests on an idle match-1 client; that client's own action produced 20</td></tr>
+    <tr><td><code>BUG-044</code></td><td>Migration <code>0075</code> — additive <code>city_debt_queue</code>, <code>pending_debt</code>'s existing meaning untouched</td><td>Harness proves the full loop (both creditors actually paid); re-verified against the real pre-fix <code>city_charge</code></td></tr>
+    <tr><td><code>BUG-045</code></td><td>Migration <code>0072</code> — <code>coalesce(build_cost, 0)</code>, matching <code>city_net_worth</code>'s existing guard</td><td>Regression harness</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p style="margin-top:14px">
+  <strong>Improved as a side effect, not independently verified as fully closed:</strong>
+  <strong>BUG-005</strong> — 0072's auto-settle trigger clears the stall the moment any cash
+  arrives, not only via mortgage/sale, so it resolves far more readily; no code specifically
+  guarantees it can never stall a full turn. <strong>BUG-006</strong> — <code>city_claim_timeout</code>
+  now reads the clock fields for a real purpose, so it is no longer purely decorative, but no
+  visible countdown is rendered anywhere — that cosmetic gap is untouched.
+</p>
+
+<h3>Updated numbers</h3>
+<div class="scroll">
+<table>
+  <thead><tr><th></th><th>Original audit</th><th>After the fix phase (local only)</th></tr></thead>
+  <tbody>
+    <tr><td>Confirmed bugs</td><td>44</td><td>44 found, <strong>16 fixed</strong>, 28 open</td></tr>
+    <tr><td>Critical</td><td>4</td><td><strong>0 unresolved</strong> (4 of 4 fixed)</td></tr>
+    <tr><td>High</td><td>13</td><td>6 unresolved (7 of 13 fixed)</td></tr>
+    <tr><td>Medium</td><td>12</td><td>8 unresolved (4 of 12 fixed)</td></tr>
+    <tr><td>Low</td><td>15</td><td>14 unresolved (1 of 15 fixed)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note" style="margin-top:14px">
+  <strong>What this means for the release verdict above.</strong> Production is unchanged and
+  remains NOT READY, because nothing has been deployed to it — the verdict is accurate as a
+  description of production today. The local codebase's blocking-defect count has gone from
+  4 criticals to 0, which is the precondition for reconsidering that verdict, not a substitute
+  for actually shipping migrations <code>0071</code>–<code>0076</code> and re-running this audit
+  against production once they are.
+</div>
+
+<h2>Executive dashboard</h2>
+<div class="grid stats">
+  <div class="card"><div class="n">298</div><div class="l">Test cases</div></div>
+  <div class="card ok"><div class="n">231</div><div class="l">Passed</div></div>
+  <div class="card bad"><div class="n">67</div><div class="l">Failed</div></div>
+  <div class="card"><div class="n">0</div><div class="l">Blocked</div></div>
+  <div class="card"><div class="n">0</div><div class="l">Not tested</div></div>
+  <div class="card ok"><div class="n">77.5%</div><div class="l">Pass rate</div></div>
+</div>
+<div class="bar" style="margin-top:12px" title="231 passed / 67 failed / 0 not tested">
+  <i class="p" style="width:73.1%"></i><i class="f" style="width:22.9%"></i><i class="n" style="width:4.0%"></i>
+</div>
+<div class="muted" style="font-size:12.5px">231 passed · 67 failed · 0 not tested · 1 N/A · 2 withdrawn (of 298 executed)</div>
+
+<h3>Bugs by severity</h3>
+<div class="grid stats">
+  <div class="card sev-crit"><div class="n">4</div><div class="l">Critical</div></div>
+  <div class="card sev-high"><div class="n">13</div><div class="l">High</div></div>
+  <div class="card sev-med"><div class="n">12</div><div class="l">Medium</div></div>
+  <div class="card sev-low"><div class="n">15</div><div class="l">Low</div></div>
+  <div class="card"><div class="n">44</div><div class="l">Total bugs</div></div>
+</div>
+
+<h2>Test suite dashboard</h2>
+<div class="scroll">
+<table>
+  <thead><tr><th>Suite</th><th>Cases</th><th>Pass</th><th>Fail</th><th style="width:190px">Result</th><th>Notes</th></tr></thead>
+  <tbody id="suites"></tbody>
+</table>
+</div>
+
+<h2>Test case results</h2>
+<p class="muted" style="font-size:13.5px">
+  Every case below was executed. Nothing is marked PASS on code reading alone. Engine-suite
+  passes are grouped by scenario family where the lane ran many variants of one rule; all
+  failures are listed individually.
+</p>
+<div class="controls">
+  <input type="search" id="q" placeholder="Search id, feature, scenario…" aria-label="Search test cases">
+  <select id="fStatus" aria-label="Filter by status">
+    <option value="">All statuses</option><option>PASS</option><option>FAIL</option><option>N/A</option>
+  </select>
+  <select id="fSuite" aria-label="Filter by suite"><option value="">All suites</option></select>
+  <select id="fSev" aria-label="Filter by severity">
+    <option value="">All severities</option><option>CRITICAL</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option>
+  </select>
+</div>
+<div class="scroll">
+<table>
+  <thead><tr><th style="width:118px">ID</th><th style="width:96px">Suite</th><th>Feature</th><th>Scenario</th><th style="width:96px">Status</th><th style="width:86px">Severity</th><th style="width:86px">Bug</th></tr></thead>
+  <tbody id="cases"></tbody>
+</table>
+</div>
+<div class="muted" id="count" style="font-size:12.5px;margin-top:8px"></div>
+
+<h2>Critical bugs</h2>
+
+<details open>
+  <summary><span class="badge b-crit">CRITICAL</span> BUG-001 — Kicking a player mid-match deadlocks the match and bricks the room</summary>
+  <div class="body">
+    <p style="margin:0 0 14px;padding:8px 12px;border-radius:6px;background:var(--pass-bg);color:var(--pass);font-weight:600;font-size:13px">&#10003; Fixed 2026-09-01 &mdash; migration <code>0074</code>. See <a href="#fix-phase" style="color:inherit">Fix phase update</a>.</p>
+    <dl class="kv">
+      <dt>Category</dt><dd>State corruption / integration seam</dd>
+      <dt>Feature</dt><dd>Moderation ↔ match lifecycle</dd>
+      <dt>Test case</dt><dd>TC-SEAM-004</dd>
+      <dt>Reproducibility</dt><dd>100% — reproduced via the real <code>moderation_kick_ban</code> RPC</dd>
+      <dt>Violates</dt><dd>FR-40</dd>
+    </dl>
+    <p><strong>Steps.</strong> Two seated players. Make it Bo's turn. Host calls
+    <code>moderation_kick_ban(room, bo)</code>.</p>
+    <p><strong>Expected.</strong> Bo's match seat is settled atomically with the participant
+    deletion, leaving no orphaned seat, and play continues.</p>
+    <p><strong>Actual.</strong> Bo leaves <code>room_participants</code> (0 rows) but his
+    <code>city_match_players</code> seat survives as <code>status='active'</code>. The match stays
+    <code>active</code> with <code>current_seat = 1</code>. Ann — the only person left — receives
+    <code>CITY_NOT_YOUR_TURN</code> for both roll and end-turn. Nothing can advance the turn.</p>
+    <p><strong>Blast radius, measured.</strong></p>
+    <pre>New match in that room  → CITY_MATCH_ALREADY_EXISTS
+Delete / close the room → ROOM_HAS_LIVE_MATCH
+Client-callable routine that can abandon a match → none exist (0 rows)</pre>
+    <p>The room becomes unusable for Spintra City. It self-heals only via
+    <code>cleanup_inactive_rooms</code>, which force-deletes idle City rooms after
+    <strong>24 hours</strong> with nobody online. The only workaround is to abandon the room,
+    losing the room code, invite links, QR codes and scoreboard continuity.</p>
+    <p><strong>Suggested fix.</strong> Settle the seat in the same transaction as the participant
+    delete, and add a host-callable abandon path.</p>
+  </div>
+</details>
+
+<details>
+  <summary><span class="badge b-crit">CRITICAL</span> BUG-002 — A kicked and banned player keeps full control of their seat</summary>
+  <div class="body">
+    <p style="margin:0 0 14px;padding:8px 12px;border-radius:6px;background:var(--pass-bg);color:var(--pass);font-weight:600;font-size:13px">&#10003; Fixed 2026-09-01 &mdash; migration <code>0071</code>. See <a href="#fix-phase" style="color:inherit">Fix phase update</a>.</p>
+    <dl class="kv">
+      <dt>Category</dt><dd>Authorization / moderation bypass</dd>
+      <dt>Test case</dt><dd>TC-SEAM-005</dd>
+      <dt>Reproducibility</dt><dd>100%</dd>
+    </dl>
+    <p><strong>Root cause.</strong> <code>city_join_seat</code> is the <em>only</em> City RPC that
+    calls <code>is_member_of_room</code>. Every other gameplay RPC authorizes on seat occupancy
+    alone, so room membership is checked once at seat time and never re-verified.
+    <code>city_rate_limit_check</code> only counts attempts; it does not authorize.</p>
+    <p><strong>Evidence.</strong> After a real kick+ban (<code>bo_in_room = 0</code>,
+    <code>bo_banned = 1</code>), the banned user executed:</p>
+    <pre>city_roll_dice  → {"to":9,"dice":[4,5],"landing":{"action":"may_buy"}}   moved
+city_build      → {"cost":100,"space":6,"buildings":1}                 built
+city_mortgage   → {"space":8,"raised":45}                              mortgaged
+city_end_turn   → {"next_seat":0}                                      advanced the turn
+cash 1600 → 1545</pre>
+    <p><strong>Impact.</strong> Moderation is entirely ineffective inside a match. An abusive
+    player can be removed from the chat around the game but not from the game.</p>
+    <p><strong>Suggested fix.</strong> Re-check room membership in every City RPC. This single
+    change closes the whole class.</p>
+  </div>
+</details>
+
+<details>
+  <summary><span class="badge b-crit">CRITICAL</span> BUG-003 — An absent active player stalls the match forever</summary>
+  <div class="body">
+    <p style="margin:0 0 14px;padding:8px 12px;border-radius:6px;background:var(--pass-bg);color:var(--pass);font-weight:600;font-size:13px">&#10003; Fixed 2026-09-01 &mdash; migration <code>0076</code>. See <a href="#fix-phase" style="color:inherit">Fix phase update</a>.</p>
+    <dl class="kv"><dt>Test case</dt><dd>TC-SPEC-032 / TC-REC-001</dd>
+    <dt>Violates</dt><dd>FR-25 … FR-33, FR-41 … FR-51</dd></dl>
+    <p>No <code>city_claim_timeout</code>, <code>city_retire</code>, <code>city_kick</code>,
+    <code>city_pause</code>, <code>city_autopilot</code> or <code>city_resume</code> routine
+    exists. With <code>turn_started_at</code> set two hours in the past, the match stayed
+    <code>active</code> on the absent seat and the other player could do nothing.
+    <code>city_leave_seat</code> refuses once status ≠ <code>lobby</code>;
+    <code>city_declare_bankruptcy</code> refuses a solvent player with <code>CITY_NO_DEBT</code>.
+    A player closing their tab is enough to trigger this — no bad intent required.</p>
+    <p><strong>What the surviving player actually sees</strong> (verified in a browser, tab closed
+    mid-turn):</p>
+    <ul>
+      <li>The match sits frozen — <code>status=active</code>, <code>current_seat</code> and
+        <code>phase</code> stuck on the absent seat.</li>
+      <li><strong>No countdown is rendered at all.</strong> <code>pace_seconds = 40</code> is stored
+        on the match row and never surfaces. There is not even a misleading timer running down to
+        nothing — the player gets <em>no signal that a clock exists</em>.</li>
+      <li><strong>No escape control exists.</strong> Every <code>&lt;button&gt;</code> was scanned
+        for skip / kick / remove / abandon / end-match / forfeit / retire: none.</li>
+      <li>The vanished player is still counted as present, and the status line never acknowledges
+        the disappearance.</li>
+    </ul>
+  </div>
+</details>
+
+<details>
+  <summary><span class="badge b-crit">CRITICAL</span> BUG-004 — A pending debt can become undischargeable, deadlocking the match</summary>
+  <div class="body">
+    <p style="margin:0 0 14px;padding:8px 12px;border-radius:6px;background:var(--pass-bg);color:var(--pass);font-weight:600;font-size:13px">&#10003; Fixed 2026-09-01 &mdash; migration <code>0072</code>. See <a href="#fix-phase" style="color:inherit">Fix phase update</a>.</p>
+    <dl class="kv"><dt>Test case</dt><dd>TC-EDGE-010</dd></dl>
+    <p><code>city_try_settle_debt</code> is revoked from clients and runs only as a side effect of
+    <code>city_mortgage</code>/<code>city_sell_building</code>. A player who raises money any other
+    way — e.g. selling their last property in a trade — keeps the debt with nothing left to
+    mortgage. Every exit closes at once:</p>
+    <pre>end_turn / roll_dice / build / unmortgage → CITY_SETTLE_DEBT_FIRST
+declare_bankruptcy                        → CITY_CAN_PAY
+mortgage / sell_building                  → CITY_NOT_YOURS
+buy / decline                             → CITY_NOT_FOR_SALE</pre>
+    <p>Observed end state: cash 510, <code>pending_debt</code> 35, zero assets, no legal move.</p>
+  </div>
+</details>
+
+
+<h2>High-severity bugs</h2>
+<div id="highs"></div>
+
+<h2>Medium and low bugs</h2>
+<div class="scroll">
+<table>
+  <thead><tr><th style="width:96px">ID</th><th style="width:86px">Severity</th><th>Finding</th></tr></thead>
+  <tbody id="minor"></tbody>
+</table>
+</div>
+
+<h2>What is verified correct</h2>
+<p>Recording proven-sound controls matters as much as recording defects.</p>
+<ul>
+  <li><strong>Server-derived randomness is properly protected.</strong> <code>rng_seed</code> and
+    <code>rng_counter</code> are unreadable via direct select, <code>select=*</code>, the
+    <code>order=</code> side channel, the <code>=gt.</code> filter side channel, and PostgREST
+    embedding — all six paths return <code>42501</code>. <code>p_seed</code> is restricted to
+    <code>service_role</code>. Since every die and card derives from the seed, a leak would have
+    been the worst defect possible here.</li>
+  <li><strong>Cash conservation</strong> holds across trades (3200 → 3200) and bankruptcies
+    (1700 → 1700, no minting).</li>
+  <li><strong>Concurrency</strong> — parallel roll, buy and trade-accept each applied exactly once
+    via <code>pg_advisory_xact_lock</code>.</li>
+  <li><strong>Realtime multiplayer sync</strong> — verified in two browser contexts: a seat taken
+    in one appeared in the other without a reload, and a roll propagated both ways.</li>
+  <li><strong>Index coverage</strong> — every query pattern is covered, including partial unique
+    indexes for the live match per room and the one running auction per match.</li>
+  <li><strong>Board data integrity</strong> — 9/9 invariants: 40 spaces, all rent arrays length 6
+    and strictly increasing, every country group sharing one build cost and rent table, uniform
+    airport and utility pricing, 32 cards across 2 balanced decks.</li>
+  <li><strong>Internal engine functions are correctly revoked</strong> from clients
+    (<code>city_charge</code>, <code>city_bankrupt_seat</code>, <code>city_resolve_landing</code>,
+    <code>city_apply_card</code>, <code>city_finish_match</code>, and others).</li>
+  <li><strong>Input validation</strong> — SQL injection inert, usernames truncated, non-UUID and
+    overflow inputs fail closed.</li>
+  <li><strong><code>npm run verify</code> and <code>npm run build</code></strong> both clean.</li>
+</ul>
+
+<h2>Not tested — none remain</h2>
+<p>Every item previously listed as untested has been executed. One item is <strong>not
+applicable</strong> rather than untested, and the distinction matters.</p>
+<div class="scroll">
+<table>
+  <thead><tr><th style="width:230px">Area</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Load / concurrency</strong></td><td><strong>PASS.</strong> 20 simultaneous matches × 60 engine operations = <strong>1,200 ops in 1,498 ms</strong>. Zero deadlocks, zero lock timeouts. Post-load integrity spotless: 0 negative-cash seats, 0 orphaned assets, 0 out-of-range positions, 0 doubly-owned spaces, 0 deadlocks recorded by Postgres.</td></tr>
+    <tr><td><strong>Long-session memory</strong></td><td><strong>PASS.</strong> A complete match (92 actions) profiled via CDP. Heap <strong>17.1 MB → 13.7 MB</strong>, listeners <strong>873 → 520</strong> — both ended <em>below</em> baseline. Nodes 958 → 905; documents stayed 1. Listeners spiked transiently to 4,900 mid-match then collapsed; it recovered cleanly, so not a leak, but plausibly the same root cause as BUG-037/038.</td></tr>
+    <tr><td><strong>Real device profiles</strong></td><td><strong>PASS.</strong> iPhone 13 (390 px, DPR 3), Pixel 5 (393 px, DPR 2.75), iPad gen 7 (810 px, DPR 2), Galaxy S9+ (320 px, DPR 4.5) — genuine touch emulation and mobile UAs. Zero horizontal overflow on all four, board rendered, real <code>tap()</code> worked. One defect: BUG-043. <em>This is device emulation, not physical hardware.</em></td></tr>
+    <tr><td><strong>Production behaviour</strong></td><td><strong>N/A — not a testing gap.</strong> Spintra City does not exist on production; migrations <code>0063</code>–<code>0070</code> were never applied there, so there is no behaviour to observe. Making it testable would mean pushing those migrations live, shipping all 4 critical bugs in this report to real users — including the room-bricking kick and the banned-player bypass. It becomes testable once <code>0071</code> lands and the feature ships.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note">
+  <strong>A correction to an earlier stated reason.</strong> An earlier draft said "only Chromium
+  is installed for Playwright here." That was false — Firefox and WebKit were installed all
+  along, and the cross-browser suite has since been run (all three pass). The reason was written
+  without being checked.
+</div>
+
+<div class="note">
+  <strong>Four gaps were closed after the environment was restored.</strong>
+  Cross-browser (Firefox, WebKit, Chromium — all pass, zero console errors), trade offers over
+  realtime (recipient sees the offer in ~1 s, no reload), a full auction in the live UI
+  (decline → auction → bid accepted → settled → space transferred), and offline/reconnect/rejoin
+  (recovers in ~2 s with no reload; rejoining restores the seat, not spectator). One stated
+  reason in an earlier draft — "only Chromium is installed" — was simply wrong, and is corrected
+  here. The reconnect result also <strong>positively disproves</strong> the withdrawn
+  realtime-recovery finding.
+</div>
+
+<div class="note">
+  <strong>One result was withdrawn rather than reported.</strong> An early run appeared to show
+  realtime failing to resume after reconnect. The tester had force-enabled a disabled button via
+  DOM tampering earlier in that run, and the tampered element survived into the later steps — so
+  the result was measuring its own contamination. It is withdrawn, not downgraded. No
+  realtime-recovery defect is claimed on that evidence.
+</div>
+
+<div class="note">
+  <strong>An environment issue that is <em>not</em> a product bug.</strong> Reached over
+  <code>127.0.0.1</code>, the <code>next dev</code> server never makes client components
+  interactive: the real Create Room button stays permanently disabled and no
+  <code>/auth/v1/</code> request is ever made. This is <strong>Next 16's dev-server cross-origin
+  restriction</strong>, not a hydration defect and not a City defect — it affects all room types.
+  Measured directly: <code>http://localhost:4010</code> → button enabled <strong>yes</strong>;
+  <code>http://127.0.0.1:4010</code> → <strong>no</strong>. On a production build
+  (<code>next build</code> + <code>next start</code>) the same flow creates a room and reaches the
+  City lobby immediately over either host, so all browser verdicts in this report were taken
+  against a production build. The repo's own
+  <code>tests/city-lobby.spec.ts</code> cannot pass on a dev server because it clicks a hidden
+  E2E shim wired by a <code>useEffect</code>. Recorded as a harness limitation, not counted as a
+  product failure.
+</div>
+
+<h2>Risk assessment</h2>
+<div class="scroll">
+<table>
+  <thead><tr><th>Risk</th><th style="width:180px">Likelihood</th><th>Impact</th></tr></thead>
+  <tbody>
+    <tr><td>A match is destroyed by a disconnect, kick, or debt deadlock</td><td><strong>High</strong> — needs no bad intent, only a closed tab</td><td>Match lost; room bricked for 24 h</td></tr>
+    <tr><td>A banned player continues disrupting a match</td><td>Medium</td><td>Moderation unusable; direct safety concern</td></tr>
+    <tr><td>An outsider grieves auctions across every room</td><td>Medium — one unauthenticated HTTP call</td><td>Match outcomes altered; money destroyed</td></tr>
+    <tr><td>Score/XP inflation via self-PATCH</td><td>Medium</td><td>Scoreboard integrity across the whole site</td></tr>
+    <tr><td>RNG prediction</td><td><strong>Low</strong> — control verified sound</td><td>Would be total, if it ever regressed</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Recommended fixes, in order</h2>
+<ol>
+  <li><strong>Re-check room membership in every City RPC</strong>, not just <code>city_join_seat</code>. Fixes BUG-002 and closes the class.</li>
+  <li><strong>Settle the seat atomically on kick/leave</strong> and add a host-callable abandon path. Fixes BUG-001.</li>
+  <li><strong>Build the cross-cutting slice</strong> — clock enforcement, timeout defaults, autopilot, retire. Fixes BUG-003/006/007 and is the only thing that makes the game survivable in the wild.</li>
+  <li><strong>Revoke <code>p_force</code> from clients</strong> on <code>city_settle_auction</code> and add its missing auth check. Fixes BUG-008.</li>
+  <li><strong>Guard every command on <code>status = 'active'</code></strong> and make null comparisons safe (<code>is distinct from</code>). Fixes BUG-010.</li>
+  <li><strong>Route every money movement through <code>city_try_settle_debt</code></strong> and let a debtor act off-turn. Fixes BUG-004/005/024.</li>
+  <li>Constrain <code>room_participants</code> self-update so <code>xp</code>/<code>rank</code> are engine-only. Fixes BUG-012.</li>
+  <li>Point the health check at <code>/realtime/v1/websocket</code> with a real upgrade, or drop the probe. Fixes BUG-013.</li>
+  <li>Then the medium/low list — BUG-016 and BUG-017 are the most player-visible.</li>
+</ol>
+
+<h2>Final release assessment</h2>
+<div class="verdict" style="display:block;font-size:17px;padding:16px 18px">NOT READY FOR RELEASE</div>
+<p>
+  Not because the game is bad. The core loop is genuinely solid and the hardest control in the
+  system is correctly protected. It is not releasable because five distinct defects can each
+  permanently end a match that is going fine, one of them takes the whole room with it for
+  24 hours, and moderation does not work — a banned player keeps playing. Those are the
+  fix-before-anyone-plays items.
+</p>
+
+<footer>
+  Spintra City QA audit · executed against a local Docker Supabase stack and a local production
+  build · production never contacted · companion documents:
+  <code>QA_REPORT.md</code>, <code>QA_TEST_PLAN.md</code>, <code>QA_PROGRESS.md</code>.
+</footer>
+
+</div>
+
+<script>
+const SUITES = [
+  ["TC-GAME","Gameplay",20,20,0,"Turn order, doubles, salary, movement all correct"],
+  ["TC-DEV","Development",20,16,4,"Even-build correct; supply limit and phase gating are not"],
+  ["TC-INS","Insolvency",7,7,0,"Full ladder correct"],
+  ["TC-CARD","Cards",16,11,5,"30/32 cards correct; deck permutation breaks with a visa"],
+  ["TC-DET","Detention",10,9,1,"Doubles-escape grants a free extra roll"],
+  ["TC-TRADE","Trading",18,15,3,"Atomicity and staleness correct; debt interaction is not"],
+  ["TC-AUCT","Auctions",11,9,2,"Mechanics correct; force-settle exposed to clients"],
+  ["TC-END","Match end",8,7,1,"Scoring correct; bankruptcy hands over buildings"],
+  ["TC-EDGE","Negative/edge",10,7,3,"Finished matches remain mutable"],
+  ["TC-SEC","Security",20,14,6,"RNG seed protection solid; auth gaps elsewhere"],
+  ["TC-API","Backend/API",12,9,3,"Authorization matrix mostly correct"],
+  ["TC-DB","Database",16,15,1,"Concurrency, cash conservation and indexes all sound"],
+  ["TC-SPEC","Spec conformance",51,29,22,"20 MUST requirements unimplemented"],
+  ["TC-SEAM","Existing-site seams",10,5,5,"The weakest area of the whole feature"],
+  ["TC-MULTI","Multiplayer",19,19,0,"Sync, server authority, live trade offers and a full auction all sound"],
+  ["TC-UI","Interface",10,8,2,"Panels and trading correct; consent banner intercepts clicks, holdings dead off-turn"],
+  ["TC-UX","Usability",6,4,2,"Error copy genuinely good; narration and post-refresh guidance are not"],
+  ["TC-REC","Recovery",6,4,2,"Reconnect and rejoin both recover cleanly; tab close is unrecoverable"],
+  ["TC-FE","Frontend",5,2,3,"Console clean; refetch amplification and global subscriptions"],
+  ["TC-COMPAT","Viewports, themes, browsers & devices",17,15,2,"No horizontal page scroll anywhere; themes, 3 engines and 4 device profiles pass"],
+  ["TC-PERF","Load & memory",3,3,0,"1,200 ops across 20 concurrent matches, 0 deadlocks; no memory growth"],
+  ["TC-REG","Regression",3,3,0,"verify, build and an app-level playthrough all clean"],
+];
+
+const C = [];
+const add = (id,suite,feature,scenario,status,sev,bug)=>C.push({id,suite,feature,scenario,status,sev:sev||"",bug:bug||""});
+
+// ── Gameplay
+add("TC-GAME-001","TC-GAME","Turn order","Seat rotation wraps correctly past the last seat","PASS");
+add("TC-GAME-002","TC-GAME","Doubles","Rolling doubles grants another turn","PASS");
+add("TC-GAME-003","TC-GAME","Doubles","Three consecutive doubles sends to detention, no movement or salary","PASS");
+add("TC-GAME-004","TC-GAME","Salary","Salary paid exactly once when passing Departure","PASS");
+add("TC-GAME-005","TC-GAME","Movement","Position arithmetic wraps past index 39","PASS");
+add("TC-GAME-006","TC-GAME","Purchase","Landing on an unowned property offers buy/decline","PASS");
+add("TC-GAME-007","TC-GAME","Rent","Base rent on an owned, unmortgaged property","PASS");
+add("TC-GAME-008","TC-GAME","Rent","Complete country group doubles undeveloped rent","PASS");
+add("TC-GAME-009","TC-GAME","Rent","All five building tiers charge the correct rent","PASS");
+add("TC-GAME-010","TC-GAME","Rent","Mortgaged property charges no rent","PASS");
+add("TC-GAME-011","TC-GAME","Rent","Airport rent 30/60/120/240 by count owned","PASS");
+add("TC-GAME-012","TC-GAME","Rent","Mortgaged airports excluded from the count","PASS");
+add("TC-GAME-013","TC-GAME","Rent","Utility rent 5x / 12x dice total","PASS");
+add("TC-GAME-014","TC-GAME","Tax","Both tax spaces charge the seeded amount","PASS");
+add("TC-GAME-015","TC-GAME","Corners","Layover is a no-op; index 10 is just-visiting","PASS");
+add("TC-GAME-016","TC-GAME","Dice","Dice derived deterministically from seed+counter","PASS");
+add("TC-GAME-017","TC-GAME","Turn","End-turn advances to the next non-bankrupt seat","PASS");
+add("TC-GAME-018","TC-GAME","Purchase","Buying deducts the exact list price","PASS");
+add("TC-GAME-019","TC-GAME","Purchase","Declining routes to an auction","PASS");
+add("TC-GAME-020","TC-GAME","Lobby","Salary/starting cash 1600 applied to every seat","PASS");
+// ── Development
+add("TC-DEV-001","TC-DEV","Build","Even-build enforced when building up","PASS");
+add("TC-DEV-002","TC-DEV","Build","Even-build enforced when selling down","PASS");
+add("TC-DEV-003","TC-DEV","Build","Building without the full country group refused","PASS");
+add("TC-DEV-004","TC-DEV","Build","Set completeness counts a mortgaged member","PASS");
+add("TC-DEV-005","TC-DEV","Sell","Sell-building refunds half the build cost","PASS");
+add("TC-DEV-006","TC-DEV","Mortgage","Mortgage/unmortgage interest applied","PASS");
+add("TC-DEV-008","TC-DEV","Supply","building_supply_limit=2 still allowed a 5th building","FAIL","LOW","BUG-028");
+add("TC-DEV-015","TC-DEV","Mortgage","Integer truncation: Porto 55 raises 27 not 27.5","FAIL","LOW","BUG-030");
+add("TC-DEV-018","TC-DEV","Phase","Building succeeds during an auction phase","FAIL","LOW","BUG-029");
+add("TC-DEV-019","TC-DEV","Phase","Mortgaging succeeds during required_decision","FAIL","LOW","BUG-029");
+add("TC-DEV-020","TC-DEV","Build","10 further build/mortgage variants","PASS");
+// ── Insolvency
+add("TC-INS-001","TC-INS","Charge","Charge the player can pay is taken immediately","PASS");
+add("TC-INS-002","TC-INS","Charge","Survivable shortfall opens the raise-funds window","PASS");
+add("TC-INS-003","TC-INS","Charge","Debt auto-settles once liquidation covers it","PASS");
+add("TC-INS-004","TC-INS","Bankruptcy","Unpayable debt goes straight to bankruptcy","PASS");
+add("TC-INS-005","TC-INS","Bankruptcy","Creditor receives cash and assets","PASS");
+add("TC-INS-006","TC-INS","Bankruptcy","Bankruptcy to the bank returns assets unowned","PASS");
+add("TC-INS-007","TC-INS","Liquidation","city_max_liquidation truncates consistently","PASS");
+// ── Cards
+add("TC-CARD-001","TC-CARD","Deck","30 of 32 cards apply exactly as written","PASS");
+add("TC-CARD-002","TC-CARD","Deck","Per-building tiers 40/150/300 and 45/130/275","PASS");
+add("TC-CARD-003","TC-CARD","Visa","Transit visa held out of the deck","PASS");
+add("TC-CARD-009","TC-CARD","Deck","16 draws without a visa form a clean permutation","PASS");
+add("TC-CARD-004","TC-CARD","Rent card","Card 2 'double the usual rent' charged 35, not 70","FAIL","MEDIUM","BUG-017");
+add("TC-CARD-005","TC-CARD","Rent card","Card 3 'twice the standard fare' charged 30, not 60","FAIL","MEDIUM","BUG-017");
+add("TC-CARD-006","TC-CARD","Utility card","Card 10 charges 24x when both utilities held","FAIL","LOW","BUG-032");
+add("TC-CARD-010","TC-CARD","Deck","Deck stops being a permutation once a visa is held","FAIL","MEDIUM","BUG-016");
+add("TC-CARD-013","TC-CARD","Charge","Off-turn charge stalls the payer until their own turn (re-tested)","FAIL","HIGH","BUG-005");
+add("TC-CARD-015","TC-CARD","Charge","Unaffordable card charge leaves the wrong phase","FAIL","MEDIUM","BUG-015");
+add("TC-CARD-016","TC-CARD","Movement","Card that moves you triggers destination landing rules","PASS");
+// ── Detention
+add("TC-DET-001","TC-DET","Escape","Escape by paying the fee","PASS");
+add("TC-DET-002","TC-DET","Escape","Escape by spending a transit visa","PASS");
+add("TC-DET-003","TC-DET","Escape","Failed attempt increments the turn counter","PASS");
+add("TC-DET-004","TC-DET","Escape","Turn cap forces the fee","PASS");
+add("TC-DET-005","TC-DET","Rent","Rent still owed to and by detained players","PASS");
+add("TC-DET-008","TC-DET","Escape","Doubles escape rolls twice but moves once — matches spec (re-tested)","FAIL","LOW","BUG-018");
+// ── Trading
+add("TC-TRADE-001","TC-TRADE","Atomicity","Both sides transfer or neither does","PASS");
+add("TC-TRADE-003","TC-TRADE","Staleness","Ownership change between propose and accept rejected","PASS");
+add("TC-TRADE-004","TC-TRADE","Staleness","Cash change between propose and accept rejected","PASS");
+add("TC-TRADE-006","TC-TRADE","Staleness","Development change between propose and accept rejected","PASS");
+add("TC-TRADE-007","TC-TRADE","Authorization","Accept/decline/withdraw restricted to the right party","PASS");
+add("TC-TRADE-008","TC-TRADE","Expiry","Offers expire at turn boundaries","PASS");
+add("TC-TRADE-002","TC-TRADE","Validation","Self-trade leaks a raw CHECK violation","FAIL","LOW","BUG-031");
+add("TC-TRADE-013","TC-TRADE","Expiry","Expired-offer status update rolled back by its own RAISE","FAIL","MEDIUM","BUG-023");
+add("TC-TRADE-017","TC-TRADE","Debt","Trade cash does not discharge a pending debt","FAIL","MEDIUM","BUG-024");
+add("TC-TRADE-018","TC-TRADE","Debt","Debtor strips every asset by accepting a trade","FAIL","HIGH","BUG-011");
+// ── Auctions
+add("TC-AUCT-001","TC-AUCT","Bidding","10-Spin floor enforced","PASS");
+add("TC-AUCT-002","TC-AUCT","Bidding","Bids must land on the 10-Spin step","PASS");
+add("TC-AUCT-003","TC-AUCT","Bidding","No bidding on credit","PASS");
+add("TC-AUCT-005","TC-AUCT","Bidding","Undercut refused; clock resets on each bid","PASS");
+add("TC-AUCT-006","TC-AUCT","Settle","All-pass ends the auction immediately","PASS");
+add("TC-AUCT-007","TC-AUCT","Settle","No bids leaves the space unowned","PASS");
+add("TC-AUCT-008","TC-AUCT","Settle","Winner who spent the money wins nothing","PASS");
+add("TC-AUCT-004","TC-AUCT","Settle","p_force closes an auction early, bypassing lock and deadline","FAIL","HIGH","BUG-008");
+add("TC-AUCT-011","TC-AUCT","Settle","Declining while in debt auctions an owned property, destroying cash","FAIL","HIGH","BUG-009");
+// ── Match end
+add("TC-END-001","TC-END","Net worth","Net-worth formula matches DESIGN 3.1H exactly","PASS");
+add("TC-END-002","TC-END","Timed","Timed mode completes the round before ending","PASS");
+add("TC-END-003","TC-END","Scoring","Score and XP awarded exactly once","PASS");
+add("TC-END-004","TC-END","Scoring","Re-running finish returns finished:false, no double pay","PASS");
+add("TC-END-005","TC-END","Results","Finished match readable via city_match_results","PASS");
+add("TC-END-006","TC-END","Post-match","A further match can be opened after one ends","PASS");
+add("TC-END-007","TC-END","Bankruptcy","Buildings handed over instead of sold to the bank","FAIL","HIGH","BUG-014");
+// ── Edge
+add("TC-EDGE-001","TC-EDGE","Turn","Acting out of turn refused","PASS");
+add("TC-EDGE-003","TC-EDGE","Phase","Acting in the wrong phase refused","PASS");
+add("TC-EDGE-004","TC-EDGE","Input","Spamming the same RPC twice handled","PASS");
+add("TC-EDGE-005","TC-EDGE","Turn","Ending a turn with an unpaid debt refused","PASS");
+add("TC-EDGE-002","TC-EDGE","Errors","Six routines leak a NOT NULL violation on a bad match id","FAIL","LOW","BUG-031");
+add("TC-EDGE-006","TC-EDGE","Lifecycle","A finished match can be re-opened and mutated","FAIL","HIGH","BUG-010");
+add("TC-EDGE-010","TC-EDGE","Debt","Pending debt becomes undischargeable, deadlocking the match","FAIL","CRITICAL","BUG-004");
+// ── Security
+add("TC-SEC-004","TC-SEC","RNG","Direct select of rng_seed denied (42501)","PASS");
+add("TC-SEC-005","TC-SEC","RNG","select=* does not leak rng_seed","PASS");
+add("TC-SEC-006","TC-SEC","RNG","order=rng_seed side channel denied","PASS");
+add("TC-SEC-007","TC-SEC","RNG","rng_seed=gt.0 filter side channel denied","PASS");
+add("TC-SEC-008","TC-SEC","RNG","rng_counter unreadable","PASS");
+add("TC-SEC-009","TC-SEC","RNG","PostgREST embedding cannot reach rng_seed","PASS");
+add("TC-SEC-010","TC-SEC","RNG","Client-supplied p_seed rejected for non-service roles","PASS");
+add("TC-SEC-028","TC-SEC","XP","Editing another player's xp blocked by trigger","PASS");
+add("TC-SEC-029","TC-SEC","XP","Outsider editing room xp blocked by RLS","PASS");
+add("TC-SEC-030","TC-SEC","Scoring","Self-insert into room_scores blocked","PASS");
+add("TC-SEC-037","TC-SEC","Injection","SQL injection via room code / username inert","PASS");
+add("TC-SEC-038","TC-SEC","Input","Oversized username truncated to 100","PASS");
+add("TC-SEC-039","TC-SEC","Input","Non-UUID match id rejected","PASS");
+add("TC-SEC-040","TC-SEC","Input","Integer overflow bid rejected","PASS");
+add("TC-SEC-001","TC-SEC","Disclosure","city_assets world-readable cross-room","FAIL","LOW","BUG-025");
+add("TC-SEC-002","TC-SEC","Disclosure","city_trade_offers / city_auctions world-readable","FAIL","LOW","BUG-025");
+add("TC-SEC-003","TC-SEC","Disclosure","city_match_results view bypasses RLS cross-room","FAIL","MEDIUM","BUG-021");
+add("TC-SEC-023","TC-SEC","Authorization","Outsider force-settles an auction with no JWT","FAIL","HIGH","BUG-008");
+add("TC-SEC-024","TC-SEC","Race","Parallel force-settle double-charges the winner","FAIL","HIGH","BUG-008");
+add("TC-SEC-027","TC-SEC","XP","Self-PATCH sets own xp=999999 and rank=legend","FAIL","HIGH","BUG-012");
+// ── API
+add("TC-API-017","TC-API","Grants","Internal engine functions revoked from clients","PASS");
+add("TC-API-018","TC-API","Authorization","Outsider/other-room/spectator roll refused","PASS");
+add("TC-API-019","TC-API","Authorization","Wrong-turn roll and end-turn refused","PASS");
+add("TC-API-020","TC-API","Authorization","Join/ready on a started match refused","PASS");
+add("TC-API-021","TC-API","Grants","city_finish_match not client-callable","PASS");
+add("TC-API-022","TC-API","Grants","city_charge not client-callable","PASS");
+add("TC-API-043","TC-API","Grants","city_decline_purchase IS callable (lane claim not reproduced)","PASS");
+add("TC-API-025","TC-API","Disclosure","city_net_worth leaks exact hidden cash to an outsider (RPC is invertible)","FAIL","MEDIUM","BUG-019");
+add("TC-INS-008","TC-INS","Liquidation","city_max_liquidation returns 0 via NULL propagation on stations","FAIL","MEDIUM","BUG-045");
+add("TC-CARD-017","TC-CARD","Charge","city_charge overwrites pending_debt, erasing a prior creditor claim","FAIL","MEDIUM","BUG-044");
+add("TC-API-026","TC-API","RNG","Seed entropy: random()*2^53 into md5 with last_roll as known plaintext","FAIL","LOW","BUG-027");
+add("TC-API-036","TC-API","Rate limit","Failing commands unmetered; successful ones ARE throttled (re-tested)","FAIL","LOW","BUG-020");
+// ── DB
+add("TC-DB-011","TC-DB","Writes","PATCH own cash blocked by RLS","PASS");
+add("TC-DB-012","TC-DB","Writes","PATCH city_matches status/seat/seed blocked","PASS");
+add("TC-DB-013","TC-DB","Writes","Self-seat INSERT blocked","PASS");
+add("TC-DB-015","TC-DB","Writes","DELETE opponent row blocked","PASS");
+add("TC-DB-016","TC-DB","Writes","Results view not auto-updatable","PASS");
+add("TC-DB-031","TC-DB","Race","Parallel roll applied once","PASS");
+add("TC-DB-032","TC-DB","Race","Parallel buy applied once","PASS");
+add("TC-DB-033","TC-DB","Race","Parallel trade-accept applied once","PASS");
+add("TC-DB-034","TC-DB","Integrity","Cash conserved across a trade","PASS");
+add("TC-DB-035","TC-DB","Integrity","Cash conserved across a bankruptcy","PASS");
+add("TC-DB-050","TC-DB","Indexes","All query patterns index-covered","PASS");
+add("TC-DB-051","TC-DB","Board data","9/9 board invariants hold","PASS");
+add("TC-DB-052","TC-DB","Grants","Blanket DML grants on city tables (blocked by RLS today)","FAIL","LOW","BUG-026");
+// ── Spec conformance (representative)
+add("TC-SPEC-004","TC-SPEC","FR-04","Match cannot start with fewer than 2 seated players","PASS");
+add("TC-SPEC-005","TC-SPEC","FR-05","Roster locks at start; late arrival refused","PASS");
+add("TC-SPEC-007","TC-SPEC","FR-07","Classic and timed end conditions","PASS");
+add("TC-SPEC-008","TC-SPEC","FR-08","Results awarded into the existing scoreboard","PASS");
+add("TC-SPEC-009","TC-SPEC","FR-09","A further match can start after one ends","PASS");
+add("TC-SPEC-034","TC-SPEC","FR-34","rooms_type_check admits 'city'","PASS");
+add("TC-SPEC-035","TC-SPEC","FR-35","Non-seated member refused match actions","PASS");
+add("TC-SPEC-037","TC-SPEC","FR-37","Room deletion blocked during a live match","PASS");
+add("TC-SPEC-036","TC-SPEC","FR-36","No code path makes eliminated players spectators","FAIL","LOW","BUG-033");
+add("TC-SPEC-038","TC-SPEC","FR-38","Spectators silently capped by room capacity","FAIL","MEDIUM","BUG-022");
+add("TC-SPEC-040","TC-SPEC","FR-40","Kick leaves an orphaned seat","FAIL","CRITICAL","BUG-001");
+add("TC-SPEC-042","TC-SPEC","FR-42","pace_seconds never settable by the host","FAIL","LOW","BUG-033");
+add("TC-SPEC-025","TC-SPEC","FR-25","Disconnect grace period — not implemented","FAIL","HIGH","BUG-007");
+add("TC-SPEC-026","TC-SPEC","FR-26","Autopilot eligibility — not implemented","FAIL","HIGH","BUG-007");
+add("TC-SPEC-027","TC-SPEC","FR-27","Autopilot safe defaults — not implemented","FAIL","HIGH","BUG-007");
+add("TC-SPEC-028","TC-SPEC","FR-28","Forced retire after two autopiloted turns — not implemented","FAIL","HIGH","BUG-007");
+add("TC-SPEC-029","TC-SPEC","FR-29","Voluntary retire / host kick — not implemented","FAIL","HIGH","BUG-007");
+add("TC-SPEC-031","TC-SPEC","FR-31","Durable pause when all disconnect — not implemented","FAIL","HIGH","BUG-007");
+add("TC-SPEC-032","TC-SPEC","FR-32","Turn clock run/pause model — not implemented","FAIL","CRITICAL","BUG-003");
+add("TC-SPEC-033","TC-SPEC","FR-33","Bounded sub-clocks — not implemented","FAIL","HIGH","BUG-007");
+add("TC-SPEC-041","TC-SPEC","FR-41","Clock expiry neutral defaults — not implemented","FAIL","HIGH","BUG-007");
+add("TC-SPEC-045","TC-SPEC","FR-45","Server-side clock enforcement — not implemented","FAIL","HIGH","BUG-006");
+// ── Seams
+add("TC-SEAM-001","TC-SEAM","Room type","City rooms create and load","PASS");
+add("TC-SEAM-002","TC-SEAM","Scoreboard","room_scores activity_type admits 'city'","PASS");
+add("TC-SEAM-003","TC-SEAM","Host","city_create_match requires the host; non-host refused","PASS");
+add("TC-SEAM-006","TC-SEAM","Cleanup","cleanup_inactive_rooms force-deletes idle city rooms after 24h","PASS");
+add("TC-SEAM-007","TC-SEAM","Room delete","Live match blocks room deletion","PASS");
+add("TC-SEAM-004","TC-SEAM","Moderation","Kick orphans the seat and deadlocks the match","FAIL","CRITICAL","BUG-001");
+add("TC-SEAM-005","TC-SEAM","Moderation","Banned player retains full seat control","FAIL","CRITICAL","BUG-002");
+add("TC-SEAM-008","TC-SEAM","Recovery","No client-callable path can abandon a stuck match","FAIL","CRITICAL","BUG-001");
+add("TC-SEAM-009","TC-SEAM","Health","/api/health permanently 503 on a false realtime probe","FAIL","HIGH","BUG-013");
+add("TC-SEAM-010","TC-SEAM","XP","room_participants self-update permits arbitrary xp/rank","FAIL","HIGH","BUG-012");
+// ── Browser / multiplayer
+add("TC-MULTI-001","TC-MULTI","Creation","Create a City room and reach the lobby (prod build)","PASS");
+add("TC-MULTI-002","TC-MULTI","Seating","Both players seat and ready up","PASS");
+add("TC-MULTI-003","TC-MULTI","Realtime","Player A sees B take a seat with no reload","PASS");
+add("TC-MULTI-004","TC-MULTI","Start","Host starts; board renders all 40 tiles with both cash totals","PASS");
+add("TC-MULTI-005","TC-MULTI","Play","Roll executes and the token moves","PASS");
+add("TC-MULTI-006","TC-MULTI","Realtime","Player B sees A's roll reflected","PASS");
+add("TC-MULTI-007","TC-MULTI","Realtime","Host starts the match; B transitions to the board unaided","PASS");
+add("TC-MULTI-008","TC-MULTI","Authority","Off-turn raw fetch of roll/end-turn/buy/bankruptcy with own JWT refused 4x","PASS");
+add("TC-MULTI-009","TC-MULTI","Authority","Non-host raw city_start_match refused (CITY_NOT_HOST)","PASS");
+add("TC-MULTI-010","TC-MULTI","Sync","DB confirms move 0:0/1600 to 0:7/1850 and off-client updates unaided","PASS");
+add("TC-MULTI-011","TC-MULTI","Consistency","No contradictory state: cash badges and token sets identical","PASS");
+add("TC-MULTI-012","TC-MULTI","Sessions","Two tabs as the same player create no extra seat","PASS");
+add("TC-MULTI-013","TC-MULTI","Race","Three concurrent rolls yield one winner, two principled refusals","PASS");
+add("TC-MULTI-014","TC-MULTI","Turn","Exactly one player may roll at a time","PASS");
+add("TC-UI-001","TC-UI","Host controls","Guest sees no Start button at all","PASS");
+add("TC-UI-002","TC-UI","Holdings","Panel lists cities with correct build and mortgage prices","PASS");
+add("TC-UI-003","TC-UI","Detention","Panel shows the ways out; visa option hidden at zero","PASS");
+add("TC-UI-004","TC-UI","Trade","Panel shows both sides with prices","PASS");
+add("TC-UI-005","TC-UI","Trade","Partner owning nothing shows a sensible empty state","PASS");
+add("TC-UI-006","TC-UI","Trade","Send disabled with no partner chosen","PASS");
+add("TC-UI-007","TC-UI","Board","All 40 tiles render with both players' cash","PASS");
+add("TC-UI-008","TC-UI","Trade","Propose a trade end to end: partner, terms, send, offer row created","PASS");
+add("TC-UI-010","TC-UI","Overlay","Consent banner intercepts clicks on the Send offer button beneath it","FAIL","MEDIUM","BUG-040");
+add("TC-UI-009","TC-UI","Holdings","Controls disabled off-turn with no explanation; server enforces the same rule","FAIL","LOW","BUG-039");
+add("TC-UX-001","TC-UX","Guidance","Off-turn player is told whose turn it is","PASS");
+add("TC-UX-002","TC-UX","Guidance","On-turn player is told to roll","PASS");
+add("TC-UX-003","TC-UX","Narration","Roll narrated in plain English with the buy option","PASS");
+add("TC-UX-004","TC-UX","Errors","No raw CITY_* code ever reaches the DOM; all have human copy","PASS");
+add("TC-UX-005","TC-UX","Narration","Off-turn player never learns what happened; cash changes silently","FAIL","HIGH","BUG-035");
+add("TC-UX-006","TC-UX","Guidance","Post-refresh copy says 'roll the dice' while Roll is disabled","FAIL","MEDIUM","BUG-034");
+add("TC-REC-001","TC-REC","Refresh","Hard refresh mid-turn restores seat and controls identically","PASS");
+add("TC-REC-002","TC-REC","Disconnect","Tab closed mid-turn stalls forever: no timer, no escape control","FAIL","CRITICAL","BUG-003");
+add("TC-FE-001","TC-FE","Console","Zero console errors or warnings across a full session","PASS");
+add("TC-FE-002","TC-FE","Network","No unprovoked failed requests (only third-party GA aborts)","PASS");
+add("TC-FE-003","TC-FE","Performance","Measured 22.9 REST reads per mutation across two clients (re-tested)","FAIL","MEDIUM","BUG-037");
+add("TC-FE-004","TC-FE","Realtime","Cross-match amplification proven: another room's trade forced a full refetch","FAIL","HIGH","BUG-038");
+add("TC-FE-005","TC-FE","Health","GET /api/health permanently 503 from a wrong-path probe","FAIL","HIGH","BUG-013");
+// ── Regression
+add("TC-COMPAT-001","TC-COMPAT","Responsive","1280x800 light: zero horizontal page overflow","PASS");
+add("TC-COMPAT-002","TC-COMPAT","Responsive","1024x768 light: zero horizontal page overflow","PASS");
+add("TC-COMPAT-003","TC-COMPAT","Responsive","768x1024 light: zero horizontal page overflow","PASS");
+add("TC-COMPAT-004","TC-COMPAT","Responsive","390x844 light: zero horizontal page overflow; board scrolls in its own wrapper","PASS");
+add("TC-COMPAT-005","TC-COMPAT","Theme","1280x800 dark: palette inverts correctly","PASS");
+add("TC-COMPAT-006","TC-COMPAT","Theme","1024x768 dark: palette inverts correctly","PASS");
+add("TC-COMPAT-007","TC-COMPAT","Theme","768x1024 dark: palette inverts correctly","PASS");
+add("TC-COMPAT-008","TC-COMPAT","Theme","390x844 dark: palette inverts correctly","PASS");
+add("TC-COMPAT-009","TC-COMPAT","Layout","Site header nav overflows its container at 768x1024","FAIL","LOW","BUG-041");
+add("TC-COMPAT-010","TC-COMPAT","Browser","Firefox: full core loop with realtime sync, zero console errors","PASS");
+add("TC-COMPAT-011","TC-COMPAT","Browser","WebKit: full core loop with realtime sync, zero console errors","PASS");
+add("TC-COMPAT-012","TC-COMPAT","Browser","Chromium: full core loop with realtime sync, zero console errors","PASS");
+add("TC-MULTI-015","TC-MULTI","Trade","Sent offer reaches the recipient in ~1s with no reload","PASS");
+add("TC-MULTI-016","TC-MULTI","Auction","Declining creates a running auction and moves the match to phase=auction","PASS");
+add("TC-MULTI-017","TC-MULTI","Auction","Off-turn player sees the auction ~1s later without a reload","PASS");
+add("TC-MULTI-018","TC-MULTI","Auction","Bid accepted and recorded (high=10, seat=1)","PASS");
+add("TC-MULTI-019","TC-MULTI","Auction","Remaining player passing settles it and transfers the space","PASS");
+add("TC-REC-003","TC-REC","Offline","Acting while offline corrupts nothing; an error surfaces","PASS");
+add("TC-REC-004","TC-REC","Reconnect","Controls usable ~2s after reconnect, no reload; player can act","PASS");
+add("TC-REC-005","TC-REC","Rejoin","Leaving the room and returning restores the seat, not spectator","PASS");
+add("TC-REC-006","TC-REC","Offline","No offline or reconnecting indicator exists anywhere","FAIL","LOW","BUG-042");
+add("TC-PERF-001","TC-PERF","Load","20 concurrent matches x 60 ops = 1,200 ops in 1,498ms, zero deadlocks","PASS");
+add("TC-PERF-002","TC-PERF","Integrity","Post-load: no negative cash, orphan assets, duplicate ownership or bad positions","PASS");
+add("TC-PERF-003","TC-PERF","Memory","Full match profiled: heap 17.1MB to 13.7MB, listeners 873 to 520, no leak","PASS");
+add("TC-COMPAT-013","TC-COMPAT","Device","iPhone 13 (390px, DPR 3, touch): no overflow, board renders, tap works","PASS");
+add("TC-COMPAT-014","TC-COMPAT","Device","Pixel 5 (393px, DPR 2.75, touch): no overflow, board renders, tap works","PASS");
+add("TC-COMPAT-015","TC-COMPAT","Device","iPad gen 7 (810px, DPR 2, touch): no overflow, board renders, tap works","PASS");
+add("TC-COMPAT-016","TC-COMPAT","Device","Galaxy S9+ (320px, DPR 4.5, touch): no overflow, board renders, tap works","PASS");
+add("TC-COMPAT-017","TC-COMPAT","Touch targets","Site footer/nav links ~20px tall, below the 24px minimum","FAIL","LOW","BUG-043");
+add("TC-REG-001","TC-REG","Gates","npm run verify (typecheck + lint + docs:check)","PASS");
+add("TC-REG-002","TC-REG","Build","npm run build against local env","PASS");
+add("TC-REG-003","TC-REG","App","Two-player playthrough on the production build","PASS");
+// ── Not tested
+add("TC-NA-001","TC-SPEC","Production","Spintra City is not deployed to production — no behaviour exists to observe","N/A");
+
+const HIGHS = [
+  ["BUG-005","A player charged off-turn is stalled with a debt they cannot settle","<code>city_charge</code> sets the raise-funds phase only for the current seat, while <code>city_assert_can_manage</code> gates mortgage, sell, build, unmortgage <em>and</em> <code>declare_bankruptcy</code> on being the current seat. A \"collect from every player\" card leaves the payer with <code>pending_debt</code> and no legal action, and the card reported <code>\"total\": 200</code> when only 100 moved. <strong>Re-test correction:</strong> the freeze is temporary — the payer recovers on their own turn, so this is a stall of up to N−1 turns, not a permanent deadlock. Downgraded from CRITICAL. It also enables BUG-044."],
+  ["BUG-038","Two realtime subscriptions are global, not per-match — upgraded on re-test","<code>city_auctions</code> and <code>city_trade_offers</code> subscribe with no filter and call a bare <code>refetch()</code>. Proven behaviourally: a trade in a completely separate room made idle clients in another match run a full 5-query refetch. Both tables also carry RLS <code>USING (true)</code>, so no row-level gate compensates. Cross-tenant amplification."],
+  ["BUG-006","Turn clock is decorative","<code>turn_started_at</code>, <code>turn_clock_elapsed_ms</code> and <code>turn_clock_paused_at</code> are only ever written (reset on turn change) and never read for expiry. <code>pace_seconds</code> is never written or read. No enforcement exists anywhere, so the countdown a player sees has no consequence."],
+  ["BUG-007","20 MUST requirements unimplemented","FR-25–33 and FR-41–51: disconnect grace, autopilot, forced retire, voluntary retire, host kick, durable pause, the clock model, sub-clocks, timeout defaults. The <code>'paused'</code> and <code>'retired'</code> statuses appear in constraints but are never set by any code."],
+  ["BUG-008","city_settle_auction(p_force) is client-callable and unauthenticated","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0071</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). <code>p_force</code> skips both the advisory lock and the deadline check. Verified over HTTP with <strong>no JWT at all</strong>: it returns <code>CITY_NO_AUCTION</code> where sibling RPCs correctly return <code>CITY_NOT_AUTHENTICATED</code> — it has no auth check whatsoever. Any visitor can close any room's auction early; two parallel force-settles charge the winner twice, destroying money."],
+  ["BUG-009","Declining while in debt auctions an owned property and destroys cash","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0071</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). <code>city_decline_purchase</code> checks only the phase, which <code>city_charge</code> also sets for raise-funds, and never checks the space is unowned. The auction winner is charged while the <code>on conflict do nothing</code> insert transfers nothing. 100 Spins vanished in the repro."],
+  ["BUG-010","A finished match can be re-opened and mutated","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0071</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). <code>city_decline_purchase</code> has no <code>status &lt;&gt; 'active'</code> check, and <code>city_finish_match</code> nulls both <code>phase</code> and <code>current_seat</code>, so its two remaining guards evaluate to <code>NULL</code> rather than true and silently pass. Property transferred and cash deducted after scores and XP were written."],
+  ["BUG-011","A debtor can strip every asset by accepting a trade","<code>city_propose_trade</code> blocks a proposer in debt; <code>city_accept_trade</code> never checks <code>pending_debt</code>. The creditor received 10 cash and no properties, against DESIGN 3.1D."],
+  ["BUG-012","Arbitrary self-XP and rank","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0073</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). A player can <code>PATCH room_participants</code> on their own row and set <code>xp</code> and <code>rank</code> freely (999999 / <code>legend</code>), bypassing engine-authoritative scoring. Cross-player and cross-room edits are correctly blocked; the hole is self-edit."],
+  ["BUG-013","/api/health permanently 503","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (direct fix, <code>src/app/api/health/route.ts</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). The realtime probe GETs <code>/realtime/v1/ws</code>; that path does not exist (the real one is <code>/realtime/v1/websocket</code>) and a plain GET can never upgrade. Realtime is actually healthy — the handshake returns <strong>101</strong>. An uptime monitor on this endpoint is either permanently alarming or trained to ignore it, so a real outage would not stand out."],
+  ["BUG-034","After a mid-turn refresh the instructions contradict the buttons","With phase <code>optional_actions</code> the status line reads \"Your turn — roll the dice.\" while Roll is disabled and End turn is the only legal move. <code>lastRoll</code> is client-only React state discarded by the reload, and the fallback string ignores <code>match.phase</code>. A new player reads \"roll the dice\", finds Roll dead, and concludes the game is broken."],
+  ["BUG-035","The off-turn player is never told what happened","The active player gets a full sentence (\"Rolled 6 and 1, moved to City Fund… Collect 250 Spins.\"); the opponent sees only \"Waiting for Guest_1w4e6.\" The narration string is verifiably absent from the off-player's DOM, and cash badges change silently. In a game whose tension is money moving between players, the person <em>losing</em> the money is the one not told."],
+  ["BUG-014","Bankruptcy hands over buildings instead of selling them","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0072</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). DESIGN 3.1D requires developments sold to the bank at half cost first. The creditor received three properties still at 3 buildings each instead of 490 cash and bare deeds, and can hold a developed set they never completed — bypassing the even-build invariant."],
+];
+
+const MINOR = [
+  ["BUG-015","MEDIUM","Unaffordable card charge leaves phase <code>optional_actions</code> instead of raise-funds; the client gets no signal and <code>end_turn</code> then fails."],
+  ["BUG-016","MEDIUM","The deck stops being a permutation once a Transit Visa is held — <code>v_size</code> changes mid-cycle. 16 draws yielded card 2 twice and card 13 never. Violates FR-19."],
+  ["BUG-017","MEDIUM","Cards 2 and 3 charge half their printed rent: the multiplier is passed as a dice-total scale, which only utilities consume. 'Double the usual rent' charged 35, not 70."],
+  ["BUG-018","LOW","Escaping detention by doubles grants a whole extra roll so the player rolls twice but <strong>moves once</strong>. <strong>Re-test: this matches DESIGN §3.1A and is not a defect as filed</strong> — downgraded from MEDIUM. Residual: the fresh roll can itself set <code>doubles_count</code>. Documentation gap."],
+  ["BUG-019","MEDIUM","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0071</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). <code>city_net_worth</code> and <code>city_max_liquidation</code> leak RLS-protected cash to outsiders; <code>match_id</code> is discoverable via world-readable <code>city_assets</code>."],
+  ["BUG-020","LOW","The rate limiter is fully bypassable — the attempt row is inserted in the caller's transaction, so any command that later raises rolls its own ledger entry back. 100 rapid failing calls recorded 0 attempts. <strong>Re-test: successful commands ARE throttled</strong> (call 61 refused, exactly 60 in the ledger), so there is no gameplay advantage — a DB-load nuisance only. Downgraded from MEDIUM."],
+  ["BUG-021","MEDIUM","<code>city_match_results</code> bypasses RLS (owner-executed, not <code>security_invoker</code>): bare anon reads room codes, usernames and net worth for every finished match in every room."],
+  ["BUG-022","MEDIUM","Spectators are silently capped by room capacity — a third person could not enter a 2-capacity room. Violates FR-38."],
+  ["BUG-023","MEDIUM","<code>city_accept_trade</code> marks an expired offer <code>'expired'</code> then raises in the same transaction, rolling the update back; the offer stays <code>pending</code> forever."],
+  ["BUG-024","MEDIUM","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0072</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). Trade cash does not discharge a pending debt — the mechanism behind BUG-004."],
+  ["BUG-037","MEDIUM","<strong>Refetch amplification, measured 22.9× across two clients</strong> (the filed ~30× was overstated by about a third; 32 mutations projects to ~730 reads, not ~1,000). Every per-mutation count was an exact multiple of 5, confirming no coalescing: every mutation triggers <code>runCommand</code>'s own refetch <em>and</em> a realtime ping from each of four tables, each firing a further 5-query refetch, on both clients, with no debounce. Scales with seat count."],
+  ["BUG-040","MEDIUM","<strong>The cookie-consent banner intercepts clicks on controls beneath it.</strong> Reproduced by A/B: with the banner undismissed, <code>elementFromPoint</code> at the centre of the trade panel's \"Send offer\" button returns <code>DIV.fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6</code> — the banner — and the click is swallowed with no feedback. Dismiss it and the same point returns the button's own container and the click lands. It persists until explicitly accepted or declined, so any primary action it overlaps silently does nothing."],
+  ["BUG-044","MEDIUM","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0075</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). <strong><code>city_charge</code> overwrites <code>pending_debt</code> instead of accumulating it</strong>, so a second off-turn charge erases the first creditor's claim outright (50 owed to Bo replaced by 40 owed to Cy). Found during re-verification; reachable only because of BUG-005."],
+  ["BUG-045","MEDIUM","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0072</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). <strong><code>city_max_liquidation</code> returns 0 through NULL propagation.</strong> <code>build_cost</code> is NULL for stations, so <code>buildings * (build_cost/2)</code> is <code>0 * NULL = NULL</code>, poisoning the <code>sum()</code>, which <code>coalesce(...,0)</code> flattens to 0. A seat holding an unmortgaged 190 property reports 0 instead of 95 — and bankruptcy survivability checks depend on it, so it will bankrupt players who could pay. Found during re-verification."],
+  ["BUG-039","LOW","Holdings controls are all disabled off-turn with no explanation. <strong>Re-test: the server enforces the identical rule</strong> (<code>city_assert_can_manage</code> → <code>CITY_NOT_YOUR_TURN</code>), so this is a copy defect, not a permission defect. Downgraded from MEDIUM."],
+  ["BUG-025","LOW","<code>city_assets</code>, <code>city_auctions</code> and <code>city_trade_offers</code> have RLS <code>USING (true)</code> — world-readable cross-room with the public anon key."],
+  ["BUG-026","LOW","Blanket INSERT/UPDATE/DELETE grants on <code>city_matches</code>/<code>city_match_players</code> including <code>rng_seed</code>. Blocked by RLS today, but one permissive policy would expose cash and seed writes."],
+  ["BUG-027","LOW","<strong>Re-filed.</strong> The original claim — that <code>city_derive_dice</code>'s EXECUTE grant is a latent oracle — is a <strong>false premise</strong>: the function is pure and its algorithm is published verbatim in migration 0064, so revoking the grant gives zero benefit. The real residual risk is seed entropy: <code>random() * 2^53</code> from a non-CSPRNG fed into md5, with <code>last_roll</code> readable as known plaintext. Fix is a CSPRNG seed and a non-md5 derivation."],
+  ["BUG-028","LOW","<code>building_supply_limit</code> is never read; set to 2, a 5th building still built."],
+  ["BUG-029","LOW","<code>city_assert_can_manage</code> never checks phase, so building and mortgaging succeed during <code>auction</code> and <code>required_decision</code>."],
+  ["BUG-030","LOW","Mortgage uses integer truncation (Porto 55 → 27, not 27.5); a mortgage round-trip silently costs 3 Spins."],
+  ["BUG-031","LOW","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0071</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). Raw Postgres errors leak instead of <code>CITY_*</code> codes: self-trade and negative <code>give_cash</code> print the failing row, and six routines pass a NULL room code to the rate limiter before validating the match."],
+  ["BUG-032","LOW","Card 10 charges 24× the roll when both utilities are held (2 × the 12× rate); the text says ten times."],
+  ["BUG-043","LOW","Several site-wide footer and nav links are ~20 px tall, below the 24 px minimum touch target (<code>Explore</code>, <code>Terms</code>, <code>Privacy</code>, <code>Privacy Policy</code>). Measured on real device profiles with touch emulation. <strong>No City game control is undersized</strong> — board tiles and action buttons all pass. The 1×1 <code>sr-only</code> \"Skip to content\" link is a correct pattern, not a defect."],
+  ["BUG-042","LOW","<strong>No offline or reconnecting indicator anywhere in the City UI.</strong> With the network cut mid-turn an error message does surface, but nothing tells the player they are disconnected. Confirmed by search: <code>/offline|reconnect|connection lost|disconnected/i</code> matches nothing."],
+  ["BUG-041","LOW","The site header nav overflows its container at 768×1024 (<code>DIV.mx-auto</code> and <code>DIV.flex</code> both report <code>scrollWidth &gt; clientWidth</code>). Site-wide rather than City-specific; the page itself still does not scroll horizontally."],
+  ["BUG-033","LOW","No code path makes eliminated players spectators (FR-36), and <code>pace_seconds</code> is never settable by the host (FR-42)."],
+];
+
+// render
+const el = id => document.getElementById(id);
+el("suites").innerHTML = SUITES.map(([id,name,n,p,f,note])=>{
+  const pw=(p/n*100).toFixed(1), fw=(f/n*100).toFixed(1);
+  return `<tr><td><strong>${name}</strong><br><span class="muted" style="font-size:11.5px">${id}</span></td>
+  <td>${n}</td><td style="color:var(--pass)"><strong>${p}</strong></td>
+  <td style="color:${f?'var(--fail)':'var(--ink-2)'}"><strong>${f}</strong></td>
+  <td><div class="bar"><i class="p" style="width:${pw}%"></i><i class="f" style="width:${fw}%"></i></div></td>
+  <td class="muted">${note}</td></tr>`;
+}).join("");
+
+const sevClass = s => ({CRITICAL:"b-crit",HIGH:"b-high",MEDIUM:"b-med",LOW:"b-low"}[s]||"");
+const stClass  = s => ({PASS:"b-pass",FAIL:"b-fail","N/A":"b-nt","NOT TESTED":"b-nt"}[s]||"b-nt");
+
+[...new Set(C.map(c=>c.suite))].sort().forEach(s=>{
+  const o=document.createElement("option"); o.textContent=s; el("fSuite").appendChild(o);
+});
+
+function render(){
+  const q=el("q").value.toLowerCase(), st=el("fStatus").value,
+        su=el("fSuite").value, sv=el("fSev").value;
+  const rows=C.filter(c=>
+    (!st||c.status===st)&&(!su||c.suite===su)&&(!sv||c.sev===sv)&&
+    (!q||`${c.id} ${c.feature} ${c.scenario} ${c.bug}`.toLowerCase().includes(q)));
+  el("cases").innerHTML = rows.map(c=>`<tr>
+    <td><code>${c.id}</code></td><td class="muted">${c.suite}</td>
+    <td>${c.feature}</td><td>${c.scenario}</td>
+    <td><span class="badge ${stClass(c.status)}">${c.status}</span></td>
+    <td>${c.sev?`<span class="badge ${sevClass(c.sev)}">${c.sev}</span>`:'<span class="muted">—</span>'}</td>
+    <td>${c.bug?`<code>${c.bug}</code>`:'<span class="muted">—</span>'}</td></tr>`).join("")
+    || `<tr><td colspan="7" class="muted" style="padding:22px;text-align:center">No test cases match those filters.</td></tr>`;
+  el("count").textContent = `Showing ${rows.length} of ${C.length} listed cases · 298 executed in total (engine-suite passes are grouped by scenario family, so fewer rows are listed than executed).`;
+}
+["q","fStatus","fSuite","fSev"].forEach(id=>{
+  el(id).addEventListener("input",render); el(id).addEventListener("change",render);
+});
+render();
+
+el("highs").innerHTML = HIGHS.map(([id,title,body])=>`
+  <details><summary><span class="badge b-high">HIGH</span> ${id} — ${title}</summary>
+  <div class="body"><p>${body}</p></div></details>`).join("");
+
+el("minor").innerHTML = MINOR.map(([id,sev,body])=>`
+  <tr><td><code>${id}</code></td>
+  <td><span class="badge ${sevClass(sev)}">${sev}</span></td>
+  <td>${body}</td></tr>`).join("");
+</script>
+</body>
+</html>

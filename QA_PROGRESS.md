@@ -1,0 +1,394 @@
+# QA Progress — Spintra City
+
+**Scope:** Spintra City only (new game mode) + its seams into the existing site.
+**Build:** branch `feat/spintra-city-design`, HEAD `cb08868`
+**Environment:** local Docker Supabase (`supabase_db_Spintra-1`), PostgREST `127.0.0.1:54321`,
+dev server `localhost:4010`, **production build `localhost:4020`** (all browser verdicts).
+**Production:** never contacted. Production has none of migrations `0063`–`0070`.
+
+## Current phase
+
+**Phase 22 — complete.** All four lanes have reported, the environment was restored after
+a Docker outage, and the two gaps left open by it were closed: TC-COMPAT was executed
+(passes) and BUG-036 was resolved (withdrawn — trading works). Reports are final.
+
+| Lane | Suites | State |
+|---|---|---|
+| Engine rules (SQL) | TC-GAME, TC-DEV, TC-INS, TC-CARD, TC-DET, TC-TRADE, TC-AUCT, TC-END, TC-EDGE | **complete** — 120 cases, 101 pass / 19 fail |
+| Security / API / DB | TC-SEC, TC-API, TC-DB | **complete** — 42 cases, 8 exploits confirmed |
+| Browser / multiplayer | TC-UI, TC-UX, TC-FE, TC-MULTI, TC-REC, TC-COMPAT | **complete** — 27 agent cases + 9 TC-COMPAT executed by the lead |
+| Spec conformance, seams, regression, reporting | TC-SPEC, TC-SEAM, TC-REG | **complete** |
+
+## Completed phases
+
+1. Discovery — 8 `city_*` tables + 1 view, 35 routines, 6 client modules mapped.
+2. Strategy — `QA_TEST_PLAN.md`: 18 suites, method, severity definitions.
+3. Baseline — stack healthy; `npm run verify` clean; `npm run build` clean.
+4. Test-case creation — 299 cases with IDs (298 executed, 1 N/A, 0 untested).
+5–14. Gameplay, negative/edge, multiplayer, UI, frontend, backend, database,
+   performance, security, recovery — executed across four lanes.
+15. Exploratory — adversarial passes as normal player, power user and malicious player.
+16. Console/log/network audit — complete; console clean on both builds.
+17. Automated testing — repo suites run; `city-lobby.spec.ts` blocked by a harness issue.
+18–21. Bug management, regression, final audit — 44 bugs triaged and severity-justified.
+22. Reports generated.
+
+## Counts
+
+| | |
+|---|---|
+| Executed | 298 |
+| Passed | 231 |
+| Failed | 67 |
+| Blocked | 0 |
+| **Not tested** | **0** |
+| Not applicable (feature not deployed) | 1 |
+| Withdrawn as unreliable | 2 |
+| Bugs | 44 — 4 critical, 13 high, 12 medium, 15 low (after re-verification; corrected a transposed high/medium count and added BUG-018/020/039's missing table rows during the fix-phase report update) |
+
+## Most important discoveries
+
+1. **BUG-001** kicking a player mid-match orphans the seat, deadlocks the match, and
+   bricks the room for 24 h. No client-callable routine can abandon a match.
+2. **BUG-002** a kicked *and banned* player still rolls, builds, mortgages and ends turns.
+   Root cause: `city_join_seat` is the only City RPC that checks room membership.
+3. **BUG-003/004** two further routes to a permanently stalled match — absent player and
+   undischargeable debt. (BUG-005, the off-turn charge, was downgraded on re-test: it
+   stalls for up to N−1 turns but the payer recovers on their own turn.)
+4. **BUG-008** `city_settle_auction(p_force)` is callable with **no JWT at all** and skips
+   both the advisory lock and the deadline; parallel calls destroy money.
+5. **BUG-012** a player can PATCH their own `xp`/`rank` to any value.
+6. **BUG-013** `/api/health` is permanently 503 from a wrong-path realtime probe;
+   Realtime itself is healthy (handshake returns 101).
+7. **BUG-034/035** the UI's failures are failures of *absence*: guidance that contradicts
+   the buttons after a refresh, and an opponent who is never told what happened. (BUG-036,
+   "Send offer never becomes clickable", was withdrawn — it was a harness artifact.)
+8. **BUG-044/045** found by the re-verification pass itself: `city_charge` overwrites a
+   pending debt, erasing a creditor's claim; and `city_max_liquidation` returns 0 via NULL
+   propagation, so bankruptcy checks will bankrupt players who could actually pay.
+
+## Verified correct (worth recording)
+
+RNG seed protection across all six leak paths · cash conservation across trades and
+bankruptcies · advisory-lock concurrency on roll/buy/trade · realtime two-client sync ·
+full index coverage · 9/9 board-data invariants · internal engine functions correctly
+revoked · input validation and SQL-injection resistance · `verify` and `build` clean ·
+zero console errors on both builds · no raw `CITY_*` code ever reaches the user ·
+server-side authority proven by raw `fetch` bypassing every disabled button.
+
+## Known limitations of this pass
+
+- Production deliberately untested; `/api/health` behaviour there unverified. (See the N/A
+  note at the end — production has none of these migrations, so there is nothing to observe.)
+- Device coverage is high-fidelity **emulation** (viewport, DPR, touch, UA), not physical
+  hardware. Real-device quirks remain unverified.
+- Memory was profiled over one complete match (~92 actions), not a multi-hour soak. A leak
+  that only appears across many sequential matches would not show up at this scale.
+- The `next dev` server is unusable over `127.0.0.1` (Next 16 cross-origin restriction);
+  `localhost` works. Not a product defect — the production build is unaffected.
+
+## Closed after the environment was restored
+
+- **TC-COMPAT — executed, passes.** Zero horizontal page overflow at 1280×800, 1024×768,
+  768×1024 and 390×844 in both themes; the theme flip applies correctly. The board keeps
+  its 700 px square and scrolls inside its own wrapper, which is the intended design — this
+  corrects a risk the report had flagged. One real defect surfaced: the site header nav
+  overflows its container at 768 px (BUG-041, LOW).
+- **BUG-036 — withdrawn.** Driven with the correct selectors (`trade-panel`,
+  `trade-partner`, `aria-pressed` toggles) the whole flow works: Send offer enables and a
+  row is created (`0->1 give={1,3} status=pending`). The original failure was a harness
+  artifact. It did leave one real residue: BUG-040, the consent banner intercepting clicks.
+
+## Also closed on the second pass
+
+- **Cross-browser** — Firefox, WebKit and Chromium all complete the core loop with realtime
+  sync and zero console errors. An earlier stated reason ("only Chromium is installed") was
+  wrong; the browsers were there all along.
+- **Trade offers over realtime** — recipient sees the offer in ~1 s, no reload.
+- **A full auction in the live UI** — decline → running auction → off-turn player sees it in
+  ~1 s → bid accepted → settled → space transferred.
+- **Offline / reconnect / rejoin** — nothing corrupted while offline; controls usable ~2 s
+  after reconnect with no reload; rejoining restores the seat, not spectator. This also
+  positively disproves the withdrawn realtime-recovery finding. One defect found: no
+  offline indicator (BUG-042).
+
+## Final pass — every remaining gap closed
+
+- **Load / concurrency — PASS.** 20 simultaneous matches × 60 ops = 1,200 operations in
+  1,498 ms, zero deadlocks. Post-load integrity spotless (no negative cash, orphaned
+  assets, duplicate ownership or out-of-range positions).
+- **Long-session memory — PASS.** A full match profiled: heap 17.1 MB → 13.7 MB and
+  listeners 873 → 520, both ending below baseline. A transient 4,900-listener spike
+  recovered cleanly; plausibly the same root cause as BUG-037/038.
+- **Real device profiles — PASS.** iPhone 13, Pixel 5, iPad gen 7 and Galaxy S9+ with
+  genuine touch emulation. Zero overflow on all four. Found BUG-043 (footer/nav links
+  ~20 px, under the 24 px minimum — no City control is undersized). This is emulation,
+  not physical hardware.
+
+## The one item that is N/A rather than untested
+
+**Production behaviour.** Spintra City is not deployed to production — migrations
+0063–0070 were never applied there, so there is no behaviour to observe. Testing it would
+require pushing those migrations live, shipping all 4 critical bugs to real users. It
+becomes testable once 0071 lands and the feature ships.
+
+## Independent re-verification pass
+
+Every filed bug was re-tested by testers instructed to **falsify** it. Results:
+
+- **3 findings did not survive as filed** — BUG-018 (matches DESIGN §3.1A; the player rolls
+  twice but moves once), BUG-027 (premise false: `city_derive_dice`'s algorithm is published
+  in the migration, so revoking its grant gives zero benefit — re-filed against seed entropy),
+  and half of BUG-019 (`city_max_liquidation` does not leak).
+- **5 severity corrections** — BUG-005 CRITICAL→HIGH, BUG-020 and BUG-039 →LOW,
+  BUG-034 →MEDIUM, BUG-038 MEDIUM→HIGH.
+- **2 understatements** — BUG-008 is worse than filed (six concurrent unauthenticated
+  force-settles charged the winner six times, destroying 1,000); BUG-038 is cross-tenant.
+- **1 magnitude correction** — BUG-037 measured at 22.9× per mutation, not the filed ~30×.
+- **2 new bugs found by the re-verification** — BUG-044 (`city_charge` overwrites
+  `pending_debt`, erasing a creditor's claim) and BUG-045 (`city_max_liquidation` returns 0
+  via NULL propagation, so bankruptcy checks will bankrupt players who could pay).
+- Everything else held, including all four remaining criticals and BUG-010, which was
+  proven at runtime rather than by code reading alone.
+
+No fixes have been made — this was a find-and-document pass, per the brief.
+
+
+---
+
+# FIX PHASE — in progress (resume here)
+
+A regression harness now encodes the release blockers, and three migrations have
+landed against the **local** stack only. Nothing has been pushed to production.
+
+## Where the harness stands
+
+    npm run test:city-regression      ->  12 passed, 1 failed, 13 total
+
+| Fixed | By |
+|---|---|
+| BUG-002 kicked/banned player cannot act | `0071` |
+| BUG-008 force-settle not client-reachable | `0071` |
+| BUG-009 decline never auctions an owned space | `0071` |
+| BUG-010 finished match rejects commands | `0071` |
+| BUG-019 net worth / liquidation revoked from clients | `0071` (no harness row) |
+| BUG-031 NULL room_code no longer leaks a raw row dump | `0071` (no harness row) |
+| BUG-004 a solvent debtor is never deadlocked | `0072` |
+| BUG-024 trade cash discharges a debt | `0072` (no harness row) |
+| BUG-014 bankruptcy sells developments first | `0072` |
+| BUG-045 max liquidation counts a station | `0072` |
+| BUG-012 a player cannot inflate their own xp | `0073` |
+| BUG-013 health check probes the real realtime endpoint | `src/app/api/health/route.ts` |
+| BUG-001 kick strands the match on the departed seat | `0074` |
+| BUG-038 two realtime subscriptions are unfiltered | `use-city-match.ts` — extended the existing `matchIdRef` client-side guard to all three tables |
+| BUG-044 a second charge erases the first creditor's claim | `0075` — additive `city_debt_queue`, `pending_debt` unchanged for the common case |
+
+## Still red — the next work
+
+| Bug | Where it belongs |
+|---|---|
+| BUG-003 no client-callable way to resolve a stalled turn | the actual timeout/autopilot cross-cutting slice, not conflated with BUG-001 — this is genuinely a multi-day feature (FR-25 through FR-51), left as its own project |
+
+Also still open and not in the harness: BUG-015/016/017/032 (cards), BUG-020,
+025, 026, 027, 028, 029, 030, 033, 034, 035, 037, 039, 040, 041, 042, 043.
+
+## Verification gates used after every migration
+
+1. `npm run test:city-regression` — exactly one row should flip, nothing else.
+2. Load: 20 concurrent matches x 60 ops. Baseline ~1500ms with byte-identical
+   ok/err counts per match. After `0072`'s cash trigger: 1276ms, counts identical,
+   and `debts left payable = 0` across 1,200 operations.
+3. Post-load integrity: no negative cash, orphaned assets, or deadlocks.
+4. Browser: `npx playwright test --config=playwright.qa.config.ts qa-x3-auction`
+   (decline -> auction -> bid -> settle -> transfer).
+5. `npm run verify` — note `docs:check` requires every new migration to have a
+   row in `ARCHITECTURE.md` §4 and every npm script documented in README too.
+
+## Traps worth remembering
+
+- A trigger `WHEN` clause is evaluated **before** the trigger is entered, so it
+  sees `pg_trigger_depth() = 0`, not 1. Guarding with `= 1` silently never fires.
+- `check_room_creation_rate_limit` allows 8 rooms per host per 10 minutes. The
+  harness creates 8, so each test room now gets its own throwaway host.
+- A harness block that raises records no row, which shows up as a smaller total
+  rather than a failure. The runner now hard-fails on a short assertion count.
+- `CREATE OR REPLACE` cannot remove a parameter default; drop the function first.
+
+
+## BUG-001 fix (0074) — kick/leave retires the seat
+
+Root cause: nothing reacted to a `room_participants` row disappearing. Fixed
+with a trigger on the table itself (not inside `moderation_kick_ban`, so it
+covers kicks, bans, and any future leave flow without City-specific logic
+leaking into shared moderation code): `city_retire_seat` releases assets to
+the bank exactly as `city_bankrupt_seat`'s bank branch already does, marks the
+seat `retired`, and — only if it held `current_seat` — hands the turn onward.
+
+**Caught a false green while building this.** `city_retire_seat` matched the
+BUG-003 harness regex (`retire`) and Postgres grants new functions PUBLIC
+execute by default, so BUG-003 flipped green the moment the function existed
+— before any real recovery mechanism was built. Verified it wasn't actually
+exploitable (`select city_retire_seat_on_departure()` -> "trigger functions
+can only be called as triggers"), then fixed both: revoked the unearned grant,
+AND hardened the harness check itself (excluded trigger-returning functions)
+so a future `retire`-named trigger can't cause the same false positive again.
+
+## BUG-038 fix — client-side realtime scoping
+
+Did NOT add Realtime's `filter:` option to `city_auctions`/`city_trade_offers`
+— a baked-in `match_id=eq.<id>` goes stale the moment a post-match flow opens
+a new match in the same room without remounting the hook. Instead extended
+the client-side `matchIdRef` guard `city_match_players` already used to all
+three tables (extracted as a shared `refetchIfCurrentMatch` callback).
+
+The harness's static check originally grepped for the string `filter:`, which
+tested the WRONG property (a proxy, not the actual bug) and would have
+false-passed the real fix. Rewrote it to check "is this table's handler still
+the bare unguarded `refetch()`" instead, then validated the check both ways
+against the actual git history: FAIL on the real pre-fix committed source,
+PASS on the fixed source, via a temporary file-swap through the real harness
+script (not a reimplementation) to close the loop with certainty.
+
+**Runtime proof, not just source inspection:** two independent live matches in
+two different rooms. A trade in match 2 produced 0 REST requests on an idle
+match-1 client over a 6s window; that same client's own roll produced 20
+requests in the same window. The zero-vs-nonzero pair is the actual proof —
+without the "own activity still works" control, a 0 could just as easily mean
+the listener broke, not that it's correctly scoped.
+
+
+## BUG-044 fix (0075) — additive debt queue, not a `pending_debt` rewrite
+
+Mapped the blast radius before touching anything: `pending_debt` /
+`pending_creditor_seat` are read or written in 15+ places across eight
+migration files, plus four client references. Replacing that column with a
+full multi-creditor ledger would have meant recreating nearly all of that
+surface in one migration — exactly the unreviewable-mega-migration risk
+avoided all session (the same tradeoff already written into 0071's own
+header for `city_join_seat`).
+
+Instead: `pending_debt` keeps meaning exactly what it always meant — the one
+claim currently due — so all 15+ existing call sites, every
+`CITY_SETTLE_DEBT_FIRST` guard, the UI, and 0072's auto-settle-on-cash
+trigger keep working completely unmodified. A new `city_debt_queue` table
+(server-internal only, RLS on with zero policies/grants, matching
+`city_command_attempts`' precedent — no client code reads it) holds any
+claim that arrives while one is already outstanding. `city_try_settle_debt`
+promotes the oldest queued claim the instant the current one clears, using
+`city_charge`'s own current-seat phase rule. `city_bankrupt_seat` and 0074's
+`city_retire_seat` both gained a queue cleanup so a terminal seat's stacked
+claims are forgiven exactly like its current one.
+
+**Verified the check has genuine discriminating power, not just a fix that
+happens to pass.** Rewrote the harness assertion first — the original
+version checked `pending_debt >= 90`, which was testing the wrong property
+(pending_debt was never designed to hold a sum) and would have been
+satisfiable by a design that still lost the second claim. The rewritten
+version proves the full loop: both creditors are actually PAID (cash moves),
+not merely that a number was recorded somewhere. Then reverted just
+`city_charge` to its exact pre-fix body in the live DB, confirmed the new
+check correctly FAILs with the precise original defect ("got 40/2" instead
+of "50/1", "seat 1 was not paid"), then re-applied 0075 to restore.
+
+Debts three or more deep resolve one settlement event at a time, serially —
+narrower than a full ledger, but sufficient to guarantee no claim is ever
+silently lost, which is the actual defect BUG-044 named.
+
+## Fix phase status: 13 of 13 blockers closed
+
+    npm run test:city-regression      ->  14 passed, 0 failed, 14 total
+
+## BUG-003 fix (0076) — a scoped escape hatch, not the full FR-25-51 slice
+
+The full turn-clock/autopilot/reconnect-grace mechanism (FR-25 through FR-51)
+remains unbuilt, deliberately — per-phase autopilot intelligence, a reconnect
+grace period distinct from a stalled clock, bounded sub-clocks per paused
+context, and host-selected pace presets are a genuinely multi-day feature and
+were never in scope for a "continue" instruction.
+
+What shipped instead is the specific thing the audit's finding named: no
+client-callable route existed to resolve a match stalled on a player who is
+still in the room but silent (0074 already covers a player who has left the
+room entirely). FR-41 names three valid neutral defaults for a clock expiry —
+"auto-roll, decline-to-auction, end-turn." `city_claim_timeout` implements
+exactly one of them, **end-turn**, uniformly across every phase:
+
+- Re-derives expiry server-side (`turn_started_at + pace_seconds`), never
+  trusting the caller (FR-45).
+- No debt outstanding: advances to the next active seat, resets the clock —
+  identical seat-search to 0074's `city_retire_seat`.
+- Debt outstanding: `city_end_turn` already refuses to end a turn while
+  `pending_debt > 0`, and there is no "skip a debt" mechanism to invent one
+  here, so it routes through the same bankruptcy path
+  `city_declare_bankruptcy` already uses.
+- Auction phase or an explicit pause: refused outright
+  (`CITY_TURN_CLOCK_PAUSED`) — auctions already have their own clock and
+  settle path.
+- A non-member is refused for free, by the same `city_rate_limit_check`
+  chokepoint 0071 already put in front of every command — zero new code
+  needed for that guard.
+
+Deliberately NOT built: auto-rolling dice on the stalled player's behalf
+(deriving RNG and resolving landing/cards/rent under someone else's identity
+is materially riskier than end-turn), and force-opening an auction for a
+lapsed purchase decision (the space just stays unowned for the next visitor).
+Both are honest, disclosed scope reductions — not oversights — and FR-41's
+own wording treats end-turn as an equally valid default, not a fallback.
+
+**Verification.** The static harness check (does a client-callable
+timeout/retire/abandon routine exist) only proves the function exists and is
+granted — for the riskiest fix of the whole session, that alone wasn't
+enough. Ran five hand-written behavioral proofs covering all four branches:
+premature claim (refused, `CITY_TURN_CLOCK_STILL_RUNNING`), genuine no-debt
+expiry (turn advanced correctly, new seat could immediately act), genuine
+debt-triggered expiry (routed to bankruptcy, creditor paid exactly what the
+debtor actually had — confirming `city_bankrupt_seat`'s existing payout
+semantics, not something this fix changed), the auction/pause guard, and a
+non-member. Then promoted the two most safety-critical properties (never
+fires early; resolves correctly once genuinely expired) into the permanent
+harness as a new behavioral assertion — and, matching the discipline applied
+to every fix this session, deliberately broke the deadline check in a
+throwaway copy of the function first and confirmed the new assertion
+genuinely failed against it before trusting it passing the real fix.
+
+**The gap that mattered most: nobody's client called the new RPC.** After
+0076 shipped and every SQL-layer proof passed, a check of the client source
+turned up zero references to `city_claim_timeout` anywhere in
+`src/app/room/[code]/city/`. The server-side fix was complete and verified,
+but a real player would have seen exactly the same broken experience the
+audit described — no button, no way to trigger it — because nothing in the
+UI ever called it. A correct RPC nobody can reach fixes nothing for an actual
+player.
+
+Closed by mirroring `city-auction.tsx`'s own established pattern exactly
+(auto-settle: any client, once its local clock says the deadline has passed,
+fires the RPC itself; the server re-derives authority, so an early or
+duplicate attempt is just a harmless refusal): a `useEffect` in
+`city-match-shell.tsx` computes `turn_started_at + pace_seconds` from the
+match row and calls `claimTimeout()` once it has genuinely elapsed — for
+every client watching the match, including the stalled player's own tab, if
+merely idle. `turn_clock_paused_at` and `turn_number` had to be added to the
+client's `CityMatch` type and select list (both were already grant-selectable
+server-side, just never fetched) so the effect can tell an auction pause from
+a genuine stall, and de-duplicate per turn.
+
+This also required regenerating `src/lib/supabase/database.types.ts` (the
+old file predates all six migrations, so `city_claim_timeout` didn't
+type-check) — diffed against git first to confirm the regeneration touched
+only the new/changed schema and nothing else.
+
+**Verified as an actual player would experience it**, not just at the RPC
+layer: two live browser contexts, a real match, seat 1 forced to stall
+(`current_seat=1`, clock backdated past `pace_seconds`) — and then genuinely
+nobody clicks anything on either page for the rest of the test. Six seconds
+later the match had recovered on its own (`current_seat` back to 0,
+`turn_number` incremented), with zero manual action from anyone. That is the
+actual proof BUG-003 is fixed, not the SQL-layer one.
+
+## All fixes, final state
+
+Migrations 0071-0076 plus two direct source fixes (health route probe path,
+realtime subscription scoping) are all local-only, each individually verified
+against the 20-match concurrent load gate, post-load integrity, and (where
+relevant) a live two-browser proof. Every migration re-applies idempotently.
+`npm run verify` is green. Nothing has touched production.
