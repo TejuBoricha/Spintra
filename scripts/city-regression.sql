@@ -569,6 +569,111 @@ begin
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 
+-- ===========================================================================
+-- BUG-025 / BUG-021 — an outsider (member of no room) must not be able to
+-- read city_assets, city_auctions, city_trade_offers or city_match_results
+-- for a match in a room they never joined; a genuine room member still can
+-- ===========================================================================
+do $blk$
+declare m uuid; ok boolean := true; act text := '';
+  outsider text := '00000000-0000-4000-8000-000000000099';
+  n_assets int; n_auctions int; n_offers int; n_results int;
+  n_assets_member int;
+begin
+  m := pg_temp.rg_match('CITYRG25', 5025);
+  -- an owned asset, a running auction and a pending trade offer, inserted
+  -- directly (as postgres) so every table has a real row to hide -- a fresh
+  -- match owns nothing yet, so city_assets would otherwise be empty and the
+  -- member positive-control would trivially "pass" for the wrong reason.
+  insert into public.city_assets(match_id, space_idx, owner_seat, buildings, is_mortgaged)
+  values (m, 3, 0, 0, false);
+  insert into public.city_auctions(match_id, space_idx, ends_at, hard_ends_at)
+  values (m, 1, now() + interval '15 seconds', now() + interval '2 minutes');
+  insert into public.city_trade_offers(match_id, from_seat, to_seat, give_cash, created_turn, expires_at)
+  values (m, 0, 1, 10, 0, now() + interval '3 minutes');
+  update public.city_matches set status='finished', phase=null, current_seat=null, finished_at=now()
+   where id=m;
+
+  perform set_config('request.jwt.claims', json_build_object('sub',outsider,'role','authenticated')::text, true);
+  perform set_config('role','authenticated',true);
+  select count(*) into n_assets from public.city_assets where match_id=m;
+  select count(*) into n_auctions from public.city_auctions where match_id=m;
+  select count(*) into n_offers from public.city_trade_offers where match_id=m;
+  select count(*) into n_results from public.city_match_results where match_id=m;
+  perform pg_temp.rg_as(0);  -- seat 0, a genuine member, as a positive control
+  select count(*) into n_assets_member from public.city_assets where match_id=m;
+  perform set_config('role','postgres',true);
+
+  if n_assets <> 0 then ok := false; act := act || format('outsider read %s city_assets rows; ', n_assets); end if;
+  if n_auctions <> 0 then ok := false; act := act || format('outsider read %s city_auctions rows; ', n_auctions); end if;
+  if n_offers <> 0 then ok := false; act := act || format('outsider read %s city_trade_offers rows; ', n_offers); end if;
+  if n_assets_member = 0 then ok := false; act := act || 'a genuine room member was also blocked (over-tightened); '; end if;
+
+  insert into rg values (default,'BUG-025','an outsider cannot read another room''s match state',
+    'city_assets/city_auctions/city_trade_offers all return 0 rows to an outsider; a genuine member still sees them',
+    case when ok then format('outsider: 0/0/0 rows; member: %s city_assets rows', n_assets_member) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+
+  insert into rg values (default,'BUG-021','city_match_results respects the caller''s own RLS, not the view owner''s',
+    'a finished match''s results row returns 0 rows to an outsider',
+    case when n_results = 0 then 'outsider read 0 rows' else format('outsider read %s rows', n_results) end,
+    case when n_results = 0 then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-026 — city_matches and city_match_players must refuse a raw client
+-- write at the grant level, not merely via an absent RLS policy
+-- ===========================================================================
+do $blk$
+declare m uuid; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRG26', 5026);
+  perform pg_temp.rg_as(0);
+  perform set_config('role','authenticated',true);
+
+  begin
+    update public.city_matches set current_seat = 7 where id = m;
+    ok := false; act := act || 'authenticated UPDATE on city_matches was NOT refused; ';
+  exception when insufficient_privilege then
+    null; -- expected
+  when others then
+    ok := false; act := act || 'wrong error on city_matches UPDATE: '||SQLERRM||'; ';
+  end;
+
+  begin
+    update public.city_match_players set cash = 999999 where match_id = m and seat = 0;
+    ok := false; act := act || 'authenticated UPDATE on city_match_players was NOT refused; ';
+  exception when insufficient_privilege then
+    null; -- expected
+  when others then
+    ok := false; act := act || 'wrong error on city_match_players UPDATE: '||SQLERRM||'; ';
+  end;
+
+  perform set_config('role','postgres',true);
+  insert into rg values (default,'BUG-026','city_matches/city_match_players refuse raw client writes',
+    'a permission-denied error (42501) at the grant level, not merely an RLS policy gap',
+    case when ok then 'both UPDATEs refused with insufficient_privilege' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-027 — a fresh match seed must come from a CSPRNG, not Postgres's
+-- plain (non-cryptographic) random()
+-- ===========================================================================
+do $blk$
+declare src text; ok boolean;
+begin
+  select pg_get_functiondef(p.oid) into src
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and p.proname = 'city_create_match';
+  ok := src like '%gen_random_bytes%' and src not like '%:= (random()%';
+  insert into rg values (default,'BUG-027','a fresh match seed is CSPRNG-derived',
+    'city_create_match sources its seed from gen_random_bytes, not random()',
+    case when ok then 'gen_random_bytes present, no bare random() seed assignment'
+         else 'still derives the seed from random(), or gen_random_bytes is missing' end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
 -- ---------------------------------------------------------------------------
 -- teardown + report
 -- ---------------------------------------------------------------------------
