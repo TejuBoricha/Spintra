@@ -116,12 +116,12 @@ scoring.
 
 ## 1b. Fix phase update (2026-09-01) — local only, not deployed
 
-A fix phase followed this audit. **All 4 criticals are now fixed and independently
-verified**, along with 12 further bugs closed as documented side effects of the
-same migrations. Everything in this section happened **entirely on the local
-Docker stack** — production has none of migrations `0063`–`0076` and remains
-exactly as this audit found it. This section does not revise the audit above; it
-records what changed after it.
+A fix phase followed this audit, in two rounds. **All 4 criticals are now fixed
+and independently verified**, along with 16 further bugs closed across the two
+rounds. Everything in this section happened **entirely on the local Docker
+stack** — production has none of migrations `0063`–`0077` and remains exactly as
+this audit found it. This section does not revise the audit above; it records
+what changed after it.
 
 ### What changed
 
@@ -143,33 +143,50 @@ records what changed after it.
 | **BUG-038** two realtime subscriptions unfiltered across all matches | `use-city-match.ts` — extended the existing `matchIdRef` client guard to all three tables | Two independent live matches: match-2 activity produced **0** requests on an idle match-1 client; that same client's own action produced 20 (proves it's scoped, not just deaf) |
 | **BUG-044** a second charge erases the first creditor's claim | `0075` — additive `city_debt_queue`, `pending_debt`'s existing meaning left untouched | Regression harness proves the **full loop** (both creditors actually paid, not just a number recorded); re-verified against the real pre-fix `city_charge` |
 | **BUG-045** max liquidation collapses to 0 for a station holder | `0072` — `coalesce(build_cost, 0)`, matching `city_net_worth`'s existing guard | Regression harness |
+| **BUG-005** an off-turn debtor is locked out of every raise-funds action | `0077` — `city_assert_can_manage` gains a defaulted `p_allow_off_turn_debt` flag, passed only by the three raise-funds/give-up actions | Regression harness: off-turn `city_mortgage` succeeds and the raised cash clears the debt in full (creditor paid); `city_build` stays refused off-turn |
+| **BUG-011** a debtor could strip assets to an accomplice via trade | `0077` — `city_accept_trade` now refuses an accepting debtor unless the trade's own cash fully covers `pending_debt` | Regression harness: a sub-debt trade is refused and the property stays put; a debt-clearing trade succeeds and auto-settles via the existing 0072 trigger |
+| **BUG-023** an expired trade offer's status update silently rolled back | `0077` — removed the doomed update-then-raise (any exception in the same statement undoes it regardless); accept's actual refusal was never affected either way | Code review — no independent pre/post behavioral difference exists to assert (see below) |
+| **BUG-029** management actions ignored match phase entirely | `0077` — `city_assert_can_manage` now refuses all five gated actions during an active auction, and `city_build` specifically during `required_decision` | Regression harness: both refusals confirmed with the exact expected error code, not just "it failed" |
 
 **Improved as a side effect, not independently verified as fully closed:**
-- **BUG-005** (off-turn charge stalls the payer) — 0072's auto-settle-on-cash trigger means the stall now clears the moment *any* cash arrives, not only via mortgage/sale, so it resolves far more readily in practice. No code specifically guarantees it can never stall a full turn; re-verification had already downgraded this from CRITICAL to HIGH because the stall was temporary by design, and this fix shortens that window further without a dedicated proof of its own.
 - **BUG-006** (turn clock decorative) — `city_claim_timeout` (0076) now reads `turn_started_at`/`pace_seconds` for a real purpose, so the clock is no longer purely decorative; a genuine consequence exists once it lapses. The original defect's core claim no longer holds. What remains open: no visible countdown is rendered anywhere (a separate, cosmetic gap this fix did not address).
 
 ### Every fixed migration passed the same gates
 
-`npm run test:city-regression` (14 assertions, all release-blocking bugs with a
-tractable server-side check), a 20-match concurrent load test with byte-identical
-outcome counts before and after every change, post-load integrity checks (no
-negative cash, no orphaned assets, no deadlocks), idempotent re-application of
-every migration, and `npm run verify`. Three fixes were additionally proven at
-the browser layer with two independent live clients. Full detail, including two
-false-positive regression-check bugs caught and fixed along the way, is in
-`QA_PROGRESS.md`.
+`npm run test:city-regression` (17 assertions — the original 12 release-blocking
+checks plus 3 added in round 2 for BUG-005/011/029; BUG-038 and BUG-013 are source
+checks, not SQL assertions), a 20-match concurrent load test with byte-identical
+outcome counts before and after every round-1 change, post-load integrity checks
+(no negative cash, no orphaned assets, no deadlocks), idempotent re-application of
+every migration (round 2 re-verified directly: 0077 re-applied a second time is a
+clean no-op and the harness stays 17/17), and `npm run verify`. Three round-1
+fixes were additionally proven at the browser layer with two independent live
+clients. Full detail, including two false-positive regression-check bugs caught
+and fixed in round 1, is in `QA_PROGRESS.md`.
+
+**BUG-023 has no dedicated regression assertion, by design, not by omission.**
+The bug was that a write attempted just before an exception silently rolled back
+— but that write never once persisted, before or after this fix, because any
+exception raised later in the same statement undoes everything in it regardless
+of ordering. `city_accept_trade`'s caller-visible behavior (refuses with
+`CITY_OFFER_EXPIRED`, offer row stays `pending`) is therefore bit-for-bit
+identical before and after; the fix removes a statement that could never have
+taken effect, so no assertion can honestly turn red pre-fix and green post-fix
+for this specific change. Padding the harness with one anyway would be exactly
+the kind of decorative check this audit's re-verification pass (§1a) exists to
+catch.
 
 ### Updated numbers
 
 | | Original audit | After the fix phase (local only) |
 |---|---|---|
-| Confirmed bugs | 44 | 44 found, **16 fixed**, 28 open |
+| Confirmed bugs | 44 | 44 found, **20 fixed**, 24 open |
 | Critical | 4 | **0 unresolved** (4 of 4 fixed) |
-| High | 13 | 6 unresolved (7 of 13 fixed: 008, 009, 010, 012, 013, 014, 038) |
-| Medium | 12 | 8 unresolved (4 of 12 fixed: 019, 024, 044, 045) |
-| Low | 15 | 14 unresolved (1 of 15 fixed: 031) |
+| High | 13 | 4 unresolved (9 of 13 fixed: 008, 009, 010, 012, 013, 014, 038, 005, 011) |
+| Medium | 12 | 7 unresolved (5 of 12 fixed: 019, 024, 044, 045, 023) |
+| Low | 15 | 13 unresolved (2 of 15 fixed: 031, 029) |
 
-The 28 still-open bugs were, without exception, already classified as non-blocking
+The 24 still-open bugs were, without exception, already classified as non-blocking
 in the original audit (§17's fix list covered the release-blocking set almost
 exactly — items 1–8 there map directly to the migrations above). None of them
 individually gates a release the way the four criticals did.
@@ -180,7 +197,7 @@ individually gates a release the way the four criticals did.
 deployed to it — §18's verdict is accurate as a description of production today.
 **The local codebase's blocking-defect count has gone from 4 criticals to 0**,
 which is the precondition §18 named for reconsidering that verdict, not a
-substitute for actually shipping migrations `0071`–`0076` and re-running this
+substitute for actually shipping migrations `0071`–`0077` and re-running this
 audit against production once they are.
 
 ---
@@ -322,11 +339,11 @@ All nine exits then close simultaneously: `end_turn`/`roll_dice`/`build`/`unmort
 | BUG-008 | **&#10003; Fixed 2026-09-01 (migration `0071`, see §1b).** **`city_settle_auction(p_force)` is client-callable and unauthenticated.** `p_force` skips both the advisory lock and the deadline check. Verified over HTTP with **no JWT at all**: it returns `CITY_NO_AUCTION` where sibling RPCs correctly return `CITY_NOT_AUTHENTICATED` — it has no auth check whatsoever. Any visitor can close any room's auction early; two parallel force-settles charge the winner twice, destroying money. |
 | BUG-009 | **&#10003; Fixed 2026-09-01 (migration `0071`, see §1b).** **Declining while in debt auctions an already-owned property and destroys cash.** `city_decline_purchase` checks only the phase, which `city_charge` also sets. The winner is charged, the `on conflict do nothing` insert transfers nothing. 100 Spins vanished in the repro. |
 | BUG-010 | **&#10003; Fixed 2026-09-01 (migration `0071`, see §1b).** **A finished match can be re-opened and mutated.** `city_decline_purchase` has no `status <> 'active'` check, and `city_finish_match` nulls both `phase` and `current_seat`, so its two remaining guards evaluate to `NULL` rather than true and silently pass. Property transferred and cash deducted *after* scores and XP were written. |
-| BUG-011 | **A debtor can strip every asset by accepting a trade.** `city_propose_trade` blocks a proposer in debt; `city_accept_trade` never checks `pending_debt`. The creditor received 10 cash and no properties. |
+| BUG-011 | **&#10003; Fixed 2026-09-01 (migration `0077`, see §1b).** **A debtor can strip every asset by accepting a trade.** `city_propose_trade` blocks a proposer in debt; `city_accept_trade` never checks `pending_debt`. The creditor received 10 cash and no properties. |
 | BUG-012 | **&#10003; Fixed 2026-09-01 (migration `0073`, see §1b).** **Arbitrary self-XP/rank.** A player can `PATCH room_participants` on their own row and set `xp` and `rank` freely (999999 / `legend`), bypassing engine-authoritative scoring. Cross-player and cross-room edits are correctly blocked; the hole is self-edit. |
 | BUG-013 | **&#10003; Fixed 2026-09-01 (direct fix, `route.ts`, see §1b).** **`/api/health` is permanently 503.** The realtime probe requests `/realtime/v1/ws` with a plain GET; that path does not exist (the real one is `/realtime/v1/websocket`) and a GET can never upgrade. Realtime is actually healthy — handshake returns **101**. An uptime monitor on this endpoint is either permanently alarming or trained to ignore it, so a real outage would not stand out. Pre-existing site defect, in City's dependency path. |
-| BUG-005 | **A player charged off-turn is stalled with a debt they cannot settle.** `city_charge` sets the raise-funds phase only for the current seat (`where ... and current_seat = p_seat`), while `city_assert_can_manage` gates mortgage, sell, build, unmortgage **and** `declare_bankruptcy` on being the current seat. A "collect from every player" card leaves the payer with `pending_debt` and no legal action — mortgage/bankruptcy → `CITY_NOT_YOUR_TURN`, trade/bid → `CITY_SETTLE_DEBT_FIRST` — and the card reported `"total": 200` when only 100 moved. **Re-test correction:** the freeze is temporary; the payer recovers on their own turn, so this is a stall of up to N−1 turns (7 at a full table), not a permanent deadlock. Downgraded from CRITICAL. It also enables BUG-044. |
-| BUG-038 | **Two realtime subscriptions are global, not per-match** — upgraded from MEDIUM on re-test. `city_auctions` and `city_trade_offers` subscribe with no filter and call a bare `refetch()`. Proven behaviourally: activity in a completely separate room made idle clients in another match run a full 5-query refetch. Both tables also carry RLS `USING (true)`, so no row-level gate compensates. Cross-tenant amplification. |
+| BUG-005 | **&#10003; Fixed 2026-09-01 (migration `0077`, see §1b).** **A player charged off-turn is stalled with a debt they cannot settle.** `city_charge` sets the raise-funds phase only for the current seat (`where ... and current_seat = p_seat`), while `city_assert_can_manage` gates mortgage, sell, build, unmortgage **and** `declare_bankruptcy` on being the current seat. A "collect from every player" card leaves the payer with `pending_debt` and no legal action — mortgage/bankruptcy → `CITY_NOT_YOUR_TURN`, trade/bid → `CITY_SETTLE_DEBT_FIRST` — and the card reported `"total": 200` when only 100 moved. **Re-test correction:** the freeze is temporary; the payer recovers on their own turn, so this is a stall of up to N−1 turns (7 at a full table), not a permanent deadlock. Downgraded from CRITICAL. It also enables BUG-044. |
+| BUG-038 | **&#10003; Fixed 2026-09-01 (`use-city-match.ts`, see §1b).** **Two realtime subscriptions are global, not per-match** — upgraded from MEDIUM on re-test. `city_auctions` and `city_trade_offers` subscribe with no filter and call a bare `refetch()`. Proven behaviourally: activity in a completely separate room made idle clients in another match run a full 5-query refetch. Both tables also carry RLS `USING (true)`, so no row-level gate compensates. Cross-tenant amplification. |
 | BUG-034 | **After a mid-turn refresh the instructions contradict the buttons.** With phase `optional_actions`, the status line reads "Your turn — roll the dice." while Roll is disabled and End turn is the only legal move. `lastRoll` is client-only React state discarded by the reload, and the fallback string ignores `match.phase`. A new player reads "roll the dice", finds Roll dead, and concludes the game is broken. |
 | BUG-035 | **The off-turn player is never told what happened.** The active player gets a full sentence ("Rolled 6 and 1, moved to City Fund… Collect 250 Spins."); the opponent's screen says only "Waiting for Guest_1w4e6." The narration string is verifiably absent from the off-player's DOM. Cash badges change silently — in a game whose whole tension is money moving between players, the person *losing* the money is the one not told. |
 | BUG-014 | **&#10003; Fixed 2026-09-01 (migration `0072`, see §1b).** **Bankruptcy hands over buildings instead of selling them.** DESIGN §3.1D requires developments sold to the bank at half cost first. Creditor received three properties still at 3 buildings each instead of 490 cash and bare deeds — and can hold a developed set they never completed, bypassing the even-build invariant. |
@@ -343,7 +360,7 @@ All nine exits then close simultaneously: `end_turn`/`roll_dice`/`build`/`unmort
 | BUG-019 | **&#10003; Fixed 2026-09-01 (migration `0071`, see §1b).** `city_net_worth` leaks RLS-protected cash to an outsider in no room. Because `city_assets` is world-readable, the outsider computes the asset term and inverts the RPC exactly (`cash = 1590 − 190 = 1400`). **Re-test correction:** the `city_max_liquidation` half of the original claim does not hold — it returns 0, which turned out to be BUG-045 instead. |
 | BUG-021 | `city_match_results` view bypasses RLS (owner-executed, not `security_invoker`): bare anon reads room codes, usernames and net worth for every finished match in every room. |
 | BUG-022 | Spectators silently capped by room capacity — a third person could not enter a 2-capacity room. Violates FR-38. |
-| BUG-023 | `city_accept_trade` marks an expired offer `'expired'` then raises in the same transaction, rolling the update back; the offer stays `pending` forever. |
+| BUG-023 | **&#10003; Fixed 2026-09-01 (migration `0077`, see §1b).** `city_accept_trade` marks an expired offer `'expired'` then raises in the same transaction, rolling the update back; the offer stays `pending` forever. |
 | BUG-044 | **&#10003; Fixed 2026-09-01 (migration `0075`, see §1b).** **`city_charge` overwrites `pending_debt` instead of accumulating it**, so a second off-turn charge erases the first creditor's claim outright (50 owed to Bo replaced by 40 owed to Cy). Found during re-verification; reachable only because of BUG-005. |
 | BUG-045 | **&#10003; Fixed 2026-09-01 (migration `0072`, see §1b).** **`city_max_liquidation` returns 0 through NULL propagation.** `build_cost` is NULL for stations, so `buildings * (build_cost/2)` is `0 * NULL = NULL`, poisoning the `sum()`, which `coalesce(...,0)` then flattens to 0. A seat holding an unmortgaged 190 property reports 0 instead of 95. Bankruptcy survivability checks depend on this, so it will bankrupt players who could pay. Found during re-verification. |
 | BUG-024 | **&#10003; Fixed 2026-09-01 (migration `0072`, see §1b).** Trade cash does not discharge a pending debt (`city_accept_trade` never calls `city_try_settle_debt`) — the mechanism behind BUG-004. |
@@ -360,7 +377,7 @@ All nine exits then close simultaneously: `end_turn`/`roll_dice`/`build`/`unmort
 | BUG-026 | Blanket INSERT/UPDATE/DELETE grants on `city_matches`/`city_match_players` including `rng_seed`. Currently blocked by RLS having no write policy (verified), but one permissive policy would expose cash and seed writes. |
 | BUG-027 | `city_derive_dice` exposed to clients — latent oracle, harmless only while the seed stays hidden. |
 | BUG-028 | `building_supply_limit` is never read; with it set to 2, a 5th building still built. |
-| BUG-029 | `city_assert_can_manage` never checks phase, so building/mortgaging succeed during `auction` and `required_decision`. |
+| BUG-029 | **&#10003; Fixed 2026-09-01 (migration `0077`, see §1b).** `city_assert_can_manage` never checks phase, so building/mortgaging succeed during `auction` and `required_decision`. |
 | BUG-030 | Mortgage uses integer truncation (Porto 55 → 27, not 27.5); a mortgage round-trip silently costs 3 Spins. |
 | BUG-031 | **&#10003; Fixed 2026-09-01 (migration `0071`, see §1b).** Raw Postgres errors leak instead of `CITY_*` codes: self-trade and negative `give_cash` print the failing row; six routines pass a NULL room code to the rate limiter before validating the match, producing a NOT NULL violation. |
 | BUG-032 | Card 10 charges 24× the roll when both utilities are held (2 × the 12× rate); text says ten times. |

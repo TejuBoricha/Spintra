@@ -392,3 +392,101 @@ realtime subscription scoping) are all local-only, each individually verified
 against the 20-match concurrent load gate, post-load integrity, and (where
 relevant) a live two-browser proof. Every migration re-applies idempotently.
 `npm run verify` is green. Nothing has touched production.
+
+## ROUND 2 — closing BUG-005, 011, 023, 029 (migration 0077)
+
+With all 13 release blockers closed and committed, moved on to the 28 open
+non-blocking bugs rather than stopping. Read the actual current SQL for every
+function involved before writing anything (`city_assert_can_manage`,
+`city_charge`, `city_accept_trade`, `city_propose_trade`) and cross-checked
+each proposed fix against `docs/SPINTRA_CITY_DESIGN.md` §3.1D/E before touching
+code — this caught two things that would have been wrong fixes:
+
+- **city_charge does not need to change for BUG-005.** It already sets
+  `pending_debt` unconditionally regardless of whose turn it is; only the
+  *phase* forcing is (correctly) gated on `current_seat = p_seat`, because
+  phase is a single match-wide column and forcing it for an off-turn charge
+  would corrupt whoever's turn it actually is. The real root cause is entirely
+  in `city_assert_can_manage`, the shared gate behind build/sell/mortgage/
+  unmortgage/bankruptcy, which required `current_seat` unconditionally.
+- **`city_build` and `city_unmortgage` must NOT get the off-turn debt bypass.**
+  Both already have their own `CITY_SETTLE_DEBT_FIRST` guards blocking a
+  debtor outright — building is not a raise-funds action (DESIGN §3.1D lists
+  only sell/mortgage/trade), and unmortgaging *costs* cash, the opposite of
+  raising it. Giving all five gated actions the same bypass would have been
+  over-broad; only `city_sell_building`, `city_mortgage` and
+  `city_declare_bankruptcy` get `p_allow_off_turn_debt => true`.
+- **BUG-029's `required_decision` block applies to `city_build` only.**
+  `required_decision` is *how* a debtor resolves a debt (buy/decline,
+  raise-funds, detention-exit are its three legal occupants per DESIGN §3.1A)
+  — blocking sell/mortgage/bankruptcy there would have silently reintroduced
+  BUG-005. Only `city_build` (not a raise-funds action) gets
+  `p_block_required_decision => true`. The auction-phase block, by contrast,
+  applies unconditionally to all five — DESIGN §3.1E calls auction "a global
+  match phase," and the audit's own finding named auction explicitly.
+- **BUG-011's fix is a threshold, not a ban.** DESIGN §3.1D lists trade
+  alongside sell/mortgage as a legitimate raise-funds path, so refusing every
+  trade while in debt would reintroduce BUG-005 for that one path. Instead
+  `city_accept_trade` now refuses an accepting debtor unless
+  `cash + give_cash - get_cash >= pending_debt` — the trade must actually
+  clear the debt, not just move some cash. A trade differs from sell/mortgage
+  in one way that matters: it can hand property equity to an unrelated third
+  party rather than keeping it with the debtor, which is what makes a
+  *partial* debt-trade dangerous in a way partial mortgaging isn't.
+- **BUG-023 has no fix to verify behaviorally.** `city_accept_trade` tried to
+  mark a lapsed offer `'expired'` then `raise exception 'CITY_OFFER_EXPIRED'`
+  in the same statement. Any exception anywhere later in a single top-level
+  call rolls back *everything* in that call, regardless of statement order —
+  there is no partial-commit-then-continue in a plain SQL function without a
+  procedure/dblink/background-worker, which would be wildly disproportionate
+  here. That means the update was *never once going to persist*, before this
+  fix or after it. The fix removes the doomed statement; the caller-visible
+  behavior (refused with `CITY_OFFER_EXPIRED`, offer stays `pending`) is
+  bit-for-bit identical either way. Recognized this before writing a
+  regression check for it, rather than after — writing one anyway just to
+  have a number would have been exactly the kind of decorative check §1a's
+  re-verification pass exists to catch, so it's documented as verified by
+  code reading instead.
+
+**First `db reset` attempt hit an unrelated, pre-existing local-stack issue,**
+not a regression from this work: the local Postgres role `postgres` lacked
+membership in `supabase_realtime_admin`, so migration `0036` (from long before
+this session, `alter table realtime.messages enable row level security`)
+failed with `must be owner of table messages` — `postgres` isn't superuser
+here, only `supabase_admin` is. A backup snapshot `supabase start` restored
+from turned out to be stale (only through migration 0035), so `db reset` was
+replaying the entire chain from scratch and hit this on the way. Rather than
+patch the role setup (wiped on every `db reset` anyway, since that reseeds
+`roles.sql` fresh), applied migrations 0036-0077 directly via
+`psql -U supabase_admin` (genuinely superuser, sidesteps the ownership issue)
+against the already-running container, then backfilled
+`supabase_migrations.schema_migrations` so the CLI's own bookkeeping matches
+reality. All 42 files applied clean, in order, no errors.
+
+**Verification:** wrote 3 new regression-harness blocks (BUG-005, BUG-011,
+BUG-029 — not BUG-023, per above). First draft of the BUG-005 check asserted
+"cash increased after mortgaging," which was itself wrong and caught
+immediately: the existing 0072 auto-settle-on-cash trigger fires inside the
+same call once the raised cash covers the debt, so cash goes 10 -> 37 (raised)
+-> 2 (37 minus the 35 debt just paid) in one atomic sequence — a real
+decrease from the starting 10, not an increase, even though the fix worked
+correctly. Rewrote the assertion to check the actual invariant that matters
+(`pending_debt` reaches 0, creditor is paid the full 35) rather than an
+intermediate cash figure, which is a stronger and more honest proof anyway —
+it demonstrates BUG-005's fix and BUG-024's trigger composing correctly in
+one sequence, not just that the RPC call stopped raising an error. Full suite:
+17/17 (14 pre-existing + 3 new). `0077` re-applied a second time is a clean
+no-op with the harness still 17/17. `npm run verify` (typecheck, lint,
+docs:check) is green; `docs/ARCHITECTURE.md` §4 gained a 0077 row and the
+`0063–0076` → `0063–0077` status-line update `docs:check` requires whenever a
+new migration file lands.
+
+No client-side or public RPC signatures changed (`city_build`,
+`city_sell_building`, `city_mortgage`, `city_declare_bankruptcy`,
+`city_accept_trade` all keep their exact original argument lists — only their
+internal call into `city_assert_can_manage` gained new named arguments, and
+that function is `revoke`d from clients already), so `database.types.ts` did
+not need regenerating this round.
+
+Nothing has touched production. `supabase/migrations/0077_*.sql` is local-only,
+same as 0063-0076.
