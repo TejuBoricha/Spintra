@@ -809,6 +809,119 @@ begin
 end $blk$;
 
 -- ===========================================================================
+-- BUG-030 — mortgage and unmortgage must round the true fractional
+-- half-price, not a value already truncated by integer division
+-- ===========================================================================
+do $blk$
+declare m uuid; r jsonb; raised int; cost int; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRG30', 5030);
+  delete from public.city_assets where match_id=m;
+  insert into public.city_assets(match_id,space_idx,owner_seat,buildings,is_mortgaged)
+  values (m,1,0,0,false);  -- Porto, price 55
+  perform pg_temp.rg_as(0);
+
+  r := public.city_mortgage(m, 1);
+  raised := (r->>'raised')::int;
+  if raised <> 28 then
+    ok := false; act := act || format('mortgage raised %s, expected 28 (round(55/2.0)); ', raised);
+  end if;
+
+  r := public.city_unmortgage(m, 1);
+  cost := (r->>'cost')::int;
+  if cost <> 31 then
+    ok := false; act := act || format('unmortgage cost %s, expected 31 (ceil(55/2.0*1.1)); ', cost);
+  end if;
+
+  insert into rg values (default,'BUG-030','mortgage/unmortgage round the true fractional half-price',
+    'Porto (price 55): mortgage raises 28, unmortgage costs 31 -- not 27/30, integer division''s truncated values',
+    case when ok then format('raised %s, unmortgage cost %s', raised, cost) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-022 — a City room's capacity must not silently cap spectators
+-- ===========================================================================
+do $blk$
+declare ok boolean := true; act text := '';
+  v_host text := '99999999-0000-4000-8000-000000000222';
+  v_p2 text := '11111111-1111-4111-8111-111199999999';
+  v_p3 text := '22222222-2222-4222-8222-222299999999';
+begin
+  perform set_config('app.force_close_room','true',true);
+  delete from public.rooms where code in ('CITYRG22','CITYRG22B');
+  perform set_config('app.force_close_room','false',true);
+
+  -- a 2-capacity CITY room: fill it to its stated capacity, then a 3rd,
+  -- purely-spectating join must still succeed.
+  insert into public.rooms (code,name,type,host_id,is_public,max_participants)
+  values ('CITYRG22','rg','city',v_host,false,2);
+  insert into public.room_participants (room_id,user_id,username,is_online) values ('CITYRG22',v_host,'host',true);
+  insert into public.room_participants (room_id,user_id,username,is_online) values ('CITYRG22',v_p2,'P2',true);
+  begin
+    insert into public.room_participants (room_id,user_id,username,is_online) values ('CITYRG22',v_p3,'Spectator',true);
+  exception when others then
+    ok := false; act := act || 'a 3rd, purely-spectating join to a 2-capacity city room was refused: '||SQLERRM||'; ';
+  end;
+
+  -- negative control: a same-capacity NON-city room must still enforce it,
+  -- proving the fix is scoped to city rooms, not a blanket capacity bypass.
+  insert into public.rooms (code,name,type,host_id,is_public,max_participants)
+  values ('CITYRG22B','rg','trivia',v_host,false,2);
+  insert into public.room_participants (room_id,user_id,username,is_online) values ('CITYRG22B',v_host,'host',true);
+  insert into public.room_participants (room_id,user_id,username,is_online) values ('CITYRG22B',v_p2,'P2',true);
+  begin
+    insert into public.room_participants (room_id,user_id,username,is_online) values ('CITYRG22B',v_p3,'P3',true);
+    ok := false; act := act || 'a non-city room let a 3rd participant bypass its own 2-participant capacity too; ';
+  exception when others then
+    null; -- expected: still enforced for non-city rooms
+  end;
+
+  insert into rg values (default,'BUG-022','a city room''s capacity does not cap spectators',
+    'a 3rd, non-seated joiner succeeds in a full 2-capacity city room; the same scenario for a non-city room still refuses',
+    case when ok then 'city room admitted the spectator; non-city room still enforced its own cap' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+
+  delete from public.rooms where code in ('CITYRG22','CITYRG22B');
+end $blk$;
+
+-- ===========================================================================
+-- BUG-033 (pace_seconds half) — the host can set the match pace at creation
+-- ===========================================================================
+do $blk$
+declare mid uuid; actual_pace int; ok boolean := true; act text := '';
+  v_host text := '99999999-0000-4000-8000-000000000233';
+begin
+  perform set_config('app.force_close_room','true',true);
+  delete from public.rooms where code='CITYRG33';
+  perform set_config('app.force_close_room','false',true);
+  insert into public.rooms (code,name,type,host_id,is_public,max_participants)
+  values ('CITYRG33','rg','city',v_host,false,8);
+  insert into public.room_participants (room_id,user_id,username,is_online) values ('CITYRG33',v_host,'host',true);
+  perform set_config('request.jwt.claims', json_build_object('sub',v_host,'role','service_role')::text,true);
+
+  begin
+    perform public.city_create_match('CITYRG33','classic',null,null,99);
+    ok := false; act := act || 'an invalid pace_seconds (99) was accepted; ';
+  exception when others then
+    if SQLERRM not like '%CITY_INVALID_PACE%' then
+      ok := false; act := act || 'wrong error for an invalid pace: '||SQLERRM||'; ';
+    end if;
+  end;
+
+  mid := public.city_create_match('CITYRG33','classic',null,null,60);
+  select pace_seconds into actual_pace from public.city_matches where id=mid;
+  if actual_pace <> 60 then
+    ok := false; act := act || format('pace_seconds is %s, expected 60; ', actual_pace);
+  end if;
+
+  insert into rg values (default,'BUG-033','the host can set the match pace at creation',
+    'an invalid pace (99) is refused with CITY_INVALID_PACE; a valid pace (60) persists to the match row',
+    case when ok then format('invalid pace refused correctly; pace_seconds=%s', actual_pace) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
 -- META-OVERLOAD-GRANTS — a general guard, not tied to one audit bug: adding
 -- parameters via CREATE OR REPLACE creates a genuinely new pg_proc overload
 -- (Postgres identifies functions by their full declared parameter list, not

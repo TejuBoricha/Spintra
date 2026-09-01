@@ -461,6 +461,8 @@ export type Database = {
           finished_at: string | null
           id: string
           last_roll: number[] | null
+          last_roll_result: Json | null
+          last_roll_turn: number | null
           mode: string
           pace_seconds: number
           phase: string | null
@@ -486,6 +488,8 @@ export type Database = {
           finished_at?: string | null
           id?: string
           last_roll?: number[] | null
+          last_roll_result?: Json | null
+          last_roll_turn?: number | null
           mode?: string
           pace_seconds?: number
           phase?: string | null
@@ -511,6 +515,8 @@ export type Database = {
           finished_at?: string | null
           id?: string
           last_roll?: number[] | null
+          last_roll_result?: Json | null
+          last_roll_turn?: number | null
           mode?: string
           pace_seconds?: number
           phase?: string | null
@@ -1065,7 +1071,12 @@ export type Database = {
         Returns: Json
       }
       city_assert_can_manage: {
-        Args: { p_match_id: string; p_user_id: string }
+        Args: {
+          p_allow_off_turn_debt?: boolean
+          p_block_required_decision?: boolean
+          p_match_id: string
+          p_user_id: string
+        }
         Returns: {
           cash: number
           consecutive_autopilot_turns: number
@@ -1115,6 +1126,7 @@ export type Database = {
       city_create_match: {
         Args: {
           p_mode?: string
+          p_pace_seconds?: number
           p_room_code: string
           p_seed?: number
           p_time_limit_minutes?: number
@@ -1198,7 +1210,9 @@ export type Database = {
       city_resolve_landing: {
         Args: {
           p_dice_total: number
+          p_flat_rent_multiplier?: number
           p_match_id: string
+          p_rent_multiplier?: number
           p_seat: number
           p_space_idx: number
         }
@@ -1428,4 +1442,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
