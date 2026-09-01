@@ -490,3 +490,97 @@ not need regenerating this round.
 
 Nothing has touched production. `supabase/migrations/0077_*.sql` is local-only,
 same as 0063-0076.
+
+## ROUND 3 — closing BUG-021, 025, 026, 027 (migration 0078)
+
+Continued straight on to the RLS/grants hardening group with the user's
+standing "keep going, be careful" instruction. This session's Docker Desktop
+issue recurred mid-round (the daemon stopped between rounds 2 and 3); restarted
+it via PowerShell, waited for `supabase_db_Spintra-1` to report healthy, then
+resumed — same recovery pattern used earlier in this session.
+
+Read the actual current RLS policies and grants before writing anything,
+rather than assuming the audit's description was still accurate:
+
+- **city_matches and city_match_players (0063) already do this correctly.**
+  `city_matches_select` uses `is_member_of_room(room_code, auth.uid()::text)`;
+  `city_match_players_select` joins through `city_matches` to reach the same
+  check. BUG-025's three tables (`city_assets`, `city_auctions`,
+  `city_trade_offers`) were simply never brought in line with a pattern that
+  already existed twice in the same codebase — copied the exact shape, not
+  redesigned. `city_assets`' own 0064 comment even states the intended rule
+  ("public *within a match*") that the `using (true)` policy failed to
+  implement.
+- **Found the root cause of BUG-026 by reading migration 0031**, not by
+  guessing: `alter default privileges in schema public grant select, insert,
+  update, delete on tables to anon, authenticated` — added there to fix a
+  real CI failure (a from-scratch `db reset` rejected every insert with
+  "permission denied", because Supabase's hosted dashboard applies default
+  grants automatically that a from-scratch local replay never captures).
+  Every table created after 0031 inherits full DML grants automatically
+  unless something later explicitly revokes them. `city_assets`/
+  `city_board_spaces` (0064) and `city_auctions` (0069) did; `city_matches`/
+  `city_match_players` never did. Confirmed today's actual exploitability
+  first (`\d` showing zero write policies on either table, meaning RLS
+  currently denies every write regardless of the grant) before writing the
+  fix, so the migration comment doesn't overstate a currently-inert gap as
+  live-exploitable.
+- **BUG-021 fix is one line** (`alter view ... set (security_invoker =
+  true)`, Postgres 15+) precisely because BUG-025's fix already put correct
+  RLS on the underlying tables the view joins — the view had nothing of its
+  own to get wrong, it just needed to stop bypassing what's underneath it.
+- **BUG-027's actual fix target changed during re-verification**, and the
+  report already documented this (§1a): the original claim was that
+  `city_derive_dice`'s EXECUTE grant was the risk; re-verification found that
+  false (the algorithm is published verbatim in migration 0064's own source,
+  reimplemented byte-for-byte in 6 lines of Node with identical output —
+  revoking the grant gives zero benefit) and re-filed the bug against seed
+  entropy instead. Confirmed `pgcrypto` was already enabled locally before
+  committing to `gen_random_bytes` as the fix (`select extname from
+  pg_extension` — it was), then confirmed the hex-to-`bit(64)`-to-`bigint`
+  cast idiom actually produces well-formed bigints by running it directly
+  against the live DB first, and separately confirmed `gen_random_bytes`
+  needed schema-qualifying as `extensions.gen_random_bytes` (its actual
+  schema — `select nspname from pg_proc/pg_namespace` — since
+  `city_create_match` runs `set search_path = public`, which excludes it) by
+  testing the unqualified call first and watching it fail exactly as
+  predicted, then confirming the qualified version succeeds.
+
+**Verification:** wrote 4 new regression-harness blocks (BUG-021, 025, 026,
+027), reusing the exact `set_config('role', 'authenticated', true)` +
+`request.jwt.claims` GUC technique the existing BUG-012 check already used —
+this is genuinely how PostgREST enforces RLS per request (`SET LOCAL ROLE` +
+`SET LOCAL request.jwt.claims`), not an approximation. Caught a third
+false-positive-in-waiting before trusting the suite: BUG-025's first draft
+checked that a genuine room member could still read `city_assets` for their
+own match as a positive control, but a freshly-started match via `rg_match`
+owns no properties yet — `city_assets` was empty for the member AND the
+outsider alike, so the "member still sees it" check would have trivially
+"passed" for the wrong reason regardless of whether the RLS fix worked at
+all. Fixed by seeding a real owned asset (and a running auction, and a
+pending trade offer, inserted directly as postgres) before asserting
+visibility, so all three tables have a genuine row to hide. Full suite:
+21/21 (17 pre-existing + 4 new). `0078` re-applied a second time is a clean
+no-op with the harness still 21/21. `npm run verify` is green; caught and
+fixed a stray blank line in `docs/ARCHITECTURE.md`'s migrations table (it
+split the table into two chunks for `check-docs-drift.mjs`'s regex, which
+only scans up to the first blank line) before it would have masked a real
+future drift.
+
+No client-facing signature changed here either — `city_create_match` keeps
+its exact original parameter list, and RLS policies/grants/view storage
+parameters aren't part of `database.types.ts` at all — so no regeneration
+needed this round.
+
+Nothing has touched production. `supabase/migrations/0078_*.sql` is
+local-only, same as every migration before it.
+
+## Fix phase running total (all three rounds)
+
+24 of 44 bugs fixed: 4 Critical, 9 of 13 High, 6 of 12 Medium, 5 of 15 Low.
+20 remain open, headlined by BUG-007 (the 20 MUST-requirement disconnect/
+autopilot/turn-clock slice — explicitly out of scope as multi-day work, not
+an oversight) plus the card/deck logic bugs (015/016/017/032), the economy
+correctness bugs (028/030), the room/spectator gaps (022/033), and the
+client-side polish items (034/035/037/039/040/041/042/043). Regression
+harness: 21/21. `npm run verify`: green. Nothing has touched production.

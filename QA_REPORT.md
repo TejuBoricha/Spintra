@@ -116,12 +116,12 @@ scoring.
 
 ## 1b. Fix phase update (2026-09-01) — local only, not deployed
 
-A fix phase followed this audit, in two rounds. **All 4 criticals are now fixed
-and independently verified**, along with 16 further bugs closed across the two
-rounds. Everything in this section happened **entirely on the local Docker
-stack** — production has none of migrations `0063`–`0077` and remains exactly as
-this audit found it. This section does not revise the audit above; it records
-what changed after it.
+A fix phase followed this audit, in three rounds. **All 4 criticals are now
+fixed and independently verified**, along with 20 further bugs closed across
+the three rounds. Everything in this section happened **entirely on the local
+Docker stack** — production has none of migrations `0063`–`0078` and remains
+exactly as this audit found it. This section does not revise the audit above;
+it records what changed after it.
 
 ### What changed
 
@@ -147,22 +147,27 @@ what changed after it.
 | **BUG-011** a debtor could strip assets to an accomplice via trade | `0077` — `city_accept_trade` now refuses an accepting debtor unless the trade's own cash fully covers `pending_debt` | Regression harness: a sub-debt trade is refused and the property stays put; a debt-clearing trade succeeds and auto-settles via the existing 0072 trigger |
 | **BUG-023** an expired trade offer's status update silently rolled back | `0077` — removed the doomed update-then-raise (any exception in the same statement undoes it regardless); accept's actual refusal was never affected either way | Code review — no independent pre/post behavioral difference exists to assert (see below) |
 | **BUG-029** management actions ignored match phase entirely | `0077` — `city_assert_can_manage` now refuses all five gated actions during an active auction, and `city_build` specifically during `required_decision` | Regression harness: both refusals confirmed with the exact expected error code, not just "it failed" |
+| **BUG-021** `city_match_results` bypasses RLS via view-owner execution | `0078` — `security_invoker = true`, so it now evaluates as the calling role and inherits `city_matches`/`city_match_players`' existing RLS | Regression harness: an outsider reads 0 rows for a finished match in a room they never joined |
+| **BUG-025** `city_assets`/`city_auctions`/`city_trade_offers` world-readable | `0078` — all three get the same `is_member_of_room` join `city_matches`/`city_match_players` already used, replacing `using (true)` | Regression harness: an outsider reads 0 rows across all three tables; a genuine room member still reads them normally |
+| **BUG-026** `city_matches`/`city_match_players` missing an explicit write revoke | `0078` — `revoke insert, update, delete ... from anon, authenticated` on both, matching every sibling City table | Regression harness: a raw client `UPDATE` on either table is refused with `insufficient_privilege` (42501), not merely blocked by RLS |
+| **BUG-027** match seed used Postgres's non-cryptographic `random()` | `0078` — re-filed during re-verification against seed entropy, not `city_derive_dice`'s grant; switched to `pgcrypto`'s `gen_random_bytes(8)` | Regression harness: source check confirms `gen_random_bytes` is used and no bare `random()` seed assignment remains |
 
 **Improved as a side effect, not independently verified as fully closed:**
 - **BUG-006** (turn clock decorative) — `city_claim_timeout` (0076) now reads `turn_started_at`/`pace_seconds` for a real purpose, so the clock is no longer purely decorative; a genuine consequence exists once it lapses. The original defect's core claim no longer holds. What remains open: no visible countdown is rendered anywhere (a separate, cosmetic gap this fix did not address).
 
 ### Every fixed migration passed the same gates
 
-`npm run test:city-regression` (17 assertions — the original 12 release-blocking
-checks plus 3 added in round 2 for BUG-005/011/029; BUG-038 and BUG-013 are source
-checks, not SQL assertions), a 20-match concurrent load test with byte-identical
-outcome counts before and after every round-1 change, post-load integrity checks
-(no negative cash, no orphaned assets, no deadlocks), idempotent re-application of
-every migration (round 2 re-verified directly: 0077 re-applied a second time is a
-clean no-op and the harness stays 17/17), and `npm run verify`. Three round-1
-fixes were additionally proven at the browser layer with two independent live
-clients. Full detail, including two false-positive regression-check bugs caught
-and fixed in round 1, is in `QA_PROGRESS.md`.
+`npm run test:city-regression` (19 SQL assertions plus 2 source checks — BUG-038
+and BUG-013 — for 21 total; the original 12 release-blocking checks, 3 added in
+round 2 for BUG-005/011/029, and 4 added in round 3 for BUG-021/025/026/027), a
+20-match concurrent load test with byte-identical outcome counts before and after
+every round-1 change, post-load integrity checks (no negative cash, no orphaned
+assets, no deadlocks), idempotent re-application of every migration (rounds 2 and
+3 each re-verified directly: 0077 and 0078 re-applied a second time are both clean
+no-ops with the harness unchanged), and `npm run verify`. Three round-1 fixes were
+additionally proven at the browser layer with two independent live clients. Full
+detail, including three false-positive regression-check bugs caught and fixed
+across all three rounds, is in `QA_PROGRESS.md`.
 
 **BUG-023 has no dedicated regression assertion, by design, not by omission.**
 The bug was that a write attempted just before an exception silently rolled back
@@ -180,16 +185,19 @@ catch.
 
 | | Original audit | After the fix phase (local only) |
 |---|---|---|
-| Confirmed bugs | 44 | 44 found, **20 fixed**, 24 open |
+| Confirmed bugs | 44 | 44 found, **24 fixed**, 20 open |
 | Critical | 4 | **0 unresolved** (4 of 4 fixed) |
 | High | 13 | 4 unresolved (9 of 13 fixed: 008, 009, 010, 012, 013, 014, 038, 005, 011) |
-| Medium | 12 | 7 unresolved (5 of 12 fixed: 019, 024, 044, 045, 023) |
-| Low | 15 | 13 unresolved (2 of 15 fixed: 031, 029) |
+| Medium | 12 | 6 unresolved (6 of 12 fixed: 019, 024, 044, 045, 023, 021) |
+| Low | 15 | 10 unresolved (5 of 15 fixed: 031, 029, 025, 026, 027) |
 
-The 24 still-open bugs were, without exception, already classified as non-blocking
+The 20 still-open bugs were, without exception, already classified as non-blocking
 in the original audit (§17's fix list covered the release-blocking set almost
 exactly — items 1–8 there map directly to the migrations above). None of them
-individually gates a release the way the four criticals did.
+individually gates a release the way the four criticals did. The largest single
+item left is BUG-007's 20 MUST-requirement slice (disconnect grace, autopilot,
+forced retire, the full turn-clock model) — deliberately untouched throughout all
+three rounds as genuinely multi-day work, not an oversight.
 
 ### What this means for the release verdict in §18
 
@@ -197,7 +205,7 @@ individually gates a release the way the four criticals did.
 deployed to it — §18's verdict is accurate as a description of production today.
 **The local codebase's blocking-defect count has gone from 4 criticals to 0**,
 which is the precondition §18 named for reconsidering that verdict, not a
-substitute for actually shipping migrations `0071`–`0077` and re-running this
+substitute for actually shipping migrations `0071`–`0078` and re-running this
 audit against production once they are.
 
 ---
@@ -358,7 +366,7 @@ All nine exits then close simultaneously: `end_turn`/`roll_dice`/`build`/`unmort
 | BUG-016 | Deck stops being a permutation once a Transit Visa is held — `v_size` changes mid-cycle. 16 draws yielded card 2 twice and card 13 never. Violates FR-19. |
 | BUG-017 | Cards 2 and 3 charge **half** their printed rent — the multiplier is passed as a dice-total scale, which only utilities consume. "Double the usual rent" charged 35, not 70. |
 | BUG-019 | **&#10003; Fixed 2026-09-01 (migration `0071`, see §1b).** `city_net_worth` leaks RLS-protected cash to an outsider in no room. Because `city_assets` is world-readable, the outsider computes the asset term and inverts the RPC exactly (`cash = 1590 − 190 = 1400`). **Re-test correction:** the `city_max_liquidation` half of the original claim does not hold — it returns 0, which turned out to be BUG-045 instead. |
-| BUG-021 | `city_match_results` view bypasses RLS (owner-executed, not `security_invoker`): bare anon reads room codes, usernames and net worth for every finished match in every room. |
+| BUG-021 | **&#10003; Fixed 2026-09-01 (migration `0078`, see §1b).** `city_match_results` view bypasses RLS (owner-executed, not `security_invoker`): bare anon reads room codes, usernames and net worth for every finished match in every room. |
 | BUG-022 | Spectators silently capped by room capacity — a third person could not enter a 2-capacity room. Violates FR-38. |
 | BUG-023 | **&#10003; Fixed 2026-09-01 (migration `0077`, see §1b).** `city_accept_trade` marks an expired offer `'expired'` then raises in the same transaction, rolling the update back; the offer stays `pending` forever. |
 | BUG-044 | **&#10003; Fixed 2026-09-01 (migration `0075`, see §1b).** **`city_charge` overwrites `pending_debt` instead of accumulating it**, so a second off-turn charge erases the first creditor's claim outright (50 owed to Bo replaced by 40 owed to Cy). Found during re-verification; reachable only because of BUG-005. |
@@ -373,9 +381,9 @@ All nine exits then close simultaneously: `end_turn`/`roll_dice`/`build`/`unmort
 
 | ID | Finding |
 |---|---|
-| BUG-025 | `city_assets`, `city_auctions`, `city_trade_offers` have RLS `USING (true)` — world-readable cross-room with the public anon key. |
-| BUG-026 | Blanket INSERT/UPDATE/DELETE grants on `city_matches`/`city_match_players` including `rng_seed`. Currently blocked by RLS having no write policy (verified), but one permissive policy would expose cash and seed writes. |
-| BUG-027 | `city_derive_dice` exposed to clients — latent oracle, harmless only while the seed stays hidden. |
+| BUG-025 | **&#10003; Fixed 2026-09-01 (migration `0078`, see §1b).** `city_assets`, `city_auctions`, `city_trade_offers` have RLS `USING (true)` — world-readable cross-room with the public anon key. |
+| BUG-026 | **&#10003; Fixed 2026-09-01 (migration `0078`, see §1b).** Blanket INSERT/UPDATE/DELETE grants on `city_matches`/`city_match_players` including `rng_seed`. Currently blocked by RLS having no write policy (verified), but one permissive policy would expose cash and seed writes. |
+| BUG-027 | **&#10003; Fixed 2026-09-01 (migration `0078`, see §1b).** `city_derive_dice` exposed to clients — latent oracle, harmless only while the seed stays hidden. |
 | BUG-028 | `building_supply_limit` is never read; with it set to 2, a 5th building still built. |
 | BUG-029 | **&#10003; Fixed 2026-09-01 (migration `0077`, see §1b).** `city_assert_can_manage` never checks phase, so building/mortgaging succeed during `auction` and `required_decision`. |
 | BUG-030 | Mortgage uses integer truncation (Porto 55 → 27, not 27.5); a mortgage round-trip silently costs 3 Spins. |
