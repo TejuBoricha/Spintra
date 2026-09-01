@@ -209,6 +209,7 @@ interface UseCityMatchResult {
   mortgage: (spaceIdx: number) => Promise<void>;
   unmortgage: (spaceIdx: number) => Promise<void>;
   declareBankruptcy: () => Promise<void>;
+  retireSelf: () => Promise<void>;
   offers: CityTradeOffer[];
   proposeTrade: (args: {
     toSeat: number;
@@ -629,6 +630,15 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     await runCommand(() => supabase!.rpc("city_declare_bankruptcy", { p_match_id: id }));
   }, [runCommand, supabase]);
 
+  // FR-29: a deliberate "I'm leaving" action, distinct from a disconnect.
+  // Routes server-side through the same retire/liquidation sequence kick and
+  // ban already use (city_retire_seat via city_retire_self, migration 0083).
+  const retireSelf = useCallback(async () => {
+    const id = matchIdRef.current;
+    if (!id) return;
+    await runCommand(() => supabase!.rpc("city_retire_self", { p_match_id: id }));
+  }, [runCommand, supabase]);
+
   const proposeTrade = useCallback(
     async (args: {
       toSeat: number;
@@ -749,6 +759,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     mortgage,
     unmortgage,
     declareBankruptcy,
+    retireSelf,
     offers,
     proposeTrade,
     acceptTrade,

@@ -16,6 +16,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConnectionBanner } from "@/components/ui/connection-banner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useRoomActivity } from "../context/room-activity-context";
 import { CityBoard } from "./city-board";
 import { CityHoldings } from "./city-holdings";
@@ -37,6 +45,7 @@ const MIN_PLAYERS = 2;
 export function CityMatchShell() {
   const { roomCode, isHost, currentUser } = useRoomActivity();
   const [selected, setSelected] = useState<number | null>(null);
+  const [isRetireConfirmOpen, setIsRetireConfirmOpen] = useState(false);
   // FR-42: chosen here, at match creation, not in RoomSettingsPanel — and
   // never touched again once city_create_match has written it.
   const [pacePreset, setPacePreset] = useState<25 | 40 | 60>(40);
@@ -65,6 +74,7 @@ export function CityMatchShell() {
     mortgage,
     unmortgage,
     declareBankruptcy,
+    retireSelf,
     offers,
     proposeTrade,
     acceptTrade,
@@ -306,6 +316,21 @@ export function CityMatchShell() {
                 deadline={new Date(match.turn_started_at).getTime() + match.pace_seconds * 1000}
               />
             )}
+          {/* FR-29: a deliberate "I'm leaving" action, distinct from a
+              disconnect — routes through the same retire/liquidation
+              sequence a kick already uses. Confirmed first: unlike Leave
+              seat in the lobby, this forfeits a live position. */}
+          {!iAmOut && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-muted-foreground"
+              onClick={() => setIsRetireConfirmOpen(true)}
+            >
+              <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
+              Retire
+            </Button>
+          )}
         </div>
 
         {error && (
@@ -441,6 +466,32 @@ export function CityMatchShell() {
                       ? "You've rolled — build, trade, or end your turn when you're ready."
                       : `Waiting for ${active?.username ?? "the next player"}.`}
         </p>
+
+        <Dialog open={isRetireConfirmOpen} onOpenChange={setIsRetireConfirmOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Retire from this match?</DialogTitle>
+              <DialogDescription>
+                Your properties return to the bank and your seat is out for the rest of this
+                match. You&apos;ll keep watching as a spectator, but this can&apos;t be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsRetireConfirmOpen(false)}>
+                Keep playing
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  setIsRetireConfirmOpen(false);
+                  void retireSelf();
+                }}
+              >
+                Yes, retire
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

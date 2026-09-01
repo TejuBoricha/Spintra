@@ -29,6 +29,22 @@ begin
   -- suite re-runnable; without it the last block silently drops its assertion.
   v_host := '99999999-0000-4000-8000-' || lpad((abs(hashtext(p_room)) % 1000000000000)::text, 12, '0');
 
+  -- `check_room_join_rate_limit` allows 20 joins per user per 10 minutes,
+  -- counted globally across rooms, not per room -- and v_u below is the same
+  -- 3 fixed UUIDs every rg_match call in this suite reuses (rg_as's identity
+  -- switching depends on that fixed identity, so making these per-room-unique
+  -- like v_host would mean plumbing a room param through every rg_as(seat)
+  -- call site across the file, a much larger and riskier change for the same
+  -- result). Earlier rooms' rows for these 3 users are still sitting around
+  -- from earlier blocks in this same run -- the suite's teardown only runs
+  -- once, at the very end -- so by the time the 21st rg_match call in one run
+  -- was added, the count for each of these 3 users legitimately passed 20 and
+  -- tripped the limiter mid-suite. Deleting their own prior join history
+  -- globally (not just for p_room, which the delete below already covers)
+  -- keeps each rg_match call starting from zero, the same guarantee v_host
+  -- already has via its own per-room identity instead.
+  delete from public.room_participants where user_id = any(v_u);
+
   perform set_config('app.force_close_room','true',true);
   delete from public.rooms where code = p_room;
   perform set_config('app.force_close_room','false',true);
@@ -918,6 +934,128 @@ begin
   insert into rg values (default,'BUG-033','the host can set the match pace at creation',
     'an invalid pace (99) is refused with CITY_INVALID_PACE; a valid pace (60) persists to the match row',
     case when ok then format('invalid pace refused correctly; pace_seconds=%s', actual_pace) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-E (FR-29) — a seated player can voluntarily retire, and it hands
+-- off the turn exactly like a kick when it was theirs.
+-- ===========================================================================
+do $blk$
+declare m uuid; st1 text; st0 text; cs int; mstatus text; winner int; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGE1', 71);
+
+  -- Off-turn retire (seat 1, current_seat is 0): status flips, turn untouched.
+  perform pg_temp.rg_as(1);
+  perform public.city_retire_self(m);
+  select status into st1 from public.city_match_players where match_id=m and seat=1;
+  select current_seat into cs from public.city_matches where id=m;
+  if st1 <> 'retired' then
+    ok := false; act := act || format('seat 1 status is %L after retiring off-turn, expected retired; ', st1);
+  end if;
+  if cs <> 0 then
+    ok := false; act := act || format('current_seat moved to %s after an OFF-turn retire; ', cs);
+  end if;
+
+  -- The two negative cases have to run here, with the match still active and
+  -- two of three seats still live -- one seat away from last-player-standing
+  -- legitimately finishing the match (checked further down), which would
+  -- otherwise make CITY_MATCH_NOT_ACTIVE mask the specific error each of
+  -- these is actually testing for.
+  begin
+    perform pg_temp.rg_as(1);
+    perform public.city_retire_self(m);
+    ok := false; act := act || 'an already-retired seat was allowed to retire again; ';
+  exception when others then
+    if SQLERRM not like '%CITY_SEAT_OUT%' then
+      ok := false; act := act || 'wrong error for an already-retired seat: '||SQLERRM||'; ';
+    end if;
+  end;
+
+  begin
+    perform pg_temp.rg_as_host('CITYRGE1');
+    perform public.city_retire_self(m);
+    ok := false; act := act || 'a never-seated caller was allowed to retire; ';
+  exception when others then
+    if SQLERRM not like '%CITY_NOT_SEATED%' then
+      ok := false; act := act || 'wrong error for a never-seated caller: '||SQLERRM||'; ';
+    end if;
+  end;
+
+  -- On-turn retire (seat 0 IS current_seat): hands off to the next live seat.
+  -- Seat 1 is already retired, so the only remaining seat is 2 -- which also
+  -- makes this the last-player-standing case (DESIGN.md §3.1D), finishing
+  -- the match the same way city_bankrupt_seat's own trigger does.
+  perform pg_temp.rg_as(0);
+  perform public.city_retire_self(m);
+  select status into st0 from public.city_match_players where match_id=m and seat=0;
+  select status, current_seat into mstatus, cs from public.city_matches where id=m;
+  if st0 <> 'retired' then
+    ok := false; act := act || format('seat 0 status is %L after retiring, expected retired; ', st0);
+  end if;
+  if mstatus <> 'finished' then
+    ok := false; act := act || format('match status is %L after only seat 2 remained, expected finished; ', mstatus);
+  end if;
+
+  insert into rg values (default,'BUG-007-E','a seated player can voluntarily retire (FR-29)',
+    'off-turn retire flips status without touching current_seat; retiring twice or retiring unseated are both refused; retiring down to the last player finishes the match',
+    case when ok then 'retire-self behaves correctly in all four scenarios' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-A (FR-25) — a disconnect is tracked without any client heartbeat,
+-- bridged from the site-wide room_participants.is_online presence system.
+-- ===========================================================================
+do $blk$
+declare m uuid; d1 timestamptz; d1_after_reconnect timestamptz; autopilot_after int;
+  ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGA1', 72);
+
+  -- Disconnect (seat 1): disconnected_at is stamped.
+  update public.room_participants set is_online = false
+   where room_id = 'CITYRGA1' and user_id = (
+     select user_id from public.city_match_players where match_id=m and seat=1);
+  select disconnected_at into d1 from public.city_match_players where match_id=m and seat=1;
+  if d1 is null then
+    ok := false; act := act || 'disconnected_at was not stamped after is_online flipped false; ';
+  end if;
+
+  -- Seed a nonzero autopilot streak by hand, to prove reconnect genuinely
+  -- resets it rather than it coincidentally already reading 0.
+  update public.city_match_players set consecutive_autopilot_turns = 2
+   where match_id=m and seat=1;
+
+  -- Reconnect: disconnected_at clears, the autopilot streak resets.
+  update public.room_participants set is_online = true
+   where room_id = 'CITYRGA1' and user_id = (
+     select user_id from public.city_match_players where match_id=m and seat=1);
+  select disconnected_at, consecutive_autopilot_turns
+    into d1_after_reconnect, autopilot_after
+    from public.city_match_players where match_id=m and seat=1;
+  if d1_after_reconnect is not null then
+    ok := false; act := act || 'disconnected_at was not cleared on reconnect; ';
+  end if;
+  if autopilot_after <> 0 then
+    ok := false; act := act || format('consecutive_autopilot_turns is %s after reconnect, expected reset to 0; ', autopilot_after);
+  end if;
+
+  -- A terminal seat (bankrupt) must not be tracked -- there is no clock or
+  -- autopilot left to protect for a seat already out of the match.
+  update public.city_match_players set status = 'bankrupt' where match_id=m and seat=2;
+  update public.room_participants set is_online = false
+   where room_id = 'CITYRGA1' and user_id = (
+     select user_id from public.city_match_players where match_id=m and seat=2);
+  perform 1 from public.city_match_players where match_id=m and seat=2 and disconnected_at is not null;
+  if found then
+    ok := false; act := act || 'a bankrupt seat''s disconnected_at was stamped; ';
+  end if;
+
+  insert into rg values (default,'BUG-007-A','a disconnect is tracked from the existing presence system (FR-25)',
+    'is_online flipping false stamps disconnected_at; flipping back true clears it and resets consecutive_autopilot_turns; a terminal (bankrupt) seat is never tracked',
+    case when ok then 'disconnect/reconnect tracking behaves correctly in all three scenarios' else act end,
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 

@@ -121,7 +121,7 @@ function runSql() {
 
 // A block that errors out inserts no row, which would otherwise show up as a
 // smaller total rather than a failure — the quietest way for a suite to lie.
-const EXPECTED_SQL_ASSERTIONS = 27;
+const EXPECTED_SQL_ASSERTIONS = 29;
 
 const sqlRows = runSql();
 if (sqlRows.length !== EXPECTED_SQL_ASSERTIONS) {

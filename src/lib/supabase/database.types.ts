@@ -376,6 +376,7 @@ export type Database = {
           cash: number
           consecutive_autopilot_turns: number
           detention_turns: number
+          disconnected_at: string | null
           final_net_worth: number | null
           id: string
           in_detention: boolean
@@ -396,6 +397,7 @@ export type Database = {
           cash?: number
           consecutive_autopilot_turns?: number
           detention_turns?: number
+          disconnected_at?: string | null
           final_net_worth?: number | null
           id?: string
           in_detention?: boolean
@@ -416,6 +418,7 @@ export type Database = {
           cash?: number
           consecutive_autopilot_turns?: number
           detention_turns?: number
+          disconnected_at?: string | null
           final_net_worth?: number | null
           id?: string
           in_detention?: boolean
@@ -1081,6 +1084,7 @@ export type Database = {
           cash: number
           consecutive_autopilot_turns: number
           detention_turns: number
+          disconnected_at: string | null
           final_net_worth: number | null
           id: string
           in_detention: boolean
@@ -1226,6 +1230,7 @@ export type Database = {
         Args: { p_match_id: string; p_seat: number }
         Returns: undefined
       }
+      city_retire_self: { Args: { p_match_id: string }; Returns: undefined }
       city_roll_dice: { Args: { p_match_id: string }; Returns: Json }
       city_sell_building: {
         Args: { p_match_id: string; p_space_idx: number }
@@ -1442,3 +1447,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
