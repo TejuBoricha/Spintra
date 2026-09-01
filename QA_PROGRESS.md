@@ -1057,12 +1057,62 @@ correctly against the new 5-arg signature.
 Nothing has touched production. `supabase/migrations/0082_*.sql` is
 local-only, same as every migration before it.
 
-## Fix phase running total (all seven rounds)
+## ROUND 8
 
-39 of 44 bugs fixed: 4 Critical, 11 of 13 High, **12 of 12 Medium (all
-closed, for real this time)**, 12 of 15 Low. 5 remain open: BUG-007 (still
-explicitly out of scope as multi-day work), BUG-006 (partially addressed as
-a side effect of BUG-003, no visible countdown), and BUG-018/020/028
-(re-verification concluded none of the three is an actual defect — no code
-change was ever warranted for any of them). Regression harness: 29/29.
-`npm run verify`: green. Nothing has touched production.
+**Scope: closing BUG-006's one remaining gap.** Round 3 (`city_claim_timeout`,
+migration `0076`) had already given the turn clock a real server-side
+consequence — an unresponsive current player's turn is auto-claimed once
+`turn_started_at + pace_seconds` passes. What was still missing, confirmed by
+re-reading `city-match-shell.tsx` in full: nothing anywhere rendered that
+deadline to a player. A player facing a ticking clock with real stakes (an
+auto-claim that can cost them the turn) had no way to see how much time was
+left — the exact "decorative clock" complaint the original audit filed,
+narrowed down to its last surviving piece.
+
+**Design:** a purely client-side fix — the server already has full authority
+over the actual timeout (0076's `city_claim_timeout` re-derives the deadline
+itself and does not trust anything the client displays), so this is a
+read-only rendering problem, not a new authority surface. Added a
+`TurnCountdown({ deadline })` component to `city-match-shell.tsx`: computes
+`Math.max(0, Math.round((deadline - now) / 1000))` on a `setInterval` tick
+every 1000ms, renders `mm:ss` inside a `Badge` with `role="timer"` and
+`aria-live="off"` (an actively-ticking number read aloud every second would
+be disruptive noise for screen-reader users, not useful information — silent
+is the correct choice here, not an oversight). `deadline` is derived from the
+same fields `city_claim_timeout` itself reads: `turn_started_at +
+pace_seconds`. Rendered in the seat-badges row, gated on the identical
+conditions already guarding the existing auto-claim effect
+(`match.status === 'active' && match.phase !== 'auction' &&
+!match.turn_clock_paused_at && match.turn_started_at`) — the countdown only
+ever appears when a real, live deadline exists to show, and disappears
+exactly when the server-side enforcement it mirrors stops applying (auction
+phase, a paused clock, a finished match).
+
+**No new migration.** `pace_seconds` and `turn_started_at` were already
+columns on `city_matches`, already selected by the client (`MATCH_COLUMNS`),
+and already covered by that table's existing SELECT grant allowlist — this
+round needed nothing from the database layer at all, only a new client
+component reading data the hook already fetched.
+
+**Verification:** live two-browser proof via a new
+`tests/qa-x11-turn-countdown.spec.ts` (kept in the repo). Backdated
+`turn_started_at` to 35 seconds in the past against a 40-second pace (5
+seconds of the deadline left), reloaded, and read the on-screen timer:
+`0:04` on first read, confirmed the ticking is real (not a frozen render) by
+reading it again ~2 seconds later and asserting the numeric value strictly
+decreased. Full SQL regression suite unaffected — still 29/29, since this
+round touched no SQL. `npm run verify`: green.
+
+Nothing has touched production. This round shipped no migration, so
+production's migration gap versus local remains exactly `0071`–`0082`,
+unchanged from round 7.
+
+## Fix phase running total (all eight rounds)
+
+40 of 44 bugs fixed: 4 Critical, **12 of 13 High (all but BUG-007)**, 12 of
+12 Medium, 12 of 15 Low. 4 remain open: BUG-007 (still explicitly out of
+scope as multi-day work — disconnect grace, autopilot, forced retire, the
+full turn-clock model), and BUG-018/020/028 (re-verification concluded none
+of the three is an actual defect — no code change was ever warranted for any
+of them). Regression harness: 29/29. `npm run verify`: green. Nothing has
+touched production.

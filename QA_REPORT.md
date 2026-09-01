@@ -116,9 +116,9 @@ scoring.
 
 ## 1b. Fix phase update (2026-09-01) — local only, not deployed
 
-A fix phase followed this audit, in seven rounds. **All 4 criticals are now
-fixed and independently verified**, along with 35 further bugs closed across
-the seven rounds. Everything in this section happened **entirely on the local
+A fix phase followed this audit, in eight rounds. **All 4 criticals are now
+fixed and independently verified**, along with 36 further bugs closed across
+the eight rounds. Everything in this section happened **entirely on the local
 Docker stack** — production has none of migrations `0063`–`0082` and remains
 exactly as this audit found it. This section does not revise the audit above;
 it records what changed after it.
@@ -166,6 +166,7 @@ it records what changed after it.
 | **BUG-030** mortgage/unmortgage truncated the half-price instead of rounding it | `0082` — both now divide as `numeric` before rounding (`round()` for the mortgage payout, the existing `ceil()` left as the final step for unmortgage, now fed the correct fractional value) | Regression harness and a live match: Porto (price 55) mortgages for 28, not 27 |
 | **BUG-022** a city room's capacity silently capped spectators | `0082` — `type = 'city'` rooms skip the room-capacity trigger entirely (FR-38); match seats already carry their own independent 8-seat cap | Regression harness: a 3rd, non-seated joiner succeeds in a full 2-capacity city room; a same-capacity non-city room still refuses one, proving the fix is scoped |
 | **BUG-033** the host could not set the match pace, and no code path made an eliminated/never-seated player a spectator | `0082` (pace) + client fix (spectator status text) — `city_create_match` gained an optional, validated `p_pace_seconds` parameter with a lobby UI to choose it (FR-42); the status line's `iAmOut` condition now also covers a never-seated room member (FR-36) | Regression harness (invalid pace refused, valid pace persists) plus two live proofs: the host's chosen "Slow · 60s" preset lands in the match row; a never-seated onlooker reads "You're spectating this match," not "Waiting for X" |
+| **BUG-006** the turn clock had a real consequence but no visible countdown | `city-match-shell.tsx` — a `TurnCountdown` component ticks client-side against the same `turn_started_at + pace_seconds` deadline `city_claim_timeout` itself re-derives server-side, gated on the exact same conditions as the existing auto-claim effect | Live proof: backdated the clock to 5 seconds remaining, watched the on-screen timer read `0:04` then `0:02` two seconds later — genuinely ticking, not frozen |
 
 **A client-side gap this round found and closed, not itself one of the 44 audit-numbered bugs:** round 2's server-side fix for BUG-005 (0077) let an off-turn debtor call `city_sell_building`/`city_mortgage` directly, but `city-holdings.tsx`'s Sell and Mortgage buttons still unconditionally required `isMyTurn`, with no `inDebt` exception — the debt banner right above those same buttons instructs the player to "sell buildings and mortgage cities below," but the buttons themselves stayed disabled whenever it wasn't their turn. Fixed alongside BUG-039's tooltip work (`city-holdings.tsx`); verified live in the same session — an off-turn, in-debt guest's Mortgage button is genuinely clickable and the RPC succeeds.
 
@@ -190,8 +191,11 @@ row's arithmetic was inconsistent with the rest of the same section. Caught
 while preparing this round's own numbers and corrected here rather than
 silently overwritten.
 
-**Improved as a side effect, not independently verified as fully closed:**
-- **BUG-006** (turn clock decorative) — `city_claim_timeout` (0076) now reads `turn_started_at`/`pace_seconds` for a real purpose, so the clock is no longer purely decorative; a genuine consequence exists once it lapses. The original defect's core claim no longer holds. What remains open: no visible countdown is rendered anywhere (a separate, cosmetic gap this fix did not address).
+**BUG-006 closed in full this same pass.** Previously listed as "improved
+as a side effect, not independently verified as fully closed" — `city_
+claim_timeout` (0076) had already given the clock a real consequence, but
+the one remaining gap (no visible countdown anywhere) is now also closed;
+see the countdown row above.
 
 **A gap this round found in its own testing infrastructure, unrelated to any audit-numbered bug:** this repo's `.env.local` points at the real, hosted production Supabase project (used for normal local development against live data), and a bare `npm run build` inlines whatever `NEXT_PUBLIC_SUPABASE_URL` is active at build time into the client bundle — this session's first rebuild after the client-side edits omitted the local-stack override that earlier rounds' browser verification had been supplying, so several live-browser test runs briefly built and ran against production credentials instead of the local Docker stack. Every room-creation attempt failed at the database level (production's `rooms_type_check` constraint predates the City feature and has no `'city'` value — the exact protection this session has relied on throughout), so no City data reached production; several throwaway anonymous Supabase Auth sessions were very likely created there in the process. Caught by directly diagnosing an unexplained constraint-violation error rather than assuming it was a code bug, traced to the bundle's inlined URL, and corrected by rebuilding with the local stack's actual URL/anon key (`npx supabase status -o env`) explicitly overriding `.env.local`, confirmed via a bundle grep showing zero remaining references to the production project ref before any further browser testing resumed. No code or migration change resulted from this — it is a build-invocation mistake, not a defect in the app — but it is recorded here in full rather than folded away, and reported directly to the user.
 
@@ -207,24 +211,24 @@ before any of this work left the local stack.
 ### Every fixed migration passed the same gates
 
 `npm run test:city-regression` (27 SQL assertions plus 2 source checks — BUG-038
-and BUG-013 — for 29 total; 3 added this round for BUG-022/030/033, none since
-round 4 before that, since round 5's BUG-035 fix and round 6's client-side fixes
-are proven live in a real browser instead — see below), a 20-match concurrent
-load test with byte-identical outcome counts before and after every round-1
-change, post-load integrity checks (no negative cash, no orphaned assets, no
-deadlocks), idempotent re-application of every migration (every migration from
-`0077` on re-applies as a clean no-op with the harness unchanged), and
-`npm run verify`. Round 6's eight client-side fixes, round 7's pace/spectator
-fixes, and BUG-035 were all verified against a real production build of the app
-running against the local Supabase stack, in a real headless browser, via
-`tests/qa-x9-client-polish.spec.ts` and `tests/qa-x10-pace-mortgage-spectator
-.spec.ts` (both kept in the repo, same as the earlier live-verification specs).
-Full detail, including five false-positive regression-check bugs caught and
-fixed across rounds 1-4, the self-introduced overload-grant regression (round
-4), a second self-introduced grant gap (round 5, caught live rather than in
-review), a genuine test-infrastructure incident (round 6), and a flawed first
-draft of the BUG-022 fix caught by hand-tracing before it was ever applied
-(round 7) — is in `QA_PROGRESS.md`.
+and BUG-013 — for 29 total, unchanged since round 7; BUG-006's round 8 fix is
+client-only and proven live instead — see below), a 20-match concurrent load
+test with byte-identical outcome counts before and after every round-1 change,
+post-load integrity checks (no negative cash, no orphaned assets, no deadlocks),
+idempotent re-application of every migration (every migration from `0077` on
+re-applies as a clean no-op with the harness unchanged), and `npm run verify`.
+Round 6's eight client-side fixes, round 7's pace/spectator fixes, round 8's
+countdown, and BUG-035 were all verified against a real production build of the
+app running against the local Supabase stack, in a real headless browser, via
+`tests/qa-x9-client-polish.spec.ts`, `tests/qa-x10-pace-mortgage-spectator
+.spec.ts` and `tests/qa-x11-turn-countdown.spec.ts` (all kept in the repo, same
+as the earlier live-verification specs). Full detail, including five
+false-positive regression-check bugs caught and fixed across rounds 1-4, the
+self-introduced overload-grant regression (round 4), a second self-introduced
+grant gap (round 5, caught live rather than in review), a genuine
+test-infrastructure incident (round 6), and a flawed first draft of the BUG-022
+fix caught by hand-tracing before it was ever applied (round 7) — is in
+`QA_PROGRESS.md`.
 
 **BUG-023 has no dedicated regression assertion, by design, not by omission.**
 The bug was that a write attempted just before an exception silently rolled back
@@ -242,24 +246,23 @@ catch.
 
 | | Original audit | After the fix phase (local only) |
 |---|---|---|
-| Confirmed bugs | 44 | 44 found, **39 fixed**, 5 open |
+| Confirmed bugs | 44 | 44 found, **40 fixed**, 4 open |
 | Critical | 4 | **0 unresolved** (4 of 4 fixed) |
-| High | 13 | 2 unresolved (11 of 13 fixed: 008, 009, 010, 012, 013, 014, 038, 005, 011, 034, 035) |
+| High | 13 | 1 unresolved (12 of 13 fixed: 008, 009, 010, 012, 013, 014, 038, 005, 011, 034, 035, 006) |
 | Medium | 12 | **0 unresolved (12 of 12 fixed)** |
 | Low | 15 | 3 unresolved (12 of 15 fixed: 031, 029, 025, 026, 027, 032, 039, 041, 042, 043, 030, 033) |
 
-The 5 still-open bugs were, without exception, already classified as non-blocking
+The 4 still-open bugs were, without exception, already classified as non-blocking
 in the original audit (§17's fix list covered the release-blocking set almost
 exactly — items 1–8 there map directly to the migrations above). None of them
 individually gates a release the way the four criticals did. The largest single
 item left is BUG-007's 20 MUST-requirement slice (disconnect grace, autopilot,
 forced retire, the full turn-clock model) — deliberately untouched throughout all
-seven rounds as genuinely multi-day work, not an oversight. The rest: BUG-006
-(turn clock partially addressed as a side effect of BUG-003's fix — no visible
-countdown), BUG-028 (re-verification concluded it is not an actual defect — the
-unlimited-buildings behavior is DESIGN.md's own explicit v1 decision), and
-BUG-018/020 (re-verification concluded neither is an actual defect either — no
-code change was ever warranted for any of these three).
+eight rounds as genuinely multi-day work, not an oversight. The rest: BUG-028
+(re-verification concluded it is not an actual defect — the unlimited-buildings
+behavior is DESIGN.md's own explicit v1 decision), and BUG-018/020
+(re-verification concluded neither is an actual defect either — no code change
+was ever warranted for either of these two).
 
 ### What this means for the release verdict in §18
 
@@ -404,7 +407,7 @@ All nine exits then close simultaneously: `end_turn`/`roll_dice`/`build`/`unmort
 
 | ID | Finding |
 |---|---|
-| BUG-006 | **Turn clock is decorative.** `turn_started_at`, `turn_clock_elapsed_ms`, `turn_clock_paused_at` are only ever written (reset on turn change) and never read for expiry. `pace_seconds` is never written or read. No enforcement exists anywhere. |
+| BUG-006 | **&#10003; Fixed 2026-09-01 (migration `0076`, plus a client-only fix in round 8, see §1b).** **Turn clock is decorative.** `turn_started_at`, `turn_clock_elapsed_ms`, `turn_clock_paused_at` are only ever written (reset on turn change) and never read for expiry. `pace_seconds` is never written or read. No enforcement exists anywhere. `city_claim_timeout` (0076) gave the clock a real server-side consequence; round 8 closed the remaining gap by adding a visible, ticking client-side countdown (`TurnCountdown` in `city-match-shell.tsx`) against the same deadline. |
 | BUG-007 | **20 MUST requirements unimplemented** (FR-25–33, FR-41–51): disconnect grace, autopilot, forced retire, voluntary retire, host kick, durable pause, the clock model, sub-clocks, timeout defaults. `'paused'` and `'retired'` statuses are referenced in constraints but never set. |
 | BUG-008 | **&#10003; Fixed 2026-09-01 (migration `0071`, see §1b).** **`city_settle_auction(p_force)` is client-callable and unauthenticated.** `p_force` skips both the advisory lock and the deadline check. Verified over HTTP with **no JWT at all**: it returns `CITY_NO_AUCTION` where sibling RPCs correctly return `CITY_NOT_AUTHENTICATED` — it has no auth check whatsoever. Any visitor can close any room's auction early; two parallel force-settles charge the winner twice, destroying money. |
 | BUG-009 | **&#10003; Fixed 2026-09-01 (migration `0071`, see §1b).** **Declining while in debt auctions an already-owned property and destroys cash.** `city_decline_purchase` checks only the phase, which `city_charge` also sets. The winner is charged, the `on conflict do nothing` insert transfers nothing. 100 Spins vanished in the repro. |

@@ -142,10 +142,10 @@
 
 <h2 id="fix-phase">Fix phase update — 2026-09-01</h2>
 <p>
-  A fix phase followed this audit, in seven rounds. <strong>All 4 criticals are now fixed and
-  independently verified</strong>, along with 35 further bugs closed across all seven rounds.
+  A fix phase followed this audit, in eight rounds. <strong>All 4 criticals are now fixed and
+  independently verified</strong>, along with 36 further bugs closed across all eight rounds.
   Everything below happened <strong>entirely on the local Docker stack</strong> —
-  production has none of migrations <code>0063</code>–<code>0081</code> and remains exactly as
+  production has none of migrations <code>0063</code>–<code>0082</code> and remains exactly as
   this audit found it. This section records what changed after the audit; the report above is
   left exactly as originally written, as the historical record of what was found.
 </p>
@@ -193,6 +193,7 @@
     <tr><td><code>BUG-030</code></td><td>Migration <code>0082</code> — both mortgage and unmortgage divide as numeric before rounding, instead of truncating the half-price first</td><td>Regression harness and a live match: Porto (price 55) mortgages for 28, not 27</td></tr>
     <tr><td><code>BUG-022</code></td><td>Migration <code>0082</code> — city-type rooms skip the room-capacity trigger entirely (FR-38); match seats already carry their own independent 8-seat cap</td><td>Regression harness: a 3rd, non-seated joiner succeeds in a full 2-capacity city room; a same-capacity non-city room still refuses one</td></tr>
     <tr><td><code>BUG-033</code></td><td>Migration <code>0082</code> (pace) + client fix (spectator status) — city_create_match gained a validated p_pace_seconds parameter with a lobby preset UI (FR-42); the status line now also covers a never-seated room member (FR-36)</td><td>Regression harness plus two live proofs: the host's chosen pace lands in the match row; a never-seated onlooker reads "You're spectating this match"</td></tr>
+    <tr><td><code>BUG-006</code></td><td><code>city-match-shell.tsx</code> — a <code>TurnCountdown</code> component ticks client-side against the same <code>turn_started_at + pace_seconds</code> deadline <code>city_claim_timeout</code> itself re-derives server-side, gated on the exact same conditions as the existing auto-claim effect</td><td>Live proof: backdated the clock to 5 seconds remaining, watched the on-screen timer read <code>0:04</code> then <code>0:02</code> two seconds later — genuinely ticking, not frozen</td></tr>
   </tbody>
 </table>
 </div>
@@ -227,10 +228,10 @@
 </p>
 
 <p style="margin-top:14px">
-  <strong>Improved as a side effect, not independently verified as fully closed:</strong>
-  <strong>BUG-006</strong> — <code>city_claim_timeout</code>
-  now reads the clock fields for a real purpose, so it is no longer purely decorative, but no
-  visible countdown is rendered anywhere — that cosmetic gap is untouched.
+  <strong>BUG-006 closed in full this same pass.</strong> Previously listed as "improved as a side
+  effect, not independently verified as fully closed" — <code>city_claim_timeout</code> (0076) had
+  already given the clock a real consequence, but the one remaining gap (no visible countdown
+  anywhere) is now also closed; see the countdown row above.
 </p>
 
 <p style="margin-top:14px">
@@ -295,14 +296,25 @@
   check") rather than trying to count more narrowly.
 </p>
 
+<p style="margin-top:14px">
+  <strong>Round 8: BUG-006's remaining gap closed.</strong> <code>city_claim_timeout</code> (0076)
+  had already given the turn clock a real server-side consequence; the one thing still missing was
+  any visible countdown. A <code>TurnCountdown</code> component now ticks client-side against the
+  same <code>turn_started_at + pace_seconds</code> deadline the server itself re-derives, gated on
+  the same conditions as the existing auto-claim effect. Client-only change, no new migration —
+  verified live via <code>tests/qa-x11-turn-countdown.spec.ts</code>: the clock was backdated to
+  5 seconds remaining, and the on-screen timer was observed reading <code>0:04</code> then
+  <code>0:02</code> two seconds later, genuinely ticking rather than frozen.
+</p>
+
 <h3>Updated numbers</h3>
 <div class="scroll">
 <table>
   <thead><tr><th></th><th>Original audit</th><th>After the fix phase (local only)</th></tr></thead>
   <tbody>
-    <tr><td>Confirmed bugs</td><td>44</td><td>44 found, <strong>39 fixed</strong>, 5 open</td></tr>
+    <tr><td>Confirmed bugs</td><td>44</td><td>44 found, <strong>40 fixed</strong>, 4 open</td></tr>
     <tr><td>Critical</td><td>4</td><td><strong>0 unresolved</strong> (4 of 4 fixed)</td></tr>
-    <tr><td>High</td><td>13</td><td>2 unresolved (11 of 13 fixed)</td></tr>
+    <tr><td>High</td><td>13</td><td>1 unresolved (12 of 13 fixed)</td></tr>
     <tr><td>Medium</td><td>12</td><td><strong>0 unresolved (12 of 12 fixed)</strong></td></tr>
     <tr><td>Low</td><td>15</td><td>3 unresolved (12 of 15 fixed)</td></tr>
   </tbody>
@@ -907,7 +919,7 @@ add("TC-NA-001","TC-SPEC","Production","Spintra City is not deployed to producti
 const HIGHS = [
   ["BUG-005","A player charged off-turn is stalled with a debt they cannot settle","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0077</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). <code>city_charge</code> sets the raise-funds phase only for the current seat, while <code>city_assert_can_manage</code> gates mortgage, sell, build, unmortgage <em>and</em> <code>declare_bankruptcy</code> on being the current seat. A \"collect from every player\" card leaves the payer with <code>pending_debt</code> and no legal action, and the card reported <code>\"total\": 200</code> when only 100 moved. <strong>Re-test correction:</strong> the freeze is temporary — the payer recovers on their own turn, so this is a stall of up to N−1 turns, not a permanent deadlock. Downgraded from CRITICAL. It also enables BUG-044."],
   ["BUG-038","Two realtime subscriptions are global, not per-match — upgraded on re-test","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (<code>use-city-match.ts</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). <code>city_auctions</code> and <code>city_trade_offers</code> subscribe with no filter and call a bare <code>refetch()</code>. Proven behaviourally: a trade in a completely separate room made idle clients in another match run a full 5-query refetch. Both tables also carry RLS <code>USING (true)</code>, so no row-level gate compensates. Cross-tenant amplification."],
-  ["BUG-006","Turn clock is decorative","<code>turn_started_at</code>, <code>turn_clock_elapsed_ms</code> and <code>turn_clock_paused_at</code> are only ever written (reset on turn change) and never read for expiry. <code>pace_seconds</code> is never written or read. No enforcement exists anywhere, so the countdown a player sees has no consequence."],
+  ["BUG-006","Turn clock is decorative","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0076</code>, plus a client-only fix in round 8 &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). <code>turn_started_at</code>, <code>turn_clock_elapsed_ms</code> and <code>turn_clock_paused_at</code> were only ever written (reset on turn change) and never read for expiry, and <code>pace_seconds</code> was never written or read, so the countdown a player saw had no consequence. <code>city_claim_timeout</code> (0076) gave the clock a real server-side consequence; round 8 closed the remaining gap with a visible, ticking client-side countdown against the same deadline."],
   ["BUG-007","20 MUST requirements unimplemented","FR-25–33 and FR-41–51: disconnect grace, autopilot, forced retire, voluntary retire, host kick, durable pause, the clock model, sub-clocks, timeout defaults. The <code>'paused'</code> and <code>'retired'</code> statuses appear in constraints but are never set by any code."],
   ["BUG-008","city_settle_auction(p_force) is client-callable and unauthenticated","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0071</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). <code>p_force</code> skips both the advisory lock and the deadline check. Verified over HTTP with <strong>no JWT at all</strong>: it returns <code>CITY_NO_AUCTION</code> where sibling RPCs correctly return <code>CITY_NOT_AUTHENTICATED</code> — it has no auth check whatsoever. Any visitor can close any room's auction early; two parallel force-settles charge the winner twice, destroying money."],
   ["BUG-009","Declining while in debt auctions an owned property and destroys cash","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0071</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). <code>city_decline_purchase</code> checks only the phase, which <code>city_charge</code> also sets for raise-funds, and never checks the space is unowned. The auction winner is charged while the <code>on conflict do nothing</code> insert transfers nothing. 100 Spins vanished in the repro."],
