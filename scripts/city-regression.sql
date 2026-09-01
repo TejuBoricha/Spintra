@@ -418,6 +418,157 @@ begin
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 
+-- ===========================================================================
+-- BUG-005 — an off-turn debtor must still be able to raise funds (but not
+-- build, which is not a raise-funds action and stays gated to current_seat)
+-- ===========================================================================
+do $blk$
+declare m uuid; ok boolean := true; act text := ''; after_debt int; creditor_cash int;
+begin
+  m := pg_temp.rg_match('CITYRG05', 5005);
+  delete from public.city_assets where match_id=m;
+  insert into public.city_assets(match_id,space_idx,owner_seat,buildings,is_mortgaged)
+  values (m,1,0,0,false);
+  -- price(1)=55, so mortgage raises 27 -- cash 10+27=37 covers the 35 owed,
+  -- so the existing settle-on-cash trigger (0072) should immediately clear
+  -- it: this proves the off-turn raise-funds path and the auto-settle path
+  -- compose correctly, not just that the RPC call itself is unblocked.
+  update public.city_match_players set cash=10, pending_debt=35, pending_creditor_seat=1
+   where match_id=m and seat=0;
+  update public.city_match_players set cash=0 where match_id=m and seat=1;
+  update public.city_matches set current_seat=1, phase='optional_actions' where id=m;
+  perform pg_temp.rg_as(0);
+
+  begin
+    perform public.city_mortgage(m, 1);
+    select pending_debt into after_debt from public.city_match_players where match_id=m and seat=0;
+    select cash into creditor_cash from public.city_match_players where match_id=m and seat=1;
+    if after_debt <> 0 or creditor_cash <> 35 then
+      ok := false; act := act || format(
+        'mortgage ran but debt did not fully clear (pending_debt=%s, creditor cash=%s, want 0/35); ',
+        after_debt, creditor_cash);
+    end if;
+  exception when others then
+    ok := false; act := act || 'off-turn mortgage was wrongly refused: '||SQLERRM||'; ';
+  end;
+
+  begin
+    perform public.city_build(m, 1);
+    ok := false; act := act || 'city_build wrongly succeeded off-turn for a debtor; ';
+  exception when others then
+    null; -- expected to refuse, for any reason (not the property under test)
+  end;
+
+  insert into rg values (default,'BUG-005','an off-turn debtor can still raise funds (but not build)',
+    'city_mortgage succeeds off-turn for a debtor and the raised cash clears the debt (creditor +35); city_build stays refused',
+    case when ok then 'off-turn mortgage raised the debt to 0 and paid the creditor 35; city_build correctly refused'
+         else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-011 — a debtor accepting a trade must not be able to strip assets to
+-- an accomplice for less than the debt they owe; a trade that genuinely
+-- clears the debt must still work (trade is a legitimate raise-funds path)
+-- ===========================================================================
+do $blk$
+declare m uuid; ok boolean := true; act text := '';
+  bad_offer uuid; good_offer uuid; owner int; d int;
+begin
+  m := pg_temp.rg_match('CITYRG11', 5011);
+  delete from public.city_assets where match_id=m;
+  insert into public.city_assets(match_id,space_idx,owner_seat,buildings,is_mortgaged)
+  values (m,1,0,0,false);
+  update public.city_match_players set cash=5, pending_debt=50, pending_creditor_seat=2
+   where match_id=m and seat=0;
+  update public.city_matches set current_seat=1, phase='optional_actions' where id=m;
+
+  -- seat 1 (not in debt) offers seat 0 a token 10 cash for the property --
+  -- nowhere near the 50 owed. Proposing is fine; accepting must not be.
+  perform pg_temp.rg_as(1);
+  bad_offer := public.city_propose_trade(m, 0, '{}', array[1], 10, 0);
+
+  perform pg_temp.rg_as(0);
+  begin
+    perform public.city_accept_trade(bad_offer);
+    ok := false; act := act || 'debtor accepted a trade that left the debt uncovered; ';
+  exception when others then
+    if SQLERRM not like '%SETTLE_DEBT_FIRST%' then
+      ok := false; act := act || 'wrong refusal reason: '||SQLERRM||'; ';
+    end if;
+  end;
+  select owner_seat into owner from public.city_assets where match_id=m and space_idx=1;
+  if owner <> 0 then
+    ok := false; act := act || 'property moved despite the accept being refused; ';
+  end if;
+
+  -- a trade that DOES clear the debt must still go through.
+  perform pg_temp.rg_as(1);
+  good_offer := public.city_propose_trade(m, 0, '{}', array[1], 100, 0);
+  perform pg_temp.rg_as(0);
+  begin
+    perform public.city_accept_trade(good_offer);
+  exception when others then
+    ok := false; act := act || 'a debt-clearing trade was wrongly refused: '||SQLERRM||'; ';
+  end;
+  select owner_seat into owner from public.city_assets where match_id=m and space_idx=1;
+  select pending_debt into d from public.city_match_players where match_id=m and seat=0;
+  if owner <> 1 then
+    ok := false; act := act || 'debt-clearing trade did not transfer the property; ';
+  end if;
+  if d <> 0 then
+    ok := false; act := act || format('debt should auto-clear via the cash trigger, still shows %s; ', d);
+  end if;
+
+  insert into rg values (default,'BUG-011','a debtor cannot strip assets via a non-clearing trade',
+    'a sub-debt trade is refused (property stays put); a debt-clearing trade succeeds and auto-settles',
+    case when ok then 'token trade refused, property untouched; full trade succeeded and cleared the debt'
+         else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-029 — management actions (build/sell/mortgage/unmortgage/bankruptcy)
+-- must respect match phase: none of them are legal during an active
+-- auction, and city_build specifically must not run ahead of a still-
+-- pending required decision
+-- ===========================================================================
+do $blk$
+declare m uuid; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRG29', 5029);
+  delete from public.city_assets where match_id=m;
+  insert into public.city_assets(match_id,space_idx,owner_seat,buildings,is_mortgaged)
+  values (m,1,0,0,false),(m,3,0,0,false);
+  update public.city_match_players set cash=1000, pending_debt=0 where match_id=m and seat=0;
+  update public.city_matches set current_seat=0, phase='auction' where id=m;
+  perform pg_temp.rg_as(0);
+
+  begin
+    perform public.city_mortgage(m, 1);
+    ok := false; act := act || 'city_mortgage wrongly succeeded during an active auction; ';
+  exception when others then
+    if SQLERRM not like '%AUCTION_IN_PROGRESS%' then
+      ok := false; act := act || 'wrong refusal during auction: '||SQLERRM||'; ';
+    end if;
+  end;
+
+  update public.city_matches set phase='required_decision' where id=m;
+  begin
+    perform public.city_build(m, 1);
+    ok := false; act := act || 'city_build wrongly succeeded during required_decision; ';
+  exception when others then
+    if SQLERRM not like '%DECISION_PENDING%' then
+      ok := false; act := act || 'wrong refusal during required_decision: '||SQLERRM||'; ';
+    end if;
+  end;
+
+  insert into rg values (default,'BUG-029','management actions respect match phase',
+    'blocked during auction (CITY_AUCTION_IN_PROGRESS); city_build also blocked during required_decision (CITY_DECISION_PENDING)',
+    case when ok then 'both correctly refused with the expected error codes' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
 -- ---------------------------------------------------------------------------
 -- teardown + report
 -- ---------------------------------------------------------------------------
