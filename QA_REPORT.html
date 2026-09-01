@@ -142,10 +142,10 @@
 
 <h2 id="fix-phase">Fix phase update — 2026-09-01</h2>
 <p>
-  A fix phase followed this audit, in three rounds. <strong>All 4 criticals are now fixed and
-  independently verified</strong>, along with 20 further bugs closed across all three rounds.
+  A fix phase followed this audit, in four rounds. <strong>All 4 criticals are now fixed and
+  independently verified</strong>, along with 24 further bugs closed across all four rounds.
   Everything below happened <strong>entirely on the local Docker stack</strong> —
-  production has none of migrations <code>0063</code>–<code>0078</code> and remains exactly as
+  production has none of migrations <code>0063</code>–<code>0080</code> and remains exactly as
   this audit found it. This section records what changed after the audit; the report above is
   left exactly as originally written, as the historical record of what was found.
 </p>
@@ -178,6 +178,10 @@
     <tr><td><code>BUG-025</code></td><td>Migration <code>0078</code> — <code>city_assets</code>/<code>city_auctions</code>/<code>city_trade_offers</code> get the same <code>is_member_of_room</code> join <code>city_matches</code>/<code>city_match_players</code> already used</td><td>Regression harness: outsider reads 0 rows across all three tables; a genuine member still reads them</td></tr>
     <tr><td><code>BUG-026</code></td><td>Migration <code>0078</code> — explicit <code>revoke insert, update, delete</code> on both tables, matching every sibling City table</td><td>Regression harness: a raw client UPDATE is refused with <code>insufficient_privilege</code> (42501)</td></tr>
     <tr><td><code>BUG-027</code></td><td>Migration <code>0078</code> — re-filed against seed entropy on re-test; switched from Postgres's <code>random()</code> to pgcrypto's <code>gen_random_bytes(8)</code></td><td>Regression harness: source check confirms the CSPRNG call and no bare <code>random()</code> seed assignment</td></tr>
+    <tr><td><code>BUG-015</code></td><td>Migration <code>0079</code> — <code>city_roll_dice</code>'s phase logic now also covers a card that charges the drawing player directly, not just a direct landing or a card-triggered nested landing</td><td>Regression harness: landing on a real "pay 75" card with 10 cash leaves phase=required_decision</td></tr>
+    <tr><td><code>BUG-016</code></td><td>Migration <code>0079</code> — <code>city_draw_card</code> derives from the round's fixed-size permutation and substitutes only the next slot when it lands on a held visa, instead of re-deriving the round from a shrinking eligible count</td><td>Regression harness: all 15 non-visa city_fund cards appear at least once across 16 draws with the visa picked up mid-round</td></tr>
+    <tr><td><code>BUG-017</code></td><td>Migration <code>0079</code> — the rent multiplier now applies to city_resolve_landing's own computed rent, not to the dice total feeding into it (which only utilities ever read)</td><td>Regression harness: a rent-multiplier card against a 23-rent property charges exactly 46</td></tr>
+    <tr><td><code>BUG-032</code></td><td>Migration <code>0079</code> — a new flat-rent parameter replaces the utility rent formula outright for this one card, instead of pre-scaling the dice total feeding into it</td><td>Regression harness: a roll of 6 against an owner holding both utilities charges exactly 60</td></tr>
   </tbody>
 </table>
 </div>
@@ -200,16 +204,26 @@
   kind of decorative check §1a's re-verification pass exists to catch.
 </p>
 
+<p style="margin-top:14px">
+  <strong>A gap this fix phase introduced in itself, found and closed in the same round:</strong>
+  migration <code>0080</code> closes an unrevoked, publicly-executable duplicate function overload
+  that <code>0077</code> and <code>0079</code> each left behind — Postgres creates a genuinely new
+  overload when <code>CREATE OR REPLACE</code> adds parameters rather than editing in place, and
+  grants it PUBLIC execute by default. Not one of the 44 audit-numbered bugs — a self-introduced
+  and self-corrected regression, full detail in <code>QA_PROGRESS.md</code>, closed before any of
+  this left the local stack.
+</p>
+
 <h3>Updated numbers</h3>
 <div class="scroll">
 <table>
   <thead><tr><th></th><th>Original audit</th><th>After the fix phase (local only)</th></tr></thead>
   <tbody>
-    <tr><td>Confirmed bugs</td><td>44</td><td>44 found, <strong>24 fixed</strong>, 20 open</td></tr>
+    <tr><td>Confirmed bugs</td><td>44</td><td>44 found, <strong>28 fixed</strong>, 16 open</td></tr>
     <tr><td>Critical</td><td>4</td><td><strong>0 unresolved</strong> (4 of 4 fixed)</td></tr>
     <tr><td>High</td><td>13</td><td>4 unresolved (9 of 13 fixed)</td></tr>
-    <tr><td>Medium</td><td>12</td><td>6 unresolved (6 of 12 fixed)</td></tr>
-    <tr><td>Low</td><td>15</td><td>10 unresolved (5 of 15 fixed)</td></tr>
+    <tr><td>Medium</td><td>12</td><td>3 unresolved (9 of 12 fixed)</td></tr>
+    <tr><td>Low</td><td>15</td><td>9 unresolved (6 of 15 fixed)</td></tr>
   </tbody>
 </table>
 </div>
@@ -219,7 +233,7 @@
   remains NOT READY, because nothing has been deployed to it — the verdict is accurate as a
   description of production today. The local codebase's blocking-defect count has gone from
   4 criticals to 0, which is the precondition for reconsidering that verdict, not a substitute
-  for actually shipping migrations <code>0071</code>–<code>0078</code> and re-running this audit
+  for actually shipping migrations <code>0071</code>–<code>0080</code> and re-running this audit
   against production once they are.
 </div>
 
@@ -826,9 +840,9 @@ const HIGHS = [
 ];
 
 const MINOR = [
-  ["BUG-015","MEDIUM","Unaffordable card charge leaves phase <code>optional_actions</code> instead of raise-funds; the client gets no signal and <code>end_turn</code> then fails."],
-  ["BUG-016","MEDIUM","The deck stops being a permutation once a Transit Visa is held — <code>v_size</code> changes mid-cycle. 16 draws yielded card 2 twice and card 13 never. Violates FR-19."],
-  ["BUG-017","MEDIUM","Cards 2 and 3 charge half their printed rent: the multiplier is passed as a dice-total scale, which only utilities consume. 'Double the usual rent' charged 35, not 70."],
+  ["BUG-015","MEDIUM","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0079</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). Unaffordable card charge leaves phase <code>optional_actions</code> instead of raise-funds; the client gets no signal and <code>end_turn</code> then fails."],
+  ["BUG-016","MEDIUM","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0079</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). The deck stops being a permutation once a Transit Visa is held — <code>v_size</code> changes mid-cycle. 16 draws yielded card 2 twice and card 13 never. Violates FR-19."],
+  ["BUG-017","MEDIUM","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0079</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). Cards 2 and 3 charge half their printed rent: the multiplier is passed as a dice-total scale, which only utilities consume. 'Double the usual rent' charged 35, not 70."],
   ["BUG-018","LOW","Escaping detention by doubles grants a whole extra roll so the player rolls twice but <strong>moves once</strong>. <strong>Re-test: this matches DESIGN §3.1A and is not a defect as filed</strong> — downgraded from MEDIUM. Residual: the fresh roll can itself set <code>doubles_count</code>. Documentation gap."],
   ["BUG-019","MEDIUM","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0071</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). <code>city_net_worth</code> and <code>city_max_liquidation</code> leak RLS-protected cash to outsiders; <code>match_id</code> is discoverable via world-readable <code>city_assets</code>."],
   ["BUG-020","LOW","The rate limiter is fully bypassable — the attempt row is inserted in the caller's transaction, so any command that later raises rolls its own ledger entry back. 100 rapid failing calls recorded 0 attempts. <strong>Re-test: successful commands ARE throttled</strong> (call 61 refused, exactly 60 in the ledger), so there is no gameplay advantage — a DB-load nuisance only. Downgraded from MEDIUM."],
@@ -848,7 +862,7 @@ const MINOR = [
   ["BUG-029","LOW","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0077</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). <code>city_assert_can_manage</code> never checks phase, so building and mortgaging succeed during <code>auction</code> and <code>required_decision</code>."],
   ["BUG-030","LOW","Mortgage uses integer truncation (Porto 55 → 27, not 27.5); a mortgage round-trip silently costs 3 Spins."],
   ["BUG-031","LOW","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0071</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). Raw Postgres errors leak instead of <code>CITY_*</code> codes: self-trade and negative <code>give_cash</code> print the failing row, and six routines pass a NULL room code to the rate limiter before validating the match."],
-  ["BUG-032","LOW","Card 10 charges 24× the roll when both utilities are held (2 × the 12× rate); the text says ten times."],
+  ["BUG-032","LOW","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0079</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). Card 10 charges 24× the roll when both utilities are held (2 × the 12× rate); the text says ten times."],
   ["BUG-043","LOW","Several site-wide footer and nav links are ~20 px tall, below the 24 px minimum touch target (<code>Explore</code>, <code>Terms</code>, <code>Privacy</code>, <code>Privacy Policy</code>). Measured on real device profiles with touch emulation. <strong>No City game control is undersized</strong> — board tiles and action buttons all pass. The 1×1 <code>sr-only</code> \"Skip to content\" link is a correct pattern, not a defect."],
   ["BUG-042","LOW","<strong>No offline or reconnecting indicator anywhere in the City UI.</strong> With the network cut mid-turn an error message does surface, but nothing tells the player they are disconnected. Confirmed by search: <code>/offline|reconnect|connection lost|disconnected/i</code> matches nothing."],
   ["BUG-041","LOW","The site header nav overflows its container at 768×1024 (<code>DIV.mx-auto</code> and <code>DIV.flex</code> both report <code>scrollWidth &gt; clientWidth</code>). Site-wide rather than City-specific; the page itself still does not scroll horizontally."],

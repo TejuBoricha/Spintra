@@ -575,12 +575,154 @@ needed this round.
 Nothing has touched production. `supabase/migrations/0078_*.sql` is
 local-only, same as every migration before it.
 
-## Fix phase running total (all three rounds)
+## ROUND 4 — closing BUG-015, 016, 017, 032 (migration 0079), plus a
+## self-introduced-and-self-caught regression (migration 0080)
 
-24 of 44 bugs fixed: 4 Critical, 9 of 13 High, 6 of 12 Medium, 5 of 15 Low.
-20 remain open, headlined by BUG-007 (the 20 MUST-requirement disconnect/
+Picked the card/deck logic group next — the audit's own §17 named BUG-016/017
+"the most player-visible" of what remained, and it's self-contained in
+`city_draw_card`/`city_apply_card`/`city_resolve_landing`/`city_roll_dice`,
+all in one migration (0068) — matching the same read-first discipline as
+every prior round.
+
+**Root-cause tracing, before writing anything:**
+- BUG-017/032 share one cause. `city_apply_card`'s advance_to/advance_nearest
+  branch pre-scaled the *dice total* fed into `city_resolve_landing` by the
+  card's `rent_multiplier`. Property rent reads `city_board_spaces.rent[]`;
+  airport rent is a fixed 30/60/120/240 table — neither ever looks at the
+  dice total, only utilities do (`dice_total * 5-or-12`). So cards 2/3
+  ("double rent" landing on a property/airport) silently multiplied a number
+  nothing downstream reads, while card 10 ("ten times your roll" landing on
+  a utility) multiplied the ONE thing that *is* read, compounding with
+  utility rent's own 5x/12x into 10x or 24x depending on holdings — never
+  the flat 10x CONTENT.md §7 states outright with no qualifier.
+- BUG-015: `city_roll_dice` decides the next phase by inspecting the shape
+  of its own `v_landing` value, but its two checks
+  (`v_landing->>'action'` for a direct landing, `v_landing->'result'->
+  'landing'->>'action'` for a card that itself triggers a nested landing)
+  never covered a card that charges the drawing player *directly* — 'pay'
+  and 'per_building', which return `city_charge`'s own result merged in at
+  `result.action`. `city_charge` had already correctly set
+  `phase='required_decision'` moments earlier as a side effect of computing
+  that same `v_landing`; `city_roll_dice`'s own later, unconditional phase
+  UPDATE then silently overwrote it back to `optional_actions`.
+- BUG-016: `city_draw_card`'s per-round permutation excluded the held Transit
+  Visa from its own size count, so the round boundary and draw position both
+  drifted the moment the visa's held status changed mid-round.
+
+**Two real mistakes caught in my own draft before it ever ran**, both from
+actually verifying rather than trusting the design on paper:
+
+1. Transcribing `city_roll_dice`'s full body by hand for the CREATE OR
+   REPLACE, the return statement's field names got typo'd
+   (`passed_departure` → `passed_start`) and the `salary` field was dropped
+   entirely — caught by re-reading the *original* function's tail (which the
+   first read had stopped short of) side by side with the draft before
+   applying anything. Would have silently broken the client's salary/passed-
+   Departure display had it shipped.
+2. First implementation attempt for BUG-016 kept the round size fixed but
+   re-derived draw position via `(draw % size) % eligible_count` against a
+   filtered card list. Worked through a concrete example by hand (seed with
+   the visa's permutation slot at position 5, held starting at draw 9) before
+   trusting it: the shrinking modulo denominator reindexes *every* position
+   after the excluded one, not just the excluded one itself, and that
+   reindexing walked straight past position 6, never drawing it across the
+   whole round. Discarded before it was ever applied. Replaced with a
+   different approach — compute the round's full fixed-size permutation once
+   regardless of visa status, and only substitute the *next* slot in that
+   same order if the drawn slot itself is the currently-held visa. Hand-
+   traced this one too, across three sub-cases (visa's slot already passed
+   this round / visa held coming into a fresh round, substitution mid-chain)
+   before trusting it: guarantees no card is ever skipped, with the sole
+   disclosed residual being one card drawn twice in the rare case the visa
+   was already held before the round started.
+
+**A third mistake, caught by the regression harness itself, not by review:**
+BUG-015's first test picked seat 0's starting position (38) so a known dice
+roll would land on a card space at idx 2 — but 38+4 wraps past Departure,
+paying a 200-Spin salary *as part of the same roll*, before the card's 75-
+Spin charge is even evaluated, silently making it affordable and producing
+`phase=optional_actions, pending_debt=0` — a result that looks like "nothing
+happened" rather than "the test's own setup was wrong." Read the actual
+`city_roll_dice` return payload (`"salary": 200, "passed_departure": true`)
+instead of just re-checking the phase column, found the real cause in under
+a minute, and re-picked a landing position (18 → 22, +4, no wrap) that
+isolates the property under test.
+
+**A fourth, more serious issue — found by literally the next thing checked,
+not by luck:** after applying 0079, ran the same overload-privilege query
+this session had already used once (for BUG-003's grant-hygiene false
+positive in round 1) as a sanity habit, and it caught something real:
+`city_resolve_landing` now had *two* `pg_proc` entries — the original 4-arg
+one (correctly revoked, from 0065) and a new 6-arg one (from 0079's own
+`CREATE OR REPLACE ... p_rent_multiplier ..., p_flat_rent_multiplier ...`),
+and the new one was executable by `authenticated`. Postgres does not edit a
+function in place when `CREATE OR REPLACE` adds parameters, even trailing
+defaulted ones — it creates a genuinely new, separately-OID'd overload,
+because overload identity is the full declared parameter list, not just the
+required prefix. The new function is then a function Postgres just created
+from scratch, and Postgres grants EXECUTE to PUBLIC on function creation by
+default. Immediately checked whether round 2's `city_assert_can_manage`
+extension (0077, same technique — two new defaulted params) had the exact
+same problem: it did. Confirmed both were genuinely reachable-and-dangerous,
+not theoretical — `city_resolve_landing` performs no `auth.uid()` check of
+its own (by design; it trusts an already-authenticated, already-locked
+caller like `city_roll_dice`), so a client reaching its new 6-arg overload
+directly could charge or credit any amount to any seat via an attacker-
+chosen rent multiplier, with none of `city_roll_dice`'s turn/lock/rate-limit
+checks in the way. Fixed immediately in a dedicated migration (0080): drop
+both now-dead old-signature overloads outright, explicitly revoke both new
+ones. Ran a full sweep (`select proname, count(*) ... group by proname
+having count(*) > 1`) across every `city_*` function to confirm these were
+the only two instances of the pattern — `city_settle_auction`'s own two
+overloads are a different, already-correct shape from round 1 (0071): the
+*shorter* wrapper is the deliberately client-callable one, the *longer*
+`p_force` form is deliberately revoked, the opposite of the bug's shape.
+Added a general regression-harness assertion (`META-OVERLOAD-GRANTS`, not
+tied to a single audit bug number) that sweeps the whole `city_*` surface
+for this exact shape going forward, specifically so any *future* migration
+that extends a helper's parameter list the same way fails the suite
+immediately instead of shipping quietly a third time.
+
+This is the one genuinely self-introduced regression across all four
+rounds — worth being direct about rather than folding quietly into "0080
+also does some cleanup": migration 0077's own commit message and
+`ARCHITECTURE.md` entry describe it as fully closing BUG-005/011/023/029,
+which was true for those bugs' own behavior, but did not mention the
+overload it silently left behind, because that gap wasn't found until this
+round. `QA_REPORT.md`/`.html` now call this out explicitly in §1b rather
+than leaving it implicit in a migration's own commit history.
+
+**Verification:** wrote 4 new regression-harness blocks (BUG-015, 016, 017,
+032) plus the general `META-OVERLOAD-GRANTS` check. Did a live discriminating
+check for BUG-015 specifically (temporarily reverted just `city_roll_dice`'s
+phase-decision `case` expression to the pre-fix two-branch version, confirmed
+the harness goes red with the exact `pending_debt=75, phase=optional_actions`
+signature the audit described, then restored the fix and confirmed green
+again) — the same discipline round 1 established for BUG-003/044. Full
+suite: 26/26 (21 pre-existing + 4 new + 1 meta). `0079` and `0080` both
+re-apply a second time as clean no-ops with the harness unchanged.
+`npm run verify` is green; caught the exact same stray-blank-line
+`ARCHITECTURE.md` mistake from round 3 a second time before it could mask
+future drift — the check is regex-based (`### Migrations Applied\n
+([\s\S]*?)\n\n`) and stops at the first blank line, so a table split across
+two chunks silently loses everything after the break.
+
+No client-facing signature changed — `city_apply_card`/`city_resolve_landing`
+were already revoked from clients before this round (only their *internal*
+call shape changed) and no public RPC's argument list changed, so no
+`database.types.ts` regeneration needed.
+
+Nothing has touched production. `supabase/migrations/0079_*.sql` and
+`0080_*.sql` are both local-only, same as every migration before them.
+
+## Fix phase running total (all four rounds)
+
+28 of 44 bugs fixed: 4 Critical, 9 of 13 High, 9 of 12 Medium, 6 of 15 Low.
+16 remain open, headlined by BUG-007 (the 20 MUST-requirement disconnect/
 autopilot/turn-clock slice — explicitly out of scope as multi-day work, not
-an oversight) plus the card/deck logic bugs (015/016/017/032), the economy
-correctness bugs (028/030), the room/spectator gaps (022/033), and the
-client-side polish items (034/035/037/039/040/041/042/043). Regression
-harness: 21/21. `npm run verify`: green. Nothing has touched production.
+an oversight) plus the economy correctness bugs (028/030), the room/
+spectator gaps (022/033), and the client-side polish items
+(034/035/037/039/040/041/042/043). Regression harness: 26/26 (including one
+general, non-audit-numbered check — `META-OVERLOAD-GRANTS` — added after
+this round's own self-introduced-and-self-caught overload-grant regression).
+`npm run verify`: green. Nothing has touched production.

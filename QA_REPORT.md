@@ -116,10 +116,10 @@ scoring.
 
 ## 1b. Fix phase update (2026-09-01) — local only, not deployed
 
-A fix phase followed this audit, in three rounds. **All 4 criticals are now
-fixed and independently verified**, along with 20 further bugs closed across
-the three rounds. Everything in this section happened **entirely on the local
-Docker stack** — production has none of migrations `0063`–`0078` and remains
+A fix phase followed this audit, in four rounds. **All 4 criticals are now
+fixed and independently verified**, along with 24 further bugs closed across
+the four rounds. Everything in this section happened **entirely on the local
+Docker stack** — production has none of migrations `0063`–`0080` and remains
 exactly as this audit found it. This section does not revise the audit above;
 it records what changed after it.
 
@@ -151,23 +151,40 @@ it records what changed after it.
 | **BUG-025** `city_assets`/`city_auctions`/`city_trade_offers` world-readable | `0078` — all three get the same `is_member_of_room` join `city_matches`/`city_match_players` already used, replacing `using (true)` | Regression harness: an outsider reads 0 rows across all three tables; a genuine room member still reads them normally |
 | **BUG-026** `city_matches`/`city_match_players` missing an explicit write revoke | `0078` — `revoke insert, update, delete ... from anon, authenticated` on both, matching every sibling City table | Regression harness: a raw client `UPDATE` on either table is refused with `insufficient_privilege` (42501), not merely blocked by RLS |
 | **BUG-027** match seed used Postgres's non-cryptographic `random()` | `0078` — re-filed during re-verification against seed entropy, not `city_derive_dice`'s grant; switched to `pgcrypto`'s `gen_random_bytes(8)` | Regression harness: source check confirms `gen_random_bytes` is used and no bare `random()` seed assignment remains |
+| **BUG-015** an unaffordable direct card charge left the wrong phase | `0079` — `city_roll_dice`'s phase logic now also covers a card that charges the drawing player directly ('pay'/'per_building'), not just a direct landing or a card-triggered nested landing | Regression harness: landing on a real "pay 75" card with 10 cash leaves `phase=required_decision`, not `optional_actions` |
+| **BUG-016** the deck stopped being a true permutation once a Transit Visa was held | `0079` — `city_draw_card` now derives from the round's full, fixed-size permutation and only substitutes the next slot if the drawn one is the currently-held visa, instead of re-deriving the round from a shrinking eligible count | Regression harness: all 15 non-visa `city_fund` cards appear at least once across 16 draws with the visa picked up mid-round |
+| **BUG-017** "double rent" cards charged the unscaled base rent | `0079` — the multiplier now applies to `city_resolve_landing`'s own computed rent, not to the dice total fed into it (which only utilities ever read) | Regression harness: a rent-multiplier card against a 23-rent property charges exactly 46 |
+| **BUG-032** card 10 charged 24× the roll instead of the stated 10× | `0079` — a new flat-rent parameter replaces the normal utility formula outright for this card, instead of pre-scaling the dice total feeding into it | Regression harness: a roll of 6 against an owner holding both utilities charges exactly 60 |
 
 **Improved as a side effect, not independently verified as fully closed:**
 - **BUG-006** (turn clock decorative) — `city_claim_timeout` (0076) now reads `turn_started_at`/`pace_seconds` for a real purpose, so the clock is no longer purely decorative; a genuine consequence exists once it lapses. The original defect's core claim no longer holds. What remains open: no visible countdown is rendered anywhere (a separate, cosmetic gap this fix did not address).
 
+**A gap this fix phase introduced in itself, found and closed in the same
+round it was introduced:** migration `0080` closes an unrevoked, publicly-
+executable duplicate function overload that `0077` and `0079` each left
+behind (Postgres creates a genuinely new overload when `CREATE OR REPLACE`
+adds parameters, rather than editing in place, and grants it PUBLIC execute
+by default). Not one of the 44 audit-numbered bugs — a self-introduced and
+self-corrected regression, documented in full in `QA_PROGRESS.md` and closed
+before any of this work left the local stack.
+
 ### Every fixed migration passed the same gates
 
-`npm run test:city-regression` (19 SQL assertions plus 2 source checks — BUG-038
-and BUG-013 — for 21 total; the original 12 release-blocking checks, 3 added in
-round 2 for BUG-005/011/029, and 4 added in round 3 for BUG-021/025/026/027), a
-20-match concurrent load test with byte-identical outcome counts before and after
-every round-1 change, post-load integrity checks (no negative cash, no orphaned
-assets, no deadlocks), idempotent re-application of every migration (rounds 2 and
-3 each re-verified directly: 0077 and 0078 re-applied a second time are both clean
-no-ops with the harness unchanged), and `npm run verify`. Three round-1 fixes were
-additionally proven at the browser layer with two independent live clients. Full
-detail, including three false-positive regression-check bugs caught and fixed
-across all three rounds, is in `QA_PROGRESS.md`.
+`npm run test:city-regression` (24 SQL assertions plus 2 source checks — BUG-038
+and BUG-013 — for 26 total; the original 12 release-blocking checks, 3 added in
+round 2 for BUG-005/011/029, 4 added in round 3 for BUG-021/025/026/027, 4 added
+in round 4 for BUG-015/016/017/032, and one general `META-OVERLOAD-GRANTS` check
+added alongside 0080 that sweeps the whole `city_*` function surface for the
+overload-grant trap so it can't recur silently), a 20-match concurrent load test
+with byte-identical outcome counts before and after every round-1 change,
+post-load integrity checks (no negative cash, no orphaned assets, no deadlocks),
+idempotent re-application of every migration (rounds 2 through 4 each re-verified
+directly: every migration from `0077` on re-applies as a clean no-op with the
+harness unchanged), and `npm run verify`. Three round-1 fixes were additionally
+proven at the browser layer with two independent live clients. Full detail,
+including five false-positive regression-check bugs caught and fixed across all
+four rounds — plus the self-introduced overload-grant regression above — is in
+`QA_PROGRESS.md`.
 
 **BUG-023 has no dedicated regression assertion, by design, not by omission.**
 The bug was that a write attempted just before an exception silently rolled back
@@ -185,19 +202,19 @@ catch.
 
 | | Original audit | After the fix phase (local only) |
 |---|---|---|
-| Confirmed bugs | 44 | 44 found, **24 fixed**, 20 open |
+| Confirmed bugs | 44 | 44 found, **28 fixed**, 16 open |
 | Critical | 4 | **0 unresolved** (4 of 4 fixed) |
 | High | 13 | 4 unresolved (9 of 13 fixed: 008, 009, 010, 012, 013, 014, 038, 005, 011) |
-| Medium | 12 | 6 unresolved (6 of 12 fixed: 019, 024, 044, 045, 023, 021) |
-| Low | 15 | 10 unresolved (5 of 15 fixed: 031, 029, 025, 026, 027) |
+| Medium | 12 | 3 unresolved (9 of 12 fixed: 019, 024, 044, 045, 023, 021, 015, 016, 017) |
+| Low | 15 | 9 unresolved (6 of 15 fixed: 031, 029, 025, 026, 027, 032) |
 
-The 20 still-open bugs were, without exception, already classified as non-blocking
+The 16 still-open bugs were, without exception, already classified as non-blocking
 in the original audit (§17's fix list covered the release-blocking set almost
 exactly — items 1–8 there map directly to the migrations above). None of them
 individually gates a release the way the four criticals did. The largest single
 item left is BUG-007's 20 MUST-requirement slice (disconnect grace, autopilot,
 forced retire, the full turn-clock model) — deliberately untouched throughout all
-three rounds as genuinely multi-day work, not an oversight.
+four rounds as genuinely multi-day work, not an oversight.
 
 ### What this means for the release verdict in §18
 
@@ -205,7 +222,7 @@ three rounds as genuinely multi-day work, not an oversight.
 deployed to it — §18's verdict is accurate as a description of production today.
 **The local codebase's blocking-defect count has gone from 4 criticals to 0**,
 which is the precondition §18 named for reconsidering that verdict, not a
-substitute for actually shipping migrations `0071`–`0078` and re-running this
+substitute for actually shipping migrations `0071`–`0080` and re-running this
 audit against production once they are.
 
 ---
@@ -362,9 +379,9 @@ All nine exits then close simultaneously: `end_turn`/`roll_dice`/`build`/`unmort
 
 | ID | Finding |
 |---|---|
-| BUG-015 | Unaffordable card charge leaves phase `optional_actions` instead of raise-funds; client gets no signal, `end_turn` then fails. |
-| BUG-016 | Deck stops being a permutation once a Transit Visa is held — `v_size` changes mid-cycle. 16 draws yielded card 2 twice and card 13 never. Violates FR-19. |
-| BUG-017 | Cards 2 and 3 charge **half** their printed rent — the multiplier is passed as a dice-total scale, which only utilities consume. "Double the usual rent" charged 35, not 70. |
+| BUG-015 | **&#10003; Fixed 2026-09-01 (migration `0079`, see §1b).** Unaffordable card charge leaves phase `optional_actions` instead of raise-funds; client gets no signal, `end_turn` then fails. |
+| BUG-016 | **&#10003; Fixed 2026-09-01 (migration `0079`, see §1b).** Deck stops being a permutation once a Transit Visa is held — `v_size` changes mid-cycle. 16 draws yielded card 2 twice and card 13 never. Violates FR-19. |
+| BUG-017 | **&#10003; Fixed 2026-09-01 (migration `0079`, see §1b).** Cards 2 and 3 charge **half** their printed rent — the multiplier is passed as a dice-total scale, which only utilities consume. "Double the usual rent" charged 35, not 70. |
 | BUG-019 | **&#10003; Fixed 2026-09-01 (migration `0071`, see §1b).** `city_net_worth` leaks RLS-protected cash to an outsider in no room. Because `city_assets` is world-readable, the outsider computes the asset term and inverts the RPC exactly (`cash = 1590 − 190 = 1400`). **Re-test correction:** the `city_max_liquidation` half of the original claim does not hold — it returns 0, which turned out to be BUG-045 instead. |
 | BUG-021 | **&#10003; Fixed 2026-09-01 (migration `0078`, see §1b).** `city_match_results` view bypasses RLS (owner-executed, not `security_invoker`): bare anon reads room codes, usernames and net worth for every finished match in every room. |
 | BUG-022 | Spectators silently capped by room capacity — a third person could not enter a 2-capacity room. Violates FR-38. |
@@ -388,7 +405,7 @@ All nine exits then close simultaneously: `end_turn`/`roll_dice`/`build`/`unmort
 | BUG-029 | **&#10003; Fixed 2026-09-01 (migration `0077`, see §1b).** `city_assert_can_manage` never checks phase, so building/mortgaging succeed during `auction` and `required_decision`. |
 | BUG-030 | Mortgage uses integer truncation (Porto 55 → 27, not 27.5); a mortgage round-trip silently costs 3 Spins. |
 | BUG-031 | **&#10003; Fixed 2026-09-01 (migration `0071`, see §1b).** Raw Postgres errors leak instead of `CITY_*` codes: self-trade and negative `give_cash` print the failing row; six routines pass a NULL room code to the rate limiter before validating the match, producing a NOT NULL violation. |
-| BUG-032 | Card 10 charges 24× the roll when both utilities are held (2 × the 12× rate); text says ten times. |
+| BUG-032 | **&#10003; Fixed 2026-09-01 (migration `0079`, see §1b).** Card 10 charges 24× the roll when both utilities are held (2 × the 12× rate); text says ten times. |
 | BUG-033 | No code path makes eliminated players spectators (FR-36); `pace_seconds` is never settable by the host (FR-42). |
 | BUG-043 | Several site-wide footer and nav links are ~20 px tall, below the 24 px minimum touch target (`Explore`, `Terms`, `Privacy`, `Privacy Policy`). Measured on real device profiles with touch emulation. **No City game control is undersized** — the board tiles and action buttons all pass. The 1×1 `sr-only` "Skip to content" link is a correct pattern, not a defect. |
 | BUG-042 | **No offline or reconnecting indicator anywhere in the City UI.** With the network cut mid-turn an error message does surface, but nothing tells the player they are disconnected. Confirmed by search: `/offline|reconnect|connection lost|disconnected/i` matches nothing. |
