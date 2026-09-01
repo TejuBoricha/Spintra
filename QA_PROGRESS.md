@@ -1269,7 +1269,104 @@ every touched function double-checked directly, not just via the
 unreachable by `anon`/`authenticated`, all four public shells confirmed
 unchanged. Nothing has touched production; `0085` is local-only.
 
-Next: round C (`city_advance_turn` extraction, the shared
-safe-default-resolution engine including the new auto-liquidation loop,
-the autopilot cascade, and forced retire at 2 — the single riskiest
-round in this plan).
+**Round C (migration `0086`) — the autopilot engine (FR-26, FR-27, FR-28,
+FR-45 complete, FR-47). The single riskiest round in the plan, and it
+earned that label twice.**
+
+Split `city_sell_building`/`city_mortgage` into shell+`_core` (same
+pattern as round B) so the new auto-liquidation loop could reuse their
+exact math and even-build enforcement instead of duplicating it.
+`city_liquidate_for_debt(match, seat)` upgrades round B's temporary
+immediate-bankrupt shortcut to DESIGN.md §3.1D's real default: sells the
+cheapest eligible building — pre-filtered to the highest-built tier in its
+own country, mirroring `city_sell_building_core`'s own even-build check so
+the loop never attempts an ineligible space and has to catch an exception
+— then mortgages the cheapest unmortgaged space, leaning on the existing
+`city_try_settle_debt` cash-trigger (`0072`) to clear the debt the instant
+it's covered, falling back to `city_bankrupt_seat` only once genuinely
+nothing is left. `city_advance_turn` extracts the seat-search+clock-reset
+block duplicated identically in `city_end_turn` and `city_retire_seat`;
+`city_end_turn` splits into shell+`city_end_turn_core` (its doubles
+re-roll branch stays put — same seat, not an advance, doesn't touch
+`city_advance_turn`).
+
+The engine: `city_resolve_autopilot_turn(match, seat)` resolves one away
+seat's turn as far as it can go in a single pass — debt via liquidation,
+one detention attempt (win or lose; `detention_turns` counts attempts per
+*turn*, not per pass, so this always concludes rather than retrying
+immediately), an auto-roll, an auto-decline, or a free owed doubles
+re-roll mirroring `city_end_turn_core`'s own branch — reporting whether it
+concluded, bankrupted the seat, or opened a real auction (a global pause
+the caller must stop for). `city_run_autopilot_from_current(match)` is the
+cascade: loops while the current seat is away, resolving and advancing (or
+forced-retiring at `consecutive_autopilot_turns >= 2`, FR-28) until a
+present seat, an auction, or nowhere left to go. Wired into every place a
+turn can end or a seat can depart — `city_end_turn_core`,
+`city_claim_timeout`'s end-turn branch, and, new this round, the kick/ban/
+leave departure trigger itself, so a kick landing directly on an
+already-away seat autopilots immediately instead of waiting on a future
+clock expiry.
+
+**A real, serious bug — caught by the re-run-immediately discipline before
+it ever shipped, not found by luck.** The first draft of both new `_core`
+extractions paid out sold/mortgaged cash with `where id = v_asset.id` —
+the *asset* row's id, not the *player* row's, evidently copied from a
+mismatched declare block partway through the extraction. `city_assets`
+updated correctly; `city_match_players.cash` silently updated nothing (the
+two tables' ids share no relationship), so a debtor's own mortgage or sale
+raised zero real cash and their debt never actually cleared — a genuine
+money-destroying bug that would have reached a real match. Caught within
+seconds: re-running the full 35-assertion suite immediately after applying
+the extraction (before writing one line of new autopilot logic, exactly
+per this round's own stated discipline) failed `BUG-005` with the precise
+symptom (`pending_debt=35, creditor cash=0`, both unchanged from before
+the mortgage). Fixed by filtering both `UPDATE`s on `match_id`/`seat`
+directly; grepped the rest of the migration for the same `v_asset.id`
+pattern to confirm no third instance existed before moving on.
+
+**A second thing caught while writing this round's own tests, not a bug
+in the engine — a wrong assumption in three of the five new assertions.**
+Each initially asserted a fixed `current_seat` outcome for an away seat's
+*real, seed-driven* autopiloted roll. For the seeds first tried, that roll
+happened to land on a purchasable property with three debt-free active
+seats at the table — correctly opening a real auction instead of
+concluding the turn, exactly as designed (an auction is an intentional
+stopping point, not an oversight). Fixed properly rather than papered
+over: queried `city_derive_dice` directly for each seed's actual first
+roll and chose a starting position landing on a plain corner space
+instead, so those three assertions deterministically exercise the
+simpler concluded-and-advance path; the auction-opens outcome is still
+exercised — and explicitly accepted as valid — by the doubles-re-roll
+assertion.
+
+Confirmed discriminating on the single highest-value new mechanism:
+temporarily redeployed the forced-retire threshold as `consecutive_
+autopilot_turns >= 99`, watched `BUG-007-C-forfeit` go red with the exact
+expected message, restored the real `>= 2` and confirmed green again.
+
+SQL regression harness: 40/40 (35 pre-existing + 5 new BUG-007-C
+assertions: liquidation success/fallback, the full cascade, the doubles
+re-roll, forced retire, and the kick-into-an-away-seat edge case). Grants
+double-checked directly on all 9 new/touched functions — every public
+shell executable, every internal function (`city_advance_turn`,
+`city_end_turn_core`, `city_liquidate_for_debt`, `city_mortgage_core`,
+`city_sell_building_core`, `city_resolve_autopilot_turn`,
+`city_run_autopilot_from_current`, `city_retire_seat`,
+`city_retire_seat_on_departure`) correctly unreachable by `anon`/
+`authenticated`. No client changes this round. Live-verified via the full
+existing suite (`qa-x9`/`x10`/`x11`/`x12`, 9/9) since this round touches
+`city_mortgage`, `city_sell_building`, and `city_end_turn` directly — a
+live mortgage on Porto correctly raised 28, confirming the cash-payout fix
+end-to-end through the real client, not just SQL. A dedicated live test
+for the autopilot cascade itself (which needs a genuinely disconnected
+60+-second-idle browser context) was deliberately not attempted this
+round — the SQL suite already proves the exact mechanics directly,
+including a real discriminating check on the riskiest single piece
+(forced retire), and a live version would mostly add wall-clock wait time
+rather than new confidence. `npm run verify`: clean. `database.types.ts`
+regenerated and diffed — exactly the 7 new internal function signatures,
+nothing else. Nothing has touched production; `0086` is local-only.
+
+Next: round D (`status='paused'` transition, resume-on-reconnect
+completion, FR-48's fresh clock, and the timed-mode `started_at` shift on
+resume — no cron work needed, already shipped in `0063`).
