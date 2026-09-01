@@ -48,6 +48,10 @@ export interface CityMatch {
   last_roll_turn: number | null;
   doubles_count: number;
   turn_number: number;
+  /** Set only while status is 'paused' (FR-31) — every seat was away with
+   *  nobody left to hand the turn to. Cleared automatically the moment
+   *  anyone reconnects, which also resumes the match server-side. */
+  paused_at: string | null;
 }
 
 export interface CitySeat {
@@ -174,7 +178,7 @@ export interface CityRollResult {
 const MATCH_COLUMNS =
   "id, room_code, status, mode, time_limit_minutes, current_seat, phase, created_by, " +
   "started_at, turn_started_at, turn_clock_paused_at, pace_seconds, last_roll, " +
-  "last_roll_result, last_roll_turn, doubles_count, turn_number";
+  "last_roll_result, last_roll_turn, doubles_count, turn_number, paused_at";
 
 const SEAT_COLUMNS =
   "id, match_id, user_id, seat, username, is_ready, status, position, cash, " +

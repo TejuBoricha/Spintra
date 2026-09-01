@@ -1486,6 +1486,107 @@ begin
 end $blk$;
 
 -- ===========================================================================
+-- BUG-007-D (FR-31) — a match with nobody present anywhere pauses durably
+-- instead of the cascade spinning or silently doing nothing forever.
+-- ===========================================================================
+do $blk$
+declare m uuid; st text; paused_ts timestamptz; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGD1', 82);
+
+  -- Only seat 0 stays a real contender -- seats 1/2 marked terminal directly
+  -- so the cascade's own seat-count (active/seated only) is 1, and its bound
+  -- is exactly that count (one resolution per distinct seat, see the fix
+  -- note in 0087 itself for why). Start position 31 lands seed 82's real
+  -- first roll ({3,6}, sum 9) exactly on Departure (idx 0, a plain corner)
+  -- -- no purchase decision or auction, so the single resolution this bound
+  -- allows resolves cleanly and the loop exits having found no one present.
+  update public.city_match_players set status='retired' where match_id=m and seat in (1,2);
+  update public.city_match_players set disconnected_at = now() - interval '90 seconds',
+    position = 31
+   where match_id=m and seat=0;
+  update public.city_matches set current_seat=0, phase='awaiting_roll' where id=m;
+
+  perform public.city_run_autopilot_from_current(m);
+
+  select status, paused_at into st, paused_ts from public.city_matches where id=m;
+  if st <> 'paused' then
+    ok := false; act := act || format('match status is %L, expected paused; ', st);
+  end if;
+  if paused_ts is null then
+    ok := false; act := act || 'paused_at was not stamped; ';
+  end if;
+
+  insert into rg values (default,'BUG-007-D-pause','a match with nobody present pauses durably (FR-31)',
+    'status becomes paused and paused_at is stamped once the cascade cycles through every active seat and finds no one present',
+    case when ok then format('status=%L, paused_at stamped', st) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-D (FR-48) — resuming a paused match grants a fresh full turn
+-- clock, not the stored remainder, and shifts the timed-mode wall clock
+-- forward by the exact pause duration so a long pause doesn't eat into it.
+-- ===========================================================================
+do $blk$
+declare m uuid; st text; ts_before timestamptz; ts_after timestamptz;
+  started_before timestamptz; started_after timestamptz; pause_len numeric; shift numeric;
+  ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGD2', 83);
+
+  -- Simulate an already-paused match (skip straight to it rather than
+  -- re-deriving pause via another multi-roll chain -- that mechanism is
+  -- BUG-007-D-pause's own job above).
+  update public.city_matches set mode='timed', time_limit_minutes=10,
+    status='paused', paused_at = now() - interval '5 minutes',
+    started_at = now() - interval '20 minutes',
+    current_seat=0, turn_started_at = now() - interval '20 minutes'
+   where id=m;
+  update public.city_match_players set disconnected_at = now() - interval '5 minutes'
+   where match_id=m and seat=0;
+  select started_at into started_before from public.city_matches where id=m;
+
+  -- Genuinely flip false -> true, not true -> true -- the trigger's own
+  -- WHEN clause only fires on a real transition, and rg_match already
+  -- leaves every participant at is_online=true from the join.
+  update public.room_participants set is_online = false
+   where room_id = 'CITYRGD2' and user_id = (
+     select user_id from public.city_match_players where match_id=m and seat=0);
+
+  -- Reconnect seat 0 -- the same is_online flip round A's trigger already
+  -- watches, now also carrying the resume branch this round adds.
+  update public.room_participants set is_online = true
+   where room_id = 'CITYRGD2' and user_id = (
+     select user_id from public.city_match_players where match_id=m and seat=0);
+
+  select status, turn_started_at, started_at into st, ts_after, started_after
+    from public.city_matches where id=m;
+
+  if st <> 'active' then
+    ok := false; act := act || format('status is %L after reconnect, expected active; ', st);
+  end if;
+  -- Fresh clock: turn_started_at must be very recent (within the last few
+  -- seconds), not anywhere near the 20-minutes-ago value it held pre-pause.
+  if extract(epoch from (now() - ts_after)) > 5 then
+    ok := false; act := act || 'turn_started_at was not reset to a fresh value on resume; ';
+  end if;
+  -- The timed-mode wall clock shifts forward by (roughly) the pause
+  -- duration, not left untouched and not reset to now().
+  pause_len := extract(epoch from (now() - (now() - interval '5 minutes')));
+  shift := extract(epoch from (started_after - started_before));
+  if abs(shift - pause_len) > 3 then
+    ok := false; act := act || format(
+      'started_at shifted by %ss, expected roughly the %ss pause duration; ', round(shift::numeric,1), round(pause_len::numeric,1));
+  end if;
+
+  insert into rg values (default,'BUG-007-D-resume','resuming a paused match grants a fresh clock and shifts the timed-mode limit (FR-48)',
+    'status returns to active, turn_started_at is reset fresh (not the stale remainder), and started_at shifts forward by the pause duration',
+    case when ok then format('status=active, fresh turn_started_at, started_at shifted ~%ss', round(shift::numeric,1)) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
 -- META-OVERLOAD-GRANTS — a general guard, not tied to one audit bug: adding
 -- parameters via CREATE OR REPLACE creates a genuinely new pg_proc overload
 -- (Postgres identifies functions by their full declared parameter list, not

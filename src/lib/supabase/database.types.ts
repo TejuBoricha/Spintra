@@ -468,6 +468,7 @@ export type Database = {
           last_roll_turn: number | null
           mode: string
           pace_seconds: number
+          paused_at: string | null
           phase: string | null
           rng_counter: number
           rng_seed: number
@@ -495,6 +496,7 @@ export type Database = {
           last_roll_turn?: number | null
           mode?: string
           pace_seconds?: number
+          paused_at?: string | null
           phase?: string | null
           rng_counter?: number
           rng_seed: number
@@ -522,6 +524,7 @@ export type Database = {
           last_roll_turn?: number | null
           mode?: string
           pace_seconds?: number
+          paused_at?: string | null
           phase?: string | null
           rng_counter?: number
           rng_seed?: number

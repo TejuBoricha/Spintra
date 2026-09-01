@@ -291,6 +291,21 @@ export function CityMatchShell() {
             className="mb-3 rounded-xl"
           />
         )}
+        {/* FR-31: every seat went away with nobody left to hand the turn
+            to, so the match paused durably rather than being destroyed or
+            silently stuck. Clears itself — server-side, the instant anyone
+            reconnects — no action is available here to take. */}
+        {match.status === "paused" && (
+          <div
+            className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 flex items-center gap-2"
+            role="status"
+          >
+            <Clock className="w-4 h-4 text-amber-300 shrink-0" aria-hidden="true" />
+            <p className="text-sm text-amber-200">
+              Match paused — everyone left. It picks back up the moment someone returns.
+            </p>
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-3 mb-3">
           <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
             {seats.map((s) => (
@@ -319,8 +334,10 @@ export function CityMatchShell() {
           {/* FR-29: a deliberate "I'm leaving" action, distinct from a
               disconnect — routes through the same retire/liquidation
               sequence a kick already uses. Confirmed first: unlike Leave
-              seat in the lobby, this forfeits a live position. */}
-          {!iAmOut && (
+              seat in the lobby, this forfeits a live position. Hidden
+              while paused — city_retire_self requires status='active',
+              same as every other command RPC. */}
+          {!iAmOut && match.status === "active" && (
             <Button
               size="sm"
               variant="ghost"
