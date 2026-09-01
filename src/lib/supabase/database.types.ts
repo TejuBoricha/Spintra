@@ -1064,6 +1064,7 @@ export type Database = {
         Returns: string
       }
       city_accept_trade: { Args: { p_offer_id: string }; Returns: Json }
+      city_advance_turn: { Args: { p_match_id: string }; Returns: number }
       city_apply_card: {
         Args: {
           p_card: Database["public"]["Tables"]["city_cards"]["Row"]
@@ -1166,6 +1167,10 @@ export type Database = {
         }
       }
       city_end_turn: { Args: { p_match_id: string }; Returns: Json }
+      city_end_turn_core: {
+        Args: { p_match_id: string; p_seat: number }
+        Returns: Json
+      }
       city_finish_match: {
         Args: { p_match_id: string; p_reason: string }
         Returns: Json
@@ -1183,12 +1188,20 @@ export type Database = {
         Returns: Json
       }
       city_leave_seat: { Args: { p_match_id: string }; Returns: undefined }
+      city_liquidate_for_debt: {
+        Args: { p_match_id: string; p_seat: number }
+        Returns: boolean
+      }
       city_max_liquidation: {
         Args: { p_match_id: string; p_seat: number }
         Returns: number
       }
       city_mortgage: {
         Args: { p_match_id: string; p_space_idx: number }
+        Returns: Json
+      }
+      city_mortgage_core: {
+        Args: { p_match_id: string; p_seat: number; p_space_idx: number }
         Returns: Json
       }
       city_net_worth: {
@@ -1219,6 +1232,10 @@ export type Database = {
         Args: { p_dice_total: number; p_match_id: string; p_space_idx: number }
         Returns: number
       }
+      city_resolve_autopilot_turn: {
+        Args: { p_match_id: string; p_seat: number }
+        Returns: string
+      }
       city_resolve_landing: {
         Args: {
           p_dice_total: number
@@ -1244,8 +1261,16 @@ export type Database = {
         Args: { p_match_id: string; p_seat: number }
         Returns: Json
       }
+      city_run_autopilot_from_current: {
+        Args: { p_match_id: string }
+        Returns: undefined
+      }
       city_sell_building: {
         Args: { p_match_id: string; p_space_idx: number }
+        Returns: Json
+      }
+      city_sell_building_core: {
+        Args: { p_match_id: string; p_seat: number; p_space_idx: number }
         Returns: Json
       }
       city_set_ready: {

@@ -1285,6 +1285,207 @@ begin
 end $blk$;
 
 -- ===========================================================================
+-- BUG-007-C (FR-33/DESIGN.md §3.1D) — auto-liquidation actually liquidates
+-- when possible, and still falls back to bankruptcy when it genuinely can't.
+-- ===========================================================================
+do $blk$
+declare m uuid; prop_idx int; prop_price int; expected_raise int;
+  cleared boolean; debt int; mortgaged boolean; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGC1', 77);
+  select idx, price into prop_idx, prop_price from public.city_board_spaces
+   where price is not null order by idx limit 1;
+
+  -- Seat 0 owns one unmortgaged, undeveloped property and owes just what
+  -- mortgaging it alone raises -- liquidation must succeed without
+  -- bankrupting them.
+  insert into public.city_assets (match_id, space_idx, owner_seat) values (m, prop_idx, 0);
+  expected_raise := round(prop_price / 2.0)::integer;
+  update public.city_match_players set pending_debt = expected_raise, pending_creditor_seat = null
+   where match_id=m and seat=0;
+
+  select public.city_liquidate_for_debt(m, 0) into cleared;
+  select pending_debt into debt from public.city_match_players where match_id=m and seat=0;
+  select is_mortgaged into mortgaged from public.city_assets where match_id=m and space_idx=prop_idx;
+
+  if not cleared or debt <> 0 or not mortgaged then
+    ok := false; act := act || format(
+      'expected liquidation to succeed via mortgage: cleared=%s debt=%s mortgaged=%s; ',
+      cleared, debt, mortgaged);
+  end if;
+  perform 1 from public.city_match_players where match_id=m and seat=0 and status='bankrupt';
+  if found then
+    ok := false; act := act || 'seat 0 was bankrupted despite having enough to liquidate; ';
+  end if;
+
+  -- Seat 1 owns nothing at all -- liquidation has nothing to sell, so it
+  -- must fall back to bankruptcy rather than leaving the debt stuck.
+  update public.city_match_players set pending_debt = 500, pending_creditor_seat = null
+   where match_id=m and seat=1;
+  select public.city_liquidate_for_debt(m, 1) into cleared;
+  perform 1 from public.city_match_players where match_id=m and seat=1 and status='bankrupt';
+  if cleared or not found then
+    ok := false; act := act || 'seat 1 (owns nothing) was not bankrupted as the safety-net fallback; ';
+  end if;
+
+  insert into rg values (default,'BUG-007-C','auto-liquidation sells/mortgages before bankruptcy (DESIGN.md §3.1D)',
+    'a debtor who owns enough to cover it is liquidated, not bankrupted; a debtor with nothing to sell still falls back to bankruptcy',
+    case when ok then 'liquidation succeeded when possible and fell back to bankruptcy when not' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-C (FR-26/FR-27) — a fully away seat's entire turn resolves
+-- automatically the instant it's handed to them, with no client involved.
+-- ===========================================================================
+do $blk$
+declare m uuid; cs int; streak int; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGC2', 78);
+
+  -- Seat 1 has been disconnected well past the 60s grace period. Parked 5
+  -- spaces short of Customs (idx 10, a plain corner -- seed 78's very first
+  -- roll is a deterministic {1,4}) so the autopiloted roll lands somewhere
+  -- with no card draw, tax, or purchase decision to complicate this
+  -- specific assertion -- required_decision/auction paths are already
+  -- covered by their own dedicated tests above.
+  update public.city_match_players set disconnected_at = now() - interval '90 seconds',
+    position = 5
+   where match_id=m and seat=1;
+
+  -- Seat 0 (present) ends an ordinary turn.
+  update public.city_matches set current_seat=0, phase='optional_actions' where id=m;
+  perform pg_temp.rg_as(0);
+  perform public.city_end_turn(m);
+
+  select current_seat into cs from public.city_matches where id=m;
+  if cs <> 2 then
+    ok := false; act := act || format(
+      'current_seat is %s -- expected the cascade to skip straight past away seat 1 to seat 2; ', cs);
+  end if;
+
+  select consecutive_autopilot_turns into streak from public.city_match_players
+   where match_id=m and seat=1;
+  if streak <> 1 then
+    ok := false; act := act || format('seat 1''s autopilot streak is %s, expected 1; ', streak);
+  end if;
+
+  -- The away seat's own status must stay a normal, still-in-the-match seat
+  -- -- autopilot is not itself a penalty.
+  perform 1 from public.city_match_players where match_id=m and seat=1 and status='active';
+  if not found then
+    ok := false; act := act || 'seat 1''s status changed after a single autopiloted turn; ';
+  end if;
+
+  insert into rg values (default,'BUG-007-C-cascade','an away seat''s turn resolves fully automatically (FR-26/FR-27)',
+    'ending seat 0''s turn skips straight past away seat 1 (streak=1, still active) to present seat 2, with no client action for seat 1',
+    case when ok then 'cascade correctly skipped the away seat and landed on the next present one' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-C (FR-27, doubles) — a free doubles re-roll is taken automatically
+-- within one autopiloted pass, not left owed forever.
+-- ===========================================================================
+do $blk$
+declare m uuid; pos_before int; pos_after int; result text; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGC3', 79);
+  update public.city_match_players set position = 0 where match_id=m and seat=0;
+  select position into pos_before from public.city_match_players where match_id=m and seat=0;
+
+  -- A bonus roll is owed (as if the seat had just rolled doubles once) and
+  -- nothing else is pending.
+  update public.city_matches set current_seat=0, phase='optional_actions', doubles_count=1 where id=m;
+  update public.city_match_players set pending_debt=0, in_detention=false where match_id=m and seat=0;
+
+  select public.city_resolve_autopilot_turn(m, 0) into result;
+  select position into pos_after from public.city_match_players where match_id=m and seat=0;
+
+  -- The seat must have actually moved -- proof the bonus roll was taken,
+  -- not silently discarded (landing on position 0 again is a 1-in-40 fluke
+  -- for any single die-pair sum on a 40-space board, negligible here).
+  if pos_after = pos_before then
+    ok := false; act := act || 'position 0 -> 0 after resolution -- the owed re-roll does not appear to have been taken; ';
+  end if;
+  if result not in ('concluded', 'auction_pending') then
+    ok := false; act := act || format('resolution ended in unexpected state %L; ', result);
+  end if;
+
+  insert into rg values (default,'BUG-007-C-doubles','autopilot takes an owed doubles re-roll instead of ending the turn early',
+    'a seat with doubles_count=1 and nothing else pending actually rolls again (position changes) before the turn concludes',
+    case when ok then format('position moved %s -> %s, resolution=%s', pos_before, pos_after, result) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-C (FR-28) — two consecutive fully-autopiloted turns forces retire.
+-- ===========================================================================
+do $blk$
+declare m uuid; st text; cs int; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGC4', 80);
+
+  -- Same deterministic-landing setup as BUG-007-C-cascade above (seed 80's
+  -- first roll is {2,3}, parked 5 short of the plain Customs corner).
+  update public.city_match_players set disconnected_at = now() - interval '90 seconds',
+    consecutive_autopilot_turns = 1, position = 5
+   where match_id=m and seat=1;
+
+  update public.city_matches set current_seat=0, phase='optional_actions' where id=m;
+  perform pg_temp.rg_as(0);
+  perform public.city_end_turn(m);
+
+  select status into st from public.city_match_players where match_id=m and seat=1;
+  if st <> 'retired' then
+    ok := false; act := act || format('seat 1''s status is %L after a 2nd consecutive autopiloted turn, expected retired; ', st);
+  end if;
+
+  select current_seat into cs from public.city_matches where id=m;
+  if cs = 1 then
+    ok := false; act := act || 'current_seat is still the now-retired seat 1; ';
+  end if;
+
+  insert into rg values (default,'BUG-007-C-forfeit','2 consecutive autopiloted turns forces retire (FR-28)',
+    'a seat entering its 2nd straight autopiloted turn is retired, not merely autopiloted a 2nd time',
+    case when ok then format('seat 1 retired; current_seat moved on to %s', cs) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-C (FR-27, kick edge case) — a kick handing the turn directly to an
+-- already-away seat triggers autopilot immediately, not just on the next
+-- clock expiry.
+-- ===========================================================================
+do $blk$
+declare m uuid; cs int; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGC5', 81);
+
+  -- Seat 1, who will inherit the turn the instant seat 0 is kicked, is
+  -- already well past the grace period. Parked 7 short of the plain
+  -- Customs corner -- seed 81's first roll is a deterministic {1,6}.
+  update public.city_match_players set disconnected_at = now() - interval '90 seconds',
+    position = 3
+   where match_id=m and seat=1;
+  update public.city_matches set current_seat=0, phase='optional_actions' where id=m;
+
+  perform pg_temp.rg_as_host('CITYRGC5');
+  perform public.moderation_kick_ban('CITYRGC5', '11111111-1111-4111-8111-111111111111');
+
+  select current_seat into cs from public.city_matches where id=m;
+  if cs <> 2 then
+    ok := false; act := act || format(
+      'current_seat is %s immediately after the kick -- expected the departure trigger''s own autopilot check to have already skipped past away seat 1 to seat 2; ', cs);
+  end if;
+
+  insert into rg values (default,'BUG-007-C-kick','a kick landing on an already-away seat autopilots immediately',
+    'the departure trigger both hands off the kicked seat''s turn AND resolves the next seat''s turn if it too is away, without waiting for a future clock expiry',
+    case when ok then format('current_seat landed on present seat %s immediately, no client action needed', cs) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
 -- META-OVERLOAD-GRANTS — a general guard, not tied to one audit bug: adding
 -- parameters via CREATE OR REPLACE creates a genuinely new pg_proc overload
 -- (Postgres identifies functions by their full declared parameter list, not
