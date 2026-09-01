@@ -1116,3 +1116,97 @@ full turn-clock model), and BUG-018/020/028 (re-verification concluded none
 of the three is an actual defect — no code change was ever warranted for any
 of them). Regression harness: 29/29. `npm run verify`: green. Nothing has
 touched production.
+
+## BUG-007 (in progress) — disconnect grace, autopilot, forced retire, the
+## full turn-clock model
+
+The one remaining open bug is being built as its own sequence of rounds
+(E, A, B, C, D, F, G — lettered rather than numbered to keep them distinct
+from the audit's own round 1-8 numbering), planned in detail before any code
+was written: a first-pass Explore agent mapped schema/RPC/client state, then
+every RPC the plan actually touches or calls into was read in full by hand
+(not summarized) across two further passes, specifically because this
+session had already been burned twice by acting on an incomplete read of
+existing code. That read-everything-first pass paid for itself directly —
+it found three places where this project's own docs described a gap that
+the code had already closed (kick-awareness via `0074`, `city_end_turn`'s
+existing timed-mode wall-clock logic, and `cleanup_inactive_rooms()`'s
+already-differentiated 24h City threshold), one live pre-existing bug
+(auction settle never shifts `turn_started_at` forward by the pause
+duration — queued for round B), and one pre-existing rounding
+inconsistency between `city_mortgage` and `city_sell_building` explicitly
+left alone as out of scope. Full detail lives in the approved plan at
+`C:\Users\tejas\.claude\plans\cozy-gliding-moore.md`.
+
+**Round E (migration `0083`) — the voluntary half of FR-29.** Kicking
+already routed through the correct liquidation sequence (`0074`), but
+`city_retire_seat` itself was internal-only — no client-callable "I retire"
+existed. `city_retire_self` is a thin public shell delegating to the
+existing internal function, deliberately with no debt gate (DESIGN.md
+§3.1D treats retire/kick/forced-retire as one sequence, always to the
+bank). New "Retire" button + confirm dialog in `city-match-shell.tsx`.
+
+**Round A (migration `0084`) — disconnect detection (FR-25, hardens
+FR-30).** New `city_match_players.disconnected_at` column, set/cleared by a
+trigger bridging the site-wide `room_participants.is_online` presence
+system into City's own state — no new client heartbeat. On reconnect, also
+resets `consecutive_autopilot_turns` (a column that has existed since
+`0063` and was never once read or written until this migration) — readying
+it for round C. Deliberately does not yet touch "resume a paused match" —
+`status='paused'` isn't reachable until round C/D exist.
+
+**A real infrastructure gap found and fixed the same round, unrelated to
+either migration's own logic:** `scripts/city-regression.sql`'s `rg_match`
+helper reuses 3 fixed synthetic player UUIDs across every call in the
+suite; `check_room_join_rate_limit` (`0025`) allows 20 joins per user per
+10 minutes, counted globally, and the suite's own teardown only runs once
+at the very end — so by the time this round's two new blocks pushed the
+suite to 21 `rg_match` calls in one run, the 3 shared synthetic users
+legitimately tripped their own rate limit mid-suite. Fixed by deleting
+their `room_participants` rows globally at the top of `rg_match`, mirroring
+the per-room-unique-host pattern the same function already used for the
+sibling room-creation limit. Not a defect in this round's own code — a
+scaling ceiling in shared test infrastructure this round's growth was the
+first to actually cross; every future round adds more blocks, so this
+needed a real fix, not a one-off workaround.
+
+**A second real gap, this time in how this session runs Playwright tests,
+found and fixed before it could cause harm:** `playwright.config.ts`
+defines its own global `webServer` (port 4000, `npm run build && npx next
+start`) as a precondition for every test run, entirely independent of
+whatever server a test's own `BASE` constant points at. The first live run
+of this round's new spec used a manually-started server on port 4020
+without also giving Playwright's *own* auto-spawned port-4000 server the
+local-stack env override — meaning that parallel build almost certainly
+baked in `.env.local`'s production URL, the exact class of mistake round 6
+was burned by. Confirmed no actual harm this time (the test's own browser
+never navigated to port 4000; Playwright's readiness probe is a bare page
+load of `/create`, which makes no Supabase calls on its own) before doing
+anything else. Fixed properly, not just patched around: started the
+manual server on port 4000 itself (with the correct local env) so
+`reuseExistingServer` detects it and skips the redundant parallel build
+entirely — which also incidentally fixed an apparent 150s test "stall" that
+was actually CPU contention from that concurrent production build, not a
+real bug. A second server instance on port 4020 was started alongside it
+(same build) so earlier rounds' already-committed test files, which
+hardcode that port, didn't need to be touched. Re-ran `qa-x9-client-polish`
+and `qa-x11-turn-countdown` afterward to confirm zero regression: 5/5.
+
+Live verification (`tests/qa-x12-voluntary-retire.spec.ts`) caught one more
+real thing before it shipped: the confirm dialog's action button was
+originally labelled "Retire", identical to the trigger button that opens
+it — genuinely ambiguous for a screen reader, not just for Playwright's
+strict-mode locator matching, which is what actually surfaced it. Fixed by
+labelling the confirm action "Yes, retire".
+
+SQL regression harness: 31/31 (29 pre-existing + BUG-007-E + BUG-007-A),
+confirmed re-runnable back-to-back after the rate-limit fix. `npm run
+verify`: clean. `database.types.ts` regenerated and diffed — only the
+expected additions (`city_retire_self`'s signature, `disconnected_at` on
+`city_match_players`). Nothing has touched production; migrations `0083`
+and `0084` are local-only, same as every migration before them.
+
+Next: round B (per-phase `city_claim_timeout` defaults, the `_core`
+extraction of `city_roll_dice`/`city_decline_purchase`/
+`city_leave_detention`'s roll-attempt path, and the auction
+`turn_started_at`-shift bugfix).
