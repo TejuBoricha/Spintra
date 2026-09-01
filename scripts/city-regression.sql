@@ -674,6 +674,185 @@ begin
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 
+-- ===========================================================================
+-- BUG-015 — a card that charges the drawing player directly must set
+-- required_decision when it can't be paid outright, not get silently
+-- clobbered back to optional_actions
+-- ===========================================================================
+-- Seed 5015 is chosen so that, with a fresh match's bp_draw=0..15 sequence,
+-- setting bp_draw=12 makes city_draw_card('boarding_pass') return card id 8
+-- ("pay 75") -- confirmed directly against the live derivation before
+-- writing this. Seat 0's position (18) plus the seed's dice roll at
+-- rng_counter=0 ({3,1}, total 4) lands exactly on space 22, a boarding_pass
+-- card space -- chosen specifically so the landing does NOT also cross
+-- Departure: an earlier draft used position 38 (wrapping through Departure
+-- to reach space 2), which pays a 200 salary as part of the same roll
+-- *before* the card resolves and silently made the 75 charge affordable,
+-- producing a false pass for the wrong reason. Caught by actually reading
+-- city_roll_dice's return payload instead of trusting the phase check alone.
+do $blk$
+declare m uuid; ok boolean; ph text; pd int;
+begin
+  m := pg_temp.rg_match('CITYRG15', 5015);
+  delete from public.city_assets where match_id=m;
+  insert into public.city_assets(match_id,space_idx,owner_seat,buildings,is_mortgaged)
+  values (m,26,0,0,false);  -- liquidation headroom: 255/2=127, comfortably covers 75
+  update public.city_match_players set cash=10, position=18, pending_debt=0 where match_id=m and seat=0;
+  update public.city_matches set current_seat=0, phase='awaiting_roll', rng_counter=0, bp_draw=12 where id=m;
+
+  perform pg_temp.rg_as(0);
+  perform public.city_roll_dice(m);
+
+  select phase into ph from public.city_matches where id=m;
+  select pending_debt into pd from public.city_match_players where match_id=m and seat=0;
+  ok := ph = 'required_decision';
+
+  insert into rg values (default,'BUG-015','an unaffordable direct card charge sets required_decision',
+    'landing on a "pay 75" card with only 10 cash leaves phase=required_decision, not optional_actions',
+    format('phase=%s, pending_debt=%s', ph, pd),
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-016 — no card may be skipped entirely across a round when the
+-- Transit Visa is picked up mid-round
+-- ===========================================================================
+do $blk$
+declare m uuid; ok boolean := true; act text := '';
+  drawn integer[] := '{}'; card_row public.city_cards; i int; missing integer[];
+begin
+  m := pg_temp.rg_match('CITYRG16', 5016);
+  update public.city_matches set cf_draw = 0 where id = m;
+
+  for i in 1..8 loop
+    card_row := public.city_draw_card(m, 'city_fund');
+    drawn := drawn || card_row.id;
+  end loop;
+
+  -- the visa is picked up mid-round -- exactly the live-state change that
+  -- corrupted the old size-based round/position math
+  update public.city_match_players set transit_visas = 1 where match_id = m and seat = 1;
+
+  for i in 1..8 loop
+    card_row := public.city_draw_card(m, 'city_fund');
+    drawn := drawn || card_row.id;
+  end loop;
+
+  select array_agg(id) into missing
+    from public.city_cards
+   where deck = 'city_fund' and id <> 23 and id <> all(drawn);
+
+  if missing is not null then
+    ok := false; act := format('never drawn across 16 draws: %s', missing);
+  end if;
+
+  insert into rg values (default,'BUG-016','no card is skipped entirely when the visa is picked up mid-round',
+    'all 15 non-visa city_fund cards appear at least once across 16 draws',
+    case when ok then 'all 15 non-visa cards appeared' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-017 — "double the usual rent" must actually double what the space's
+-- own rent formula computes, not silently do nothing
+-- ===========================================================================
+do $blk$
+declare m uuid; card_row public.city_cards; cash0 int; cash1 int; charged int;
+begin
+  m := pg_temp.rg_match('CITYRG17', 5017);
+  delete from public.city_assets where match_id=m;
+  -- idx 26: base rent 23, a 3-property group, seat 1 owns only this one --
+  -- not a complete set, so the "double for a complete set" rule inside
+  -- city_rent_for itself can't also be in play and confound the expected value.
+  insert into public.city_assets(match_id,space_idx,owner_seat,buildings,is_mortgaged)
+  values (m,26,1,0,false);
+  update public.city_match_players set cash=1000 where match_id=m and seat=0;
+  select cash into cash0 from public.city_match_players where match_id=m and seat=1;
+
+  card_row.id := -1; card_row.deck := 'boarding_pass'; card_row.text := 'regression test card';
+  card_row.effect := '{"idx":26,"kind":"advance_to","rent_multiplier":2}'::jsonb;
+  perform public.city_apply_card(m, 0, card_row, 6);
+
+  select cash into cash1 from public.city_match_players where match_id=m and seat=1;
+  charged := cash1 - cash0;
+
+  insert into rg values (default,'BUG-017','a rent-multiplier card doubles the actual rent',
+    'seat 1 receives 46 (base rent 23 x 2), not the unscaled 23',
+    format('seat 1 received %s (cash %s -> %s)', charged, cash0, cash1),
+    case when charged = 46 then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-032 — card 10 charges a flat 10x the roll, not 24x when both
+-- utilities are held
+-- ===========================================================================
+do $blk$
+declare m uuid; card_row public.city_cards; cash0 int; cash1 int; charged int;
+begin
+  m := pg_temp.rg_match('CITYRG32', 5032);
+  delete from public.city_assets where match_id=m;
+  insert into public.city_assets(match_id,space_idx,owner_seat,buildings,is_mortgaged)
+  values (m,12,1,0,false),(m,28,1,0,false);  -- seat 1 holds both utilities
+  update public.city_match_players set cash=1000 where match_id=m and seat=0;
+  select cash into cash0 from public.city_match_players where match_id=m and seat=1;
+
+  select * into card_row from public.city_cards where id = 10;
+  perform public.city_apply_card(m, 0, card_row, 6);  -- roll of 6 -> expect 60, not 144 or 72
+
+  select cash into cash1 from public.city_match_players where match_id=m and seat=1;
+  charged := cash1 - cash0;
+
+  insert into rg values (default,'BUG-032','card 10 charges a flat ten times the roll',
+    'a roll of 6 against an owner holding both utilities charges exactly 60, matching CONTENT.md''s own text',
+    format('charged %s (cash %s -> %s)', charged, cash0, cash1),
+    case when charged = 60 then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- META-OVERLOAD-GRANTS — a general guard, not tied to one audit bug: adding
+-- parameters via CREATE OR REPLACE creates a genuinely new pg_proc overload
+-- (Postgres identifies functions by their full declared parameter list, not
+-- just the required ones), which Postgres grants EXECUTE to PUBLIC by
+-- default on creation. This exact trap silently reopened
+-- city_assert_can_manage (0077) and city_resolve_landing (0079) after both
+-- had been correctly revoked in earlier migrations -- closed in 0080. This
+-- check guards the whole city_* surface against it recurring: flags any
+-- function name whose LONGEST-signature overload is executable by
+-- `authenticated` while a SHORTER sibling overload of the same name is
+-- revoked (the exact shape of "a helper got extended and the new overload's
+-- default grant was never revoked"). city_settle_auction's two overloads
+-- are the opposite shape on purpose (0071: the SHORTER 1-arg wrapper is the
+-- deliberately client-callable one; the LONGER 2-arg p_force form is
+-- deliberately revoked) and correctly does not match this check.
+-- ===========================================================================
+do $blk$
+declare v_bad text;
+begin
+  select string_agg(x.proname || '(' || x.args || ')', ', ') into v_bad
+    from (
+      select p.proname,
+             pg_get_function_identity_arguments(p.oid) as args,
+             has_function_privilege('authenticated', p.oid, 'execute') as exec,
+             row_number() over (partition by p.proname order by p.pronargs desc) as rn_longest
+        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public' and p.proname like 'city\_%' escape '\' and p.prokind = 'f'
+    ) x
+   where x.rn_longest = 1
+     and x.exec
+     and exists (
+       select 1 from pg_proc p2 join pg_namespace n2 on n2.oid = p2.pronamespace
+        where n2.nspname = 'public' and p2.proname = x.proname
+          and pg_get_function_identity_arguments(p2.oid) <> x.args
+          and not has_function_privilege('authenticated', p2.oid, 'execute')
+     );
+
+  insert into rg values (default,'META-OVERLOAD-GRANTS',
+    'no city_* function''s longest overload is publicly executable while a shorter sibling is revoked',
+    'zero matches',
+    case when v_bad is null then 'none found' else 'found: '||v_bad end,
+    case when v_bad is null then 'PASS' else 'FAIL' end);
+end $blk$;
+
 -- ---------------------------------------------------------------------------
 -- teardown + report
 -- ---------------------------------------------------------------------------
