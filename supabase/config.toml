@@ -207,7 +207,13 @@ email_sent = 2
 # Number of SMS messages that can be sent per hour. Requires auth.sms to be enabled.
 sms_sent = 30
 # Number of anonymous sign-ins that can be made per hour per IP address. Requires enable_anonymous_sign_ins = true.
-anonymous_users = 30
+# Raised from the default 30: the full Playwright suite alone mints 100+ anonymous sessions per
+# run (every browser context signs in independently), so the default caused every anon sign-in
+# past the 30th in a given hour to 429 -- almost certainly the "residual non-deterministic CI
+# flake" playwright.config.ts already documented as accepted-but-unexplained. Local/CI only; the
+# hosted project's production rate limit is configured separately via the Supabase dashboard and
+# is unaffected by this file.
+anonymous_users = 1000
 # Number of sessions that can be refreshed in a 5 minute interval per IP address.
 token_refresh = 150
 # Number of sign up and sign-in requests that can be made in a 5 minute interval per IP address (excludes anonymous users).

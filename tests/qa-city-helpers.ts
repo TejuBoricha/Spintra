@@ -5,7 +5,7 @@ import type { Page } from '@playwright/test';
 
 export const SCRATCH = 'C:/Users/tejas/AppData/Local/Temp/claude/c--Users-tejas-Desktop-Spintra-1/cec4ff14-1fcd-49b4-a12a-68214422c5ee/scratchpad';
 export const SHOTS = path.join(SCRATCH, 'qa-shots');
-export const BASE = 'http://127.0.0.1:4020';
+export const BASE = 'http://127.0.0.1:4000';
 
 export interface LogEntry { who: string; type: string; text: string; }
 export interface NetEntry { who: string; status: number; method: string; url: string; body?: string; }

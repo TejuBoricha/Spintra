@@ -1,7 +1,7 @@
 import { test, chromium, type Page } from '@playwright/test';
 import { execSync } from 'child_process';
 
-const BASE = 'http://127.0.0.1:4020';
+const BASE = 'http://127.0.0.1:4000';
 const sql = (q: string) =>
   execSync(`docker exec supabase_db_Spintra-1 psql -U postgres -d postgres -t -A -c "${q.replace(/"/g, '\\"')}"`).toString().trim();
 const accept = async (p: Page) => {
