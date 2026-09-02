@@ -4,7 +4,17 @@
 > integration with the existing system → implementation → verification, with a traceability matrix
 > so every requirement can be followed to the thing that implements it and the thing that proves it.
 >
-> **Status: specification. Nothing is built** — no migration, no component, no art.
+> **Status (2026-09-03): implemented and QA-hardened on `feat/spintra-city-design`, not yet
+> merged/deployed.** All 7 slices (§7) are built; a 298-case QA audit found 44 bugs, all closed
+> across 8+ fix rounds (see `QA_REPORT.md`/`QA_PROGRESS.md`, held outside this repo); a 57-case
+> regression harness (`npm run test:city-regression`) passes. **What's still outstanding before
+> launch:** the branch has never been pushed to a remote or opened as a PR; migrations `0063`–`0091`
+> are applied and verified on local Docker only — `npm run verify:migration` confirms they are
+> **not yet applied to the live Supabase project**; the economy has never been playtested by real
+> users; and this document, `DESIGN.md`, and the top-level session docs (`AI_CONTEXT.md`/
+> `HANDOFF.md`/`TASKS.md`) had drifted out of sync with the actual build state until this pass.
+> The original pre-implementation text below is left intact as the historical plan — §7 and §11
+> carry the as-built status.
 >
 > **The other two documents remain the source of truth for their own areas** and are not duplicated
 > here: `SPINTRA_CITY_DESIGN.md` = decisions and their rationale/provenance;
@@ -401,6 +411,12 @@ only surfaced when code actually ran against a real database.
 identity model, and realtime-as-notifier end to end, while course-correcting is still cheap. It
 must not be skipped or merged into a larger first push.
 
+**As-built status (2026-09-03): all 7 slices plus the cross-cutting row are delivered** on
+`feat/spintra-city-design` (commits `3fa27bf`…`97415ad` for the slices; the cross-cutting
+disconnect/autopilot/retire/clock/rate-limit work landed afterward as "BUG-007" rounds A–H,
+commits `fbd56c7`…`597cd7e`, driven by the QA audit below rather than built ahead of it). Migrations
+run through `0091`.
+
 ---
 
 ## 8. Verification
@@ -480,5 +496,42 @@ Needing the user, not blocking Phase 1:
 3. Board content sign-off (names, "Spins") — blocks the **seed-data** migration only.
 4. Board art direction — blocks UI slices, not schema.
 5. Trademark clearance on "Spintra City" / "The Wheelworks" — a real-world action.
+
+---
+
+## 12. Open items blocking launch (as-built, 2026-09-03)
+
+Phase 1's blockers above are all closed and schema/implementation work is done. What's actually
+left, in order:
+
+1. **Branch never pushed.** `feat/spintra-city-design` has no remote/upstream — it exists only on
+   this machine. Needs a push + PR against `main` before anything else.
+2. **Migrations not live.** `npm run verify:migration` confirms `0063`–`0091` are applied and
+   verified against local Docker Supabase only; the production Supabase project is missing them
+   (checked directly — `city_settle_auction` does not exist live). This repo has hit the
+   "tracked-as-applied-but-never-ran" failure mode three times before (`0008`/`0009`/`0010`); apply
+   via `supabase db push --linked` and re-run `verify:migration` against production before trusting it.
+3. **Full CI gate not yet green end-to-end, for reasons unrelated to app correctness.** `npm run
+   ci` stops at the `npm audit --audit-level=high` step — 14 vulnerabilities (10 high), confirmed
+   pre-existing on `main` (identical `package-lock.json`), not introduced by this feature. Running
+   `npm run build` and the full Playwright `test:smoke` suite (93 tests) directly (bypassing the
+   blocked audit gate) took 5 iterations to get a trustworthy signal, surfacing and fixing two real
+   environment bugs along the way: (a) 12 QA test files hardcoded a stale port (`4020`) that
+   `playwright.config.ts`'s actual webServer (`4000`) never listens on — fixed; (b) local
+   Supabase's `[auth.rate_limit].anonymous_users` was left at the default 30/hour, far below what
+   this suite's 100+ anonymous sign-ins per run need — raised to 1000 in `supabase/config.toml`,
+   which is very likely also the fix for this repo's previously-unexplained "residual
+   non-deterministic CI flake." After both fixes, remaining failures (a handful, scattered across
+   unrelated feature areas, all connection/auth-layer errors, zero assertion mismatches) are
+   consistent with auth-burst throttling under this sandbox's specific constraints, not a code
+   defect — corroborated by the RPC-level `test:city-regression` harness passing 57/57 twice,
+   including after a full fresh migration replay. A literal 93/93 clean run was not obtained in
+   this sandbox; see `CHANGELOG_AI.md`'s 2026-09-03 entry for the full run-by-run diagnosis.
+4. **Economy never playtested.** Prices/rents/salary are a reasoned first draft (see `CONTENT.md`),
+   never balance-tested with real concurrent players.
+5. **Docs were stale until this pass.** This file, `DESIGN.md`, and the top-level session docs said
+   "design phase, zero code" through 47 implementation commits — fixed 2026-09-03.
+6. Board art, and trademark clearance on "Spintra City"/"The Wheelworks" (item 4/5 above) — still
+   outstanding, still the user's call, not code.
 
 Everything else in `DESIGN.md` §4.1 can be sequenced alongside the slices.

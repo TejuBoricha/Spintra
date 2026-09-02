@@ -302,25 +302,27 @@ Pre-launch hardening — required before publishing the site publicly on the ope
 
 ## Medium Priority
 
-### Spintra City — new multiplayer feature (design phase, no code yet)
+### Spintra City — new multiplayer feature (implemented, pre-launch checklist below)
 
-- `[ ]` **"Spintra City" (Monopoly-style property-trading game).** Large new feature, currently in
-  design only — a multiplayer board-trading game for 2–8 players, server-authoritative (PostgreSQL
-  as referee, not the existing lightweight activity-event-log pattern the other 14 games use).
-  Product/architecture decisions (no bots, human-first; server-authoritative match engine; the
-  5-table match-engine data model) were confirmed by the user in a design conversation held outside
-  a repo session; a turn-flow/reliability proposal (90s turn clock, disconnect/autopilot/retire
-  rules) was presented but never confirmed before the user switched AI tools. A later research pass
-  independently verified the richup.io claims (found and corrected one error), did deep player-UX
-  research across richup.io and a second comparable product, and produced a concrete file-level
-  integration plan against this repo's actual current code (exact files to touch, which existing
-  infra reuses cleanly vs. needs a product decision, DB/RPC conventions to match).
-  **Start at `docs/SPINTRA_CITY_SPEC.md`** — the wired-up engineering spec: 49 numbered
-  requirements, technology, exactly which existing subsystems are reused/adapted/new (with verified
-  file references), the 7-slice implementation plan, verification strategy, risks, and a
-  requirement→build→proof traceability matrix. `docs/SPINTRA_CITY_DESIGN.md` holds the decision log
-  and rationale; `docs/SPINTRA_CITY_CONTENT.md` holds the board content. Only 2 items block schema
-  work (randomness test seam, building supply limits — both in the spec's §11).
+- `[~]` **"Spintra City" (Monopoly-style property-trading game).** All 7 vertical slices plus a
+  cross-cutting reliability layer (disconnect/autopilot/retire/durable-pause/trade-pause/auction
+  auto-pass) are built on `feat/spintra-city-design` — a multiplayer board-trading game for 2–8
+  players, server-authoritative (PostgreSQL as referee, not the existing lightweight
+  activity-event-log pattern the other 14 games use). A 298-case QA audit (`QA_REPORT.md`, held
+  outside this repo) found 44 bugs; all closed across 8+ fix rounds. A dedicated 57-case regression
+  harness (`npm run test:city-regression`) passes clean. **Not yet launched — see
+  `docs/SPINTRA_CITY_SPEC.md` §12 for the exact remaining checklist**: the branch has never been
+  pushed/opened as a PR; migrations `0063`–`0091` are verified on local Docker only, **not yet
+  applied to the live Supabase project**; a 2026-09-03 verification pass found and fixed two real
+  environment bugs (a stale test port; local Supabase's anonymous-auth rate limit left far too low
+  for this suite's volume, likely also the fix for a previously-unexplained CI flake) and, after
+  fixing both, found no evidence of an actual code defect in the remaining scattered e2e failures
+  (all connection/auth-layer, zero assertion mismatches) — see `CHANGELOG_AI.md`; the economy has
+  never been playtested by real users; board art and trademark clearance on "Spintra
+  City"/"The Wheelworks" are still open, user-owned items.
+  `docs/SPINTRA_CITY_SPEC.md` is the wired-up engineering spec (requirements, traceability matrix,
+  as-built status in §12); `docs/SPINTRA_CITY_DESIGN.md` holds the decision log;
+  `docs/SPINTRA_CITY_CONTENT.md` holds the board content.
 
 - `[x]` **Room auto-expiry / lifecycle cleanup:** Done Session 40 — migration `0020` enables `pg_cron` and schedules the `cleanup_inactive_rooms()` function (already defined in migration `0009`, deletes rooms with no online participants that are >2h old) to run every 30 minutes. Along the way, discovered `0009` itself had never actually executed live (see the new item below) — re-ran it for real, which deleted 23 genuinely abandoned rooms on the spot.
 - `[x]` **Systematic migration-history audit:** Done Session 40 — cross-checked all 20 migrations' expected live objects (tables, columns, functions, triggers, policies, constraints, indexes, extensions, realtime publication membership, replica identity, seed-data row counts) against the live database. No further gaps found beyond `0009` (already fixed same session); `0001`–`0008` and `0010`–`0019` all confirmed genuinely live and matching source exactly, seed data counts clean (44 prompts, 50 trivia questions, no duplicates).

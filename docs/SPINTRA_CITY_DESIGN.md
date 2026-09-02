@@ -1,13 +1,24 @@
 # SPINTRA_CITY_DESIGN.md — "Spintra City" Feature Handoff
 
-> **Status: Design-in-progress. Zero code, migrations, or UI exist yet.** This document has been
-> built up across four passes: (1) a design conversation held outside this repo, relayed and
-> transcribed here; (2) a correction pass that independently verified the richup.io claims made in
-> pass 1; (3) a deep research pass covering player-facing UX genre-wide and a concrete, file-level
-> integration plan against this repo's *actual* current code; (4) a decision pass where the user
-> explicitly delegated 7 specific open product questions ("pick whatever is best suited") rather
-> than deciding them directly. It exists so any AI model/tool can pick up exactly where things
-> stand, without replaying prior work or guessing at what was already decided.
+> **Status (2026-09-03): the feature described below has since been fully implemented** on branch
+> `feat/spintra-city-design` (not yet pushed/merged/deployed — see `SPINTRA_CITY_SPEC.md` §12 for
+> the exact as-built status and what's still outstanding before launch). This document is left as
+> written — the design record and its provenance tags below are still the accurate account of what
+> was decided and why — but treat every "proposed"/"still open" item in §3/§4/§7 as a claim about
+> the *design conversation*, not the current code: most were subsequently resolved through
+> implementation and an 8-round, 44-bug QA hardening pass (disconnect handling, autopilot, retire,
+> durable pause, trade-pause budget, auction auto-pass — see the `docs(city)` commits from
+> `fbd56c7` through `597cd7e`). If you need to know whether a specific mechanic actually works
+> today, check the code/tests, not this section — this file was not updated line-by-line as
+> implementation proceeded.
+>
+> This document has been built up across four passes: (1) a design conversation held outside this
+> repo, relayed and transcribed here; (2) a correction pass that independently verified the
+> richup.io claims made in pass 1; (3) a deep research pass covering player-facing UX genre-wide and
+> a concrete, file-level integration plan against this repo's *actual* current code; (4) a decision
+> pass where the user explicitly delegated 7 specific open product questions ("pick whatever is
+> best suited") rather than deciding them directly. It exists so any AI model/tool can pick up
+> exactly where things stand, without replaying prior work or guessing at what was already decided.
 >
 > Read this file in full before proposing or writing anything for this feature. Three provenance
 > tags are used throughout and mean different things — don't collapse them: **APPROVED** = the

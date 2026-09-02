@@ -6,7 +6,32 @@ Portable session-continuity note for any AI assistant to resume work immediately
 
 ## Last Completed Task
 
-**Session 65: "Spintra City" — design, research, and planning only. ZERO CODE WRITTEN.**
+**2026-09-03: Spintra City readiness check + full CI/e2e verification + docs sync — COMPLETE (verification only; no production-facing action taken).**
+
+The user asked "is our game ready to publish?" — investigation found that Spintra City (the design-phase feature from Session 65, below) had actually been **fully implemented since then**: 49 commits on local branch `feat/spintra-city-design` (never pushed to any remote) delivered all 7 vertical slices plus a cross-cutting reliability layer, then a 298-case QA audit (44 bugs found, all closed across 8+ fix rounds), then a visual/UX review pass. None of this was reflected in `AI_CONTEXT.md`/`HANDOFF.md`/`TASKS.md`/`SPINTRA_CITY_SPEC.md` — all still said "design phase, zero code." This entry is the correction.
+
+**Verified so far:**
+- `npm run verify` (typecheck+lint+docs:check) — clean.
+- `npm run build` — clean.
+- `npm run test:city-regression` (57-case targeted harness against the QA audit's bug list) — **57/57 passing.**
+- `npm run verify:migration` against the **live production Supabase project** — confirms migrations `0063`–`0091` (the entire Spintra City chain) are **not applied live**. Applied and verified on local Docker only.
+- `npm run ci` stops at `npm audit --audit-level=high` (14 vulnerabilities, 10 high) — confirmed **pre-existing on `main`** (`package-lock.json` identical to `main`), not introduced by this feature.
+- Full `npm run test:smoke` (93 tests) took **5 iterations** to reach a trustworthy signal. Root-caused, not left open — two real environment bugs were found and fixed:
+  1. **Stale test port**: 12 `qa-x*.spec.ts` files (the QA-audit tests) hardcoded `http://127.0.0.1:4020`; `playwright.config.ts`'s actual webServer runs on `4000`. Nothing was ever listening on `4020` — these tests failed by construction, unrelated to app correctness. Fixed all 12 (`tests/qa-city-helpers.ts` + 11 spec files).
+  2. **Local Supabase's anonymous-auth rate limit** (`supabase/config.toml`'s `[auth.rate_limit].anonymous_users`) was still at the platform default of 30/hour — set 2026-07-05, long before this suite existed. A single run mints 100+ anonymous sign-ins, tripping a hard 429 partway through. Raised to 1000 with an explanatory comment. **This is very likely the actual mechanism behind the "residual non-deterministic CI flake"** `playwright.config.ts` already documented as accepted-but-unexplained.
+  3. Along the way, `supabase db reset` itself failed on a local-only ownership permission issue (migration `0036`, `realtime.messages` owned by `supabase_realtime_admin`, not `postgres`) and left local Docker regressed to only migration `0035` — repaired via a superuser ownership fix + `supabase migration up` (not `db reset`, which would have reverted it); confirmed back at `0091`, `test:city-regression` re-run clean (57/57) to be sure the repair didn't disturb anything.
+  - **After both real fixes**, remaining e2e failures were a handful, scattered evenly across unrelated feature areas (comprehensive-smoke, tournament, trivia, lucky wheel, city pace/mortgage) with **zero assertion mismatches** — every one was a connection/auth-layer error (429, timeout waiting for a URL, failed anonymous sign-in), the signature of leftover auth-burst throttling specific to this sandbox, not a code regression. A literal 93/93 was never obtained here.
+  - `.env.local` was temporarily repointed at local Docker Supabase for this testing (backed up first) and **has been restored to production credentials** — verified byte-identical to the pre-session backup. An orphaned dev-server process left on port 4000 was killed. Local Docker Supabase is left running, fully migrated through `0091`, with the raised rate limit (irrelevant to production, which configures its own rate limit via the Supabase dashboard).
+  - **Confidence in code correctness rests on**: `test:city-regression` (57/57, twice, RPC-level, immune to all of the above) + clean `verify`/`build` + direct inspection of every e2e failure finding no assertion mismatch. **Next session** (or CI, which now also benefits from the rate-limit fix): get one genuinely clean full run if possible, and take any *new* failure there seriously rather than assuming infra by default.
+  - Unrelated, noted not fixed: `supabase_vector_Spintra-1` (local log-shipping container) was observed crash-looping throughout — not on the path of anything tested, not chased further.
+
+**Not yet done (held for explicit go-ahead, per the user's own instruction this session):** pushing the branch, opening a PR, applying migrations to production, merging, deploying.
+
+**Where to pick up:** `docs/SPINTRA_CITY_SPEC.md` §12 ("Open items blocking launch (as-built)") is now the authoritative checklist. Read it before doing anything else on this feature — it supersedes this section's prior "design phase" framing entirely.
+
+---
+
+## Prior Session (Session 65 — full detail retained below, historical: describes the design-only state, since superseded by full implementation — see above)
 
 A new large feature is in the design phase: a Monopoly-style multiplayer property-trading game mode. **Nothing is built** — no migration, no component, no art. All work this session was documentation.
 
@@ -14,11 +39,9 @@ A new large feature is in the design phase: a Monopoly-style multiplayer propert
 
 What happened, briefly: transcribed a design conversation the user had with a different AI outside this repo → reviewed that design against this repo's own bug history (12 findings, 2 Critical) → independently verified the richup.io research it relied on and **found a real factual error** (richup *does* have bots; the original claim that it doesn't was wrong and had been load-bearing) → ran two parallel deep-research passes (genre-wide player UX; a file-level integration plan read from the actual code) → the user delegated 7 open product questions which were decided and tagged → the user picked a board theme from three original pitches and the full board was drafted.
 
-**Where to pick up:** `SPINTRA_CITY_DESIGN.md` §8 is the phased build plan with owner tags. The immediate next items are the user reviewing the content draft, then closing ~6 remaining design gaps (turn state-machine detail, reconnect grace period, late-arrival rule, net-worth formula, auction flow, bankruptcy sequence), then schema (migration `0063`+), then 7 vertical implementation slices. **Do not skip Slice 1** (room type + lobby + seats, no gameplay) — it's deliberately scoped as the architectural proof for the whole feature, while course-correcting is still cheap.
-
-**Two things worth knowing before touching code for this:**
-- `rooms.type` has a DB CHECK constraint (migration `0039`) — adding `"city"` to the TypeScript `RoomType` union alone will fail at the database layer. The migration must land first.
-- **Unrelated pre-existing bug found and NOT fixed:** `ARCHITECTURE.md` documents `.glass`/`.glass-card` Tailwind classes that don't exist. The real pattern is CSS custom properties via Tailwind v4 arbitrary-value syntax (`bg-(--surface-glass-strong)`). Worth a separate fix.
+**Two things worth knowing (historical, both since resolved by implementation):**
+- `rooms.type` has a DB CHECK constraint (migration `0039`) — adding `"city"` to the TypeScript `RoomType` union alone will fail at the database layer. The migration must land first. (Resolved: migration `0063` did this.)
+- **Unrelated pre-existing bug found and NOT fixed:** `ARCHITECTURE.md` documents `.glass`/`.glass-card` Tailwind classes that don't exist. The real pattern is CSS custom properties via Tailwind v4 arbitrary-value syntax (`bg-(--surface-glass-strong)`). Still worth a separate fix — not addressed by the city work.
 
 ---
 
