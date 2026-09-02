@@ -124,6 +124,10 @@ export interface CityTradeOffer {
   get_cash: number;
   status: "pending" | "accepted" | "declined" | "withdrawn" | "expired";
   expires_at: string;
+  /** FR-43: true while the recipient is the active seat — inactionable
+   *  (accept/decline both refused server-side) until their turn ends, so
+   *  it can neither consume nor freeze their own turn clock. */
+  queued: boolean;
 }
 
 /**
@@ -331,7 +335,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
         .eq("match_id", nextMatch.id),
       supabase
         .from("city_trade_offers")
-        .select("id, from_seat, to_seat, give_spaces, get_spaces, give_cash, get_cash, status, expires_at")
+        .select("id, from_seat, to_seat, give_spaces, get_spaces, give_cash, get_cash, status, expires_at, queued")
         .eq("match_id", nextMatch.id)
         .eq("status", "pending"),
       supabase
@@ -825,5 +829,7 @@ function friendlyCommandError(message: string): string {
   if (message.includes("CITY_BID_NOT_A_STEP")) return "Bids go up in tens.";
   if (message.includes("CITY_AUCTION_CLOSED")) return "That auction has closed.";
   if (message.includes("CITY_NO_AUCTION")) return "There's no auction running.";
+  if (message.includes("CITY_OFFER_QUEUED"))
+    return "That offer is queued until your turn ends.";
   return "That didn't work. Please try again.";
 }

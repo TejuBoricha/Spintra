@@ -476,6 +476,8 @@ export type Database = {
           started_at: string | null
           status: string
           time_limit_minutes: number | null
+          trade_pause_ms_used: number
+          trade_pause_started_at: string | null
           turn_clock_elapsed_ms: number
           turn_clock_paused_at: string | null
           turn_number: number
@@ -504,6 +506,8 @@ export type Database = {
           started_at?: string | null
           status?: string
           time_limit_minutes?: number | null
+          trade_pause_ms_used?: number
+          trade_pause_started_at?: string | null
           turn_clock_elapsed_ms?: number
           turn_clock_paused_at?: string | null
           turn_number?: number
@@ -532,6 +536,8 @@ export type Database = {
           started_at?: string | null
           status?: string
           time_limit_minutes?: number | null
+          trade_pause_ms_used?: number
+          trade_pause_started_at?: string | null
           turn_clock_elapsed_ms?: number
           turn_clock_paused_at?: string | null
           turn_number?: number
@@ -559,6 +565,7 @@ export type Database = {
           give_spaces: number[]
           id: string
           match_id: string
+          queued: boolean
           resolved_at: string | null
           status: string
           to_seat: number
@@ -574,6 +581,7 @@ export type Database = {
           give_spaces?: number[]
           id?: string
           match_id: string
+          queued?: boolean
           resolved_at?: string | null
           status?: string
           to_seat: number
@@ -589,6 +597,7 @@ export type Database = {
           give_spaces?: number[]
           id?: string
           match_id?: string
+          queued?: boolean
           resolved_at?: string | null
           status?: string
           to_seat?: number
@@ -1198,6 +1207,10 @@ export type Database = {
       city_max_liquidation: {
         Args: { p_match_id: string; p_seat: number }
         Returns: number
+      }
+      city_maybe_resume_trade_clock: {
+        Args: { p_match_id: string }
+        Returns: undefined
       }
       city_mortgage: {
         Args: { p_match_id: string; p_space_idx: number }

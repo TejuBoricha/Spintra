@@ -1587,6 +1587,230 @@ begin
 end $blk$;
 
 -- ===========================================================================
+-- BUG-007-F (FR-33) — proposing a trade as the active seat pauses their own
+-- clock; the response resumes it and accumulates the true elapsed pause.
+-- ===========================================================================
+do $blk$
+declare m uuid; offer_id uuid; paused_at1 timestamptz; trade_paused_at1 timestamptz;
+  ms_used int; ts_before timestamptz; ts_after timestamptz; paused_after timestamptz;
+  ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGF1', 84);
+  update public.city_matches set current_seat=0, phase='optional_actions' where id=m;
+
+  perform pg_temp.rg_as(0);
+  offer_id := public.city_propose_trade(m, 1, '{}', '{}', 10, 0);
+
+  select turn_clock_paused_at, trade_pause_started_at into paused_at1, trade_paused_at1
+    from public.city_matches where id=m;
+  if paused_at1 is null or trade_paused_at1 is null then
+    ok := false; act := act || 'proposing as the active seat did not pause the clock; ';
+  end if;
+
+  -- Backdate the pause start to simulate real elapsed waiting time, and
+  -- capture the pre-accept turn_started_at to check the shift afterward.
+  update public.city_matches set turn_clock_paused_at = now() - interval '20 seconds',
+    trade_pause_started_at = now() - interval '20 seconds' where id=m;
+  select turn_started_at into ts_before from public.city_matches where id=m;
+
+  perform pg_temp.rg_as(1);
+  perform public.city_accept_trade(offer_id);
+
+  select turn_clock_paused_at, trade_pause_started_at, trade_pause_ms_used, turn_started_at
+    into paused_after, trade_paused_at1, ms_used, ts_after
+    from public.city_matches where id=m;
+
+  if paused_after is not null or trade_paused_at1 is not null then
+    ok := false; act := act || 'clock/pause markers were not cleared after the offer closed; ';
+  end if;
+  if ms_used < 19000 or ms_used > 25000 then
+    ok := false; act := act || format('trade_pause_ms_used is %s, expected roughly 20000; ', ms_used);
+  end if;
+  if extract(epoch from (ts_after - ts_before)) < 19 then
+    ok := false; act := act || 'turn_started_at was not shifted forward by the pause duration; ';
+  end if;
+
+  insert into rg values (default,'BUG-007-F-pause','proposing pauses the active seat''s clock; the response resumes and accounts for it (FR-33)',
+    'turn_clock_paused_at/trade_pause_started_at are set on propose; accepting clears them, accumulates ~20s into trade_pause_ms_used, and shifts turn_started_at forward by that same amount',
+    case when ok then format('paused on propose; accumulated %sms, shifted turn_started_at by %ss', ms_used, round(extract(epoch from (ts_after-ts_before))::numeric,1)) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-F (FR-43) — an offer arriving while the recipient is the active
+-- seat is queued: inactionable until their turn ends, then it surfaces.
+-- ===========================================================================
+do $blk$
+declare m uuid; offer_id uuid; queued_flag boolean; refused_accept boolean := false;
+  refused_decline boolean := false; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGF2', 85);
+  update public.city_matches set current_seat=0, phase='optional_actions' where id=m;
+
+  -- Seat 1 (off-turn) proposes to seat 0 (the active seat).
+  perform pg_temp.rg_as(1);
+  offer_id := public.city_propose_trade(m, 0, '{}', '{}', 5, 0);
+
+  select queued into queued_flag from public.city_trade_offers where id=offer_id;
+  if not queued_flag then
+    ok := false; act := act || 'an offer to the active seat was not marked queued; ';
+  end if;
+
+  perform pg_temp.rg_as(0);
+  begin
+    perform public.city_accept_trade(offer_id);
+  exception when others then
+    if SQLERRM like '%CITY_OFFER_QUEUED%' then refused_accept := true; end if;
+  end;
+  if not refused_accept then
+    ok := false; act := act || 'accepting a queued offer was not refused with CITY_OFFER_QUEUED; ';
+  end if;
+
+  begin
+    perform public.city_resolve_trade(offer_id, 'declined');
+  exception when others then
+    if SQLERRM like '%CITY_OFFER_QUEUED%' then refused_decline := true; end if;
+  end;
+  if not refused_decline then
+    ok := false; act := act || 'declining a queued offer was not refused with CITY_OFFER_QUEUED; ';
+  end if;
+
+  -- Ending seat 0's turn surfaces it.
+  perform pg_temp.rg_as(0);
+  perform public.city_end_turn(m);
+  select queued into queued_flag from public.city_trade_offers where id=offer_id;
+  if queued_flag then
+    ok := false; act := act || 'the offer was still queued after the recipient''s turn ended; ';
+  end if;
+
+  insert into rg values (default,'BUG-007-F-queued','a trade to the active seat is queued until their turn ends (FR-43)',
+    'accept/decline are both refused with CITY_OFFER_QUEUED while the recipient is on the clock; ending their turn surfaces it',
+    case when ok then 'queued while active, both actions refused, surfaced once the turn ended' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-F (FR-33 budget) — once the 90s-per-turn trade-pause budget is
+-- used up, further proposals from the active seat stop pausing the clock.
+-- ===========================================================================
+do $blk$
+declare m uuid; paused_marker timestamptz; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGF3', 86);
+  update public.city_matches set current_seat=0, phase='optional_actions',
+    trade_pause_ms_used = 90000 where id=m;
+
+  perform pg_temp.rg_as(0);
+  perform public.city_propose_trade(m, 1, '{}', '{}', 5, 0);
+
+  select turn_clock_paused_at into paused_marker from public.city_matches where id=m;
+  if paused_marker is not null then
+    ok := false; act := act || 'a proposal paused the clock even though the 90s budget was already spent; ';
+  end if;
+
+  insert into rg values (default,'BUG-007-F-budget','the 90s trade-pause budget stops further proposals from pausing the clock',
+    'turn_clock_paused_at stays null when trade_pause_ms_used is already >= 90000 at propose time',
+    case when ok then 'clock stayed unpaused once the budget was already spent' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-F (FR-33 escape hatch) — a trade pause nobody ever responds to
+-- does not leave claim_timeout permanently refusing forever; past 45s it
+-- may force-withdraw the stale offer and resume the clock.
+-- ===========================================================================
+do $blk$
+declare m uuid; offer_id uuid; st text; res jsonb; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGF4', 87);
+  update public.city_matches set current_seat=0, phase='optional_actions', pace_seconds=40
+   where id=m;
+
+  perform pg_temp.rg_as(0);
+  offer_id := public.city_propose_trade(m, 1, '{}', '{}', 5, 0);
+
+  -- Numbers chosen so the escape hatch's own 45s bound is exceeded AND the
+  -- resumed deadline (turn_started_at shifted forward by the actual pause
+  -- length, per city_maybe_resume_trade_clock's own math) has also already
+  -- passed, so this single call both resumes the clock and fully resolves
+  -- the stall in one step, rather than needing a second, separately-timed
+  -- call after resuming.
+  update public.city_matches
+     set turn_started_at = now() - interval '100 seconds',
+         turn_clock_paused_at = now() - interval '50 seconds',
+         trade_pause_started_at = now() - interval '50 seconds'
+   where id=m;
+
+  perform pg_temp.rg_as(1);
+  begin
+    select public.city_claim_timeout(m) into res;
+  exception when others then
+    ok := false; act := act || 'claim_timeout still refused a trade pause well past its own 45s bound: '||SQLERRM||'; ';
+  end;
+
+  select status into st from public.city_trade_offers where id=offer_id;
+  if ok and st <> 'withdrawn' then
+    ok := false; act := act || format('the stale offer''s status is %L, expected withdrawn; ', st);
+  end if;
+
+  insert into rg values (default,'BUG-007-F-escape','a stale trade pause past 45s can be force-resolved by claim_timeout',
+    'claim_timeout does not refuse forever -- past 45s it withdraws the active seat''s own stale offer, resumes the clock, and resolves the (now also expired) turn',
+    case when ok then format('resolved: %s, offer withdrawn', res->>'resolution') else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-G (FR-49) — an auction never waits out its cap on an absent seat;
+-- an away bidder is excluded from the "has everyone passed" tally.
+-- ===========================================================================
+do $blk$
+declare m uuid; prop_idx int; res jsonb; auction_status text;
+  ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGG1', 88);
+  select idx into prop_idx from public.city_board_spaces where price is not null order by idx limit 1;
+
+  -- Seat 0 declines an unowned property with 3 active, debt-free seats at
+  -- the table, opening a real auction everyone (including the decliner)
+  -- participates in, per §3.1E.
+  update public.city_match_players set position = prop_idx where match_id=m and seat=0;
+  update public.city_matches set current_seat=0, phase='required_decision' where id=m;
+  perform pg_temp.rg_as(0);
+  perform public.city_decline_purchase(m);
+
+  perform 1 from public.city_auctions where match_id=m and status='running';
+  if not found then
+    ok := false; act := act || 'declining with 3 debt-free active seats did not open a real auction; ';
+  end if;
+
+  -- Seat 1 has been away well past the grace period -- cannot click Pass,
+  -- and must not be waited on for it either.
+  update public.city_match_players set disconnected_at = now() - interval '90 seconds'
+   where match_id=m and seat=1;
+
+  -- The decliner and the one remaining present seat both explicitly pass.
+  -- Without FR-49's fix, seat 1 (still counted eligible) would leave this
+  -- one short and the auction would sit open; with it, excluding the away
+  -- seat brings eligible down to exactly these two, and it settles.
+  perform pg_temp.rg_as(0);
+  perform public.city_pass_auction(m);
+  perform pg_temp.rg_as(2);
+  select public.city_pass_auction(m) into res;
+
+  select status into auction_status from public.city_auctions
+   where match_id=m order by created_at desc limit 1;
+  if auction_status <> 'settled' then
+    ok := false; act := act || format(
+      'auction status is %L after every present seat passed -- expected settled (away seat 1 should not have been waited on); ', auction_status);
+  end if;
+
+  insert into rg values (default,'BUG-007-G','an away bidder does not stall an auction''s all-pass fast path (FR-49)',
+    'once every seat *actually present* has passed, the auction settles immediately -- an away seat is excluded from the eligibility tally, not waited on',
+    case when ok then format('auction settled once both present seats passed, away seat 1 correctly excluded') else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
 -- META-OVERLOAD-GRANTS — a general guard, not tied to one audit bug: adding
 -- parameters via CREATE OR REPLACE creates a genuinely new pg_proc overload
 -- (Postgres identifies functions by their full declared parameter list, not

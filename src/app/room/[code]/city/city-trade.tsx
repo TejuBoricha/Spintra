@@ -97,7 +97,11 @@ export function CityTrade({
   if (!mySeat) return null;
 
   const opponents = seats.filter((s) => s.seat !== mySeat.seat && s.status === "active");
-  const incoming = offers.filter((o) => o.to_seat === mySeat.seat);
+  // FR-43: a queued offer is inactionable (accept/decline both refused
+  // server-side) until the recipient's own turn ends — hidden here rather
+  // than shown-and-disabled, matching DESIGN.md's "queued and surfaced
+  // when their turn ends" (not "queued and visible the whole time").
+  const incoming = offers.filter((o) => o.to_seat === mySeat.seat && !o.queued);
   const outgoing = offers.filter((o) => o.from_seat === mySeat.seat);
   const nameOf = (seat: number) => seats.find((s) => s.seat === seat)?.username ?? `Seat ${seat + 1}`;
   const spaceName = (i: number) => board[i]?.name ?? `#${i}`;
@@ -148,8 +152,17 @@ export function CityTrade({
               className="flex items-center gap-2 rounded-lg border border-(--border-hairline) px-3 py-2"
             >
               <p className="text-sm text-muted-foreground flex-1">
-                Waiting on <b>{nameOf(o.to_seat)}</b> —{" "}
-                {describeSide(o.give_spaces, o.give_cash, spaceName)} for{" "}
+                {o.queued ? (
+                  <>
+                    Queued for <b>{nameOf(o.to_seat)}</b> — it&apos;s their turn, so this waits
+                    until it ends.
+                  </>
+                ) : (
+                  <>
+                    Waiting on <b>{nameOf(o.to_seat)}</b>
+                  </>
+                )}{" "}
+                — {describeSide(o.give_spaces, o.give_cash, spaceName)} for{" "}
                 {describeSide(o.get_spaces, o.get_cash, spaceName)}.
               </p>
               <Button size="sm" variant="outline" onClick={() => onWithdraw(o.id)}>
