@@ -1303,7 +1303,7 @@ export type Database = {
       }
       city_settle_auction:
         | { Args: { p_match_id: string }; Returns: Json }
-        | { Args: { p_force?: boolean; p_match_id: string }; Returns: Json }
+        | { Args: { p_force: boolean; p_match_id: string }; Returns: Json }
       city_space_is_tradeable: {
         Args: { p_match_id: string; p_space_idx: number }
         Returns: boolean

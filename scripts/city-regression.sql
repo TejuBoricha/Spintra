@@ -2255,6 +2255,95 @@ begin
     case when v_bad is null then 'PASS' else 'FAIL' end);
 end $blk$;
 
+-- ===========================================================================
+-- META-OVERLOAD-AMBIGUITY — a second general guard, found only by a
+-- user-requested visual/UX review agent (not any of this session's own SQL
+-- assertions or live specs): a function CAN have two overloads that are
+-- each individually well-formed and correctly grant-scoped (so
+-- META-OVERLOAD-GRANTS above never flags them) and still be genuinely
+-- unresolvable for some caller, if a DEFAULT parameter on the longer
+-- overload lets it be called with the same argument COUNT as a shorter
+-- sibling. city_settle_auction was exactly this shape for years:
+-- 0071's city_settle_auction(uuid) (a deliberate, correctly-scoped 1-arg
+-- public shell) and 0069/0085/0090's city_settle_auction(uuid, boolean
+-- default false) (deliberately revoked from every client role) each look
+-- fine in isolation -- but the second one's default meant it was ALSO
+-- callable with exactly one argument, and Postgres resolves overloads
+-- before checking privileges, so a real 1-arg call from ANY role,
+-- including `authenticated`, failed outright with "function ... is not
+-- unique" -- confirmed directly, not just as a superuser. This checks
+-- every pair of same-named city_* overloads for an overlapping
+-- callable-argument-count range (accounting for defaults on either side),
+-- which is exactly the shape that produces this class of bug.
+-- ===========================================================================
+do $blk$
+declare v_bad text;
+begin
+  select string_agg(distinct a.proname || ': (' || a.aargs || ') vs (' || b.aargs || ')', '; ') into v_bad
+    from (
+      select p.oid, p.proname,
+             p.pronargs - p.pronargdefaults as min_args, p.pronargs as max_args,
+             pg_get_function_identity_arguments(p.oid) as aargs
+        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public' and p.proname like 'city\_%' escape '\' and p.prokind = 'f'
+    ) a
+    join (
+      select p.oid, p.proname,
+             p.pronargs - p.pronargdefaults as min_args, p.pronargs as max_args,
+             pg_get_function_identity_arguments(p.oid) as aargs
+        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public' and p.proname like 'city\_%' escape '\' and p.prokind = 'f'
+    ) b on a.proname = b.proname and a.oid < b.oid
+   where a.min_args <= b.max_args and b.min_args <= a.max_args;
+
+  insert into rg values (default,'META-OVERLOAD-AMBIGUITY',
+    'no city_* function has two overloads whose callable argument-count ranges overlap',
+    'zero matches',
+    case when v_bad is null then 'none found' else 'found: '||v_bad end,
+    case when v_bad is null then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG (found by visual review, not any prior audit) — the real client call
+-- to city_settle_auction (exactly one argument, matching
+-- use-city-match.ts's settleAuction()) must actually resolve and settle a
+-- genuinely expired auction, as the `authenticated` role a real client
+-- uses -- not just as postgres. This is the specific end-to-end
+-- regression guard for the overload-ambiguity bug fixed above: it drives
+-- the exact call shape a real browser makes when an auction's own clock
+-- (not a force-settle, not everyone explicitly passing) is what resolves
+-- it, which nothing in this suite exercised before this round.
+-- ===========================================================================
+do $blk$
+declare m uuid; propIdx int; res jsonb; auctionStatus text; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGSETL', 102);
+  select min(idx) into propIdx from public.city_board_spaces where price is not null;
+
+  insert into public.city_auctions (match_id, space_idx, ends_at, hard_ends_at, status)
+  values (m, propIdx, now() - interval '1 seconds', now() - interval '1 seconds', 'running');
+
+  perform pg_temp.rg_as(0);
+  begin
+    select public.city_settle_auction(m) into res;
+  exception when others then
+    ok := false; act := act || format('the real 1-arg client call raised instead of settling: %s; ', SQLERRM);
+  end;
+
+  if ok then
+    select status into auctionStatus from public.city_auctions
+     where match_id = m order by created_at desc limit 1;
+    if auctionStatus <> 'settled' then
+      ok := false; act := act || format('auction status is %L after the real settle call, expected settled; ', auctionStatus);
+    end if;
+  end if;
+
+  insert into rg values (default,'BUG-SETTLE-OVERLOAD','the real 1-arg client call to city_settle_auction resolves and settles a genuinely expired auction',
+    'city_settle_auction(p_match_id) -- exactly the argument shape the real client uses -- succeeds and settles the auction, not "function ... is not unique"',
+    case when ok then format('settled: %s', res) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
 -- ---------------------------------------------------------------------------
 -- teardown + report
 -- ---------------------------------------------------------------------------
