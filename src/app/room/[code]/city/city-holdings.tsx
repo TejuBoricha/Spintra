@@ -53,7 +53,12 @@ export function CityHoldings({
     );
   }, 0);
 
-  if (!mine.length && !inDebt) return null;
+  // Previously hid the whole panel whenever holdings hit zero and there was
+  // no debt — meant a player who traded, sold, or was bankrupted out of
+  // every property they owned had this entire section silently vanish, no
+  // different on screen from a genuine loading/render failure. The empty
+  // state below already says exactly what happened; showing it is strictly
+  // better than showing nothing.
 
   return (
     <div className="mt-4 rounded-xl border border-(--border-hairline) bg-(--surface-panel) p-3">
@@ -77,7 +82,7 @@ export function CityHoldings({
         </div>
       )}
 
-      <p className="font-mono text-[10px] tracking-[0.16em] uppercase text-(--text-secondary) mb-2">
+      <p className="font-mono text-xs tracking-[0.16em] uppercase text-(--text-secondary) mb-2">
         Your holdings
       </p>
 

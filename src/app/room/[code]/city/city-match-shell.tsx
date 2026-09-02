@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import {
   Building2,
   Check,
@@ -30,7 +31,7 @@ import { CityBoard } from "./city-board";
 import { CityHoldings } from "./city-holdings";
 import { CityTrade } from "./city-trade";
 import { CityAuction } from "./city-auction";
-import type { CityBoardSpace, CityRollResult, CitySeat } from "./use-city-match";
+import type { CityAuction as CityAuctionState, CityBoardSpace, CityRollResult, CitySeat } from "./use-city-match";
 import { useCityMatch } from "./use-city-match";
 
 // The lobby and the live match. See docs/SPINTRA_CITY_SPEC.md §7 for the slice
@@ -155,6 +156,34 @@ export function CityMatchShell() {
     claimedTurnRef.current = turnKey;
     void claimTimeout();
   }, [match, seats, claimTimeout]);
+
+  // An auction settling was previously silent — no toast, no confirmation,
+  // just the panel vanishing and a cash number changing that a player might
+  // not even be watching for. `auction` is always exactly "the one running
+  // auction or none" (use-city-match.ts's own model), so it going from
+  // populated to null on any client is unambiguously a real settle, not a
+  // network blip — safe to announce to everyone watching, every time.
+  const prevAuctionRef = useRef<CityAuctionState | null>(null);
+  useEffect(() => {
+    if (auction) {
+      prevAuctionRef.current = auction;
+      return;
+    }
+    const last = prevAuctionRef.current;
+    if (!last) return;
+    prevAuctionRef.current = null;
+
+    const space = board[last.space_idx];
+    const name = space?.name ?? "That property";
+    if (last.high_seat != null) {
+      const winner = seats.find((s) => s.seat === last.high_seat);
+      toast.success(
+        `${winner?.username ?? "Someone"} won ${name} for ${last.high_bid.toLocaleString()}.`
+      );
+    } else {
+      toast(`Nobody bid on ${name} — it stays with the bank.`);
+    }
+  }, [auction, seats, board]);
 
   if (isDemoMode) {
     return (
@@ -356,10 +385,20 @@ export function CityMatchShell() {
                 <Badge
                   key={s.id}
                   variant={s.seat === match.current_seat ? "default" : "secondary"}
-                  className="gap-1"
+                  className={`gap-1 ${terminal ? "opacity-50" : ""}`}
                 >
-                  {s.username}
-                  <span className="font-mono opacity-80">{s.cash.toLocaleString()}</span>
+                  <span className={terminal ? "line-through" : undefined}>{s.username}</span>
+                  {terminal ? (
+                    // A bare $0 read as "just poor," indistinguishable from an
+                    // active seat that's simply broke — an explicit label plus
+                    // the strikethrough/dimming above is what actually says
+                    // "this seat is out," at a glance, in the same badge row.
+                    <span className="text-[10px] uppercase tracking-wide">
+                      {s.status === "bankrupt" ? "bankrupt" : "retired"}
+                    </span>
+                  ) : (
+                    <span className="font-mono opacity-80">{s.cash.toLocaleString()}</span>
+                  )}
                   {reconnecting && (
                     <span
                       className="flex items-center text-muted-foreground"
@@ -617,7 +656,14 @@ export function CityMatchShell() {
         </div>
       )}
 
-      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-6">
+      {/* 2-column only from lg: (1024px), not sm: (640px) -- at 768px the
+          site's own md: breakpoint simultaneously reveals the 320px desktop
+          sidebar rail, so the content column is much narrower than the
+          viewport width the sm: breakpoint assumed, and usernames were
+          truncating to a handful of characters in what looked like more
+          available space than there actually was. Single-column stacking
+          reads fine at every width up to that point. */}
+      <ul className="grid grid-cols-1 lg:grid-cols-2 gap-2 mb-6">
         {Array.from({ length: MAX_SEATS }, (_, i) => {
           const occupant = seats.find((s) => s.seat === i);
           const isMe = occupant?.user_id === currentUser.id;

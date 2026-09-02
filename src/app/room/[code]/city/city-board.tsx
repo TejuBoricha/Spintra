@@ -267,12 +267,20 @@ function TileFace({
         {asset && asset.buildings > 0 && (
           // Four pips in a row measure 23px, which overflows the 22px vertical
           // band — on side tiles they stack with the band's own axis instead.
+          // A thin light outline (not a size change, which would overflow the
+          // band) is what makes a 5px pip actually read against the country
+          // band's own colour instead of blending into it at board scale.
           <span className={`flex gap-[1px] ${sideways ? "flex-col" : ""}`} aria-hidden="true">
             {asset.buildings >= 5 ? (
-              <i className={`bg-[#c0392b] rounded-[1px] ${sideways ? "w-[5px] h-[8px]" : "w-[8px] h-[5px]"}`} />
+              <i
+                className={`bg-[#c0392b] rounded-[1px] shadow-[0_0_0_0.5px_rgba(255,255,255,.7)] ${sideways ? "w-[5px] h-[8px]" : "w-[8px] h-[5px]"}`}
+              />
             ) : (
               Array.from({ length: asset.buildings }, (_, k) => (
-                <i key={k} className="w-[5px] h-[5px] rounded-[1px] bg-[#2f7d4f]" />
+                <i
+                  key={k}
+                  className="w-[5px] h-[5px] rounded-[1px] bg-[#2f7d4f] shadow-[0_0_0_0.5px_rgba(255,255,255,.7)]"
+                />
               ))
             )}
           </span>
@@ -300,14 +308,22 @@ function TileFace({
           className={
             "absolute " +
             (edge === "top"
-              ? "inset-x-0 top-0 h-1"
+              ? "inset-x-0 top-0 h-1.5"
               : edge === "left"
-                ? "inset-y-0 left-0 w-1"
+                ? "inset-y-0 left-0 w-1.5"
                 : edge === "right"
-                  ? "inset-y-0 right-0 w-1"
-                  : "inset-x-0 bottom-0 h-1")
+                  ? "inset-y-0 right-0 w-1.5"
+                  : "inset-x-0 bottom-0 h-1.5")
           }
-          style={{ background: SEAT_COLOURS[owner.seat % 8].dark }}
+          style={{
+            // Mortgaged reads as a hazard-striped, half-dimmed version of the
+            // owner's own colour rather than a solid stripe — a board-scale
+            // signal that this property isn't earning rent right now, without
+            // needing to compete with the tile's other content for space.
+            background: asset?.is_mortgaged
+              ? `repeating-linear-gradient(45deg, ${SEAT_COLOURS[owner.seat % 8].dark}, ${SEAT_COLOURS[owner.seat % 8].dark} 3px, rgba(0,0,0,.5) 3px, rgba(0,0,0,.5) 6px)`
+              : SEAT_COLOURS[owner.seat % 8].dark,
+          }}
           aria-hidden="true"
         />
       )}
