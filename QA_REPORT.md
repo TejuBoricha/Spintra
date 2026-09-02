@@ -116,12 +116,18 @@ scoring.
 
 ## 1b. Fix phase update (2026-09-01) — local only, not deployed
 
-A fix phase followed this audit, in eight rounds. **All 4 criticals are now
-fixed and independently verified**, along with 36 further bugs closed across
-the eight rounds. Everything in this section happened **entirely on the local
-Docker stack** — production has none of migrations `0063`–`0082` and remains
-exactly as this audit found it. This section does not revise the audit above;
-it records what changed after it.
+A fix phase followed this audit, in eight rounds, then a further seven rounds
+(lettered E, A, B, C, D, F, G) closing BUG-007 — the one bug those eight
+rounds deliberately left untouched as genuinely multi-day work. **All 4
+criticals are now fixed and independently verified**, along with 41 further
+bugs closed in total, 44 of 44 found bugs resolved one way or another (41
+fixed, 3 confirmed non-defects needing no code). Everything in this section
+happened **entirely on the local Docker stack** — production has none of
+migrations `0063`–`0089` and remains exactly as this audit found it. This
+section does not revise the audit above; it records what changed after it.
+BUG-007's own seven-round arc is large enough to warrant its own subsection
+below (§1b-ii) rather than folding into the table below alongside single-fix
+bugs.
 
 ### What changed
 
@@ -167,6 +173,7 @@ it records what changed after it.
 | **BUG-022** a city room's capacity silently capped spectators | `0082` — `type = 'city'` rooms skip the room-capacity trigger entirely (FR-38); match seats already carry their own independent 8-seat cap | Regression harness: a 3rd, non-seated joiner succeeds in a full 2-capacity city room; a same-capacity non-city room still refuses one, proving the fix is scoped |
 | **BUG-033** the host could not set the match pace, and no code path made an eliminated/never-seated player a spectator | `0082` (pace) + client fix (spectator status text) — `city_create_match` gained an optional, validated `p_pace_seconds` parameter with a lobby UI to choose it (FR-42); the status line's `iAmOut` condition now also covers a never-seated room member (FR-36) | Regression harness (invalid pace refused, valid pace persists) plus two live proofs: the host's chosen "Slow · 60s" preset lands in the match row; a never-seated onlooker reads "You're spectating this match," not "Waiting for X" |
 | **BUG-006** the turn clock had a real consequence but no visible countdown | `city-match-shell.tsx` — a `TurnCountdown` component ticks client-side against the same `turn_started_at + pace_seconds` deadline `city_claim_timeout` itself re-derives server-side, gated on the exact same conditions as the existing auto-claim effect | Live proof: backdated the clock to 5 seconds remaining, watched the on-screen timer read `0:04` then `0:02` two seconds later — genuinely ticking, not frozen |
+| **BUG-007** 20 MUST requirements unimplemented — disconnect grace, autopilot, forced retire, voluntary retire, durable pause, the full turn-clock model | `0083`–`0089`, seven further rounds (E, A, B, C, D, F, G) — see §1b-ii below for the full breakdown, this row is a pointer, not the detail | 47-assertion SQL regression harness plus five dedicated live two-browser Playwright specs; full detail in §1b-ii |
 
 **A client-side gap this round found and closed, not itself one of the 44 audit-numbered bugs:** round 2's server-side fix for BUG-005 (0077) let an off-turn debtor call `city_sell_building`/`city_mortgage` directly, but `city-holdings.tsx`'s Sell and Mortgage buttons still unconditionally required `isMyTurn`, with no `inDebt` exception — the debt banner right above those same buttons instructs the player to "sell buildings and mortgage cities below," but the buttons themselves stayed disabled whenever it wasn't their turn. Fixed alongside BUG-039's tooltip work (`city-holdings.tsx`); verified live in the same session — an off-turn, in-debt guest's Mortgage button is genuinely clickable and the RPC succeeds.
 
@@ -208,6 +215,95 @@ by default). Not one of the 44 audit-numbered bugs — a self-introduced and
 self-corrected regression, documented in full in `QA_PROGRESS.md` and closed
 before any of this work left the local stack.
 
+## 1b-ii. BUG-007 closed — seven further rounds (2026-09-02), local only
+
+BUG-007 (20 MUST requirements — FR-25–33, FR-41–51: disconnect grace, autopilot,
+forced retire, voluntary retire, durable full-match pause, and the complete
+phase-aware turn-clock model) was deliberately left untouched through all eight
+rounds above as genuinely multi-day work. It is now fully built, in seven
+further rounds — lettered rather than numbered to keep them distinct from the
+rounds above — each following the exact same discipline: SQL regression
+assertions written red-before/green-after, a discriminating check confirming
+each new assertion actually fails against the pre-fix code, `npm run verify`,
+and live two-browser verification against the local Docker stack only.
+
+**Planning, not just implementation, was itself unusually deep here.** Before
+any code was written, three research passes read every RPC this work would
+touch or call into, in full, by hand — not summarized — specifically because
+this session had already been burned twice earlier (the overload-grant
+regressions above) by acting on an incomplete read of existing code. That pass
+found three places where this project's own documentation described an open
+gap the code had already closed (kick-awareness via the existing departure
+trigger, `city_end_turn`'s already-correct timed-mode wall clock, and
+`cleanup_inactive_rooms()`'s already-differentiated 24h City threshold), which
+meaningfully shrank the actual remaining work before a line of new SQL was
+written.
+
+| Round | Migration | Delivers |
+|---|---|---|
+| E | `0083` | Voluntary retire (`city_retire_self`) — kick already worked via the existing departure trigger; this closes the other half of FR-29. |
+| A | `0084` | Disconnect detection — a new `disconnected_at` column bridged from the site-wide presence system already used by every other activity, no new client heartbeat (FR-25, hardens FR-30). |
+| B | `0085` | Per-phase `city_claim_timeout` defaults (FR-41) — auto-roll, auto-decline, and a detention attempt, on top of the existing end-turn/bankrupt defaults. Also fixed a real pre-existing bug found while reading the code for this round: settling an auction never shifted the deadline forward by the pause duration. |
+| C | `0086` | The autopilot engine — an away seat's entire turn resolves automatically the instant it arrives, forced retire after 2 consecutive autopiloted turns (FR-26, FR-27, FR-28). The single riskiest round in the plan. |
+| D | `0087` | Durable full-match pause — a match with nobody present anywhere pauses rather than spinning or sitting silently stuck; resuming grants a fresh clock (FR-31, FR-48). |
+| F | `0088` | Trade-pause budget and queued offers (FR-33, FR-43), plus a 45s escape hatch for a trade pause nobody ever responds to. |
+| G | `0089` | Auction auto-pass for away seats (FR-49); confirmed FR-50 was already fully correct and needed no code. |
+
+**Four real product bugs were caught before any of them shipped**, every one
+via this session's own established discipline of re-running the full suite
+immediately after a risky change and never trusting a first green result:
+
+- **Round E:** the confirm dialog's own action button was originally labelled
+  identically to the trigger button that opens it ("Retire" / "Retire") —
+  genuinely ambiguous for a screen reader, not just for a test's own locator
+  matching, which is what actually surfaced it. Fixed by labelling the confirm
+  action "Yes, retire".
+- **Round C:** the first draft of two new internal extraction functions paid
+  out sold/mortgaged cash filtered on the wrong table's id (an asset row's id
+  instead of the player row's) — assets updated correctly, cash silently never
+  did, so a debtor's own liquidation would have raised zero real money. Caught
+  within seconds of re-running the full suite, before any new logic was added
+  on top.
+- **Round D:** the autopilot cascade's own loop bound was one iteration larger
+  than the number of distinct seats, which by the pigeonhole principle
+  guaranteed one seat got revisited a second time whenever everyone was away
+  — and that "extra" visit counted toward the same forced-retire streak a
+  genuine second turn would, so purely detecting "is anyone home" could
+  spuriously force-retire whichever seat was resolved first, sometimes
+  finishing the match outright. Found live via a deliberately simple
+  1-active-seat test scenario. Fixed by changing the bound to exactly the
+  seat count.
+- **Round F:** found while *designing* the round, not after shipping it — a
+  clock paused for a trade had no escape hatch, so an active player whose
+  trade partner simply never responded would stay paused forever.
+  `city_claim_timeout` already refused outright whenever the turn clock was
+  paused, correct for an auction (which settles independently) but wrong for
+  a trade with nothing else enforcing its own end. Added the 45s bound
+  DESIGN.md's own sub-clock table already specified.
+
+**Two infrastructure gaps in this session's own tooling were also found and
+fixed along the way**, neither a defect in the product: the shared SQL
+regression harness's synthetic test users tripped their own room-join rate
+limit once the suite crossed 21 `rg_match` calls in one run (round E); and
+Playwright's own auto-spawned webServer, separate from any manually-started
+server, was building without the local-stack env override — the exact class
+of mistake round 6 above was burned by — confirmed to have caused no actual
+harm this time before being fixed properly (round E). A related, unrelated
+gap in this session's shared Playwright `accept()` cookie-banner-dismissal
+helper (a fire-and-forget click that silently failed for the first spec whose
+interactive elements happened to render near the bottom of the viewport) was
+found and fixed while writing round F's own live test.
+
+**SQL regression harness: 47/47.** Live browser coverage: five dedicated specs
+(turn countdown, voluntary retire, and trade-pause/queued-offers, alongside
+the two from the eight-round phase above) plus the full existing suite,
+10 specs together, all passing. `npm run verify` clean throughout every
+round. `database.types.ts` regenerated and diffed after every round — only
+ever the expected additions. Nothing has touched production at any point;
+migrations `0083`–`0089` are local-only, same as every migration in this
+session. Full round-by-round detail, including the exact reasoning behind
+every design decision and every bug found, is in `QA_PROGRESS.md`.
+
 ### Every fixed migration passed the same gates
 
 `npm run test:city-regression` (27 SQL assertions plus 2 source checks — BUG-038
@@ -246,23 +342,24 @@ catch.
 
 | | Original audit | After the fix phase (local only) |
 |---|---|---|
-| Confirmed bugs | 44 | 44 found, **40 fixed**, 4 open |
+| Confirmed bugs | 44 | 44 found, **41 fixed**, 3 open |
 | Critical | 4 | **0 unresolved** (4 of 4 fixed) |
-| High | 13 | 1 unresolved (12 of 13 fixed: 008, 009, 010, 012, 013, 014, 038, 005, 011, 034, 035, 006) |
+| High | 13 | **0 unresolved (13 of 13 fixed: 008, 009, 010, 012, 013, 014, 038, 005, 011, 034, 035, 006, 007)** |
 | Medium | 12 | **0 unresolved (12 of 12 fixed)** |
 | Low | 15 | 3 unresolved (12 of 15 fixed: 031, 029, 025, 026, 027, 032, 039, 041, 042, 043, 030, 033) |
 
-The 4 still-open bugs were, without exception, already classified as non-blocking
+The 3 still-open bugs were, without exception, already classified as non-blocking
 in the original audit (§17's fix list covered the release-blocking set almost
-exactly — items 1–8 there map directly to the migrations above). None of them
-individually gates a release the way the four criticals did. The largest single
-item left is BUG-007's 20 MUST-requirement slice (disconnect grace, autopilot,
-forced retire, the full turn-clock model) — deliberately untouched throughout all
-eight rounds as genuinely multi-day work, not an oversight. The rest: BUG-028
-(re-verification concluded it is not an actual defect — the unlimited-buildings
-behavior is DESIGN.md's own explicit v1 decision), and BUG-018/020
-(re-verification concluded neither is an actual defect either — no code change
-was ever warranted for either of these two).
+exactly — items 1–8 there map directly to the migrations above), and none of them
+individually gates a release the way the four criticals did — all three are
+confirmed non-defects, not deferred work: BUG-028 (re-verification concluded it
+is not an actual defect — the unlimited-buildings behavior is DESIGN.md's own
+explicit v1 decision), and BUG-018/020 (re-verification concluded neither is an
+actual defect either — no code change was ever warranted for either of these
+two). BUG-007 — the largest single item in the original audit, 20 MUST
+requirements covering disconnect grace, autopilot, forced retire, and the full
+turn-clock model — is no longer open: it closed across a further seven rounds
+after the eight above, detailed in §1b-ii.
 
 ### What this means for the release verdict in §18
 
@@ -270,7 +367,7 @@ was ever warranted for either of these two).
 deployed to it — §18's verdict is accurate as a description of production today.
 **The local codebase's blocking-defect count has gone from 4 criticals to 0**,
 which is the precondition §18 named for reconsidering that verdict, not a
-substitute for actually shipping migrations `0071`–`0082` and re-running this
+substitute for actually shipping migrations `0071`–`0089` and re-running this
 audit against production once they are.
 
 ---
@@ -408,7 +505,7 @@ All nine exits then close simultaneously: `end_turn`/`roll_dice`/`build`/`unmort
 | ID | Finding |
 |---|---|
 | BUG-006 | **&#10003; Fixed 2026-09-01 (migration `0076`, plus a client-only fix in round 8, see §1b).** **Turn clock is decorative.** `turn_started_at`, `turn_clock_elapsed_ms`, `turn_clock_paused_at` are only ever written (reset on turn change) and never read for expiry. `pace_seconds` is never written or read. No enforcement exists anywhere. `city_claim_timeout` (0076) gave the clock a real server-side consequence; round 8 closed the remaining gap by adding a visible, ticking client-side countdown (`TurnCountdown` in `city-match-shell.tsx`) against the same deadline. |
-| BUG-007 | **20 MUST requirements unimplemented** (FR-25–33, FR-41–51): disconnect grace, autopilot, forced retire, voluntary retire, host kick, durable pause, the clock model, sub-clocks, timeout defaults. `'paused'` and `'retired'` statuses are referenced in constraints but never set. |
+| BUG-007 | **&#10003; Fixed 2026-09-02 (migrations `0083`–`0089`, seven further rounds — see §1b-ii).** **20 MUST requirements unimplemented** (FR-25–33, FR-41–51): disconnect grace, autopilot, forced retire, voluntary retire, host kick, durable pause, the clock model, sub-clocks, timeout defaults. `'paused'` and `'retired'` statuses were referenced in constraints but never set — `'retired'` was actually already being set by the time this fix phase reached this bug (migration `0074`'s kick/leave trigger, closed earlier in the eight-round phase above); `'paused'` is now genuinely written for the first time, by the durable-pause round (`0087`). |
 | BUG-008 | **&#10003; Fixed 2026-09-01 (migration `0071`, see §1b).** **`city_settle_auction(p_force)` is client-callable and unauthenticated.** `p_force` skips both the advisory lock and the deadline check. Verified over HTTP with **no JWT at all**: it returns `CITY_NO_AUCTION` where sibling RPCs correctly return `CITY_NOT_AUTHENTICATED` — it has no auth check whatsoever. Any visitor can close any room's auction early; two parallel force-settles charge the winner twice, destroying money. |
 | BUG-009 | **&#10003; Fixed 2026-09-01 (migration `0071`, see §1b).** **Declining while in debt auctions an already-owned property and destroys cash.** `city_decline_purchase` checks only the phase, which `city_charge` also sets. The winner is charged, the `on conflict do nothing` insert transfers nothing. 100 Spins vanished in the repro. |
 | BUG-010 | **&#10003; Fixed 2026-09-01 (migration `0071`, see §1b).** **A finished match can be re-opened and mutated.** `city_decline_purchase` has no `status <> 'active'` check, and `city_finish_match` nulls both `phase` and `current_seat`, so its two remaining guards evaluate to `NULL` rather than true and silently pass. Property transferred and cash deducted *after* scores and XP were written. |

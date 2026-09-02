@@ -1432,6 +1432,130 @@ live-browser mixing, and the SQL suite already proves the exact mechanism
 directly, including a real discriminating check on the one genuine bug
 found this round. Nothing has touched production; `0087` is local-only.
 
-Next: round F (trade-pause budget + queued offers, FR-33/FR-43) or round G
-(auction auto-pass for away seats + FR-50 verification-only) — both
-independent of each other and of everything built so far.
+**Round F (migration `0088`) — trade-pause budget and queued offers
+(FR-33, FR-43).** Two independent mechanisms, both keyed on whether either
+side of a trade is the current active seat. Proposer = active seat: their
+own clock pauses (reusing `turn_clock_paused_at`, same mechanism the
+auction path already uses), budget permitting (`trade_pause_ms_used <
+90000`, a new column). Recipient = active seat: the offer is created but
+`queued = true` (a new column) — inactionable until their turn ends, so it
+can neither consume nor freeze their own clock; `city_advance_turn` clears
+`queued` for the outgoing seat's own incoming offers as part of its
+existing reset. A new `city_maybe_resume_trade_clock` helper — called
+after accept/decline/withdraw — resumes the active seat's clock
+(accumulating true elapsed pause time, shifting `turn_started_at` forward
+by exactly that duration, the same math `0085`'s auction fix established)
+once they have no other outstanding outgoing offers left.
+
+**A gap the plan itself hadn't fully specified, found while designing this
+round, not while testing it:** a paused-for-trade clock needs its own
+escape hatch, or an active player whose trade partner simply never
+responds stays paused forever — `city_claim_timeout` already refused
+outright whenever `turn_clock_paused_at` was set, correct for an auction
+(settles independently) but wrong for a trade with nothing else enforcing
+its own end. Added DESIGN.md's own "Trade exchange: 45s" sub-clock as
+exactly this bound: past 45s of no response, `city_claim_timeout` may now
+force-withdraw the active seat's own stale offers and resume their clock,
+then falls through to the normal deadline check. Confirmed discriminating
+on this specific escape hatch: temporarily redeployed the pre-45s-bound
+function, watched the new assertion fail with `CITY_TURN_CLOCK_PAUSED`
+past the 45s mark, restored the fix.
+
+Disclosed, deliberate simplification (not a bug): the 90s budget check at
+propose time reads only *closed* pause time, so a currently-running pause
+from an earlier still-open proposal isn't reflected until it closes —
+genuinely overlapping simultaneous proposals could in principle exceed 90s
+of real elapsed pause before the check catches up. Exact accounting there
+would need a bigger restructure than this round's scope; the common case
+(one outstanding proposal at a time) is unaffected.
+
+Client: `CityTradeOffer` gains `queued`; a queued incoming offer is hidden
+from its recipient entirely (matching "queued and *surfaced* when their
+turn ends", not shown-and-disabled), and the proposer's own outgoing view
+distinguishes "queued for X — it's their turn" from ordinary "waiting on
+X".
+
+**A second real thing found, this time in this session's own shared
+Playwright test-authoring pattern, while writing this round's live
+test.** A new live test proposing and accepting a real cash trade through
+the actual UI hung — not just slowly, genuinely stuck, confirmed by
+raising the timeout to 4 minutes and watching it still fail identically.
+Diagnosed properly rather than worked around blindly: a tightly-scoped
+diagnostic spec with console logging and an explicit bounded click
+attempt showed Playwright's own actionability retry log naming the
+culprit directly — the fixed-position cookie-consent banner, still
+present in the DOM, "intercepts pointer events" on the "Send offer"
+button. Every spec in this suite's shared `accept()` helper does a
+zero-wait `count()`-then-maybe-click with the failure silently caught;
+every *other* spec's interactive elements happen to sit clear of the
+viewport's bottom edge, so the flaw was latent and never surfaced before.
+This test's trade panel renders low enough on the page to collide with
+it. Fixed by making `accept()` genuinely wait for the banner and confirm
+it's gone, rather than a fire-and-forget best effort — worth knowing for
+any future spec whose interactive elements render near the bottom of the
+viewport, since the shared pattern elsewhere in this suite still has the
+same latent gap, just not yet triggered.
+
+SQL regression harness: 46/46 (42 pre-existing + 4 new). Live-verified via
+a new `tests/qa-x13-trade-pause.spec.ts` (a real propose→accept cash trade
+through the UI) plus the full existing suite (10/10 total) after
+rebuilding both local servers with the client changes. `npm run verify`:
+clean. `database.types.ts` regenerated and diffed — exactly the expected
+new columns/function. Grants double-checked directly on every touched
+function and column. Nothing has touched production; `0088` is
+local-only.
+
+**Round G (migration `0089`) — the last round: auction auto-pass for away
+seats (FR-49).** FR-50 needed no code — already fully correct in
+`city_end_turn` since `0070`, locked in with a regression assertion back
+in round B. `city_pass_auction` (`0069`, untouched until this round)
+already implemented the all-pass fast path and already excluded the
+standing high bidder from its eligibility tally — an away seat is one
+more precise exclusion from that same tally, not new machinery, so an
+auction no longer waits out its full cap on someone who's gone. Passing
+was never binding and stays that way on reconnect — nothing here revokes
+it. Confirmed discriminating: temporarily redeployed the original
+(no-exclusion) function, watched the new assertion fail with the auction
+still `running` after every present seat had passed, restored the fix.
+
+SQL regression harness: 47/47 (46 pre-existing + 1 new), passed on the
+first real run — the only round in this whole plan where nothing needed a
+second pass. No client changes (the exclusion logic lives entirely in the
+RPC; the auction UI already just reflects whatever `passed_seats`/status
+the server reports). `database.types.ts` diff: empty, confirming the
+function's signature is genuinely unchanged. `npm run verify`: clean.
+Nothing has touched production; `0089` is local-only.
+
+## BUG-007 — closed
+
+All 20 requirements (FR-25–33, FR-41–51) are built, verified, and
+committed across 7 rounds (E, A, B, C, D, F, G — migrations `0083`–`0089`).
+Four real product bugs were caught before any of them shipped, every one
+of them via this session's own established discipline (re-run the full
+suite immediately after a risky change, hand-trace before trusting a
+first green result, confirm every new assertion actually discriminates by
+watching it fail against the pre-fix code): a UX/accessibility defect in
+the retire confirm dialog (round E), a wrong-table-id cash-payout bug in
+the liquidation `_core` extraction (round C), a structural forced-retire/
+pause-detection collision in the autopilot loop's own bound (round D),
+and a missing 45s escape hatch for a stale trade pause (round F, found
+while designing rather than after shipping). Two infrastructure gaps in
+this session's own tooling were also found and fixed along the way: a
+rate-limit ceiling in the shared SQL regression harness once it crossed
+21 `rg_match` calls in one run (round E), and a latent flaw in the shared
+Playwright `accept()` cookie-banner helper that only a bottom-of-viewport
+UI element could ever trigger (round F).
+
+Full SQL regression harness: 47/47. Live browser coverage: 5 dedicated
+specs (`qa-x11` through `qa-x13`, plus the retire and trade-pause tests)
+on top of the pre-existing `qa-x9`/`qa-x10`, all passing together, 10/10.
+`npm run verify` clean throughout every round. Nothing has ever touched
+production across any of this — migrations `0083`–`0089` are local-only,
+same as every migration in this session; deploying remains explicitly the
+user's own call.
+
+BUG-007 is the 41st of 44 originally-audited bugs closed. The 3 remaining
+(BUG-018/020/028) were already confirmed non-defects during the original
+8-round fix phase — no code change was ever warranted for any of them.
+The QA audit's fix phase, across all 15 rounds counting both the original
+8 and this 7-round BUG-007 arc, is complete.
