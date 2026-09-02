@@ -617,7 +617,20 @@ export function useRoomSubscription({
 
         let upsertResult;
         if (existingParticipant) {
-          // Reconnection: update status without trigger limit validation
+          // Reconnection: update status without trigger limit validation.
+          // xp/rank deliberately omitted — restrict_host_participant_update
+          // (migration 0073) rejects any self-update where they differ from
+          // the server's current value, by design ("scoring... written only
+          // via _record_award/award_score"). A client that just watched a
+          // match finish still holds its pre-award xp locally; submitting it
+          // on reconnect always mismatched the server's just-updated value
+          // and had this whole upsert rejected, which every branch below
+          // treats identically to a genuine join failure — banned, room
+          // full, whatever — toasting an error and redirecting to /explore,
+          // even though the room, this seat, and the match results were all
+          // still fully intact. There's no legitimate reason for a
+          // reconnecting client to write its own xp/rank at all; the server
+          // already owns and maintains both independently of this call.
           upsertResult = await supabaseClient
             .from("room_participants")
             .update({
@@ -625,8 +638,6 @@ export function useRoomSubscription({
               role: isRoomHost ? "host" : existingParticipant.role,
               username: currentUserRef.current.username,
               avatar_url: currentUserRef.current.avatar_url,
-              xp: currentUserRef.current.xp,
-              rank: currentUserRef.current.rank,
             })
             .eq("id", existingParticipant.id)
             .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
@@ -654,6 +665,8 @@ export function useRoomSubscription({
         if (upsertResult.error && upsertResult.error.message?.includes("already has an online host")) {
           console.warn("Host election conflict detected. Retrying registration as regular participant.");
           if (existingParticipant) {
+            // Same reasoning as the primary reconnect update above: xp/rank
+            // are server-owned and deliberately omitted here too.
             upsertResult = await supabaseClient
               .from("room_participants")
               .update({
@@ -661,8 +674,6 @@ export function useRoomSubscription({
                 role: "participant",
                 username: currentUserRef.current.username,
                 avatar_url: currentUserRef.current.avatar_url,
-                xp: currentUserRef.current.xp,
-                rank: currentUserRef.current.rank,
               })
               .eq("id", existingParticipant.id)
               .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");

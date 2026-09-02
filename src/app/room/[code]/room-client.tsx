@@ -594,7 +594,15 @@ function RoomUIInner({
   const [isDesktopSidebar, setIsDesktopSidebar] = useState(false);
   useEffect(() => {
     const mql = window.matchMedia("(min-width: 768px)");
-    const update = () => setIsDesktopSidebar(mql.matches);
+    const update = () => {
+      setIsDesktopSidebar(mql.matches);
+      // The mobile Sheet's own modal overlay stays mounted and open purely
+      // from isMobileSidebarOpen — resizing/rotating past this breakpoint
+      // while it was open otherwise left that overlay active with nothing
+      // rendered inside it (sidebarContent moves to the desktop rail
+      // instead), silently blocking every click on the page underneath.
+      if (mql.matches) setIsMobileSidebarOpen(false);
+    };
     update();
     mql.addEventListener("change", update);
     return () => mql.removeEventListener("change", update);

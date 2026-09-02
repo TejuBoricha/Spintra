@@ -545,7 +545,7 @@ export function CityMatchShell() {
               ? `You're held at Customs. Roll doubles, spend a Transit Visa, or pay 90 to leave.`
               : effectiveRoll
               ? narrate(effectiveRoll, board, seats)
-              : mustDecide && onSale
+              : mustDecide && onSale && !inDebt
                 ? `${onSale.name} is unclaimed. Buy it for ${onSale.price}, or pass.`
                 : isMyTurn && inDebt
                   ? "You're short on cash — sell, mortgage, or trade to raise funds, or declare bankruptcy."
