@@ -199,7 +199,7 @@
     <tr><td><code>BUG-022</code></td><td>Migration <code>0082</code> — city-type rooms skip the room-capacity trigger entirely (FR-38); match seats already carry their own independent 8-seat cap</td><td>Regression harness: a 3rd, non-seated joiner succeeds in a full 2-capacity city room; a same-capacity non-city room still refuses one</td></tr>
     <tr><td><code>BUG-033</code></td><td>Migration <code>0082</code> (pace) + client fix (spectator status) — city_create_match gained a validated p_pace_seconds parameter with a lobby preset UI (FR-42); the status line now also covers a never-seated room member (FR-36)</td><td>Regression harness plus two live proofs: the host's chosen pace lands in the match row; a never-seated onlooker reads "You're spectating this match"</td></tr>
     <tr><td><code>BUG-006</code></td><td><code>city-match-shell.tsx</code> — a <code>TurnCountdown</code> component ticks client-side against the same <code>turn_started_at + pace_seconds</code> deadline <code>city_claim_timeout</code> itself re-derives server-side, gated on the exact same conditions as the existing auto-claim effect</td><td>Live proof: backdated the clock to 5 seconds remaining, watched the on-screen timer read <code>0:04</code> then <code>0:02</code> two seconds later — genuinely ticking, not frozen</td></tr>
-    <tr><td><code>BUG-007</code></td><td><code>0083</code>–<code>0090</code>, eight rounds (E, A, B, C, D, F, G, H) — see the dedicated subsections below, this row is a pointer, not the detail</td><td>55-assertion SQL regression harness plus 11 dedicated live two-browser Playwright specs</td></tr>
+    <tr><td><code>BUG-007</code></td><td><code>0083</code>–<code>0090</code>, eight rounds (E, A, B, C, D, F, G, H) — see the dedicated subsections below, this row is a pointer, not the detail</td><td>55-assertion SQL regression harness plus 14 dedicated live two-browser Playwright specs</td></tr>
   </tbody>
 </table>
 </div>
@@ -437,12 +437,27 @@
   far enough that this could never happen; a real client proposing a trade near the start of a
   turn hit this on every single attempt. Fixed by returning success once the pause clears, rather
   than falling through into a check that could erase it. A 9th new assertion and a new live spec
-  (<code>qa-x14</code>) both confirm the fix directly. Final count: <strong>55/55 SQL
-  assertions, 11/11 live specs</strong> (the 10 above plus <code>qa-x14</code>, with
-  <code>qa-x12</code>'s own text updated for round H's new exit-reason-aware copy). Full detail,
-  including every audit's exact findings and the reasoning behind each fix, is in
-  <code>QA_PROGRESS.md</code>. Nothing has touched production; migration <code>0090</code> is
-  local-only, same as every migration in this session.
+  (<code>qa-x14</code>) both confirm the fix directly.
+</p>
+<p style="margin-top:14px">
+  Only that escape hatch had gotten both SQL and live coverage — the other six round-H fixes
+  were SQL-only, and bug 7's whole lesson was that a mocked-timing SQL test can miss something
+  live testing catches. Three more live specs closed that gap: <code>qa-x15</code> (the 3-tier
+  away badge, a real two-pass autopilot cascade forcing a genuine retire, the terminal-seat
+  badge-hygiene fix, and the <code>autopilot_forced</code> spectator text — writing it surfaced a
+  real subtlety, not a bug: the streak/forced-retire logic only increments for a seat the cascade
+  itself walks onto after <code>city_advance_turn</code>, never for whichever seat
+  <code>claim_timeout</code>'s own branches resolve directly), <code>qa-x16</code> (the
+  debt-specific 90s countdown, confirmed distinct from the ordinary turn clock, plus a full live
+  forced-liquidation resolution), and <code>qa-x17</code> (an auction settling with everyone away
+  reaches the "Match paused" banner on a live client, not just in the database). Final count:
+  <strong>55/55 SQL assertions, 14/14 live specs</strong> (11 pre-existing plus
+  <code>qa-x14</code>/<code>x15</code>/<code>x16</code>/<code>x17</code>, with <code>qa-x12</code>'s
+  own text updated for round H's new exit-reason-aware copy) — every one of round H's 7 bug
+  fixes now has both SQL and live-browser coverage. Full detail, including every audit's exact
+  findings and the reasoning behind each fix, is in <code>QA_PROGRESS.md</code>. Nothing has
+  touched production; migration <code>0090</code> is local-only, same as every migration in this
+  session.
 </p>
 
 <h3>Updated numbers</h3>

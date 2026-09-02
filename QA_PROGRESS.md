@@ -1687,13 +1687,57 @@ all-away test relied on a live dice roll landing safely (seed-dependent),
 redesigned around `in_detention` (seed-independent) instead. Full SQL
 suite: 55/55. Live: all 9 pre-existing City specs re-run clean (one,
 `qa-x12`, needed its own assertion text updated — the exit-reason work
-deliberately changed the generic "you're out" copy), plus 2 new specs —
-`qa-x14` proves the trade-pause escape hatch actually works through the
-real UI with no click from either side (the single most severe of the
-four audits' findings, since fixing it required also finding and fixing
-bug 7, invisible to every other layer of testing this session had). A
+deliberately changed the generic "you're out" copy), plus `qa-x14` proves
+the trade-pause escape hatch actually works through the real UI with no
+click from either side (the single most severe of the four audits'
+findings, since fixing it required also finding and fixing bug 7,
+invisible to every other layer of testing this session had). A
 Postgres/Docker environment issue unrelated to this work (a role-ownership
 drift blocking a full local `supabase db reset` from replaying past
 migration `0035`) was hit and worked around locally — not a code defect,
-not touched in any migration file. Local-only throughout; nothing has
+not touched in any migration file.
+
+### Closing the live-verification gap on the other six fixes
+
+Only the escape hatch (bug 3/7) had gotten a live test alongside its SQL
+assertion — the other six round-H fixes were SQL-only. Given the exact
+class of bug bug 7 turned out to be (something a mocked-timing SQL test
+could never surface), three more live specs were added rather than
+declaring the round done on SQL coverage alone:
+
+- **`qa-x15`** — the 3-tier away badge (a muted "reconnecting" indicator
+  0–60s, the amber "Away" one only past 60s), a real two-pass autopilot
+  cascade forcing a genuine retire, the terminal-seat hygiene fix (the
+  badge disappearing once retired), and the `autopilot_forced` spectator
+  text — all driven through the real client, `disconnected_at` set
+  directly (flipping `room_participants.is_online` was tried first and
+  doesn't stick: the still-connected browser tab's own presence heartbeat
+  immediately re-asserts online, fighting a manual override — the
+  trigger path itself is already proven by `BUG-007-A`'s SQL assertion).
+  **A real subtlety found writing this test, not a bug**: the
+  streak/forced-retire logic lives entirely inside
+  `city_run_autopilot_from_current`'s own cascade — it only increments
+  for a seat the cascade itself walks onto *after* `city_advance_turn`,
+  never for whichever seat `city_claim_timeout`'s own branches resolve
+  directly. Forcing `current_seat` onto the away seat and waiting for its
+  own clock to stall never accumulates a streak; a present seat has to
+  genuinely end its turn so the *cascade* lands on the away seat, matching
+  exactly how the equivalent SQL test (`BUG-007-C-forfeit`) already drove
+  it. Also hit, twice: an idle present seat's own real turn-clock
+  genuinely expiring mid-test and auto-resolving into an unrelated real
+  auction (fixed by neutralizing the ambient pace/phase before the timed
+  portions) and the same live-dice-landing seed-dependence `qa-x17` below
+  also hit, fixed the same way (`in_detention`).
+- **`qa-x16`** — the debt-specific 90s countdown (confirmed distinct from
+  the ordinary turn clock by using a short pace preset that would already
+  read near-zero if the client were wrongly still using it) and a full
+  live forced-liquidation resolution (the asset ends up mortgaged, the
+  debt clears, the buy-prompt disappears from the screen).
+- **`qa-x17`** — an auction settling with every seat away reaches the
+  "Match paused" banner on a live client, not just `status='paused'` in
+  the database.
+
+Final tally: **55/55 SQL assertions, 14/14 live specs** (11 pre-existing
++ `qa-x14`/`x15`/`x16`/`x17`). Every one of round H's 7 bug fixes now has
+both SQL and live-browser coverage. Local-only throughout; nothing has
 touched production.

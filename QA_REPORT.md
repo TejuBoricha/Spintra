@@ -173,7 +173,7 @@ bugs.
 | **BUG-022** a city room's capacity silently capped spectators | `0082` — `type = 'city'` rooms skip the room-capacity trigger entirely (FR-38); match seats already carry their own independent 8-seat cap | Regression harness: a 3rd, non-seated joiner succeeds in a full 2-capacity city room; a same-capacity non-city room still refuses one, proving the fix is scoped |
 | **BUG-033** the host could not set the match pace, and no code path made an eliminated/never-seated player a spectator | `0082` (pace) + client fix (spectator status text) — `city_create_match` gained an optional, validated `p_pace_seconds` parameter with a lobby UI to choose it (FR-42); the status line's `iAmOut` condition now also covers a never-seated room member (FR-36) | Regression harness (invalid pace refused, valid pace persists) plus two live proofs: the host's chosen "Slow · 60s" preset lands in the match row; a never-seated onlooker reads "You're spectating this match," not "Waiting for X" |
 | **BUG-006** the turn clock had a real consequence but no visible countdown | `city-match-shell.tsx` — a `TurnCountdown` component ticks client-side against the same `turn_started_at + pace_seconds` deadline `city_claim_timeout` itself re-derives server-side, gated on the exact same conditions as the existing auto-claim effect | Live proof: backdated the clock to 5 seconds remaining, watched the on-screen timer read `0:04` then `0:02` two seconds later — genuinely ticking, not frozen |
-| **BUG-007** 20 MUST requirements unimplemented — disconnect grace, autopilot, forced retire, voluntary retire, durable pause, the full turn-clock model | `0083`–`0090`, eight rounds (E, A, B, C, D, F, G, H) — see §1b-ii/§1b-iii below for the full breakdown, this row is a pointer, not the detail | 55-assertion SQL regression harness plus 11 dedicated live two-browser Playwright specs; full detail in §1b-ii/§1b-iii |
+| **BUG-007** 20 MUST requirements unimplemented — disconnect grace, autopilot, forced retire, voluntary retire, durable pause, the full turn-clock model | `0083`–`0090`, eight rounds (E, A, B, C, D, F, G, H) — see §1b-ii/§1b-iii below for the full breakdown, this row is a pointer, not the detail | 55-assertion SQL regression harness plus 14 dedicated live two-browser Playwright specs; full detail in §1b-ii/§1b-iii |
 
 **A client-side gap this round found and closed, not itself one of the 44 audit-numbered bugs:** round 2's server-side fix for BUG-005 (0077) let an off-turn debtor call `city_sell_building`/`city_mortgage` directly, but `city-holdings.tsx`'s Sell and Mortgage buttons still unconditionally required `isMyTurn`, with no `inDebt` exception — the debt banner right above those same buttons instructs the player to "sell buildings and mortgage cities below," but the buttons themselves stayed disabled whenever it wasn't their turn. Fixed alongside BUG-039's tooltip work (`city-holdings.tsx`); verified live in the same session — an off-turn, in-debt guest's Mortgage button is genuinely clickable and the RPC succeeds.
 
@@ -348,12 +348,28 @@ the pause clears, rather than falling through into a check that could
 erase it. A 9th new assertion and a new live spec (`qa-x14`) both confirm
 the fix directly: the SQL assertion reproduces the exact backdated-early
 scenario, and the live spec proves the whole mechanism end-to-end through
-the real UI with no click from either player. Final count: 55/55 SQL
-assertions, 11/11 live specs (the 10 above plus `qa-x14`, with `qa-x12`'s
-own text updated for round H's new exit-reason-aware copy). Full detail,
-including every audit's exact findings and the reasoning behind each fix,
-is in `QA_PROGRESS.md`. Nothing has touched production; migration `0090`
-is local-only, same as every migration in this session.
+the real UI with no click from either player.
+
+Only that escape hatch had gotten both SQL and live coverage — the other
+six round-H fixes were SQL-only, and bug 7's whole lesson was that a
+mocked-timing SQL test can miss something live testing catches. Three
+more live specs closed that gap: `qa-x15` (the 3-tier away badge, a real
+two-pass autopilot cascade forcing a genuine retire, the terminal-seat
+badge-hygiene fix, and the `autopilot_forced` spectator text — writing it
+surfaced a real subtlety, not a bug: the streak/forced-retire logic only
+increments for a seat the cascade itself walks onto after
+`city_advance_turn`, never for whichever seat `claim_timeout`'s own
+branches resolve directly), `qa-x16` (the debt-specific 90s countdown,
+confirmed distinct from the ordinary turn clock, plus a full live
+forced-liquidation resolution), and `qa-x17` (an auction settling with
+everyone away reaches the "Match paused" banner on a live client, not
+just in the database). Final count: **55/55 SQL assertions, 14/14 live
+specs** (11 pre-existing plus `qa-x14`/`x15`/`x16`/`x17`, with `qa-x12`'s
+own text updated for round H's new exit-reason-aware copy) — every one
+of round H's 7 bug fixes now has both SQL and live-browser coverage. Full
+detail, including every audit's exact findings and the reasoning behind
+each fix, is in `QA_PROGRESS.md`. Nothing has touched production;
+migration `0090` is local-only, same as every migration in this session.
 
 ### Every fixed migration passed the same gates
 
