@@ -1559,3 +1559,141 @@ BUG-007 is the 41st of 44 originally-audited bugs closed. The 3 remaining
 8-round fix phase — no code change was ever warranted for any of them.
 The QA audit's fix phase, across all 15 rounds counting both the original
 8 and this 7-round BUG-007 arc, is complete.
+
+## Round H — a user-requested re-audit found BUG-007 was not actually done
+
+Asked directly to check for anything still pending, a first pass found the
+approved plan's own client-work checklist ("retire button (E); away badge
+(A); autopilot badge (C); 'match paused' banner (D); queued-offer indicator
+(F); away-bidder auto-pass reflected in the auction panel (G)") had three
+items promised but never built: the away badge and autopilot badge
+(`disconnected_at`/`consecutive_autopilot_turns` were fully wired
+server-side but never added to the client's `SEAT_COLUMNS` select list),
+and the auction panel's away-bidder reflection. Fixed immediately, no new
+migration needed (both columns already carry a blanket SELECT grant).
+
+When told this was fixed, the user pushed back hard: if this much was
+missed after BUG-007 was reported "closed" with 47/47 SQL assertions and
+10/10 live specs green, how could anything else be trusted? That is a
+fair question a passing test suite doesn't answer by itself — a
+behavior-only suite proves the code does what its own tests describe, not
+that it does everything the spec and the approved plan actually promised.
+Rather than re-assert "that was the only gap" on my own say-so, four
+independent fresh-context audits ran in parallel, each with no visibility
+into the others or into this session's own narrative of what was done,
+each instructed to actively hunt for gaps rather than confirm success:
+
+1. **FR coverage** — read every FR-25…FR-51 requirement's literal text and
+   independently verified the shipped SQL against it, not against the
+   plan's own claims about itself.
+2. **Regression-harness genuineness** — read every BUG-007 SQL assertion's
+   actual logic (not its comment) and judged whether it could plausibly
+   pass against broken code.
+3. **Client completeness** — re-checked every FR against the actual
+   `city/*.tsx` files for anything a player should see or do that still
+   wasn't there, beyond the 3 items already caught.
+4. **Cross-round regression** — read every migration `0083`–`0089` in full
+   and hand-diffed every function redefined more than once in that range
+   for a branch or column update a later round silently dropped.
+
+### What the four audits found
+
+**Five real, reachable bugs**, none of them edge cases:
+
+1. **Forced liquidation had no fixed clock.** FR-33/FR-42 both specify a
+   fixed 90s window, independent of the host's pace preset. It used the
+   ordinary `turn_started_at + pace_seconds` instead — a player on the
+   25s "Blitz" preset got 25s to save themselves from bankruptcy, not 90.
+2. **A doubles re-roll could corrupt the trade-pause budget.** Round F
+   taught `city_advance_turn` to reset the new trade-pause columns on a
+   genuine new turn, but the doubles-continuation branches
+   (`city_end_turn_core`'s `v_again`, and its autopilot mirror) predate
+   those columns and were never updated: they cleared
+   `turn_clock_paused_at` but left `trade_pause_started_at` stale, so a
+   later trade's resolution computed elapsed time against the wrong
+   timestamp.
+3. **The trade-pause 45s escape hatch was unreachable from any real
+   client.** The only client code that ever calls `claimTimeout()`
+   unconditionally skipped calling it whenever the turn clock was paused
+   — which a trade pause always sets. The server-side mechanism (rounds
+   F/G) was correct and fully tested at the SQL level; nothing in the
+   shipped app could ever trigger it.
+4. **A retired/bankrupt seat's badge lied forever.** `disconnected_at`/
+   `consecutive_autopilot_turns` were never cleared on either exit path,
+   and the seat-badge row didn't filter by status — a force-retired seat
+   kept showing "Away · auto×2" for the rest of the match.
+5. **A narrow all-away-during-auction edge case.** If every seat with
+   standing in an auction disconnected simultaneously, `city_settle_auction`
+   never re-checked whether anyone was left to hand the turn to.
+
+Plus verification gaps (the SQL suite's own `BUG-007-C` test called
+`city_liquidate_for_debt` directly, bypassing both of its real callers —
+"auto-liquidation actually liquidates" had never been proven through
+`city_claim_timeout` itself) and UX gaps (FR-25 says a disconnect should be
+flagged *immediately*; the away badge only appeared at the same 60s mark
+autopilot kicks in — no signal existed for the actual grace window. No
+copy distinguished voluntary retire / kick / forced retire.).
+
+### Round H (migration `0090`) — every real bug fixed, full rigor
+
+Server: `debt_started_at` (new, on `city_matches`) gives forced liquidation
+its own fixed 90s deadline, stamped by `city_charge`/`city_try_settle_debt`
+and read by `city_claim_timeout`'s debt branch instead of the pace-based
+one. A new shared `city_grant_reroll()` replaces three independently
+duplicated "same seat, fresh awaiting_roll" blocks (`city_end_turn_core`,
+`city_resolve_autopilot_turn`, and — found only while writing this fix —
+**a sixth bug**: `city_claim_timeout`'s own fallback branch never checked
+`doubles_count` at all, silently discarding an away player's earned re-roll
+whenever anyone else's client noticed their clock expire; the shared
+helper closes the trade pause correctly too, fixing bug 2 at the same
+time. `city_retire_seat`/`city_bankrupt_seat` now clear the stale presence
+fields (bug 4). `city_settle_auction` re-invokes the autopilot cascade on
+every settle (bug 5). New `exit_reason` column, stamped by each of
+`city_retire_seat`'s three callers (voluntary/departed/autopilot_forced).
+
+**A seventh bug, found only by live two-browser testing** — after every
+SQL assertion and all four audits had already passed: proposing a trade
+early in a turn, then genuinely waiting 45+ real seconds with no client
+action, left the offer stuck pending forever. The SQL suite's own
+`BUG-007-F-escape` test never caught this because it deliberately
+backdated the whole turn far enough that the resumed deadline had *also*
+already passed. A real trade proposed early in a turn doesn't do that:
+resuming shifts `turn_started_at` forward by the pause duration, which for
+an early proposal leaves most of `pace_seconds` still owed — the old code
+fell through to the ordinary "still running" check regardless and raised,
+an uncaught exception that rolled back the *entire transaction*, undoing
+the resume the same call had just made. Every real attempt hit this. Fixed
+by returning a graceful `trade_pause_resumed` result once the pause itself
+clears, instead of falling through to a check that could erase it.
+
+Client: `disconnected_at`/`consecutive_autopilot_turns`/`exit_reason`
+(previously fetched by nothing) now drive a 3-tier away badge (reconnecting
+0–60s, matching FR-25's "flagged immediately" / away 60s+, matching the
+autopilot-eligibility threshold), gated off entirely for a terminal seat; a
+debt-specific 90s countdown; exit-reason-aware spectator text; and the
+auto-claim effect now also fires during a trade pause once past 45s — the
+fix that makes bug 3's escape hatch reachable at all. One purity-lint bug
+caught while wiring the badge: reading `Date.now()` directly during render
+is rejected by the project's `react-hooks/purity` rule — fixed with a
+ticking `now` state, the same idiom `TurnCountdown` already used.
+
+**Verification**: 8 new SQL assertions closing the gaps found (52→54,
+then a 9th for the live-testing find, 54→55), including one that finally
+exercises "auto-liquidation liquidates" through the real `city_claim_timeout`
+call with a payable debt, not the bypassed internal function. Two seed-
+dependent test-design flaws found and fixed while writing these — one
+existing sub-test's backdate no longer cleared the new 90s deadline; a new
+all-away test relied on a live dice roll landing safely (seed-dependent),
+redesigned around `in_detention` (seed-independent) instead. Full SQL
+suite: 55/55. Live: all 9 pre-existing City specs re-run clean (one,
+`qa-x12`, needed its own assertion text updated — the exit-reason work
+deliberately changed the generic "you're out" copy), plus 2 new specs —
+`qa-x14` proves the trade-pause escape hatch actually works through the
+real UI with no click from either side (the single most severe of the
+four audits' findings, since fixing it required also finding and fixing
+bug 7, invisible to every other layer of testing this session had). A
+Postgres/Docker environment issue unrelated to this work (a role-ownership
+drift blocking a full local `supabase db reset` from replaying past
+migration `0035`) was hit and worked around locally — not a code defect,
+not touched in any migration file. Local-only throughout; nothing has
+touched production.

@@ -52,6 +52,17 @@ export interface CityMatch {
    *  nobody left to hand the turn to. Cleared automatically the moment
    *  anyone reconnects, which also resumes the match server-side. */
   paused_at: string | null;
+  /** Fixed 90s window for a stalled forced-liquidation decision (FR-33/
+   *  FR-42) — independent of pace_seconds. Only meaningful while the active
+   *  seat has pending_debt > 0. */
+  debt_started_at: string | null;
+  /** Set while the active seat's own outgoing trade proposal has paused
+   *  their turn clock (FR-33). Past 45s of no response, city_claim_timeout's
+   *  own escape hatch may force-withdraw it and resume the clock. */
+  trade_pause_started_at: string | null;
+  /** Running total (ms) of trade-pause time already spent this turn — capped
+   *  at 90000 (FR-33), after which no further proposal pauses the clock. */
+  trade_pause_ms_used: number;
 }
 
 export interface CitySeat {
@@ -70,6 +81,16 @@ export interface CitySeat {
   in_detention: boolean;
   detention_turns: number;
   transit_visas: number;
+  /** Set the moment this seat's underlying room presence drops (BUG-007 round
+   *  A); cleared on reconnect. Past the 60s grace period, the server treats
+   *  this seat as away for autopilot/auction purposes — mirrored here for
+   *  display only, never trusted for any actual gating client-side. */
+  disconnected_at: string | null;
+  /** How many turns in a row this seat has been autopiloted (FR-28). Forced
+   *  retire happens server-side at 2; shown here as an early warning. */
+  consecutive_autopilot_turns: number;
+  /** Why a non-active seat left play — null while still active. */
+  exit_reason: "voluntary" | "departed" | "autopilot_forced" | null;
 }
 
 /** Reference data from `city_board_spaces` — the same 40 rows for every match. */
@@ -182,11 +203,13 @@ export interface CityRollResult {
 const MATCH_COLUMNS =
   "id, room_code, status, mode, time_limit_minutes, current_seat, phase, created_by, " +
   "started_at, turn_started_at, turn_clock_paused_at, pace_seconds, last_roll, " +
-  "last_roll_result, last_roll_turn, doubles_count, turn_number, paused_at";
+  "last_roll_result, last_roll_turn, doubles_count, turn_number, paused_at, " +
+  "debt_started_at, trade_pause_started_at, trade_pause_ms_used";
 
 const SEAT_COLUMNS =
   "id, match_id, user_id, seat, username, is_ready, status, position, cash, " +
-  "pending_debt, pending_creditor_seat, in_detention, detention_turns, transit_visas";
+  "pending_debt, pending_creditor_seat, in_detention, detention_turns, transit_visas, " +
+  "disconnected_at, consecutive_autopilot_turns, exit_reason";
 
 interface UseCityMatchResult {
   match: CityMatch | null;

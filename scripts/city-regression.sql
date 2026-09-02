@@ -1134,10 +1134,15 @@ begin
     ok := false; act := act || 'current_seat did not advance on an end_turn resolution; ';
   end if;
 
-  -- (e) pending_debt -> bankrupt, unchanged from 0076. Reset current_seat
-  -- back to 0 explicitly, since (d) just moved it on.
+  -- (e) pending_debt -> bankrupt. Reset current_seat back to 0 explicitly,
+  -- since (d) just moved it on. Round H: the debt branch now runs on its
+  -- own fixed 90s window (debt_started_at), not the generic pace-based
+  -- deadline every other branch uses -- left null here (this raw UPDATE
+  -- bypasses city_charge, which is what actually stamps it), so
+  -- coalesce() falls back to turn_started_at, meaning this backdate must
+  -- clear 90s, not merely the old 41s pace-based threshold.
   update public.city_matches set current_seat=0, phase='required_decision',
-    turn_clock_paused_at=null, turn_started_at = now() - interval '41 seconds' where id=m;
+    turn_clock_paused_at=null, turn_started_at = now() - interval '95 seconds' where id=m;
   update public.city_match_players set pending_debt=9999, pending_creditor_seat=null
    where match_id=m and seat=0;
   perform pg_temp.rg_as(1);
@@ -1458,7 +1463,7 @@ end $blk$;
 -- clock expiry.
 -- ===========================================================================
 do $blk$
-declare m uuid; cs int; ok boolean := true; act text := '';
+declare m uuid; cs int; ts_fresh boolean; ok boolean := true; act text := '';
 begin
   m := pg_temp.rg_match('CITYRGC5', 81);
 
@@ -1468,20 +1473,27 @@ begin
   update public.city_match_players set disconnected_at = now() - interval '90 seconds',
     position = 3
    where match_id=m and seat=1;
-  update public.city_matches set current_seat=0, phase='optional_actions' where id=m;
+  -- FR-47: seeded deliberately stale, so a handoff that ever forgot to
+  -- reset it would leave this exactly as far in the past.
+  update public.city_matches set current_seat=0, phase='optional_actions',
+    turn_started_at = now() - interval '5000 seconds' where id=m;
 
   perform pg_temp.rg_as_host('CITYRGC5');
   perform public.moderation_kick_ban('CITYRGC5', '11111111-1111-4111-8111-111111111111');
 
   select current_seat into cs from public.city_matches where id=m;
+  select turn_started_at > now() - interval '5 seconds' into ts_fresh from public.city_matches where id=m;
   if cs <> 2 then
     ok := false; act := act || format(
       'current_seat is %s immediately after the kick -- expected the departure trigger''s own autopilot check to have already skipped past away seat 1 to seat 2; ', cs);
   end if;
+  if not ts_fresh then
+    ok := false; act := act || 'turn_started_at was not reset to a fresh clock (FR-47) -- still reads the stale pre-kick value; ';
+  end if;
 
-  insert into rg values (default,'BUG-007-C-kick','a kick landing on an already-away seat autopilots immediately',
-    'the departure trigger both hands off the kicked seat''s turn AND resolves the next seat''s turn if it too is away, without waiting for a future clock expiry',
-    case when ok then format('current_seat landed on present seat %s immediately, no client action needed', cs) else act end,
+  insert into rg values (default,'BUG-007-C-kick','a kick landing on an already-away seat autopilots immediately, with a fresh clock (FR-27/FR-47)',
+    'the departure trigger both hands off the kicked seat''s turn AND resolves the next seat''s turn if it too is away, without waiting for a future clock expiry, and the surviving seat gets a genuinely fresh turn_started_at rather than an inherited stale one',
+    case when ok then format('current_seat landed on present seat %s immediately, turn_started_at fresh, no client action needed', cs) else act end,
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 
@@ -1760,6 +1772,63 @@ begin
 end $blk$;
 
 -- ===========================================================================
+-- BUG-007-H — found only by live two-browser testing, not any of the four
+-- audits or the SQL suite: a trade proposed EARLY in a turn (unlike the
+-- F-escape test above, which deliberately backdated the whole turn so the
+-- resumed deadline had ALSO already passed) triggers the exact same 45s
+-- escape hatch, but the resumed turn_started_at (shifted forward by the
+-- pause duration) leaves most of pace_seconds still remaining -- the old
+-- code fell through to the ordinary deadline check regardless and raised
+-- CITY_TURN_CLOCK_STILL_RUNNING, an uncaught exception that rolled back the
+-- ENTIRE transaction, undoing the resume the same call had just made. Every
+-- real attempt against a fresh trade pause hit this rollback.
+-- ===========================================================================
+do $blk$
+declare m uuid; offer_id uuid; res jsonb; st text; paused_after boolean;
+  ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGH12', 101);
+  update public.city_matches set current_seat=0, pace_seconds=60 where id=m;
+
+  perform pg_temp.rg_as(0);
+  offer_id := public.city_propose_trade(m, 1, '{}', '{}', 5, 0);
+
+  -- Turn started only 2s ago (nearly the full 60s pace window still
+  -- "owed" once the pause resumes) -- only the trade pause itself is
+  -- stale, backdated past its own 45s bound.
+  update public.city_matches
+     set turn_started_at = now() - interval '2 seconds',
+         turn_clock_paused_at = now() - interval '50 seconds',
+         trade_pause_started_at = now() - interval '50 seconds'
+   where id=m;
+
+  perform pg_temp.rg_as(1);
+  begin
+    select public.city_claim_timeout(m) into res;
+  exception when others then
+    ok := false; act := act || 'claim_timeout raised instead of gracefully resuming: '||SQLERRM||'; ';
+  end;
+
+  select status into st from public.city_trade_offers where id=offer_id;
+  select turn_clock_paused_at is not null into paused_after from public.city_matches where id=m;
+
+  if ok and st <> 'withdrawn' then
+    ok := false; act := act || format('the stale offer''s status is %L, expected withdrawn; ', st);
+  end if;
+  if ok and paused_after then
+    ok := false; act := act || 'turn_clock_paused_at is still set -- the resume did not stick; ';
+  end if;
+  if ok and res->>'resolution' <> 'trade_pause_resumed' then
+    ok := false; act := act || format('expected resolution=trade_pause_resumed, got %s; ', res->>'resolution');
+  end if;
+
+  insert into rg values (default,'BUG-007-H-escape-early-pause','the trade-pause escape hatch resumes cleanly even when most of the turn clock is still owed',
+    'claim_timeout withdraws the stale offer and resumes the clock without raising, even though the just-shifted turn_started_at means the ordinary deadline has not also passed -- the earlier bug rolled this whole transaction back via an uncaught exception in exactly this case',
+    case when ok then format('resolution=%s, offer withdrawn, clock resumed (not still paused)', res->>'resolution') else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
 -- BUG-007-G (FR-49) — an auction never waits out its cap on an absent seat;
 -- an away bidder is excluded from the "has everyone passed" tally.
 -- ===========================================================================
@@ -1807,6 +1876,337 @@ begin
   insert into rg values (default,'BUG-007-G','an away bidder does not stall an auction''s all-pass fast path (FR-49)',
     'once every seat *actually present* has passed, the auction settles immediately -- an away seat is excluded from the eligibility tally, not waited on',
     case when ok then format('auction settled once both present seats passed, away seat 1 correctly excluded') else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-H (FR-33/FR-42) — forced liquidation runs on its own fixed 90s
+-- window, independent of the host's pace preset -- not the ordinary
+-- turn_started_at + pace_seconds deadline every other claim_timeout branch
+-- uses. Proven by using a pace_seconds well under 90s (Blitz, 25s) and
+-- confirming claim_timeout still refuses well after that shorter deadline
+-- has passed, only succeeding once the FIXED 90s window (from
+-- debt_started_at) has actually elapsed.
+-- ===========================================================================
+do $blk$
+declare m uuid; ok boolean := true; act text := ''; res jsonb; refused boolean := false;
+begin
+  m := pg_temp.rg_match('CITYRGH1', 90);
+  update public.city_matches set current_seat=0, phase='required_decision', pace_seconds=25,
+    turn_clock_paused_at=null,
+    turn_started_at = now() - interval '40 seconds',
+    debt_started_at = now() - interval '40 seconds'
+   where id=m;
+  update public.city_match_players set pending_debt=50, pending_creditor_seat=null
+   where match_id=m and seat=0;
+
+  -- 40s in: the old pace-based (25s) deadline is long gone, but the fixed
+  -- 90s liquidation window is not -- must still refuse.
+  perform pg_temp.rg_as(1);
+  begin
+    perform public.city_claim_timeout(m);
+    ok := false; act := act || 'claim_timeout succeeded at 40s, before the fixed 90s liquidation window elapsed; ';
+  exception when others then
+    if SQLERRM !~ 'CITY_TURN_CLOCK_STILL_RUNNING' then
+      ok := false; act := act || format('expected CITY_TURN_CLOCK_STILL_RUNNING at 40s, got: %s; ', SQLERRM);
+    else
+      refused := true;
+    end if;
+  end;
+
+  -- Past 90s from debt_started_at: must now succeed.
+  update public.city_matches set debt_started_at = now() - interval '95 seconds' where id=m;
+  select public.city_claim_timeout(m) into res;
+  if res->>'resolution' not in ('liquidated','bankrupt') or (res->>'seat')::int <> 0 then
+    ok := false; act := act || format('expected a debt resolution for seat 0 past 90s, got %s; ', res);
+  end if;
+
+  insert into rg values (default,'BUG-007-H-liquidation-clock','forced liquidation runs on its own fixed 90s window, not the pace preset (FR-33/FR-42)',
+    'claim_timeout refuses a debt resolution before 90s have passed since debt_started_at even though the (much shorter) pace-based deadline already elapsed, and succeeds once 90s have genuinely passed',
+    case when ok then format('refused at 40s (%s), resolved once past 90s (%s)', refused, res) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-H (verification gap closed) — auto-liquidation actually clears a
+-- debt through the REAL caller a stalled player's own client reaches
+-- (city_claim_timeout), not just the internal city_liquidate_for_debt
+-- function called directly (BUG-007-C's own test bypasses both of its real
+-- callers, and BUG-007-B's debt test only ever used an unpayable amount, so
+-- this exact path -- a real, payable debt resolved through the real public
+-- RPC -- had never actually been exercised end-to-end before this).
+-- ===========================================================================
+do $blk$
+declare m uuid; prop_idx int; prop_price int; expected_raise int;
+  res jsonb; debt int; mortgaged boolean; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGH2', 91);
+  select idx, price into prop_idx, prop_price from public.city_board_spaces
+   where price is not null order by idx limit 1;
+
+  insert into public.city_assets (match_id, space_idx, owner_seat) values (m, prop_idx, 0);
+  expected_raise := round(prop_price / 2.0)::integer;
+
+  update public.city_matches set current_seat=0, phase='required_decision',
+    turn_clock_paused_at=null,
+    turn_started_at = now() - interval '95 seconds',
+    debt_started_at = now() - interval '95 seconds'
+   where id=m;
+  update public.city_match_players set pending_debt = expected_raise, pending_creditor_seat = null
+   where match_id=m and seat=0;
+
+  perform pg_temp.rg_as(1);
+  select public.city_claim_timeout(m) into res;
+
+  select pending_debt into debt from public.city_match_players where match_id=m and seat=0;
+  select is_mortgaged into mortgaged from public.city_assets where match_id=m and space_idx=prop_idx;
+
+  if res->>'resolution' <> 'liquidated' or debt <> 0 or not mortgaged then
+    ok := false; act := act || format(
+      'expected the real claim_timeout call to liquidate (mortgage the property, clear the debt): resolution=%s debt=%s mortgaged=%s; ',
+      res->>'resolution', debt, mortgaged);
+  end if;
+  perform 1 from public.city_match_players where match_id=m and seat=0 and status='bankrupt';
+  if found then
+    ok := false; act := act || 'seat 0 was bankrupted despite owning enough to cover the debt; ';
+  end if;
+
+  insert into rg values (default,'BUG-007-H-liquidation-real-path','auto-liquidation actually liquidates through the real claim_timeout call, not just the internal function in isolation',
+    'a payable debt resolved via the actual public city_claim_timeout RPC results in resolution=liquidated, the property mortgaged, and pending_debt cleared -- not bankruptcy',
+    case when ok then format('resolution=%s, debt=%s, mortgaged=%s', res->>'resolution', debt, mortgaged) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-H — a doubles re-roll while an outgoing trade pause is active must
+-- correctly close out the pause (accumulate elapsed time into the running
+-- 90s/turn budget, clear trade_pause_started_at) instead of leaving it
+-- stale while turn_clock_paused_at is cleared anyway -- the exact
+-- corruption a cross-round regression audit found: city_end_turn_core's
+-- v_again branch cleared turn_clock_paused_at unconditionally but never
+-- touched trade_pause_started_at, so a LATER trade's resolution would
+-- compute elapsed time against a stale timestamp from a turn ago.
+-- ===========================================================================
+do $blk$
+declare m uuid; ok boolean := true; act text := '';
+  paused_after boolean; pause_started_after timestamptz; budget_used integer;
+begin
+  m := pg_temp.rg_match('CITYRGH3', 92);
+  update public.city_matches set current_seat=0, phase='optional_actions', doubles_count=1,
+    turn_clock_paused_at=null, trade_pause_ms_used=0, trade_pause_started_at=null
+   where id=m;
+
+  perform pg_temp.rg_as(0);
+  perform public.city_propose_trade(m, 1, '{}', '{}', 10, 0);
+
+  -- Backdate the pause by 20s, as if the recipient had simply been silent
+  -- for a while before the proposer rolled doubles and re-rolled anyway.
+  update public.city_matches set trade_pause_started_at = now() - interval '20 seconds' where id=m;
+
+  perform public.city_end_turn(m);
+
+  select turn_clock_paused_at is not null, trade_pause_started_at, trade_pause_ms_used
+    into paused_after, pause_started_after, budget_used
+    from public.city_matches where id=m;
+
+  if paused_after then
+    ok := false; act := act || 'turn_clock_paused_at is still set after the re-roll; ';
+  end if;
+  if pause_started_after is not null then
+    ok := false; act := act || 'trade_pause_started_at is still set (stale) after the re-roll; ';
+  end if;
+  if budget_used < 18000 or budget_used > 25000 then
+    ok := false; act := act || format('trade_pause_ms_used is %s, expected roughly 20000 (the accumulated pause, not lost or corrupted); ', budget_used);
+  end if;
+
+  insert into rg values (default,'BUG-007-H-doubles-tradepause','a doubles re-roll correctly closes an active trade pause instead of corrupting it',
+    'the re-roll clears turn_clock_paused_at AND properly accumulates the elapsed pause into trade_pause_ms_used AND clears trade_pause_started_at -- never leaving it stale',
+    case when ok then format('paused_after=%s, pause_started_after=%s, budget_used=%sms', paused_after, pause_started_after, budget_used) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-H — claim_timeout's own fallback branch must grant an owed
+-- doubles re-roll instead of silently discarding it. Found while fixing the
+-- pause-corruption bug above: city_claim_timeout's "else" branch never
+-- checked doubles_count at all (unlike city_end_turn_core, which always
+-- did) -- it just force-advanced past the stalled player, discarding an
+-- earned re-roll the instant anyone else's client noticed the ordinary
+-- clock had expired. A present player ending their own turn in time was
+-- never affected; only this specific stalled-and-noticed-by-someone-else
+-- path was wrong.
+-- ===========================================================================
+do $blk$
+declare m uuid; res jsonb; cs int; ph text; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGH4', 93);
+  update public.city_matches set current_seat=0, phase='optional_actions', doubles_count=1,
+    pace_seconds=40, turn_clock_paused_at=null,
+    turn_started_at = now() - interval '41 seconds'
+   where id=m;
+  update public.city_match_players set disconnected_at = now() - interval '90 seconds'
+   where match_id=m and seat=0;
+
+  perform pg_temp.rg_as(1);
+  select public.city_claim_timeout(m) into res;
+
+  select current_seat, phase into cs, ph from public.city_matches where id=m;
+
+  if res->>'resolution' <> 'roll_again' then
+    ok := false; act := act || format('expected roll_again, got %s; ', res->>'resolution');
+  end if;
+  if cs <> 0 then
+    ok := false; act := act || format('current_seat moved to %s -- an owed doubles re-roll must not advance past the seat that earned it; ', cs);
+  end if;
+  if ph <> 'awaiting_roll' then
+    ok := false; act := act || format('phase is %L, expected awaiting_roll after granting the re-roll; ', ph);
+  end if;
+
+  insert into rg values (default,'BUG-007-H-claimtimeout-doubles','claim_timeout grants an owed doubles re-roll instead of silently discarding it',
+    'a stalled seat holding doubles_count between 1 and 2, resolved via claim_timeout by another player, gets resolution=roll_again and stays current_seat in phase=awaiting_roll -- not advanced past',
+    case when ok then format('resolution=%s, current_seat=%s, phase=%s', res->>'resolution', cs, ph) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-H (FR-31 edge case) — if every seat with standing in an auction
+-- (including whoever regains the turn once it settles) is away, settling
+-- must still reach status='paused', not hand control back to an away
+-- seat and sit 'active' forever until an unrelated reconnect happens to
+-- remount the auction UI.
+-- ===========================================================================
+do $blk$
+declare m uuid; st text; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGH5', 94);
+
+  -- Every seat parked in detention rather than left to roll naturally --
+  -- city_leave_detention_core's 'roll' method always concludes the turn
+  -- regardless of the (seed-dependent) doubles outcome, so the cascade's
+  -- path to "nobody present" here is deterministic and doesn't depend on
+  -- where a live dice roll happens to land (an away seat resolved via an
+  -- ordinary awaiting_roll can legitimately open a fresh auction instead --
+  -- that's a different, also-correct outcome, not this scenario). Detention
+  -- requires phase='awaiting_roll' (matching a real detained player); the
+  -- auction being settled below doesn't depend on city_matches.phase at all
+  -- (only city_auctions.status), so this never needs to look like 'auction'.
+  update public.city_matches set current_seat=0, phase='awaiting_roll' where id=m;
+  update public.city_match_players set disconnected_at = now() - interval '90 seconds',
+    in_detention = true, detention_turns = 0
+   where match_id=m and seat in (0,1,2);
+
+  insert into public.city_auctions (match_id, space_idx, ends_at, hard_ends_at, status)
+  values (m, (select min(idx) from public.city_board_spaces where price is not null),
+    now() - interval '1 seconds', now() - interval '1 seconds', 'running');
+
+  perform public.city_settle_auction(m, true);
+
+  select status into st from public.city_matches where id=m;
+  if st <> 'paused' then
+    ok := false; act := act || format('match status is %L after settling with every seat away -- expected paused; ', st);
+  end if;
+
+  insert into rg values (default,'BUG-007-H-auction-allaway-pause','settling an auction with every seat away reaches a durable pause (FR-31)',
+    'once an auction settles and every remaining seat (including whoever regains the turn) is away, the match reaches status=paused immediately rather than sitting active with an away current_seat',
+    case when ok then format('status=%s', st) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-H — exit_reason distinguishes voluntary retire, a kick/departure,
+-- and a forced autopilot retire (previously indistinguishable to a watching
+-- player); and disconnected_at/consecutive_autopilot_turns no longer linger
+-- forever once a seat is actually out (found by the client-completeness
+-- audit: the badge kept showing "Away"/"auto×N" on a retired/bankrupt seat).
+-- ===========================================================================
+do $blk$
+declare m uuid; reason text; dc timestamptz; streak int; ok boolean := true; act text := '';
+begin
+  -- (a) voluntary retire.
+  m := pg_temp.rg_match('CITYRGH6', 95);
+  perform pg_temp.rg_as(0);
+  perform public.city_retire_self(m);
+  select exit_reason, disconnected_at, consecutive_autopilot_turns
+    into reason, dc, streak from public.city_match_players where match_id=m and seat=0;
+  if reason <> 'voluntary' then
+    ok := false; act := act || format('voluntary retire: exit_reason is %L, expected voluntary; ', reason);
+  end if;
+
+  -- (b) kick/departure.
+  m := pg_temp.rg_match('CITYRGH7', 96);
+  update public.city_match_players set disconnected_at = now() - interval '90 seconds',
+    consecutive_autopilot_turns = 1 where match_id=m and seat=1;
+  perform pg_temp.rg_as_host('CITYRGH7');
+  perform public.moderation_kick_ban('CITYRGH7', '22222222-2222-4222-8222-222222222222');
+  select exit_reason, disconnected_at, consecutive_autopilot_turns
+    into reason, dc, streak from public.city_match_players where match_id=m and seat=1;
+  if reason <> 'departed' then
+    ok := false; act := act || format('kick: exit_reason is %L, expected departed; ', reason);
+  end if;
+  if dc is not null or streak <> 0 then
+    ok := false; act := act || format('kick: disconnected_at=%s consecutive_autopilot_turns=%s still lingering after retire, expected both cleared; ', dc, streak);
+  end if;
+
+  -- (c) forced autopilot retire (same setup as BUG-007-C-forfeit, including
+  -- its exact seed -- 80's first roll from position 5 is deterministically
+  -- known to land on the safe Customs corner, not a purchasable property
+  -- that would open a fresh auction instead of concluding the turn).
+  m := pg_temp.rg_match('CITYRGH8', 80);
+  update public.city_match_players set disconnected_at = now() - interval '90 seconds',
+    consecutive_autopilot_turns = 1, position = 5
+   where match_id=m and seat=1;
+  update public.city_matches set current_seat=0, phase='optional_actions' where id=m;
+  perform pg_temp.rg_as(0);
+  perform public.city_end_turn(m);
+  select exit_reason, disconnected_at, consecutive_autopilot_turns
+    into reason, dc, streak from public.city_match_players where match_id=m and seat=1;
+  if reason <> 'autopilot_forced' then
+    ok := false; act := act || format('forced retire: exit_reason is %L, expected autopilot_forced; ', reason);
+  end if;
+  if dc is not null or streak <> 0 then
+    ok := false; act := act || format('forced retire: disconnected_at=%s consecutive_autopilot_turns=%s still lingering, expected both cleared; ', dc, streak);
+  end if;
+
+  -- (d) bankruptcy also clears stale presence/autopilot state.
+  m := pg_temp.rg_match('CITYRGH9', 98);
+  update public.city_match_players set disconnected_at = now() - interval '90 seconds',
+    consecutive_autopilot_turns = 1 where match_id=m and seat=2;
+  perform public.city_bankrupt_seat(m, 2, null);
+  select disconnected_at, consecutive_autopilot_turns
+    into dc, streak from public.city_match_players where match_id=m and seat=2;
+  if dc is not null or streak <> 0 then
+    ok := false; act := act || format('bankrupt: disconnected_at=%s consecutive_autopilot_turns=%s still lingering, expected both cleared; ', dc, streak);
+  end if;
+
+  insert into rg values (default,'BUG-007-H-exit-reason','exit_reason distinguishes voluntary/departed/autopilot_forced, and retire/bankrupt clear stale presence state',
+    'voluntary retire, a kick, and a forced autopilot retire each stamp a distinct exit_reason, and none leaves disconnected_at/consecutive_autopilot_turns lingering on the now-terminal seat',
+    case when ok then 'all three exit paths stamp the correct reason and clear stale presence state' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-007-H (FR-51, verification gap closed) — a bankrupt seat cannot
+-- consume another player's trade-pause budget by proposing a trade; never
+-- previously asserted.
+-- ===========================================================================
+do $blk$
+declare m uuid; refused boolean := false; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGH11', 100);
+  update public.city_match_players set status='bankrupt' where match_id=m and seat=0;
+  perform pg_temp.rg_as(0);
+  begin
+    perform public.city_propose_trade(m, 1, '{}', '{}', 10, 0);
+    act := 'city_propose_trade succeeded for a bankrupt seat';
+  exception when others then
+    if SQLERRM ~ 'CITY_SEAT_OUT' then refused := true;
+    else act := 'refused, but with the wrong error: '||SQLERRM; end if;
+  end;
+  if not refused then ok := false; end if;
+
+  insert into rg values (default,'BUG-007-H-fr51-bankrupt-trade','a bankrupt seat cannot propose a trade (FR-51)',
+    'city_propose_trade refuses with CITY_SEAT_OUT for a non-active (bankrupt/retired) seat',
+    case when ok then 'refused with CITY_SEAT_OUT' else act end,
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 

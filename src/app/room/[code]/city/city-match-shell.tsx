@@ -12,6 +12,7 @@ import {
   LogOut,
   Play,
   UserPlus,
+  WifiOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +50,13 @@ export function CityMatchShell() {
   // FR-42: chosen here, at match creation, not in RoomSettingsPanel — and
   // never touched again once city_create_match has written it.
   const [pacePreset, setPacePreset] = useState<25 | 40 | 60>(40);
+  // Ticks the "Away" badge's 60s-grace comparison forward without reading the
+  // impure Date.now() during render (same idiom as TurnCountdown below).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 5000);
+    return () => clearInterval(id);
+  }, []);
   const {
     match,
     seats,
@@ -105,20 +113,38 @@ export function CityMatchShell() {
   // this, so the guards live inside the effect instead of around the call.
   const claimedTurnRef = useRef<string | null>(null);
   useEffect(() => {
-    if (
-      !match ||
-      match.status !== "active" ||
-      match.phase === "auction" ||
-      match.turn_clock_paused_at ||
-      !match.turn_started_at
-    ) {
+    if (!match || match.status !== "active" || match.phase === "auction") return;
+
+    const activeSeat = seats.find((s) => s.seat === match.current_seat);
+    const activeInDebt = (activeSeat?.pending_debt ?? 0) > 0;
+
+    let deadline: number;
+    if (match.turn_clock_paused_at) {
+      // An auction pause resolves independently (city-auction.tsx's own
+      // settle effect) — nothing to claim here. A trade pause has its own
+      // 45s escape hatch (BUG-007 round F/H): city_claim_timeout re-derives
+      // eligibility itself, so an attempt before 45s is simply refused —
+      // this is what makes that escape hatch reachable at all, since
+      // nothing else in the client ever calls claimTimeout while paused.
+      if (!match.trade_pause_started_at) return;
+      deadline = new Date(match.trade_pause_started_at).getTime() + 45_000;
+    } else if (activeInDebt && match.debt_started_at) {
+      // FR-33/FR-42: forced liquidation runs on its own fixed 90s window,
+      // not the ordinary pace-based one.
+      deadline = new Date(match.debt_started_at).getTime() + 90_000;
+    } else if (match.turn_started_at) {
+      deadline = new Date(match.turn_started_at).getTime() + match.pace_seconds * 1000;
+    } else {
       return;
     }
 
-    const turnKey = `${match.id}:${match.turn_number}`;
+    // Keyed on the deadline itself, not just the turn number — a debt or
+    // trade pause can arise mid-turn, after an earlier deadline in this same
+    // turn_number already fired (e.g. an auto-roll that immediately creates
+    // debt), and that later, different deadline must still be armed.
+    const turnKey = `${match.id}:${match.turn_number}:${deadline}`;
     if (claimedTurnRef.current === turnKey) return;
 
-    const deadline = new Date(match.turn_started_at).getTime() + match.pace_seconds * 1000;
     const remaining = deadline - Date.now();
 
     if (remaining > 0) {
@@ -128,7 +154,7 @@ export function CityMatchShell() {
 
     claimedTurnRef.current = turnKey;
     void claimTimeout();
-  }, [match, claimTimeout]);
+  }, [match, seats, claimTimeout]);
 
   if (isDemoMode) {
     return (
@@ -308,29 +334,77 @@ export function CityMatchShell() {
         )}
         <div className="flex flex-wrap items-center gap-3 mb-3">
           <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
-            {seats.map((s) => (
-              <Badge
-                key={s.id}
-                variant={s.seat === match.current_seat ? "default" : "secondary"}
-                className="gap-1"
-              >
-                {s.username}
-                <span className="font-mono opacity-80">{s.cash.toLocaleString()}</span>
-              </Badge>
-            ))}
+            {seats.map((s) => {
+              // BUG-007 round A/C/H: disconnected_at and consecutive_autopilot_turns
+              // are both server-authoritative already (they gate autopilot and
+              // forced retire) — this is display only, never a gate itself. A
+              // terminal seat (retired/bankrupt) never shows either indicator —
+              // both are cleared server-side the instant a seat exits, but a
+              // client that fetched stale data before that clear would otherwise
+              // show "Away"/"auto×N" forever on a seat that isn't coming back.
+              const terminal = s.status === "bankrupt" || s.status === "retired";
+              const disconnectedMs = s.disconnected_at
+                ? now - new Date(s.disconnected_at).getTime()
+                : 0;
+              // FR-25: flagged the instant a disconnect is detected (no
+              // gameplay effect yet) — only past the same 60s grace period
+              // city_run_autopilot_from_current itself uses does "Away" mean
+              // the server is now actually playing this seat's turns.
+              const reconnecting = !terminal && !!s.disconnected_at && disconnectedMs < 60_000;
+              const away = !terminal && !!s.disconnected_at && disconnectedMs >= 60_000;
+              return (
+                <Badge
+                  key={s.id}
+                  variant={s.seat === match.current_seat ? "default" : "secondary"}
+                  className="gap-1"
+                >
+                  {s.username}
+                  <span className="font-mono opacity-80">{s.cash.toLocaleString()}</span>
+                  {reconnecting && (
+                    <span
+                      className="flex items-center text-muted-foreground"
+                      title="Connection dropped — still their seat and their turn clock, for now"
+                    >
+                      <WifiOff className="w-3 h-3" aria-hidden="true" />
+                    </span>
+                  )}
+                  {away && (
+                    <span
+                      className="flex items-center text-amber-300"
+                      title="Disconnected — the server plays this seat's turns automatically until they return"
+                    >
+                      <WifiOff className="w-3 h-3" aria-hidden="true" />
+                    </span>
+                  )}
+                  {!terminal && s.consecutive_autopilot_turns > 0 && (
+                    <span
+                      className="font-mono text-[10px] text-amber-300"
+                      title={`${s.consecutive_autopilot_turns} turn(s) auto-played in a row — retired automatically at 2`}
+                    >
+                      auto×{s.consecutive_autopilot_turns}
+                    </span>
+                  )}
+                </Badge>
+              );
+            })}
           </div>
           {/* BUG-006: turn_started_at/pace_seconds have driven a real
               consequence (city_claim_timeout) since BUG-003's fix, but
               nothing ever showed a player the clock was running at all —
-              same gating as the auto-claim effect above. */}
-          {match.status === "active" &&
-            match.phase !== "auction" &&
-            !match.turn_clock_paused_at &&
-            match.turn_started_at && (
-              <TurnCountdown
-                deadline={new Date(match.turn_started_at).getTime() + match.pace_seconds * 1000}
-              />
-            )}
+              same gating as the auto-claim effect above. Round H: while the
+              active seat owes a debt, this is the fixed 90s liquidation
+              window (FR-33/FR-42), not the ordinary pace-based clock. */}
+          {match.status === "active" && match.phase !== "auction" && !match.turn_clock_paused_at && (
+            (active?.pending_debt ?? 0) > 0 && match.debt_started_at ? (
+              <TurnCountdown deadline={new Date(match.debt_started_at).getTime() + 90_000} />
+            ) : (
+              match.turn_started_at && (
+                <TurnCountdown
+                  deadline={new Date(match.turn_started_at).getTime() + match.pace_seconds * 1000}
+                />
+              )
+            )
+          )}
           {/* FR-29: a deliberate "I'm leaving" action, distinct from a
               disconnect — routes through the same retire/liquidation
               sequence a kick already uses. Confirmed first: unlike Leave
@@ -466,9 +540,7 @@ export function CityMatchShell() {
           aria-live="polite"
         >
           {iAmOut
-            ? mySeat
-              ? "You're out of this match — watching from here."
-              : "You're spectating this match."
+            ? exitText(mySeat)
             : detained && isMyTurn
               ? `You're held at Customs. Roll doubles, spend a Transit Visa, or pay 90 to leave.`
               : effectiveRoll
@@ -633,6 +705,21 @@ export function CityMatchShell() {
       )}
     </motion.div>
   );
+}
+
+/**
+ * BUG-007 round H: a voluntary retire, a kick, and a forced autopilot retire
+ * were all indistinguishable to a watching player — one generic sentence for
+ * every way a seat could leave.
+ */
+function exitText(seat: CitySeat | null): string {
+  if (!seat) return "You're spectating this match.";
+  if (seat.status === "bankrupt") return "You went bankrupt — watching from here.";
+  if (seat.exit_reason === "autopilot_forced") {
+    return "You were retired after missing too many turns in a row — watching from here.";
+  }
+  if (seat.exit_reason === "departed") return "You were removed from this match — watching from here.";
+  return "You retired from this match — watching from here.";
 }
 
 /**

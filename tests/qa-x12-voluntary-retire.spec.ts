@@ -54,7 +54,10 @@ test('city: a player can voluntarily retire mid-match and the match carries on',
   await p3.getByRole('button', { name: /^yes, retire$/i }).click();
   await p3.waitForTimeout(1500);
 
-  await expect(p3.getByText(/you're out of this match/i)).toBeVisible({ timeout: 15000 });
+  // BUG-007 round H: spectator text now distinguishes why a seat left
+  // (voluntary/departed/autopilot_forced/bankrupt) instead of one generic
+  // sentence for every exit path.
+  await expect(p3.getByText(/you retired from this match/i)).toBeVisible({ timeout: 15000 });
   // Retiring twice is refused server-side (CITY_SEAT_OUT); the control
   // shouldn't even be offered once the seat is already out.
   await expect(p3.getByRole('button', { name: /^retire$/i })).toHaveCount(0);

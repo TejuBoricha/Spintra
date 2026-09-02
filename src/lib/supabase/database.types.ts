@@ -377,6 +377,7 @@ export type Database = {
           consecutive_autopilot_turns: number
           detention_turns: number
           disconnected_at: string | null
+          exit_reason: string | null
           final_net_worth: number | null
           id: string
           in_detention: boolean
@@ -398,6 +399,7 @@ export type Database = {
           consecutive_autopilot_turns?: number
           detention_turns?: number
           disconnected_at?: string | null
+          exit_reason?: string | null
           final_net_worth?: number | null
           id?: string
           in_detention?: boolean
@@ -419,6 +421,7 @@ export type Database = {
           consecutive_autopilot_turns?: number
           detention_turns?: number
           disconnected_at?: string | null
+          exit_reason?: string | null
           final_net_worth?: number | null
           id?: string
           in_detention?: boolean
@@ -460,6 +463,7 @@ export type Database = {
           created_at: string
           created_by: string
           current_seat: number | null
+          debt_started_at: string | null
           doubles_count: number
           finished_at: string | null
           id: string
@@ -490,6 +494,7 @@ export type Database = {
           created_at?: string
           created_by: string
           current_seat?: number | null
+          debt_started_at?: string | null
           doubles_count?: number
           finished_at?: string | null
           id?: string
@@ -520,6 +525,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           current_seat?: number | null
+          debt_started_at?: string | null
           doubles_count?: number
           finished_at?: string | null
           id?: string
@@ -1098,6 +1104,7 @@ export type Database = {
           consecutive_autopilot_turns: number
           detention_turns: number
           disconnected_at: string | null
+          exit_reason: string | null
           final_net_worth: number | null
           id: string
           in_detention: boolean
@@ -1187,6 +1194,7 @@ export type Database = {
         Args: { p_match_id: string; p_reason: string }
         Returns: Json
       }
+      city_grant_reroll: { Args: { p_match_id: string }; Returns: undefined }
       city_join_seat: {
         Args: { p_match_id: string; p_username: string }
         Returns: number

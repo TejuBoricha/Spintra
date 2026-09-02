@@ -199,7 +199,7 @@
     <tr><td><code>BUG-022</code></td><td>Migration <code>0082</code> — city-type rooms skip the room-capacity trigger entirely (FR-38); match seats already carry their own independent 8-seat cap</td><td>Regression harness: a 3rd, non-seated joiner succeeds in a full 2-capacity city room; a same-capacity non-city room still refuses one</td></tr>
     <tr><td><code>BUG-033</code></td><td>Migration <code>0082</code> (pace) + client fix (spectator status) — city_create_match gained a validated p_pace_seconds parameter with a lobby preset UI (FR-42); the status line now also covers a never-seated room member (FR-36)</td><td>Regression harness plus two live proofs: the host's chosen pace lands in the match row; a never-seated onlooker reads "You're spectating this match"</td></tr>
     <tr><td><code>BUG-006</code></td><td><code>city-match-shell.tsx</code> — a <code>TurnCountdown</code> component ticks client-side against the same <code>turn_started_at + pace_seconds</code> deadline <code>city_claim_timeout</code> itself re-derives server-side, gated on the exact same conditions as the existing auto-claim effect</td><td>Live proof: backdated the clock to 5 seconds remaining, watched the on-screen timer read <code>0:04</code> then <code>0:02</code> two seconds later — genuinely ticking, not frozen</td></tr>
-    <tr><td><code>BUG-007</code></td><td><code>0083</code>–<code>0089</code>, seven further rounds (E, A, B, C, D, F, G) — see the dedicated subsection below, this row is a pointer, not the detail</td><td>47-assertion SQL regression harness plus five dedicated live two-browser Playwright specs</td></tr>
+    <tr><td><code>BUG-007</code></td><td><code>0083</code>–<code>0090</code>, eight rounds (E, A, B, C, D, F, G, H) — see the dedicated subsections below, this row is a pointer, not the detail</td><td>55-assertion SQL regression harness plus 11 dedicated live two-browser Playwright specs</td></tr>
   </tbody>
 </table>
 </div>
@@ -401,6 +401,50 @@
   behind every design decision and every bug found, is in <code>QA_PROGRESS.md</code>.
 </p>
 
+<h2 id="bug-007-h" style="margin-top:28px">Round H — asked to re-check, and BUG-007 was not actually done</h2>
+<p>
+  Asked directly whether anything was still pending after the section above reported BUG-007
+  closed, a first pass found three client-side pieces the approved plan had explicitly promised
+  (an away badge, an autopilot badge, an auction away-bidder reflection) but that were never
+  built — a real gap in what "closed" meant, caught only because the question was asked twice.
+  Given that, four independent fresh-context audits — FR coverage, regression-harness
+  genuineness, client completeness, cross-round regression — ran in parallel, each instructed to
+  find gaps rather than confirm success, none aware of the others' findings or this session's own
+  narrative. They found <strong>five further real, reachable bugs</strong>, not edge cases:
+  forced liquidation shared the ordinary pace clock instead of its own spec-mandated fixed 90s
+  window; a doubles re-roll could corrupt the 90s/turn trade-pause budget; the trade-pause 45s
+  escape hatch (rounds F/G) was fully correct and fully tested at the SQL level but
+  <strong>unreachable from any real client</strong> — the only code path that ever calls
+  <code>claimTimeout()</code> unconditionally skipped doing so whenever the turn clock was
+  paused, which a trade pause always sets; a retired/bankrupt seat's badge showed stale
+  "Away"/autopilot state forever; and a narrow all-away-during-auction case never reached the
+  durable pause. Fixing the second of these, by hand, surfaced <strong>a sixth</strong>:
+  <code>city_claim_timeout</code>'s own fallback branch never checked for an owed doubles
+  re-roll at all, silently discarding one whenever anyone else's client noticed the stalled
+  clock. All six fixed in migration <code>0090</code>, with 8 new regression-harness assertions
+  closing both the bugs and a verification gap the audits found (the existing auto-liquidation
+  test bypassed both of its real callers).
+</p>
+<p style="margin-top:14px">
+  Live two-browser testing of the fifth bug's fix — proposing a trade and genuinely waiting 45+
+  real seconds with no click from either side — then surfaced <strong>a seventh bug no SQL
+  assertion, live spec, or audit had found</strong>: resuming a trade pause shifts the turn clock
+  forward by the pause duration, which for a trade proposed early in a turn leaves most of the
+  ordinary turn clock still owed; the old escape-hatch code fell through to that ordinary
+  deadline check regardless and raised an exception, which <strong>rolled back the entire
+  transaction — undoing the resume the same call had just made.</strong> The SQL suite's own
+  test for this exact mechanism never caught it because it deliberately backdated the whole turn
+  far enough that this could never happen; a real client proposing a trade near the start of a
+  turn hit this on every single attempt. Fixed by returning success once the pause clears, rather
+  than falling through into a check that could erase it. A 9th new assertion and a new live spec
+  (<code>qa-x14</code>) both confirm the fix directly. Final count: <strong>55/55 SQL
+  assertions, 11/11 live specs</strong> (the 10 above plus <code>qa-x14</code>, with
+  <code>qa-x12</code>'s own text updated for round H's new exit-reason-aware copy). Full detail,
+  including every audit's exact findings and the reasoning behind each fix, is in
+  <code>QA_PROGRESS.md</code>. Nothing has touched production; migration <code>0090</code> is
+  local-only, same as every migration in this session.
+</p>
+
 <h3>Updated numbers</h3>
 <div class="scroll">
 <table>
@@ -420,7 +464,7 @@
   remains NOT READY, because nothing has been deployed to it — the verdict is accurate as a
   description of production today. The local codebase's blocking-defect count has gone from
   4 criticals to 0, which is the precondition for reconsidering that verdict, not a substitute
-  for actually shipping migrations <code>0071</code>–<code>0089</code> and re-running this audit
+  for actually shipping migrations <code>0071</code>–<code>0090</code> and re-running this audit
   against production once they are.
 </div>
 
@@ -1014,7 +1058,7 @@ const HIGHS = [
   ["BUG-005","A player charged off-turn is stalled with a debt they cannot settle","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0077</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). <code>city_charge</code> sets the raise-funds phase only for the current seat, while <code>city_assert_can_manage</code> gates mortgage, sell, build, unmortgage <em>and</em> <code>declare_bankruptcy</code> on being the current seat. A \"collect from every player\" card leaves the payer with <code>pending_debt</code> and no legal action, and the card reported <code>\"total\": 200</code> when only 100 moved. <strong>Re-test correction:</strong> the freeze is temporary — the payer recovers on their own turn, so this is a stall of up to N−1 turns, not a permanent deadlock. Downgraded from CRITICAL. It also enables BUG-044."],
   ["BUG-038","Two realtime subscriptions are global, not per-match — upgraded on re-test","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (<code>use-city-match.ts</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). <code>city_auctions</code> and <code>city_trade_offers</code> subscribe with no filter and call a bare <code>refetch()</code>. Proven behaviourally: a trade in a completely separate room made idle clients in another match run a full 5-query refetch. Both tables also carry RLS <code>USING (true)</code>, so no row-level gate compensates. Cross-tenant amplification."],
   ["BUG-006","Turn clock is decorative","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0076</code>, plus a client-only fix in round 8 &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). <code>turn_started_at</code>, <code>turn_clock_elapsed_ms</code> and <code>turn_clock_paused_at</code> were only ever written (reset on turn change) and never read for expiry, and <code>pace_seconds</code> was never written or read, so the countdown a player saw had no consequence. <code>city_claim_timeout</code> (0076) gave the clock a real server-side consequence; round 8 closed the remaining gap with a visible, ticking client-side countdown against the same deadline."],
-  ["BUG-007","20 MUST requirements unimplemented","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-02</strong> (migrations <code>0083</code>&ndash;<code>0089</code>, seven further rounds &mdash; <a href='#bug-007' style='color:var(--pass)'>BUG-007 closed</a>). FR-25–33 and FR-41–51: disconnect grace, autopilot, forced retire, voluntary retire, host kick, durable pause, the clock model, sub-clocks, timeout defaults. The <code>'paused'</code> and <code>'retired'</code> statuses appeared in constraints but were never set by any code — <code>'retired'</code> was actually already being set by the time this fix phase reached this bug (migration <code>0074</code>'s kick/leave trigger, closed earlier in the eight-round phase above); <code>'paused'</code> is now genuinely written for the first time, by the durable-pause round (<code>0087</code>)."],
+  ["BUG-007","20 MUST requirements unimplemented","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-02</strong> (migrations <code>0083</code>&ndash;<code>0090</code>, eight rounds &mdash; <a href='#bug-007' style='color:var(--pass)'>BUG-007 closed</a>, <a href='#bug-007-h' style='color:var(--pass)'>round H</a>). FR-25–33 and FR-41–51: disconnect grace, autopilot, forced retire, voluntary retire, host kick, durable pause, the clock model, sub-clocks, timeout defaults. The <code>'paused'</code> and <code>'retired'</code> statuses appeared in constraints but were never set by any code — <code>'retired'</code> was actually already being set by the time this fix phase reached this bug (migration <code>0074</code>'s kick/leave trigger, closed earlier in the eight-round phase above); <code>'paused'</code> is now genuinely written for the first time, by the durable-pause round (<code>0087</code>). Round H (<code>0090</code>) then closed seven further real bugs a user-requested adversarial re-audit found after this arc first reported the bug closed."],
   ["BUG-008","city_settle_auction(p_force) is client-callable and unauthenticated","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0071</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). <code>p_force</code> skips both the advisory lock and the deadline check. Verified over HTTP with <strong>no JWT at all</strong>: it returns <code>CITY_NO_AUCTION</code> where sibling RPCs correctly return <code>CITY_NOT_AUTHENTICATED</code> — it has no auth check whatsoever. Any visitor can close any room's auction early; two parallel force-settles charge the winner twice, destroying money."],
   ["BUG-009","Declining while in debt auctions an owned property and destroys cash","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0071</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). <code>city_decline_purchase</code> checks only the phase, which <code>city_charge</code> also sets for raise-funds, and never checks the space is unowned. The auction winner is charged while the <code>on conflict do nothing</code> insert transfers nothing. 100 Spins vanished in the repro."],
   ["BUG-010","A finished match can be re-opened and mutated","<strong style='color:var(--pass)'>&#10003; Fixed 2026-09-01</strong> (migration <code>0071</code> &mdash; <a href='#fix-phase' style='color:var(--pass)'>Fix phase update</a>). <code>city_decline_purchase</code> has no <code>status &lt;&gt; 'active'</code> check, and <code>city_finish_match</code> nulls both <code>phase</code> and <code>current_seat</code>, so its two remaining guards evaluate to <code>NULL</code> rather than true and silently pass. Property transferred and cash deducted after scores and XP were written."],

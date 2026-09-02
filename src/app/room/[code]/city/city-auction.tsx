@@ -41,9 +41,16 @@ export function CityAuction({
     new Date(auction.hard_ends_at).getTime()
   );
   const [left, setLeft] = useState(() => Math.max(0, deadline - Date.now()));
+  // Same tick also drives the away-bidder check below without reading the
+  // impure Date.now() during render.
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    const tick = () => setLeft(Math.max(0, deadline - Date.now()));
+    const tick = () => {
+      const n = Date.now();
+      setNow(n);
+      setLeft(Math.max(0, deadline - n));
+    };
     tick();
     const t = setInterval(tick, 250);
     return () => clearInterval(t);
@@ -100,6 +107,15 @@ export function CityAuction({
           .map((s) => {
             const passed = auction.passed_seats.includes(s.seat);
             const high = auction.high_seat === s.seat;
+            // BUG-007 round G: city_pass_auction excludes an away seat from the
+            // "has everyone eligible passed" count without writing it into
+            // passed_seats (it isn't a real pass — reconnecting still lets them
+            // bid) — so this is read the same way, off disconnected_at, rather
+            // than off the array.
+            const away =
+              !high &&
+              !!s.disconnected_at &&
+              now - new Date(s.disconnected_at).getTime() >= 60_000;
             return (
               <li
                 key={s.seat}
@@ -111,7 +127,9 @@ export function CityAuction({
                     ? `high bid ${auction.high_bid.toLocaleString()}`
                     : passed
                       ? "passed"
-                      : `${s.cash.toLocaleString()} available`}
+                      : away
+                        ? "away — skipped"
+                        : `${s.cash.toLocaleString()} available`}
                 </span>
               </li>
             );
