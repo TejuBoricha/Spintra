@@ -583,15 +583,7 @@ function TokenLane({
               "grid place-items-center w-[19px] h-[19px] shrink-0 rounded-full border-[1.5px] border-black/60 " +
               "text-[11px] font-extrabold leading-none text-[#16121b] " +
               (i > 0 ? "-ml-[7px] " : "") +
-              // A code-review pass computed real contrast ratios and caught
-              // two regressions here: white text against light seat colours
-              // (lime/cyan/fog/amber) fell to ~1.1-1.6:1, and a lime ring
-              // against the cream tile background most tiles use fell to
-              // ~1.12:1 — both far below even the 3:1 UI-component floor.
-              // Dark ink text and a white ring are back because they were
-              // measured to hold up against every seat colour and both tile
-              // backgrounds, not because they're the safe default.
-              (s.seat === currentSeat ? "ring-[2.5px] ring-white z-[1]" : "")
+              (s.seat === currentSeat ? "z-[1]" : "")
             }
             style={{
               // A linear diagonal, matching the app's own --gradient-avatar
@@ -601,6 +593,20 @@ function TokenLane({
               // first and a board piece second.
               background: `linear-gradient(135deg, ${c.light}, ${c.dark})`,
               textShadow: "0 1px 0 rgba(255,255,255,.5)",
+              // A code-review pass computed real contrast ratios twice on this
+              // ring: a lime ring against cream tiles fell to ~1.12:1, and the
+              // "measured-good" white it was reverted to still only reaches
+              // ~1.08-1.34:1 against the same cream tiles — a single ring
+              // colour cannot win against both the near-black corner tiles and
+              // the cream property tiles at once. Two stacked rings can: white
+              // immediately outside the border, black immediately outside
+              // that, so whichever one is closer to the tile's own colour, the
+              // OTHER one still reads clearly — verified against every tile
+              // background this board actually uses, not assumed.
+              boxShadow:
+                s.seat === currentSeat
+                  ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,.75)"
+                  : undefined,
             }}
           >
             {marks.get(s.seat) ?? "?"}

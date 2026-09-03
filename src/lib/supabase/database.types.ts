@@ -1183,6 +1183,7 @@ export type Database = {
         Args: {
           p_amount: number
           p_creditor_seat: number
+          p_kind: string
           p_match_id: string
           p_seat: number
         }

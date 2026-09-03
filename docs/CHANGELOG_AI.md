@@ -2228,3 +2228,27 @@ Plus a real, confirmed data-correctness bug (the `0082` mortgage-rounding fix wa
 **Risks:**
 - **Still local only — not applied to production.** Migrations `0093`–`0095` exist only on local Supabase; production remains at `0001`–`0092`.
 - The 5 lower-priority findings this pass didn't touch structurally further (the CHECK constraint covers the enum concern; the shared-insert-helper idea itself was deliberately not built, judged higher risk than value for now — see migration `0095`'s own comment) remain exactly what they were: real, logged, not blocking.
+
+---
+
+## [2026-09-04] — Session 66 (continued): second review round, on the fix commit itself
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** User: "yes" — ran `code-review` again, this time against the fix commit from the entry above (`aefd6cb`), per the same standing rule: review gates every commit, including a commit whose entire purpose was fixing the previous review's findings.
+
+**Findings:** 6, all confirmed on inspection before fixing:
+1. The token-ring "fix" reverted to `ring-white`, but the commit's own claim of having "measured" it against every tile background was false — white against the cream property-tile background computes to ~1.08–1.34:1, essentially the same failure the lime ring it replaced had. No single ring colour can read against both the near-black corner tiles and the cream property tiles at once.
+2. This session's own documentation said the regression suite was "57→58 SQL assertions," but the code in the same commit sets `EXPECTED_SQL_ASSERTIONS = 56` — a real conflation between the **total** displayed PASS count (57→58, correct everywhere else) and the **SQL-only** assertion count (55→56, correct in the code, mislabeled as "57→58" in migration `0095`'s own comment specifically). Left uncorrected in `0095.sql` itself (a pure-comment edit to an already-applied migration still isn't worth the precedent), corrected here for the record: `EXPECTED_SQL_ASSERTIONS` is 55→56; the 57→58 figure everywhere else refers to the total including the 2 source-level checks (`BUG-013`, `BUG-038`), which is accurate.
+3. `database.types.ts` was never regenerated after migration `0094` changed `city_charge`'s signature — harmless today (the function is revoked from every client role and never called via `supabase.rpc()`), but stale generated output is exactly the kind of drift this repo has hit before.
+4. The new reconnect catch-up (`fetchNewEvents()` on `SUBSCRIBED`) had no `.limit()`, and could race a concurrent match-transition's synchronous `lastEventIdRef.current = 0` reset — in that narrow window, "fetch what's new" became "fetch every event the match has ever logged," unbounded.
+5. The `matchIdRef.current !== loadingFor` staleness guard added to the initial-load effect was genuinely dead code — the pre-existing `cancelled` closure variable, on an effect keyed to `match?.id`, already discards a stale response for the exact scenario the added check targeted. Confirmed by tracing effect-cleanup ordering, not just taking the finding's word for it.
+6. `CityActivityFeed`'s `React.memo` comment overstated its real-world benefit — `seats` gets a fresh array from nearly every realtime `refetch()` during actual play (auction/trade/player-row pings all trigger it), so the memo mostly helps only the idle-UI case (selecting a tile, opening a dialog), not "most re-renders" as written.
+
+**Files Modified:**
+- `src/app/room/[code]/city/city-board.tsx` — the current-turn ring is now a stacked box-shadow (white immediately outside the border, black immediately outside that) instead of a single Tailwind `ring` colour, so one of the two always contrasts against whatever tile it's on; verified live on a cream property tile with the lime seat colour, the specific combination the finding named.
+- `src/app/room/[code]/city/use-city-match.ts` — removed the dead `matchIdRef` check from the initial-load effect (kept the real one in `fetchNewEvents`, which isn't tied to a `match?.id`-keyed effect and has no `cancelled` equivalent); `fetchNewEvents` gained `.limit(500)`.
+- `src/app/room/[code]/city/city-activity-feed.tsx` — corrected the memo comment to describe what it actually skips.
+- `src/lib/supabase/database.types.ts` — regenerated (1 line changed: `city_charge`'s `Args` gains `p_kind`).
+
+**Verified:** the ring fix via a live screenshot (lime seat, cream property tile, both rings visible), typecheck/lint clean, full regression suite still 58/58 (no schema changes this round, so no fresh replay needed), `npm run verify` clean.
+
+**A repeated process note:** the live-verification pass for this round again needed `.env.local` re-pointed to local Supabase and back — checked explicitly this time before starting, unlike the previous round's accidental production hit.

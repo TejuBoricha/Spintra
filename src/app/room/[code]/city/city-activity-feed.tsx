@@ -113,10 +113,14 @@ function describe(
 // since neither this component nor CityBoard's sibling FlagDefs was
 // memoized, the one pattern this same directory already established
 // (SeatBadge/TurnCountdown in city-match-shell.tsx) for exactly this
-// reason. events/seats/board keep the same array reference across an
-// unrelated re-render (they're plain useState values in use-city-match.ts,
-// untouched unless their own setter runs), so the default shallow
-// comparison is enough — no custom comparator needed.
+// reason. The default shallow comparison bails out correctly for that
+// specific case (events/seats/board keep the same array reference across a
+// purely-local re-render). A second review pass flagged that this is
+// narrower relief than it sounds: during active play, `seats` gets a fresh
+// array from every doRefetch() — which auction/trade/player-row realtime
+// pings all trigger — so the memo's actual hit rate is "skips the idle
+// moments," not "skips most re-renders." Kept anyway: correct, free, and
+// the idle case is real even if it's not the dominant one.
 export const CityActivityFeed = memo(function CityActivityFeed({
   events,
   seats,

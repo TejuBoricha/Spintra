@@ -531,12 +531,17 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
         .eq("match_id", loadingFor)
         .order("id", { ascending: false })
         .limit(200);
-      // Discard a response that arrives after the match has already moved
-      // on (a post-match flow can open a fresh match in the same room
-      // without remounting this hook) — otherwise a slow reload for the
-      // OLD match could land after the NEW match's own state is already up,
-      // merging stale rows from the wrong match into the current feed.
-      if (cancelled || matchIdRef.current !== loadingFor) return;
+      // A slow reload for the OLD match landing after the NEW match's own
+      // state is already up would merge stale rows into the current feed —
+      // `cancelled` alone already prevents this: this effect is keyed on
+      // match?.id, so a match change tears down THIS instance (setting its
+      // own `cancelled = true`) before the new instance's effect ever runs.
+      // (A second check against matchIdRef.current was here too at one
+      // point; a code-review pass confirmed it was permanently redundant
+      // with `cancelled` for this specific effect, since both close over the
+      // same match?.id transition — removed rather than kept as defensive
+      // clutter with no actual guarantee behind it.)
+      if (cancelled) return;
       if (eventsError) {
         console.error("Failed to load the city activity feed:", eventsError);
         return;
@@ -564,6 +569,14 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   // a response resolving after the match itself changed. mergeEvents (byid,
   // above) makes a duplicate fetch a no-op instead of a duplicate row; the
   // matchIdRef check discards a response for a match that's no longer live.
+  // The .limit below is a second-pass fix: this now also fires on realtime
+  // reconnect (below), which can race the initial-load effect's own
+  // synchronous `lastEventIdRef.current = 0` reset for a brand-new match —
+  // without a cap, that combination turns "fetch what's new" into "fetch
+  // every event the match has ever logged" in one unbounded query. 500 is
+  // generous headroom over the 200-row initial page; a match logging more
+  // than that between two realtime pings is not a case this needs to handle
+  // in one round trip — the next ping catches up the rest.
   const fetchNewEvents = useCallback(async () => {
     if (!supabase || !matchIdRef.current) return;
     const fetchingFor = matchIdRef.current;
@@ -572,7 +585,8 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
       .select("id, created_at, kind, actor_seat, payload")
       .eq("match_id", fetchingFor)
       .gt("id", lastEventIdRef.current)
-      .order("id", { ascending: true });
+      .order("id", { ascending: true })
+      .limit(500);
     if (matchIdRef.current !== fetchingFor) return;
     if (eventsError) {
       console.error("Failed to load new city activity events:", eventsError);
