@@ -331,6 +331,18 @@ function TileFace({
   );
 }
 
+// Up to 8 players can genuinely stack on one space (a corner tile especially
+// — Layover/Detained/Departure/Customs see disproportionate traffic). A
+// plain gapped row of 19px discs only has room for 2-3 before it overflows
+// its lane and the tile's own overflow-hidden silently clips the rest —
+// invisible, not just cramped, since a clipped token leaves no trace it was
+// ever there. Fixed two ways: tokens after the first overlap (card-fan
+// style) instead of each claiming full width, and a hard cap beyond which
+// the remainder collapse into a single "+N" badge rather than attempting to
+// cram every token in — every player is still represented, none silently
+// disappear, and the tile's own name never has to lose space to make room.
+const MAX_VISIBLE_TOKENS = 4;
+
 function TokenLane({
   seats,
   marks,
@@ -340,9 +352,15 @@ function TokenLane({
   marks: Map<number, string>;
   currentSeat: number | null;
 }) {
+  if (seats.length === 0) return <span className="min-h-[21px]" aria-hidden="true" />;
+
+  const overflow = seats.length > MAX_VISIBLE_TOKENS;
+  const shown = overflow ? seats.slice(0, MAX_VISIBLE_TOKENS - 1) : seats;
+  const hidden = overflow ? seats.slice(MAX_VISIBLE_TOKENS - 1) : [];
+
   return (
-    <span className="flex shrink-0 min-h-[21px] items-center justify-center gap-[2px] px-[2px] pb-[3px]">
-      {seats.map((s) => {
+    <span className="flex shrink-0 min-h-[21px] items-center justify-center px-[2px] pb-[3px]">
+      {shown.map((s, i) => {
         const c = SEAT_COLOURS[s.seat % 8];
         return (
           <span
@@ -351,7 +369,8 @@ function TokenLane({
             className={
               "grid place-items-center w-[19px] h-[19px] shrink-0 rounded-full border-[1.5px] border-black/60 " +
               "text-[11px] font-extrabold leading-none text-[#16121b] " +
-              (s.seat === currentSeat ? "ring-[2.5px] ring-white" : "")
+              (i > 0 ? "-ml-[7px] " : "") +
+              (s.seat === currentSeat ? "ring-[2.5px] ring-white z-[1]" : "")
             }
             style={{
               background: `radial-gradient(circle at 34% 28%, rgba(255,255,255,.9), ${c.light} 42%, ${c.dark})`,
@@ -362,6 +381,14 @@ function TokenLane({
           </span>
         );
       })}
+      {overflow && (
+        <span
+          title={hidden.map((s) => s.username).join(", ")}
+          className="grid place-items-center w-[19px] h-[19px] shrink-0 -ml-[7px] rounded-full border-[1.5px] border-black/60 bg-black text-[9px] font-extrabold leading-none text-white"
+        >
+          +{hidden.length}
+        </span>
+      )}
     </span>
   );
 }

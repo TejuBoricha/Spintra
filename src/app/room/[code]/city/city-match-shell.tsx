@@ -233,7 +233,10 @@ export function CityMatchShell() {
   // auction or none" (use-city-match.ts's own model), so it going from
   // populated to null on any client is unambiguously a real settle, not a
   // network blip — safe to announce to everyone watching, every time.
+  // Marks the space in announcedPurchaseSpacesRef so the direct-purchase
+  // effect below doesn't also announce the same acquisition a second time.
   const prevAuctionRef = useRef<CityAuctionState | null>(null);
+  const announcedPurchaseSpacesRef = useRef<Set<number>>(new Set());
   useEffect(() => {
     if (auction) {
       prevAuctionRef.current = auction;
@@ -250,10 +253,37 @@ export function CityMatchShell() {
       toast.success(
         `${winner?.username ?? "Someone"} won ${name} for ${last.high_bid.toLocaleString()}.`
       );
+      announcedPurchaseSpacesRef.current.add(last.space_idx);
     } else {
       toast(`Nobody bid on ${name} — it stays with the bank.`);
     }
   }, [auction, seats, board]);
+
+  // A direct purchase (as opposed to an auction win, announced above) had no
+  // feed of its own at all — nothing told the other players at the table
+  // who now owns what, beyond a colour stripe on the board they'd have to
+  // decode themselves. A space_idx newly appearing in `assets` is
+  // unambiguously a fresh acquisition (buying is the only way a space gains
+  // its first owner); skips the very first render so joining a match with
+  // existing holdings doesn't replay every prior purchase as a toast.
+  const prevAssetSpacesRef = useRef<Set<number> | null>(null);
+  useEffect(() => {
+    const current = new Set(assets.map((a) => a.space_idx));
+    const prev = prevAssetSpacesRef.current;
+    prevAssetSpacesRef.current = current;
+    if (!prev) return;
+
+    for (const a of assets) {
+      if (prev.has(a.space_idx)) continue;
+      if (announcedPurchaseSpacesRef.current.delete(a.space_idx)) continue;
+      const space = board[a.space_idx];
+      const owner = seats.find((s) => s.seat === a.owner_seat);
+      toast.success(
+        `${owner?.username ?? "Someone"} bought ${space?.name ?? "a property"}` +
+          (space?.price != null ? ` for ${space.price.toLocaleString()}.` : ".")
+      );
+    }
+  }, [assets, board, seats]);
 
   if (isDemoMode) {
     return (
