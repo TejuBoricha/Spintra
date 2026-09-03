@@ -2072,3 +2072,49 @@ User asked to prep `/api/health` for an external monitor. The endpoint (`src/app
 - **Nothing production-facing was touched.** No push, no PR, no migration applied to production, no merge, no deploy — all deliberately held for the user's explicit go-ahead per this session's instruction.
 - **The pre-existing `npm audit` failures (10 high) are unaddressed** — flagged, not fixed; a `main`-wide dependency bump is a separate task from City launch readiness.
 - **`supabase_vector_Spintra-1` (the local stack's log-shipping container) was observed crash-looping** (`ConnectionRefused` to the Docker socket, restarting every ~9s) throughout this session — noted, not fixed. It's the analytics/log-forwarding container, not on the path of anything the app or its tests depend on, so it wasn't chased further, but a future session should know it's not healthy if debugging anything log-related locally.
+
+---
+
+## [2026-09-03] — Session 66 (continued): PR #43 pushed, `/code-review high` (2 rounds, 20 agents), 8 fixes verified live
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** Push the branch, open PR #43, run a code review against it (`gh` wasn't authenticated on this machine — root-caused as a separate tool from git's own working credential, not a permission withheld; resolved once the user ran `gh auth login`), then fix everything the review found.
+
+**PR:** `feat/spintra-city-design` pushed and https://github.com/TejuBoricha/Spintra/pull/43 opened against `main`. Not merged.
+
+**Review outcome:** two rounds of 10 parallel finder agents (`/code-review high`, no `ultra`) against the diff, deliberately re-run a second time given the first round's coverage gaps, then personally verified against the actual final SQL bodies (tracing each `create or replace function`'s *last* redefinition across the 29 migrations, not trusting agent paraphrase) rather than reported on the agents' word alone. Two bugs were independently rediscovered by 5+ separate agents across both rounds — treated as effectively confirmed before verification even started, and verification confirmed both:
+
+1. **Bankruptcy permanently deadlocked the match** — `city_declare_bankruptcy`/`city_bankrupt_seat` never handed off the turn (unlike `city_retire_seat`'s existing pattern), reachable through the ordinary "Declare Bankruptcy" button whenever it wasn't the last-player-standing case.
+2. **A finished, already-scored match could be resurrected** with a live-looking turn state — `city_advance_turn`'s UPDATE had no `status = 'active'` guard, so the autopilot cascade calling it right after a nested `city_finish_match` would write current_seat/phase back onto the finished row.
+
+Plus a real, confirmed data-correctness bug (the `0082` mortgage-rounding fix was applied to one of four functions doing the same "half of build/mortgage value" calculation, not all four) and 9 more well-evidenced findings of varying severity. Full detail and every agent's verbatim output: this conversation's transcript; the consolidated, verdict-tagged list was filed via `ReportFindings`, not duplicated here.
+
+**Fixes — new migration `supabase/migrations/0092_spintra_city_pr43_review_fixes.sql`** (8 function redefinitions):
+- `city_advance_turn` — added `and status = 'active'`, closing #2 for every caller, not just the one found; also fixed a related gap where a seat with pending debt becoming newly-current got `phase='awaiting_roll'` instead of `'required_decision'` with a fresh `debt_started_at`.
+- `city_bankrupt_seat` — added the turn-handoff (mirrors `city_retire_seat` exactly: advance the turn only when not finishing the match), closing #1. Also fixed its building-valuation rounding.
+- `city_max_liquidation`, `city_sell_building_core` — same rounding fix (`round(x / 2.0)`, matching the `0082` fix these two had been missed by).
+- `city_leave_detention_core` — a `'bankrupt'` outcome from `city_charge` is no longer folded into "released"; the failed-roll branch also now refreshes `turn_started_at`.
+- `city_decline_purchase_core` — same `turn_started_at` refresh, for the no-auction branch.
+- `city_buy_property` — added the bankrupt/retired seat-out check every sibling management action gets via `city_assert_can_manage` (this function predates that helper).
+- `city_end_turn_core` — added a trade-pause guard (`CITY_TURN_CLOCK_PAUSED`). **Caught a self-introduced regression before calling this done**: the first placement (before the doubles-reroll branch) broke the existing `BUG-007-H-doubles-tradepause` regression test, since a doubles re-roll isn't a hand-off and `city_grant_reroll` already resolves the pause correctly — moved the guard to after that branch, re-ran the suite, confirmed 57/57 again.
+
+**Client-side fixes** (`src/app/room/[code]/city/`):
+- `use-city-match.ts`: `settleAuction`/`claimTimeout` no longer silently swallow genuine RPC errors (still silent for the specific expected-race codes, `console.error` + surfaced otherwise); stale roll narration now clears on every turn change, not just via the roller's own `endTurn()` — implemented as a render-time state adjustment (React's documented pattern), not a `useEffect`, after `eslint`'s `react-hooks/set-state-in-effect` rule correctly flagged the first attempt.
+- `city-match-shell.tsx`: `canEnd` now also checks the trade-pause flag; the per-seat "Away" badge's 5s ticker was extracted into a new memoized `SeatBadge` component owning its own tick (only while that seat is actually disconnected) instead of re-rendering the whole board/holdings/trade/auction subtree from the shell's root every 5s.
+
+**Process fixes:**
+- `npm run test:city-regression` (the 57-case harness, previously never wired into any automated gate) added to `.github/workflows/ci.yml`'s `db-integration` job, right after `supabase db reset` — fastest possible signal, no app build needed.
+- `docs/TASKS.md` gained the `.glass`/`.glass-card` doc-bug entry that `CHANGELOG_AI.md`/`HANDOFF.md` had mentioned as "worth fixing" across two sessions without ever actually logging it, per `AI_RULES.md`'s Technical Debt Logging rule.
+- **Deliberately not fixed**: the 16-file test-helper duplication finding (`tests/qa-city-helpers.ts` is unreachable dead code; every `qa-x*.spec.ts` file reimplements the same docker-exec/cookie-accept helpers inline). Real and confirmed, but consolidating 16 already-passing, delicate multi-browser-context E2E files carries meaningfully more regression risk than reward for a pure maintainability win — flagged to the user rather than done silently.
+
+**Verification, in order:**
+- `0092` applied via `supabase migration up` against the already-92-migrations-deep local Docker instance — clean.
+- `npm run test:city-regression` — 57/57 (this run caught the `city_end_turn_core` guard-placement bug above).
+- Guard fixed, re-applied directly via `psql` (the single function only, since `0092` was already tracked as applied and re-running `migration up` wouldn't touch it), re-ran — 57/57.
+- **A genuinely fresh `supabase db reset` from `0001` through the corrected `0092`** (hit the same pre-existing local-only `realtime.messages` ownership quirk from earlier this session; repaired the same way — `alter table ... owner to postgres` as `supabase_admin`, then `migration up` instead of `db reset` to avoid re-triggering it) — all 92 migrations replayed clean, confirming the migration *file itself* is correct, not just the live-patched state. `test:city-regression` — 57/57 again on the truly fresh database.
+- `npm run typecheck` — clean. `npm run lint` — caught the `set-state-in-effect` violation on the first `lastRoll` fix attempt; clean after the render-time-adjustment rewrite. `npm run docs:check` — caught the new migration missing from `ARCHITECTURE.md`'s table; clean after adding the entry (plus updating the "current status" line to say `0092`, not `0091`). `npm run build` — clean, all 44 routes.
+- **Two targeted live reproductions, beyond the pre-existing regression suite** (which didn't cover either exact scenario before this session): a real `city_declare_bankruptcy` call on an in-debt current-turn seat in a 3-player match, confirming `current_seat` handed off to the next seat, `phase` came back correct, and the new current seat could actually call `city_roll_dice` successfully (genuinely playable, not just superficially unstuck) — **PASS**. A real 2nd-to-last-player bankruptcy finishing a match, followed by the exact `city_advance_turn` call the autopilot cascade makes next, confirming `current_seat`/`phase` stayed `null` and `status` stayed `'finished'` — **PASS**.
+
+**Risks:**
+- **The other 10 lower-severity `PLAUSIBLE` findings from the review were fixed on the strength of the finder agents' analysis plus my own reading of the surrounding code, not each individually reproduced live the way the two `CONFIRMED` critical bugs were.** Reasonable given the volume, but worth remembering these carry slightly less certainty than the two headline fixes.
+- **Migrations still not applied to production** — this entire fix pass happened on local Docker only, same as everything else in this feature. `0063`–`0092` all need to go live together.
+- **PR #43 is not merged.** Nothing here changed that.

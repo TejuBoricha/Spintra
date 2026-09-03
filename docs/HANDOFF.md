@@ -6,7 +6,15 @@ Portable session-continuity note for any AI assistant to resume work immediately
 
 ## Last Completed Task
 
-**2026-09-03: Spintra City readiness check + full CI/e2e verification + docs sync — COMPLETE (verification only; no production-facing action taken).**
+**2026-09-03: Spintra City readiness check + full CI/e2e verification + docs sync, then PR #43 opened + `/code-review high` (2 rounds) + 8 fixes, all live-verified — COMPLETE (still no migration applied to production, no merge).**
+
+**Follow-up to the verification pass below**: branch pushed, PR #43 opened (https://github.com/TejuBoricha/Spintra/pull/43). A 2-round, 20-agent code review against it found 2 critical bugs — independently rediscovered by 5+ separate agents each — plus 10 more findings. Both critical bugs were personally verified against the actual final SQL (not taken on agent word) and fixed in new migration `0092_spintra_city_pr43_review_fixes.sql`: (1) declaring bankruptcy permanently deadlocked the match (`city_bankrupt_seat` never handed off the turn — fixed by mirroring `city_retire_seat`'s existing pattern); (2) a finished, already-scored match could be resurrected with a live turn state (`city_advance_turn` had no `status='active'` guard — added). Both fixes were then live-reproduced end-to-end via direct psql scenarios (not just unit-level regression checks) — both PASS. 6 more SQL fixes (rounding-truncation family, detention-bankruptcy mislabeling, turn-clock-refresh gaps, a missing authorization guard) plus 4 client-side fixes (silent error swallowing, stale roll narration, a trade-pause gap, an unmemoized re-render) also applied and verified (`typecheck`/`lint`/`build`/`test:city-regression` all clean, including a genuinely fresh `db reset` replay through `0092`). One finding deliberately not fixed (16-file test-helper duplication — real, but not worth the regression risk of touching 16 already-passing E2E files for a style win) — flagged to the user, not silently dropped. Full detail: `CHANGELOG_AI.md`'s "Session 66 (continued)" entry.
+
+**Where this leaves things:** `SPINTRA_CITY_SPEC.md` §12 is still the authoritative checklist. PR #43 is open but unreviewed by a human; migrations `0063`–`0092` are still local-Docker-only, not applied to production; nothing merged or deployed.
+
+---
+
+## Prior state this same day (superseded by the above, kept for the full verification trail)
 
 The user asked "is our game ready to publish?" — investigation found that Spintra City (the design-phase feature from Session 65, below) had actually been **fully implemented since then**: 49 commits on local branch `feat/spintra-city-design` (never pushed to any remote) delivered all 7 vertical slices plus a cross-cutting reliability layer, then a 298-case QA audit (44 bugs found, all closed across 8+ fix rounds), then a visual/UX review pass. None of this was reflected in `AI_CONTEXT.md`/`HANDOFF.md`/`TASKS.md`/`SPINTRA_CITY_SPEC.md` — all still said "design phase, zero code." This entry is the correction.
 

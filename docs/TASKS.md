@@ -320,6 +320,11 @@ Pre-launch hardening — required before publishing the site publicly on the ope
   (all connection/auth-layer, zero assertion mismatches) — see `CHANGELOG_AI.md`; the economy has
   never been playtested by real users; board art and trademark clearance on "Spintra
   City"/"The Wheelworks" are still open, user-owned items.
+  **Follow-up:** PR #43 opened against `main`; a 2-round code review found 2 critical bugs
+  (bankruptcy deadlock, finished-match resurrection — both live-verified as fixed) plus 10 more
+  findings, 11 of 12 fixed in migration `0092` plus 4 client-side fixes (one test-helper-duplication
+  finding deliberately deferred — see `CHANGELOG_AI.md`). Migrations `0063`–`0092` still not applied
+  to production; PR not yet merged.
   `docs/SPINTRA_CITY_SPEC.md` is the wired-up engineering spec (requirements, traceability matrix,
   as-built status in §12); `docs/SPINTRA_CITY_DESIGN.md` holds the decision log;
   `docs/SPINTRA_CITY_CONTENT.md` holds the board content.
@@ -363,6 +368,7 @@ Pre-launch hardening — required before publishing the site publicly on the ope
 
 ## Low Priority
 
+- `[ ]` **`ARCHITECTURE.md` documents `.glass`/`.glass-card` Tailwind utility classes that don't exist.** Found during Session 65's Spintra City research and mentioned in `CHANGELOG_AI.md`/`HANDOFF.md` across two sessions since ("worth a separate fix") but never actually logged here — a gap in AI_RULES.md's Technical Debt Logging rule, closed by this entry. The real pattern is CSS custom properties consumed via Tailwind v4 arbitrary-value syntax (e.g. `bg-(--surface-glass-strong)`) — `ARCHITECTURE.md`'s relevant section needs correcting to describe that instead.
 - `[x]` **Trivia Database Migration:** Migrate the static [`src/lib/trivia-questions.ts`](file:///c:/Users/tejas/Desktop/Spintra-1/src/lib/trivia-questions.ts) file to a database table to support dynamic admin editing/moderation. Intentionally deferred — see `ENGINEERING_GOVERNANCE_REVIEW.md` §3 for the reasoning (hardcoded lists stay lightweight and support the offline `BroadcastChannel` fallback with zero DB setup). **Session 38 note:** the migration creating this table (`0010`) was discovered to have never actually applied in production (see `CHANGELOG_AI.md` Session 37/38) — fixed and re-applied for real; the static file remains the intentional fallback.
 - `[x]` **Static Prompt Lists → Database-Driven:** Truth or Dare / Would You Rather / Never Have I Ever already have a dynamic path via `activity_prompts` (migration `0008`), but Word Scramble's word bank is still a hardcoded array. Same deferral reasoning as above applies. **Session 38 note:** same discovery as above — migration `0008` had also never actually applied in production; fixed and re-applied.
 - `[x]` **Investigate Zustand for Game State:** Zustand is installed (`ARCHITECTURE.md` §1) but unused. Worth investigating only if game state ever needs to persist across activity switches — not currently needed (see `ARCHITECTURE.md` §6 "No Zustand in Rooms"). See [ZUSTAND_INVESTIGATION.md](file:///c:/Users/tejas/Desktop/Spintra-1/docs/ZUSTAND_INVESTIGATION.md).

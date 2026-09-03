@@ -504,9 +504,16 @@ Needing the user, not blocking Phase 1:
 Phase 1's blockers above are all closed and schema/implementation work is done. What's actually
 left, in order:
 
-1. **Branch never pushed.** `feat/spintra-city-design` has no remote/upstream — it exists only on
-   this machine. Needs a push + PR against `main` before anything else.
-2. **Migrations not live.** `npm run verify:migration` confirms `0063`–`0091` are applied and
+1. ~~Branch never pushed~~ → **Done.** Pushed; PR #43 open against `main`
+   (https://github.com/TejuBoricha/Spintra/pull/43). Not yet reviewed by a human or merged.
+1b. **PR #43's own code review — done, fixed, live-verified.** A 2-round, 20-agent `/code-review
+   high` pass found 2 critical bugs (bankruptcy permanently deadlocking the match; a finished match
+   being resurrectable with a live turn state — both independently rediscovered by 5+ agents each,
+   then personally verified against the actual SQL and live-reproduced end-to-end, not just
+   unit-tested) plus 10 more findings. 11 of 12 fixed in migration `0092` and 4 client-side changes;
+   one (a 16-file test-helper duplication) deliberately deferred as not worth the regression risk.
+   Full detail: `CHANGELOG_AI.md`'s "Session 66 (continued)" entry.
+2. **Migrations not live.** `npm run verify:migration` confirms `0063`–`0092` are applied and
    verified against local Docker Supabase only; the production Supabase project is missing them
    (checked directly — `city_settle_auction` does not exist live). This repo has hit the
    "tracked-as-applied-but-never-ran" failure mode three times before (`0008`/`0009`/`0010`); apply
