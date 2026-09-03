@@ -282,6 +282,20 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     useState<"connected" | "reconnecting" | "offline">("connected");
   const realtimeOfflineTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // lastRoll is only ever cleared by the roller's own endTurn() click — a
+  // turn that ends any other way (timeout, forced bankruptcy, autopilot)
+  // left it set, so this same player's *next* turn could show stale "you
+  // rolled X, moved to Y" narration instead of "your turn — roll the dice."
+  // Adjusting state during render (React's documented pattern for "reset
+  // state when a prop/derived value changes") rather than in an effect —
+  // clearing on every turn-number change closes the gap regardless of how
+  // the previous turn ended.
+  const [lastRollTurn, setLastRollTurn] = useState<number | undefined>(match?.turn_number);
+  if (match?.turn_number !== lastRollTurn) {
+    setLastRollTurn(match?.turn_number);
+    setLastRoll(null);
+  }
+
   const supabase = getSupabaseBrowserClient();
   const isDemoMode = !supabase;
 
@@ -745,7 +759,18 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     const id = matchIdRef.current;
     if (!supabase || !id) return;
     const { error: e } = await supabase.rpc("city_settle_auction", { p_match_id: id });
-    if (!e) await refetch();
+    if (e) {
+      console.error("City settle-auction failed:", e);
+      // CITY_AUCTION_STILL_RUNNING / CITY_NO_AUCTION are the expected
+      // outcome of the race this function is designed to lose (another
+      // client settled first, or it genuinely isn't over yet) — anything
+      // else is a real failure and should actually surface.
+      if (!/CITY_AUCTION_STILL_RUNNING|CITY_NO_AUCTION/.test(e.message)) {
+        setError(friendlyCommandError(e.message));
+      }
+      return;
+    }
+    await refetch();
   }, [supabase, refetch]);
 
   // Same shape as settleAuction: any client — including the stalled player's
@@ -757,7 +782,18 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     const id = matchIdRef.current;
     if (!supabase || !id) return;
     const { error: e } = await supabase.rpc("city_claim_timeout", { p_match_id: id });
-    if (!e) await refetch();
+    if (e) {
+      console.error("City claim-timeout failed:", e);
+      // CITY_TURN_CLOCK_STILL_RUNNING / CITY_TURN_CLOCK_PAUSED are the
+      // expected outcome of an early or duplicate attempt — this function
+      // is deliberately fired optimistically by multiple clients. Anything
+      // else is a real failure and should actually surface.
+      if (!/CITY_TURN_CLOCK_STILL_RUNNING|CITY_TURN_CLOCK_PAUSED/.test(e.message)) {
+        setError(friendlyCommandError(e.message));
+      }
+      return;
+    }
+    await refetch();
   }, [supabase, refetch]);
 
   const mySeat = seats.find((s) => s.user_id === currentUserId) ?? null;

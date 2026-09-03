@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -44,6 +44,83 @@ import { useCityMatch } from "./use-city-match";
 const MAX_SEATS = 8;
 const MIN_PLAYERS = 2;
 
+// Isolated from CityMatchShell (which previously ticked this same "now" at
+// its own root, re-rendering the whole board/holdings/trade/auction subtree
+// every 5s for a value only this badge needs) — same self-contained-tick
+// idiom as TurnCountdown below. Only ticks at all while this specific seat
+// is actually disconnected, and React.memo means an unrelated parent
+// re-render never re-executes this component's body.
+const SeatBadge = memo(function SeatBadge({
+  seat: s,
+  isCurrent,
+}: {
+  seat: CitySeat;
+  isCurrent: boolean;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!s.disconnected_at) return;
+    const id = setInterval(() => setNow(Date.now()), 5000);
+    return () => clearInterval(id);
+  }, [s.disconnected_at]);
+
+  // BUG-007 round A/C/H: disconnected_at and consecutive_autopilot_turns
+  // are both server-authoritative already (they gate autopilot and
+  // forced retire) — this is display only, never a gate itself. A
+  // terminal seat (retired/bankrupt) never shows either indicator —
+  // both are cleared server-side the instant a seat exits, but a
+  // client that fetched stale data before that clear would otherwise
+  // show "Away"/"auto×N" forever on a seat that isn't coming back.
+  const terminal = s.status === "bankrupt" || s.status === "retired";
+  const disconnectedMs = s.disconnected_at ? now - new Date(s.disconnected_at).getTime() : 0;
+  // FR-25: flagged the instant a disconnect is detected (no
+  // gameplay effect yet) — only past the same 60s grace period
+  // city_run_autopilot_from_current itself uses does "Away" mean
+  // the server is now actually playing this seat's turns.
+  const reconnecting = !terminal && !!s.disconnected_at && disconnectedMs < 60_000;
+  const away = !terminal && !!s.disconnected_at && disconnectedMs >= 60_000;
+  return (
+    <Badge variant={isCurrent ? "default" : "secondary"} className={`gap-1 ${terminal ? "opacity-50" : ""}`}>
+      <span className={terminal ? "line-through" : undefined}>{s.username}</span>
+      {terminal ? (
+        // A bare $0 read as "just poor," indistinguishable from an
+        // active seat that's simply broke — an explicit label plus
+        // the strikethrough/dimming above is what actually says
+        // "this seat is out," at a glance, in the same badge row.
+        <span className="text-[10px] uppercase tracking-wide">
+          {s.status === "bankrupt" ? "bankrupt" : "retired"}
+        </span>
+      ) : (
+        <span className="font-mono opacity-80">{s.cash.toLocaleString()}</span>
+      )}
+      {reconnecting && (
+        <span
+          className="flex items-center text-muted-foreground"
+          title="Connection dropped — still their seat and their turn clock, for now"
+        >
+          <WifiOff className="w-3 h-3" aria-hidden="true" />
+        </span>
+      )}
+      {away && (
+        <span
+          className="flex items-center text-amber-300"
+          title="Disconnected — the server plays this seat's turns automatically until they return"
+        >
+          <WifiOff className="w-3 h-3" aria-hidden="true" />
+        </span>
+      )}
+      {!terminal && s.consecutive_autopilot_turns > 0 && (
+        <span
+          className="font-mono text-[10px] text-amber-300"
+          title={`${s.consecutive_autopilot_turns} turn(s) auto-played in a row — retired automatically at 2`}
+        >
+          auto×{s.consecutive_autopilot_turns}
+        </span>
+      )}
+    </Badge>
+  );
+});
+
 export function CityMatchShell() {
   const { roomCode, isHost, currentUser } = useRoomActivity();
   const [selected, setSelected] = useState<number | null>(null);
@@ -51,13 +128,6 @@ export function CityMatchShell() {
   // FR-42: chosen here, at match creation, not in RoomSettingsPanel — and
   // never touched again once city_create_match has written it.
   const [pacePreset, setPacePreset] = useState<25 | 40 | 60>(40);
-  // Ticks the "Away" badge's 60s-grace comparison forward without reading the
-  // impure Date.now() during render (same idiom as TurnCountdown below).
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 5000);
-    return () => clearInterval(id);
-  }, []);
   const {
     match,
     seats,
@@ -318,7 +388,12 @@ export function CityMatchShell() {
     const detained = !!mySeat?.in_detention;
     const mustDecide = isMyTurn && match.phase === "required_decision";
     const canRoll = isMyTurn && match.phase === "awaiting_roll" && !inDebt && !detained;
-    const canEnd = isMyTurn && match.phase !== "awaiting_roll" && !mustDecide && !inDebt;
+    const canEnd =
+      isMyTurn &&
+      match.phase !== "awaiting_roll" &&
+      !mustDecide &&
+      !inDebt &&
+      !match.turn_clock_paused_at;
     const onSale = mySeat ? board[mySeat.position] : undefined;
     // A never-seated room member (a genuine spectator, FR-36) falls under
     // this too — before this fix their status line fell through to
@@ -363,69 +438,9 @@ export function CityMatchShell() {
         )}
         <div className="flex flex-wrap items-center gap-3 mb-3">
           <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
-            {seats.map((s) => {
-              // BUG-007 round A/C/H: disconnected_at and consecutive_autopilot_turns
-              // are both server-authoritative already (they gate autopilot and
-              // forced retire) — this is display only, never a gate itself. A
-              // terminal seat (retired/bankrupt) never shows either indicator —
-              // both are cleared server-side the instant a seat exits, but a
-              // client that fetched stale data before that clear would otherwise
-              // show "Away"/"auto×N" forever on a seat that isn't coming back.
-              const terminal = s.status === "bankrupt" || s.status === "retired";
-              const disconnectedMs = s.disconnected_at
-                ? now - new Date(s.disconnected_at).getTime()
-                : 0;
-              // FR-25: flagged the instant a disconnect is detected (no
-              // gameplay effect yet) — only past the same 60s grace period
-              // city_run_autopilot_from_current itself uses does "Away" mean
-              // the server is now actually playing this seat's turns.
-              const reconnecting = !terminal && !!s.disconnected_at && disconnectedMs < 60_000;
-              const away = !terminal && !!s.disconnected_at && disconnectedMs >= 60_000;
-              return (
-                <Badge
-                  key={s.id}
-                  variant={s.seat === match.current_seat ? "default" : "secondary"}
-                  className={`gap-1 ${terminal ? "opacity-50" : ""}`}
-                >
-                  <span className={terminal ? "line-through" : undefined}>{s.username}</span>
-                  {terminal ? (
-                    // A bare $0 read as "just poor," indistinguishable from an
-                    // active seat that's simply broke — an explicit label plus
-                    // the strikethrough/dimming above is what actually says
-                    // "this seat is out," at a glance, in the same badge row.
-                    <span className="text-[10px] uppercase tracking-wide">
-                      {s.status === "bankrupt" ? "bankrupt" : "retired"}
-                    </span>
-                  ) : (
-                    <span className="font-mono opacity-80">{s.cash.toLocaleString()}</span>
-                  )}
-                  {reconnecting && (
-                    <span
-                      className="flex items-center text-muted-foreground"
-                      title="Connection dropped — still their seat and their turn clock, for now"
-                    >
-                      <WifiOff className="w-3 h-3" aria-hidden="true" />
-                    </span>
-                  )}
-                  {away && (
-                    <span
-                      className="flex items-center text-amber-300"
-                      title="Disconnected — the server plays this seat's turns automatically until they return"
-                    >
-                      <WifiOff className="w-3 h-3" aria-hidden="true" />
-                    </span>
-                  )}
-                  {!terminal && s.consecutive_autopilot_turns > 0 && (
-                    <span
-                      className="font-mono text-[10px] text-amber-300"
-                      title={`${s.consecutive_autopilot_turns} turn(s) auto-played in a row — retired automatically at 2`}
-                    >
-                      auto×{s.consecutive_autopilot_turns}
-                    </span>
-                  )}
-                </Badge>
-              );
-            })}
+            {seats.map((s) => (
+              <SeatBadge key={s.id} seat={s} isCurrent={s.seat === match.current_seat} />
+            ))}
           </div>
           {/* BUG-006: turn_started_at/pace_seconds have driven a real
               consequence (city_claim_timeout) since BUG-003's fix, but
