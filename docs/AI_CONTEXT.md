@@ -67,7 +67,9 @@ Session closed with the actual first production deployment: Vercel project creat
 
 **Follow-up, same day:** branch pushed, PR #43 opened. A 2-round/20-agent `/code-review high` against it found 2 critical bugs (both independently rediscovered by 5+ agents, both personally verified against the actual SQL and then live-reproduced end-to-end) plus 10 more findings — all fixed except one deliberately-deferred test-helper-duplication item, in new migration `0092_spintra_city_pr43_review_fixes.sql` plus 4 client-side fixes. `typecheck`/`lint`/`build`/`test:city-regression` all clean, including a genuinely fresh migration replay. Full detail: `CHANGELOG_AI.md`'s "Session 66 (continued)" entry.
 
-**Not yet done, held for the user's explicit go-ahead:** applying migrations to production, merging PR #43 to `main`, deploying.
+**Follow-up, same day:** migrations `0063`–`0092` applied to production via `supabase db push --linked`, independently verified two ways (`verify:migration` confirmed `0092`'s 8 objects live; `supabase migration list` confirmed local=remote for every migration `0001`–`0092`, zero drift). The database side of Spintra City is genuinely live now.
+
+**Not yet done, held for the user's explicit go-ahead:** merging PR #43 to `main` (which triggers Vercel's deploy), and playing a real match against production once it is.
 
 ---
 
@@ -85,7 +87,7 @@ All planned modularisation (14/14 activities), invite and QR sharing systems, re
 
 ## Current Focus
 
-**Spintra City launch readiness** (Session 66) is the active thread — see `SPINTRA_CITY_SPEC.md` §12 for the exact checklist. Done so far: root-caused the e2e flakiness (test-environment issues, not app bugs — see below), pushed the branch, opened PR #43, ran a 2-round code review, and fixed all 12 of its findings but one (deliberately deferred, see `CHANGELOG_AI.md`). Remaining: apply migrations `0063`–`0092` to production and re-verify live, get PR #43 reviewed, merge, deploy. Nothing production-facing has been touched yet — held for explicit go-ahead.
+**Spintra City launch readiness** (Session 66) is the active thread — see `SPINTRA_CITY_SPEC.md` §12 for the exact checklist. Done so far: root-caused the e2e flakiness (test-environment issues, not app bugs), pushed the branch, opened PR #43, ran a 2-round code review and fixed 11 of its 12 findings, and applied+verified migrations `0063`–`0092` on production. Remaining: get PR #43 human-reviewed, merge, let Vercel deploy, then play a real match against production before calling this launched.
 
 Independent of City: monitor Sentry for real production errors now that strangers (not just known testers) can reach the site. Watch `deploy.yml`/`db-backup.yml` for continued success (both were silently broken for a long time before Session 61 — don't assume a past green run means the next one will be). The repo-wide `npm audit --audit-level=high` gate is currently red (14 vulnerabilities, 10 high, confirmed pre-existing on `main`) — worth a dependency-bump pass independent of City.
 

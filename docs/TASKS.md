@@ -323,8 +323,10 @@ Pre-launch hardening — required before publishing the site publicly on the ope
   **Follow-up:** PR #43 opened against `main`; a 2-round code review found 2 critical bugs
   (bankruptcy deadlock, finished-match resurrection — both live-verified as fixed) plus 10 more
   findings, 11 of 12 fixed in migration `0092` plus 4 client-side fixes (one test-helper-duplication
-  finding deliberately deferred — see `CHANGELOG_AI.md`). Migrations `0063`–`0092` still not applied
-  to production; PR not yet merged.
+  finding deliberately deferred — see `CHANGELOG_AI.md`). **Migrations `0063`–`0092` are now applied
+  and independently verified on production** (`supabase db push --linked`, confirmed via
+  `verify:migration` + `supabase migration list` — zero drift). PR #43 still needs a human review
+  and merge; the app itself isn't deployed with this feature until that merge happens.
   `docs/SPINTRA_CITY_SPEC.md` is the wired-up engineering spec (requirements, traceability matrix,
   as-built status in §12); `docs/SPINTRA_CITY_DESIGN.md` holds the decision log;
   `docs/SPINTRA_CITY_CONTENT.md` holds the board content.

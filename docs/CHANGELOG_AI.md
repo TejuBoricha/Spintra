@@ -2116,5 +2116,22 @@ Plus a real, confirmed data-correctness bug (the `0082` mortgage-rounding fix wa
 
 **Risks:**
 - **The other 10 lower-severity `PLAUSIBLE` findings from the review were fixed on the strength of the finder agents' analysis plus my own reading of the surrounding code, not each individually reproduced live the way the two `CONFIRMED` critical bugs were.** Reasonable given the volume, but worth remembering these carry slightly less certainty than the two headline fixes.
-- **Migrations still not applied to production** — this entire fix pass happened on local Docker only, same as everything else in this feature. `0063`–`0092` all need to go live together.
 - **PR #43 is not merged.** Nothing here changed that.
+
+---
+
+## [2026-09-03] — Session 66 (continued): migrations 0063–0092 applied to production
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** User said "ok start" in response to the choice offered at the end of the prior entry (apply migrations to production, or get PR #43 reviewed first) — read as authorization for the production migration step specifically, the first genuinely production-facing action of this whole thread.
+
+**Outcome:**
+- **Confirmed the linked Supabase project before touching anything**: `supabase projects list` showed one linked project, `qjxaehxwuqntyqrdmihs` ("Spintra"), matching `NEXT_PUBLIC_SUPABASE_URL` — the same project referenced throughout this repo's history as production.
+- **Confirmed the exact baseline first**: `supabase migration list` showed local=remote for `0001`–`0062` (zero drift on anything pre-City) and remote blank for exactly `0063`–`0092` — the expected, clean gap, no surprises.
+- **Applied**: `supabase db push --linked` ran all 30 migrations (`0063` through the new `0092`) with no errors.
+- **Verified two independent ways, not just trusted the "Finished" message** — this repo has hit the "tracked-as-applied-but-never-actually-ran" trap three separate times before (`0008`/`0009`/`0010`), so a push succeeding was treated as a claim, not a fact, until checked: (1) `npm run verify:migration` queried the live project directly and confirmed all 8 objects `0092` touches (`city_advance_turn`, `city_bankrupt_seat`, `city_buy_property`, `city_decline_purchase_core`, `city_end_turn_core`, `city_leave_detention_core`, `city_max_liquidation`, `city_sell_building_core`) genuinely exist there; (2) re-ran `supabase migration list` afterward and confirmed local=remote for every single migration `0001`–`0092`, zero drift anywhere.
+- **Docs updated** (`SPINTRA_CITY_SPEC.md` — both its top status banner and §12's checklist item 2 — plus `AI_CONTEXT.md`, `HANDOFF.md`, `TASKS.md`) to record the database side of Spintra City as genuinely live on production, distinct from "the app is deployed with it," which still requires merging PR #43 to `main`.
+
+**Risks:**
+- **The app itself is not yet deployed with this feature.** The database now has all the `city_*` tables/RPCs/RLS live, but nothing in production's currently-running app code references them until PR #43 merges to `main` and Vercel redeploys — this migration push, by itself, changes nothing about what any real user can currently do on spintra.io.
+- **PR #43 is still open, unmerged, and not yet reviewed by a human.**
+- **No real match has been played against this live production schema yet.** Everything verified so far (the regression suite, the two live-reproduced critical-bug scenarios) ran against local Docker, not this newly-migrated production database. The `docs/SPINTRA_CITY_SPEC.md` §12 checklist's remaining item — play a real multi-client match against production — is unchanged by this migration push and still needs to happen, ideally right after the merge/deploy rather than significantly separated from it.

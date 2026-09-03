@@ -4,17 +4,16 @@
 > integration with the existing system → implementation → verification, with a traceability matrix
 > so every requirement can be followed to the thing that implements it and the thing that proves it.
 >
-> **Status (2026-09-03): implemented and QA-hardened on `feat/spintra-city-design`, not yet
-> merged/deployed.** All 7 slices (§7) are built; a 298-case QA audit found 44 bugs, all closed
-> across 8+ fix rounds (see `QA_REPORT.md`/`QA_PROGRESS.md`, held outside this repo); a 57-case
-> regression harness (`npm run test:city-regression`) passes. **What's still outstanding before
-> launch:** the branch has never been pushed to a remote or opened as a PR; migrations `0063`–`0091`
-> are applied and verified on local Docker only — `npm run verify:migration` confirms they are
-> **not yet applied to the live Supabase project**; the economy has never been playtested by real
-> users; and this document, `DESIGN.md`, and the top-level session docs (`AI_CONTEXT.md`/
-> `HANDOFF.md`/`TASKS.md`) had drifted out of sync with the actual build state until this pass.
-> The original pre-implementation text below is left intact as the historical plan — §7 and §11
-> carry the as-built status.
+> **Status (2026-09-03): implemented, QA-hardened, code-reviewed, and its database is now live on
+> production — not yet merged/deployed to the app itself.** All 7 slices (§7) are built; a 298-case
+> QA audit found 44 bugs, all closed across 8+ fix rounds; a 2-round/20-agent code review against
+> PR #43 found 2 critical bugs (both live-verified fixed) plus 10 more (11/12 fixed); a 57-case
+> regression harness (`npm run test:city-regression`) passes. **Migrations `0063`–`0092` are applied
+> to the production Supabase project** (`supabase db push --linked`, independently confirmed via
+> `verify:migration` and `supabase migration list` — zero drift, local=remote through `0092`).
+> **What's still outstanding before launch:** PR #43 (open, pushed, not yet merged) needs a human
+> review; the app itself hasn't been deployed with this feature (merging to `main` triggers that);
+> the economy has never been playtested by real users. §12 is the authoritative current checklist.
 >
 > **The other two documents remain the source of truth for their own areas** and are not duplicated
 > here: `SPINTRA_CITY_DESIGN.md` = decisions and their rationale/provenance;
@@ -513,11 +512,10 @@ left, in order:
    unit-tested) plus 10 more findings. 11 of 12 fixed in migration `0092` and 4 client-side changes;
    one (a 16-file test-helper duplication) deliberately deferred as not worth the regression risk.
    Full detail: `CHANGELOG_AI.md`'s "Session 66 (continued)" entry.
-2. **Migrations not live.** `npm run verify:migration` confirms `0063`–`0092` are applied and
-   verified against local Docker Supabase only; the production Supabase project is missing them
-   (checked directly — `city_settle_auction` does not exist live). This repo has hit the
-   "tracked-as-applied-but-never-ran" failure mode three times before (`0008`/`0009`/`0010`); apply
-   via `supabase db push --linked` and re-run `verify:migration` against production before trusting it.
+2. ~~Migrations not live~~ → **Done, 2026-09-03.** `supabase db push --linked` applied `0063`–`0092`
+   to production cleanly; `npm run verify:migration` independently confirmed all 8 objects from
+   `0092` exist live, and `supabase migration list` confirmed local=remote for every migration
+   `0001`–`0092`, zero drift. The database side of Spintra City is genuinely live now.
 3. **Full CI gate not yet green end-to-end, for reasons unrelated to app correctness.** `npm run
    ci` stops at the `npm audit --audit-level=high` step — 14 vulnerabilities (10 high), confirmed
    pre-existing on `main` (identical `package-lock.json`), not introduced by this feature. Running
