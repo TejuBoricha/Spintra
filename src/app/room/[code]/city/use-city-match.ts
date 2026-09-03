@@ -135,6 +135,24 @@ export interface CityAuction {
   hard_ends_at: string;
 }
 
+/**
+ * One row of the persistent activity feed (migration 0093) — rolled, bought,
+ * rent_paid, tax_paid, built, sold_building, mortgaged, unmortgaged,
+ * auction_started, auction_won, auction_unsold, trade_accepted, bankrupt,
+ * retired. `payload` carries space indexes and seats, never names — every
+ * client already holds the static board and seat list and resolves those
+ * locally, so a feed row never needs to be kept in sync with anything.
+ * Deliberately not exhaustive (v1): turn-change, trade proposed/declined/
+ * withdrawn, and detention exits are not logged — see TASKS.md.
+ */
+export interface CityMatchEvent {
+  id: number;
+  created_at: string;
+  kind: string;
+  actor_seat: number | null;
+  payload: Record<string, unknown>;
+}
+
 export interface CityTradeOffer {
   id: string;
   from_seat: number;
@@ -255,6 +273,9 @@ interface UseCityMatchResult {
   leaveDetention: (method: "pay" | "visa" | "roll") => Promise<void>;
   auction: CityAuction | null;
   results: CityResult[];
+  /** The persistent activity feed, oldest first, for the live match only —
+   *  cleared and reloaded whenever `match.id` changes. */
+  events: CityMatchEvent[];
   placeBid: (amount: number) => Promise<void>;
   passAuction: () => Promise<void>;
   settleAuction: () => Promise<void>;
@@ -276,6 +297,11 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   const [offers, setOffers] = useState<CityTradeOffer[]>([]);
   const [auction, setAuction] = useState<CityAuction | null>(null);
   const [results, setResults] = useState<CityResult[]>([]);
+  const [events, setEvents] = useState<CityMatchEvent[]>([]);
+  // Highest event id already in `events`, for the incremental fetch below —
+  // a ref because it drives no rendering itself and must survive across the
+  // per-ping fetch without becoming a dependency that rebuilds the channel.
+  const lastEventIdRef = useRef(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [realtimeStatus, setRealtimeStatus] =
@@ -458,6 +484,71 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     queueMicrotask(() => void refetch());
   }, [refetch]);
 
+  // The activity feed's initial load — keyed on match.id (not roomCode), so a
+  // client that joins mid-match sees its full history, and a fresh match in
+  // the same room starts a fresh feed instead of appending onto the last
+  // one's tail. Full page (last 200), not incremental — this is the one place
+  // that legitimately re-reads from scratch; the realtime ping below only
+  // ever fetches forward from here.
+  //
+  // The reset itself happens during render (same "adjust state during
+  // render" pattern as lastRollTurn/lastRoll above) rather than as a
+  // synchronous setState at the top of the effect below, which the React
+  // Compiler lint rules forbid (react-hooks/set-state-in-effect).
+  const [eventsMatchId, setEventsMatchId] = useState<string | null>(null);
+  if ((match?.id ?? null) !== eventsMatchId) {
+    setEventsMatchId(match?.id ?? null);
+    setEvents([]);
+  }
+
+  useEffect(() => {
+    lastEventIdRef.current = 0;
+    if (!supabase || !match?.id) return;
+    let cancelled = false;
+    void (async () => {
+      const { data, error: eventsError } = await supabase
+        .from("city_match_events")
+        .select("id, created_at, kind, actor_seat, payload")
+        .eq("match_id", match.id)
+        .order("id", { ascending: false })
+        .limit(200);
+      if (cancelled) return;
+      if (eventsError) {
+        console.error("Failed to load the city activity feed:", eventsError);
+        return;
+      }
+      const rows = ((data ?? []) as unknown as CityMatchEvent[]).slice().reverse();
+      setEvents(rows);
+      lastEventIdRef.current = rows.length ? rows[rows.length - 1].id : 0;
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, match?.id]);
+
+  // The activity feed's realtime top-up — fetches only rows past what's
+  // already loaded (id > lastEventIdRef), unlike every other table here,
+  // which refetches its whole current-state snapshot. Events are append-only
+  // history, not current state, so "what changed" really does mean "what's
+  // new since last time" here, not "re-read everything."
+  const fetchNewEvents = useCallback(async () => {
+    if (!supabase || !matchIdRef.current) return;
+    const { data, error: eventsError } = await supabase
+      .from("city_match_events")
+      .select("id, created_at, kind, actor_seat, payload")
+      .eq("match_id", matchIdRef.current)
+      .gt("id", lastEventIdRef.current)
+      .order("id", { ascending: true });
+    if (eventsError) {
+      console.error("Failed to load new city activity events:", eventsError);
+      return;
+    }
+    const rows = (data ?? []) as unknown as CityMatchEvent[];
+    if (rows.length === 0) return;
+    lastEventIdRef.current = rows[rows.length - 1].id;
+    setEvents((prev) => [...prev, ...rows]);
+  }, [supabase]);
+
   // Realtime as a notifier only: a change ping triggers a refetch of
   // RLS-gated rows rather than trusting a broadcast payload to carry state.
   // This is what keeps authoritative data behind row-level security instead of
@@ -511,6 +602,16 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
         { event: "*", schema: "public", table: "city_match_players" },
         refetchIfCurrentMatch
       )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "city_match_events" },
+        (payload: { new: object }) => {
+          const changedMatchId = (payload.new as { match_id?: string })?.match_id;
+          if (!matchIdRef.current || changedMatchId === matchIdRef.current) {
+            void fetchNewEvents();
+          }
+        }
+      )
       // BUG-042: this channel had no status callback at all, so a dropped
       // subscription here was invisible — the UI kept showing whatever data
       // it last had with no signal anything was wrong. Mirrors
@@ -541,7 +642,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
       }
       void supabase.removeChannel(channel);
     };
-  }, [supabase, roomCode, refetch]);
+  }, [supabase, roomCode, refetch, fetchNewEvents]);
 
   // Surfaces the RPC's own error text, which is a stable machine-readable
   // code (CITY_NOT_HOST, CITY_MATCH_FULL, ...) rather than a raw Postgres
@@ -835,6 +936,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     leaveDetention,
     auction,
     results,
+    events,
     placeBid,
     passAuction,
     settleAuction,

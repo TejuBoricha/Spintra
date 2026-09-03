@@ -27,6 +27,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useRoomActivity } from "../context/room-activity-context";
+import { CityActivityFeed } from "./city-activity-feed";
 import { CityBoard } from "./city-board";
 import { CityHoldings } from "./city-holdings";
 import { CityTrade } from "./city-trade";
@@ -166,6 +167,7 @@ export function CityMatchShell() {
     settleAuction,
     claimTimeout,
     results,
+    events,
     realtimeStatus,
     refetch,
   } = useCityMatch(roomCode, currentUser.id);
@@ -616,6 +618,8 @@ export function CityMatchShell() {
           onDecline={(id) => void declineTrade(id)}
           onWithdraw={(id) => void withdrawTrade(id)}
         />
+
+        <CityActivityFeed events={events} seats={seats} board={board} />
 
         {/* aria-live so a screen reader hears the roll, not just sighted players. */}
         <p

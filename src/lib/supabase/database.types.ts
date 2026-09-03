@@ -371,6 +371,48 @@ export type Database = {
           },
         ]
       }
+      city_match_events: {
+        Row: {
+          actor_seat: number | null
+          created_at: string
+          id: number
+          kind: string
+          match_id: string
+          payload: Json
+        }
+        Insert: {
+          actor_seat?: number | null
+          created_at?: string
+          id?: never
+          kind: string
+          match_id: string
+          payload?: Json
+        }
+        Update: {
+          actor_seat?: number | null
+          created_at?: string
+          id?: never
+          kind?: string
+          match_id?: string
+          payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_match_events_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_match_results"
+            referencedColumns: ["match_id"]
+          },
+          {
+            foreignKeyName: "city_match_events_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       city_match_players: {
         Row: {
           cash: number

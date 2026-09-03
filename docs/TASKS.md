@@ -329,7 +329,22 @@ Pre-launch hardening — required before publishing the site publicly on the ope
   and merge; the app itself isn't deployed with this feature until that merge happens.
   `docs/SPINTRA_CITY_SPEC.md` is the wired-up engineering spec (requirements, traceability matrix,
   as-built status in §12); `docs/SPINTRA_CITY_DESIGN.md` holds the decision log;
-  `docs/SPINTRA_CITY_CONTENT.md` holds the board content.
+  `docs/SPINTRA_CITY_CONTENT.md` holds the board content. **Follow-up 2026-09-03:** user feedback
+  ("who has aquired what live feed is missing," then "like richup.io") added a persistent
+  activity feed — migration `0093`, new `city_match_events` table, 11 functions instrumented, a
+  new `use-city-match.ts` `events` state, and `city-activity-feed.tsx`. Local only, not yet on
+  production — see `CHANGELOG_AI.md`'s "persistent activity feed (migration 0093)" entry.
+
+- `[ ]` **Activity feed v2 — event kinds deliberately left out of migration `0093`'s v1.** Logged
+  as a real scope decision, not an oversight, so it isn't silently forgotten: turn-change (would
+  be the highest-frequency event by far, and the seat highlight on the board already shows whose
+  turn it is — low narrative value for the noise), trade proposed/declined/withdrawn (only
+  `trade_accepted` ships in v1 — a proposal/decline pair roughly doubles trade-related event
+  volume for less payoff than the completed trade itself), and detention exits (`visa`/`pay`/
+  `roll` — 3 more insertion points in `city_leave_detention_core` for a lower-value narration).
+  If picked up: same pattern as the 11 functions `0093` already instruments — one
+  `insert into city_match_events` per mutation, after the state change, before the `return`,
+  never before an early-exit guard.
 
 - `[ ]` **Spintra City's visual identity reads as a functional placeholder, not a finished look —
   user feedback 2026-09-03, explicitly scoped to the whole board's look and feel, not just the
