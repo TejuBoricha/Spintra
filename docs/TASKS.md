@@ -331,6 +331,22 @@ Pre-launch hardening — required before publishing the site publicly on the ope
   as-built status in §12); `docs/SPINTRA_CITY_DESIGN.md` holds the decision log;
   `docs/SPINTRA_CITY_CONTENT.md` holds the board content.
 
+- `[ ]` **Spintra City's visual identity reads as a functional placeholder, not a finished look —
+  user feedback 2026-09-03, explicitly scoped to the whole board's look and feel, not just the
+  3 examples below.** Flagged directly: "some icon, flags, player token many thing looks like low
+  effort and also not only this but there are many design things like this" plus a follow-up
+  emphasizing the game board's overall look and feel specifically. Concrete examples already
+  identified in `city-board.tsx`: country flags are CSS-gradient approximations, not real flag
+  imagery (Australia's stars are two plain dots, Canada's maple leaf is a circle, India's chakra is
+  a navy dot); space/corner icons (✈ ⛔ ☕ ⇩ ⚡ ⚖) are bare Unicode/emoji characters, not a custom
+  icon set; player tokens are a plain colored circle with a single bold letter, nothing distinct
+  beyond colour. Beyond those three, the user's own framing makes clear the board's general look
+  and feel needs a pass too, not just these isolated elements. Deliberately not scoped further or
+  estimated here — the user chose to log this for a dedicated future design session rather than
+  have it addressed ad hoc now; when picked up, mock up 2-3 concrete visual directions first (the
+  `design` skill's canvas is a good fit) before writing any component code, since "unique identity"
+  is a taste call this doc can't make unilaterally.
+
 - `[x]` **Room auto-expiry / lifecycle cleanup:** Done Session 40 — migration `0020` enables `pg_cron` and schedules the `cleanup_inactive_rooms()` function (already defined in migration `0009`, deletes rooms with no online participants that are >2h old) to run every 30 minutes. Along the way, discovered `0009` itself had never actually executed live (see the new item below) — re-ran it for real, which deleted 23 genuinely abandoned rooms on the spot.
 - `[x]` **Systematic migration-history audit:** Done Session 40 — cross-checked all 20 migrations' expected live objects (tables, columns, functions, triggers, policies, constraints, indexes, extensions, realtime publication membership, replica identity, seed-data row counts) against the live database. No further gaps found beyond `0009` (already fixed same session); `0001`–`0008` and `0010`–`0019` all confirmed genuinely live and matching source exactly, seed data counts clean (44 prompts, 50 trivia questions, no duplicates).
 - `[x]` **DB constraint still permitted the dead `'spectator'` role value:** Done Session 40 — surfaced by the migration audit above. Client-side `UserRole.spectator` was already removed as dead code in Session 38, but `room_participants_role_check` was never updated to match. Migration `0021` tightens it to `('host', 'participant')`; verified zero live rows used `'spectator'` before applying.
