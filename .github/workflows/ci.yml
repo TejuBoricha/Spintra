@@ -142,6 +142,16 @@ jobs:
       - name: Apply All Migrations Fresh
         run: supabase db reset
 
+      # Direct-RPC correctness proof for Spintra City (57 cases mapped to
+      # the QA audit's bug IDs, incl. the overload-ambiguity/grant-hygiene
+      # regression checks built after migration 0091's bug) — talks
+      # straight to Postgres, no app build or browser needed, so it runs
+      # here for the fastest possible signal before the slower build/e2e
+      # steps below. Previously existed but was never wired into any
+      # automated gate.
+      - name: Spintra City DB Regression Suite
+        run: npm run test:city-regression
+
       - name: Export Local Supabase Credentials for the App Build
         run: |
           supabase status -o env > /tmp/supabase-status.env
