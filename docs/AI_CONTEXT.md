@@ -69,7 +69,9 @@ Session closed with the actual first production deployment: Vercel project creat
 
 **Follow-up, same day:** migrations `0063`–`0092` applied to production via `supabase db push --linked`, independently verified two ways (`verify:migration` confirmed `0092`'s 8 objects live; `supabase migration list` confirmed local=remote for every migration `0001`–`0092`, zero drift). The database side of Spintra City is genuinely live now.
 
-**Not yet done, held for the user's explicit go-ahead:** merging PR #43 to `main` (which triggers Vercel's deploy), and playing a real match against production once it is.
+**Follow-up, same day: a real 2-player match was played against production.** Ran the branch's own code locally (not the deployed app — that still hasn't changed) pointed at production Supabase, drove 2 real browser sessions through room creation → seats → ready → start → a real dice roll, confirmed via screenshot (not just element checks): correct board content, correct starting cash, correct roll/movement/landing narration, realtime sync to the guest, zero console/page errors. Two harmless rooms created (`FWNR8E`, `FD2AZE`) — left for the existing cleanup cron, same as prior sessions' precedent.
+
+**Not yet done, held for the user's explicit go-ahead:** merging PR #43 to `main`, which is what actually redeploys spintra.io with this feature.
 
 ---
 

@@ -12,7 +12,9 @@ Portable session-continuity note for any AI assistant to resume work immediately
 
 **Second follow-up, same day: migrations applied to production.** `supabase db push --linked` applied `0063`–`0092` cleanly; independently verified two ways (`npm run verify:migration` confirmed `0092`'s 8 objects live; `supabase migration list` confirmed local=remote for every migration `0001`–`0092`). This repo has hit the "tracked-as-applied-but-never-ran" trap three times before (`0008`/`0009`/`0010`) — both checks passed here, so trust this one.
 
-**Where this leaves things:** `SPINTRA_CITY_SPEC.md` §12 is still the authoritative checklist. PR #43 is open but unreviewed by a human; the database is live but the app hasn't been deployed with this feature yet (merging to `main` triggers Vercel's deploy); nothing merged.
+**Third follow-up, same day: a real 2-player match played against production.** Local dev server (the branch's own unmerged code) pointed at production Supabase, 2 real browser sessions driven through the full lobby-to-first-roll flow. Confirmed via screenshot: real board content, correct cash, correct roll/movement/landing narration, guest saw the match go active via realtime independently of the host. Zero errors. Two harmless rooms left for the cleanup cron (`FWNR8E`, `FD2AZE`).
+
+**Where this leaves things:** `SPINTRA_CITY_SPEC.md` §12 is still the authoritative checklist — only "PR #43 needs a human review + merge" and "full economy/balance playtesting" remain open. The database is live and functionally proven; the deployed app at spintra.io hasn't changed yet (that's what merging PR #43 does).
 
 ---
 

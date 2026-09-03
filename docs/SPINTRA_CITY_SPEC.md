@@ -532,8 +532,17 @@ left, in order:
    defect — corroborated by the RPC-level `test:city-regression` harness passing 57/57 twice,
    including after a full fresh migration replay. A literal 93/93 clean run was not obtained in
    this sandbox; see `CHANGELOG_AI.md`'s 2026-09-03 entry for the full run-by-run diagnosis.
-4. **Economy never playtested.** Prices/rents/salary are a reasoned first draft (see `CONTENT.md`),
-   never balance-tested with real concurrent players.
+4. ~~Never played against production~~ → **Done, 2026-09-03.** Ran the local dev server against
+   the branch's own code (not merged/deployed — this was `feat/spintra-city-design` running locally,
+   pointed at production Supabase via `.env.local`) and drove 2 real, independent anonymous
+   sessions through room creation → City match → seats → ready → start → a real dice roll, all
+   against the live, newly-migrated production database. Board rendered correctly (the real
+   "Spintra City / World Tour" content), both seats showed correct starting cash, the roll/movement/
+   landing-on-unclaimed-property flow worked and synced to both clients via realtime, zero console
+   or page errors on either side. Two harmless rooms created (`FWNR8E`, `FD2AZE`) — private,
+   unlisted, will be swept by the existing `cleanup_inactive_rooms()` cron same as any abandoned
+   room. **Full balance/economy playtesting with real concurrent multi-day play is still open** —
+   this was a functional smoke test, not a balance pass.
 5. **Docs were stale until this pass.** This file, `DESIGN.md`, and the top-level session docs said
    "design phase, zero code" through 47 implementation commits — fixed 2026-09-03.
 6. Board art, and trademark clearance on "Spintra City"/"The Wheelworks" (item 4/5 above) — still

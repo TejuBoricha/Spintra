@@ -2135,3 +2135,24 @@ Plus a real, confirmed data-correctness bug (the `0082` mortgage-rounding fix wa
 - **The app itself is not yet deployed with this feature.** The database now has all the `city_*` tables/RPCs/RLS live, but nothing in production's currently-running app code references them until PR #43 merges to `main` and Vercel redeploys — this migration push, by itself, changes nothing about what any real user can currently do on spintra.io.
 - **PR #43 is still open, unmerged, and not yet reviewed by a human.**
 - **No real match has been played against this live production schema yet.** Everything verified so far (the regression suite, the two live-reproduced critical-bug scenarios) ran against local Docker, not this newly-migrated production database. The `docs/SPINTRA_CITY_SPEC.md` §12 checklist's remaining item — play a real multi-client match against production — is unchanged by this migration push and still needs to happen, ideally right after the merge/deploy rather than significantly separated from it.
+
+---
+
+## [2026-09-03] — Session 66 (continued): real 2-player City match played against production
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** User asked directly whether a real multi-client match could be played against production, following up on that exact open item from the prior entry. Answered by doing it.
+
+**Approach:** the app running on spintra.io hasn't been redeployed with this feature yet (PR #43 unmerged), so this ran the branch's own code locally — `npx next build && npx next start -p 4500` on a scratch port, using the unmodified `.env.local` (already pointed at production Supabase) — the same "local app code, real production data layer" pattern this repo has used before for pre-deploy verification.
+
+**Outcome:**
+- A standalone Playwright script (outside `tests/`, deleted after use — not part of the permanent suite) launched 2 real, independent browser contexts (genuinely distinct anonymous Supabase sessions, not shared localStorage) and drove: room creation (`type=city`) → opening a match → both seats taken → both readied → host started the match → a real `city_roll_dice` RPC call.
+- **Confirmed via screenshot, not just element-presence checks** (this repo's own established practice, since a build/typecheck pass doesn't catch a broken render): the board renders the actual "Spintra City / World Tour" theme content correctly (real space names — Heathrow, Porto, Kraków, etc. — not placeholders), both seats show the correct starting cash (1,600), the post-roll narration correctly read "Rolled 1 and 4, moved to Heathrow. It's unclaimed — buy it for 190, or pass.", and the Buy/Pass UI appeared correctly for the acting player.
+- **The guest's client independently observed the match go active via realtime** — not just the host's own optimistic view — confirming the new Realtime Authorization path (migration `0036`, already live since long before City) correctly extends to the new `city_*` tables' `postgres_changes` subscriptions.
+- Zero console errors, zero page errors, on either browser context, across the whole flow.
+- Two real rooms were created on production as a result (`FWNR8E`, `FD2AZE`) — both private/unlisted by default, not enumerable, and will be swept by the existing `cleanup_inactive_rooms()` cron (2h+ inactive, zero online participants) the same as any other abandoned room. No manual cleanup performed, consistent with how this exact situation was handled in Session 64.
+- All scratch files (the driver script, screenshots) deleted after use; confirmed via `git status` that the working tree returned to clean; confirmed `.env.local` was never modified this time (already correctly pointed at production from the prior entry, never touched).
+- `docs/SPINTRA_CITY_SPEC.md` §12 item 4 updated to reflect this as done — with an explicit caveat that this was a functional smoke test (does it work at all), not the separate, still-open economy/balance playtesting item.
+
+**Risks:**
+- **This exercised the "happy path" only** (buy-or-decline landing) — not trading, auctions, bankruptcy, or any of the reliability edge cases (disconnect/autopilot/pause) against production specifically. Those were extensively tested against local Docker (the regression suite, the two live-reproduced critical-bug fixes) but not re-confirmed against this newly-migrated production instance. Reasonable given the regression suite's own migration-parity guarantee, but worth knowing the gap exists.
+- **Still not the same as the actual deployed app being used by a real user** — this ran the branch's own local build, not what spintra.io currently serves. The deploy step (merge PR #43 → Vercel) remains a distinct, not-yet-done step.
