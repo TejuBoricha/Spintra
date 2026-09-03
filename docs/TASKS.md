@@ -309,7 +309,7 @@ Pre-launch hardening — required before publishing the site publicly on the ope
   auto-pass) are built on `feat/spintra-city-design` — a multiplayer board-trading game for 2–8
   players, server-authoritative (PostgreSQL as referee, not the existing lightweight
   activity-event-log pattern the other 14 games use). A 298-case QA audit (`QA_REPORT.md`, held
-  outside this repo) found 44 bugs; all closed across 8+ fix rounds. A dedicated 57-case regression
+  outside this repo) found 44 bugs; all closed across 8+ fix rounds. A dedicated 58-case regression
   harness (`npm run test:city-regression`) passes clean. **Not yet launched — see
   `docs/SPINTRA_CITY_SPEC.md` §12 for the exact remaining checklist**: the branch has never been
   pushed/opened as a PR; migrations `0063`–`0091` are verified on local Docker only, **not yet
@@ -332,8 +332,17 @@ Pre-launch hardening — required before publishing the site publicly on the ope
   `docs/SPINTRA_CITY_CONTENT.md` holds the board content. **Follow-up 2026-09-03:** user feedback
   ("who has aquired what live feed is missing," then "like richup.io") added a persistent
   activity feed — migration `0093`, new `city_match_events` table, 11 functions instrumented, a
-  new `use-city-match.ts` `events` state, and `city-activity-feed.tsx`. Local only, not yet on
-  production — see `CHANGELOG_AI.md`'s "persistent activity feed (migration 0093)" entry.
+  new `use-city-match.ts` `events` state, and `city-activity-feed.tsx`. **Follow-up 2026-09-03:**
+  user said "redesign" — board flags/icons/tokens/centre tile redesigned per the earlier-logged
+  visual-identity feedback (see the deferred item below, now implemented). **Follow-up
+  2026-09-03:** user: "u should have done pr review" — a `code-review` pass (10 agents) against
+  both of the above, unreviewed until this point, found 11 confirmed issues; all fixed (migrations
+  `0094`/`0095`, plus client-side fixes to `use-city-match.ts`/`city-board.tsx`/
+  `city-activity-feed.tsx`). The regression harness is now 58 cases, up from 57 — a new
+  `CITY-EVENTS` assertion closes a gap the review itself found (zero coverage of
+  `city_match_events`). Review is now a standing gate before any City work is considered done, not
+  an occasional step — see `CHANGELOG_AI.md`'s three entries for this day's work.
+  Migrations `0093`–`0095` are local only, not yet on production.
 
 - `[ ]` **Activity feed v2 — event kinds deliberately left out of migration `0093`'s v1.** Logged
   as a real scope decision, not an oversight, so it isn't silently forgotten: turn-change (would
@@ -342,25 +351,37 @@ Pre-launch hardening — required before publishing the site publicly on the ope
   `trade_accepted` ships in v1 — a proposal/decline pair roughly doubles trade-related event
   volume for less payoff than the completed trade itself), and detention exits (`visa`/`pay`/
   `roll` — 3 more insertion points in `city_leave_detention_core` for a lower-value narration).
-  If picked up: same pattern as the 11 functions `0093` already instruments — one
+  If picked up: same pattern as the 12 functions `0093`/`0094` already instrument — one
   `insert into city_match_events` per mutation, after the state change, before the `return`,
-  never before an early-exit guard.
+  never before an early-exit guard, with the event's own insert always preceding any call to
+  another already-instrumented function (0094 fixed two places that got this backwards).
 
-- `[ ]` **Spintra City's visual identity reads as a functional placeholder, not a finished look —
-  user feedback 2026-09-03, explicitly scoped to the whole board's look and feel, not just the
-  3 examples below.** Flagged directly: "some icon, flags, player token many thing looks like low
-  effort and also not only this but there are many design things like this" plus a follow-up
-  emphasizing the game board's overall look and feel specifically. Concrete examples already
-  identified in `city-board.tsx`: country flags are CSS-gradient approximations, not real flag
-  imagery (Australia's stars are two plain dots, Canada's maple leaf is a circle, India's chakra is
-  a navy dot); space/corner icons (✈ ⛔ ☕ ⇩ ⚡ ⚖) are bare Unicode/emoji characters, not a custom
-  icon set; player tokens are a plain colored circle with a single bold letter, nothing distinct
-  beyond colour. Beyond those three, the user's own framing makes clear the board's general look
-  and feel needs a pass too, not just these isolated elements. Deliberately not scoped further or
-  estimated here — the user chose to log this for a dedicated future design session rather than
-  have it addressed ad hoc now; when picked up, mock up 2-3 concrete visual directions first (the
-  `design` skill's canvas is a good fit) before writing any component code, since "unique identity"
-  is a taste call this doc can't make unilaterally.
+- `[ ]` **A shared `city_log_event(...)` SQL helper for `city_match_events` inserts was
+  considered and deliberately not built** (a `code-review` finding, 2026-09-03) — 15 call sites
+  across migrations `0093`/`0094` hand-copy the same `insert into city_match_events (...) values
+  (...)` shape, with no compile-time check that a future one matches. Migration `0095`'s `CHECK`
+  constraint on `kind` closes the highest-value part of this (a typo can't silently insert) without
+  the larger, higher-risk refactor of touching all 15 sites again to route through a helper
+  function. Worth revisiting if a v2 batch (see the item above) pushes the count meaningfully
+  higher, not before.
+
+- `[~]` **Spintra City's visual identity read as a functional placeholder, not a finished look —
+  user feedback 2026-09-03.** Flagged directly: "some icon, flags, player token many thing looks
+  like low effort and also not only this but there are many design things like this" plus a
+  follow-up emphasizing the game board's overall look and feel specifically. The 3 concrete
+  examples are fixed (2026-09-03, "Direction A" of the design-review artifact, then corrected by a
+  code-review pass — see `CHANGELOG_AI.md`): country flags are now real SVG vector art built from
+  each flag's actual published spec (Australia's Southern Cross, Canada's maple leaf, India's
+  Ashoka Chakra all genuinely correct, not approximated); corner/space icons are `lucide-react`,
+  not bare Unicode/emoji; player tokens picked up the app's own avatar-gradient style (contrast
+  re-verified against every seat colour after the review caught a regression in the first pass).
+  **Still open:** the user's broader framing — "the board's general look and feel needs a pass
+  too, not just these isolated elements" — is not addressed by the above, which reused the existing
+  brand system rather than pursuing a distinct visual identity (that would be Direction B or
+  similar from the design-review artifact). Deliberately not scoped further here; when picked up,
+  mock up 2-3 concrete visual directions first (the `design` skill's canvas is a good fit) before
+  writing any component code, since "unique identity" is a taste call this doc can't make
+  unilaterally.
 
 - `[x]` **Room auto-expiry / lifecycle cleanup:** Done Session 40 — migration `0020` enables `pg_cron` and schedules the `cleanup_inactive_rooms()` function (already defined in migration `0009`, deletes rooms with no online participants that are >2h old) to run every 30 minutes. Along the way, discovered `0009` itself had never actually executed live (see the new item below) — re-ran it for real, which deleted 23 genuinely abandoned rooms on the spot.
 - `[x]` **Systematic migration-history audit:** Done Session 40 — cross-checked all 20 migrations' expected live objects (tables, columns, functions, triggers, policies, constraints, indexes, extensions, realtime publication membership, replica identity, seed-data row counts) against the live database. No further gaps found beyond `0009` (already fixed same session); `0001`–`0008` and `0010`–`0019` all confirmed genuinely live and matching source exactly, seed data counts clean (44 prompts, 50 trivia questions, no duplicates).

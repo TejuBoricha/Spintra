@@ -236,6 +236,37 @@ function FlagDefs() {
   );
 }
 
+// FlagDefs takes no props and its output never changes, but <FlagDefs/>
+// inline in CityBoard's JSX would still be a fresh element every render —
+// React re-executes a function component's body whenever its element isn't
+// referentially the same one as last time, wrapping in React.memo or not.
+// Computing the element once, here, at module load, means CityBoard always
+// passes the exact same element reference, so React bails out of this
+// subtree entirely instead of re-diffing ~80 static SVG nodes (8 flags'
+// worth of rects/paths/uses) on every board re-render — a code-review pass
+// found this rebuilding on every unrelated realtime refetch.
+const FLAG_DEFS = <FlagDefs />;
+
+// COUNTRY (name/band) and FlagDefs (the actual <symbol id="flag-XX"> art)
+// are two independently-maintained artifacts — a code-review pass flagged
+// that nothing enforces they stay in sync; a country added to one without
+// the other renders a silent empty/border-only flag chip, no error
+// anywhere. FLAG_SYMBOL_CODES is a manually-kept mirror of every symbol id
+// FlagDefs actually defines, checked once at module load so a mismatch
+// fails loudly in development instead of shipping quietly.
+const FLAG_SYMBOL_CODES = ["pt", "pl", "jp", "za", "au", "ca", "in", "ae"] as const;
+if (process.env.NODE_ENV !== "production") {
+  const missing = Object.keys(COUNTRY).filter(
+    (code) => !(FLAG_SYMBOL_CODES as readonly string[]).includes(code)
+  );
+  if (missing.length > 0) {
+    console.error(
+      `city-board.tsx: COUNTRY has ${missing.join(", ")} with no matching ` +
+        `<symbol id="flag-..."> in FlagDefs — add one, or that country's flag chip renders empty.`
+    );
+  }
+}
+
 type Edge = "bottom" | "left" | "top" | "right";
 
 /** Grid placement for an 11x11 board, walking clockwise from the start corner. */
@@ -281,7 +312,7 @@ export function CityBoard({
 
   return (
     <div className="rounded-2xl border border-(--border-hairline) bg-linear-to-br from-(--city-frame-a) to-(--city-frame-b) p-3 overflow-x-auto overscroll-x-contain">
-      <FlagDefs />
+      {FLAG_DEFS}
       {/* One fixed width everywhere. The board is square, so width sets height:
           left to fill the room's content column it grew past the viewport and
           pushed the top row off screen, and capping it lower than 700px clipped
@@ -302,7 +333,12 @@ export function CityBoard({
           const here = seats.filter((s) => s.position === space.idx);
           const country = space.country ? COUNTRY[space.country] : null;
           const isCorner = space.kind === "corner";
-          const CornerIcon = CORNER_ICON[space.name];
+          // Falls back to Sparkles rather than rendering nothing, matching
+          // the sibling !country branch in TileFace below — city_board_spaces
+          // is server data, not a closed TS union, so a future corner
+          // rename/addition should degrade to a generic icon, not a blank
+          // slot with no signal anything's missing.
+          const CornerIcon = CORNER_ICON[space.name] ?? Sparkles;
 
           return (
             <button
@@ -329,13 +365,11 @@ export function CityBoard({
             >
               {isCorner ? (
                 <span className="flex flex-col items-center gap-1 p-1">
-                  {CornerIcon && (
-                    <CornerIcon
-                      className="w-[19px] h-[19px] text-(--brand-primary)"
-                      strokeWidth={2.25}
-                      aria-hidden="true"
-                    />
-                  )}
+                  <CornerIcon
+                    className="w-[19px] h-[19px] text-(--brand-primary)"
+                    strokeWidth={2.25}
+                    aria-hidden="true"
+                  />
                   <span className="text-[11.5px] font-bold text-center leading-tight">
                     {space.name}
                   </span>
@@ -547,9 +581,17 @@ function TokenLane({
             title={s.username}
             className={
               "grid place-items-center w-[19px] h-[19px] shrink-0 rounded-full border-[1.5px] border-black/60 " +
-              "text-[11px] font-extrabold leading-none text-white " +
+              "text-[11px] font-extrabold leading-none text-[#16121b] " +
               (i > 0 ? "-ml-[7px] " : "") +
-              (s.seat === currentSeat ? "ring-[2.5px] ring-(--brand-primary) z-[1]" : "")
+              // A code-review pass computed real contrast ratios and caught
+              // two regressions here: white text against light seat colours
+              // (lime/cyan/fog/amber) fell to ~1.1-1.6:1, and a lime ring
+              // against the cream tile background most tiles use fell to
+              // ~1.12:1 — both far below even the 3:1 UI-component floor.
+              // Dark ink text and a white ring are back because they were
+              // measured to hold up against every seat colour and both tile
+              // backgrounds, not because they're the safe default.
+              (s.seat === currentSeat ? "ring-[2.5px] ring-white z-[1]" : "")
             }
             style={{
               // A linear diagonal, matching the app's own --gradient-avatar
@@ -558,7 +600,7 @@ function TokenLane({
               // gradient style, so a token still reads as a Spintra avatar
               // first and a board piece second.
               background: `linear-gradient(135deg, ${c.light}, ${c.dark})`,
-              textShadow: "0 1px 1px rgba(0,0,0,.4)",
+              textShadow: "0 1px 0 rgba(255,255,255,.5)",
             }}
           >
             {marks.get(s.seat) ?? "?"}

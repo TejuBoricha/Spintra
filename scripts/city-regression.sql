@@ -300,8 +300,8 @@ begin
   select cash into bo0 from public.city_match_players where match_id=m and seat=1;
   select cash into cy0 from public.city_match_players where match_id=m and seat=2;
 
-  perform public.city_charge(m, 0, 50, 1);  -- seat 0 now owes seat 1: 50
-  perform public.city_charge(m, 0, 40, 2);  -- a second charge lands before the first clears
+  perform public.city_charge(m, 0, 50, 1, 'rent_paid');  -- seat 0 now owes seat 1: 50
+  perform public.city_charge(m, 0, 40, 2, 'rent_paid');  -- a second charge lands before the first clears
 
   select pending_debt, pending_creditor_seat into d, c
     from public.city_match_players where match_id=m and seat=0;
@@ -2341,6 +2341,61 @@ begin
   insert into rg values (default,'BUG-SETTLE-OVERLOAD','the real 1-arg client call to city_settle_auction resolves and settles a genuinely expired auction',
     'city_settle_auction(p_match_id) -- exactly the argument shape the real client uses -- succeeds and settles the auction, not "function ... is not unique"',
     case when ok then format('settled: %s', res) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- CITY-EVENTS — a code-review pass on migration 0093 (the activity feed)
+-- found this suite had zero coverage of city_match_events: every other
+-- assertion above would still pass even if a redefined function's insert
+-- were on the wrong branch, used the wrong kind, or was silently dropped
+-- during a copy-paste (the migration touches 11 functions by hand-copying
+-- their bodies). This doesn't re-test game logic already covered above --
+-- it asserts specifically that the instrumented functions actually log,
+-- with the right kind, actor, and ordering.
+-- ===========================================================================
+do $blk$
+declare
+  m uuid; res jsonb; ok boolean := true; act text := '';
+  n0 int; boughtId bigint; boughtKind text; boughtActor int;
+  mortKind text; mortId bigint;
+begin
+  m := pg_temp.rg_match('CITYRGEVT', 909);
+
+  select count(*) into n0 from public.city_match_events where match_id = m;
+  if n0 <> 0 then
+    ok := false; act := act || format('expected 0 events on a freshly-started match, got %s; ', n0);
+  end if;
+
+  -- seat 0 stands on a purchasable, unowned space (idx 21, the same one
+  -- BUG-010 above uses) and buys it as the real client would.
+  delete from public.city_assets where match_id = m and space_idx = 21;
+  update public.city_match_players set position = 21, cash = 1000 where match_id = m and seat = 0;
+  update public.city_matches set phase = 'required_decision', current_seat = 0 where id = m;
+  perform pg_temp.rg_as(0);
+  select public.city_buy_property(m) into res;
+
+  select id, kind, actor_seat into boughtId, boughtKind, boughtActor
+    from public.city_match_events where match_id = m order by id desc limit 1;
+  if boughtKind is distinct from 'bought' or boughtActor is distinct from 0 then
+    ok := false; act := act || format('after city_buy_property, expected a bought/seat-0 event, got %s/%s; ', boughtKind, boughtActor);
+  end if;
+
+  -- Same seat mortgages what they just bought — a second, later event.
+  update public.city_matches set current_seat = 0, phase = 'optional_actions',
+    turn_clock_paused_at = null where id = m;
+  select public.city_mortgage(m, 21) into res;
+  select id, kind into mortId, mortKind
+    from public.city_match_events where match_id = m order by id desc limit 1;
+  if mortKind is distinct from 'mortgaged' then
+    ok := false; act := act || format('after city_mortgage, expected a mortgaged event, got %s; ', mortKind);
+  elsif mortId <= boughtId then
+    ok := false; act := act || format('mortgaged event id %s did not come after bought event id %s; ', mortId, boughtId);
+  end if;
+
+  insert into rg values (default,'CITY-EVENTS','city_match_events actually logs, with the right kind/actor/ordering, for the real client-facing RPCs',
+    'zero events on a fresh match; city_buy_property logs a bought/seat-0 row; city_mortgage logs a later mortgaged row',
+    case when ok then format('bought=%s(id %s), mortgaged=%s(id %s)', boughtKind, boughtId, mortKind, mortId) else act end,
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 

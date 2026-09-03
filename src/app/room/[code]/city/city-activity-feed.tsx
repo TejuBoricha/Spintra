@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import {
   ArrowLeftRight,
   Banknote,
@@ -10,6 +11,7 @@ import {
   Landmark,
   LogOut,
   Skull,
+  Sparkles,
 } from "lucide-react";
 import type { CityBoardSpace, CityMatchEvent, CitySeat } from "./use-city-match";
 
@@ -38,6 +40,14 @@ const ICONS: Record<string, typeof Dices> = {
   trade_accepted: ArrowLeftRight,
   bankrupt: Skull,
   retired: LogOut,
+  // Card effects (migration 0094) share the same glyph as the card spaces
+  // themselves (city-board.tsx's fallback icon for Boarding Pass/City Fund)
+  // rather than inventing a fifth icon for what's still fundamentally "a
+  // card did this."
+  card_collected: Sparkles,
+  card_visa_gained: Sparkles,
+  card_sent_to_customs: Sparkles,
+  card_charged: Sparkles,
 };
 
 function describe(
@@ -84,12 +94,30 @@ function describe(
       return `${actor} went bankrupt`;
     case "retired":
       return `${actor} left the match`;
+    case "card_collected":
+      return `${actor} collected ${money(p.amount)} from a card`;
+    case "card_visa_gained":
+      return `${actor} picked up a Transit Visa`;
+    case "card_sent_to_customs":
+      return `${actor} was sent to Customs`;
+    case "card_charged":
+      return `${actor} paid ${money(p.amount)} to ${who(p.to_seat)} from a card`;
     default:
       return `${actor} — ${e.kind}`;
   }
 }
 
-export function CityActivityFeed({
+// A code-review pass found this re-rendering (up to 200 describe() +
+// toLocaleTimeString() calls) on every unrelated state change in
+// CityMatchShell — selecting a board tile, opening the retire dialog —
+// since neither this component nor CityBoard's sibling FlagDefs was
+// memoized, the one pattern this same directory already established
+// (SeatBadge/TurnCountdown in city-match-shell.tsx) for exactly this
+// reason. events/seats/board keep the same array reference across an
+// unrelated re-render (they're plain useState values in use-city-match.ts,
+// untouched unless their own setter runs), so the default shallow
+// comparison is enough — no custom comparator needed.
+export const CityActivityFeed = memo(function CityActivityFeed({
   events,
   seats,
   board,
@@ -142,4 +170,4 @@ export function CityActivityFeed({
       </ul>
     </div>
   );
-}
+});

@@ -288,6 +288,24 @@ interface UseCityMatchResult {
   refetch: () => Promise<void>;
 }
 
+// A code-review pass found the events feed's initial full-page load and its
+// realtime top-up (fetchNewEvents, below) could race each other for the same
+// match — whichever resolved second would blindly replace/append over the
+// other, silently dropping a row or duplicating one, and neither derived
+// its next cursor from the other's result. Merging by id instead of
+// replacing or blind-appending closes both: two overlapping fetches for the
+// same rows just overwrite the same Map keys (no duplicates), and a slower
+// stale response can never erase a row a faster one already added (the
+// merged array is always a superset). The cursor is derived from the merged
+// result's own max id rather than from whichever response happened to
+// arrive, so it can't be rolled backward by a late responder either.
+function mergeEvents(prev: CityMatchEvent[], incoming: CityMatchEvent[]): CityMatchEvent[] {
+  if (incoming.length === 0) return prev;
+  const byId = new Map(prev.map((e) => [e.id, e]));
+  for (const e of incoming) byId.set(e.id, e);
+  return [...byId.values()].sort((a, b) => a.id - b.id);
+}
+
 export function useCityMatch(roomCode: string, currentUserId: string): UseCityMatchResult {
   const [match, setMatch] = useState<CityMatch | null>(null);
   const [seats, setSeats] = useState<CitySeat[]>([]);
@@ -504,22 +522,31 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   useEffect(() => {
     lastEventIdRef.current = 0;
     if (!supabase || !match?.id) return;
+    const loadingFor = match.id;
     let cancelled = false;
     void (async () => {
       const { data, error: eventsError } = await supabase
         .from("city_match_events")
         .select("id, created_at, kind, actor_seat, payload")
-        .eq("match_id", match.id)
+        .eq("match_id", loadingFor)
         .order("id", { ascending: false })
         .limit(200);
-      if (cancelled) return;
+      // Discard a response that arrives after the match has already moved
+      // on (a post-match flow can open a fresh match in the same room
+      // without remounting this hook) — otherwise a slow reload for the
+      // OLD match could land after the NEW match's own state is already up,
+      // merging stale rows from the wrong match into the current feed.
+      if (cancelled || matchIdRef.current !== loadingFor) return;
       if (eventsError) {
         console.error("Failed to load the city activity feed:", eventsError);
         return;
       }
       const rows = ((data ?? []) as unknown as CityMatchEvent[]).slice().reverse();
-      setEvents(rows);
-      lastEventIdRef.current = rows.length ? rows[rows.length - 1].id : 0;
+      setEvents((prev) => {
+        const merged = mergeEvents(prev, rows);
+        lastEventIdRef.current = merged.length ? merged[merged.length - 1].id : 0;
+        return merged;
+      });
     })();
     return () => {
       cancelled = true;
@@ -530,23 +557,34 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   // already loaded (id > lastEventIdRef), unlike every other table here,
   // which refetches its whole current-state snapshot. Events are append-only
   // history, not current state, so "what changed" really does mean "what's
-  // new since last time" here, not "re-read everything."
+  // new since last time" here, not "re-read everything." A code-review pass
+  // found two races this didn't originally guard against: concurrent pings
+  // (e.g. a roll that also triggers a rent charge in the same transaction)
+  // both reading the same stale cursor and both appending the same rows, and
+  // a response resolving after the match itself changed. mergeEvents (byid,
+  // above) makes a duplicate fetch a no-op instead of a duplicate row; the
+  // matchIdRef check discards a response for a match that's no longer live.
   const fetchNewEvents = useCallback(async () => {
     if (!supabase || !matchIdRef.current) return;
+    const fetchingFor = matchIdRef.current;
     const { data, error: eventsError } = await supabase
       .from("city_match_events")
       .select("id, created_at, kind, actor_seat, payload")
-      .eq("match_id", matchIdRef.current)
+      .eq("match_id", fetchingFor)
       .gt("id", lastEventIdRef.current)
       .order("id", { ascending: true });
+    if (matchIdRef.current !== fetchingFor) return;
     if (eventsError) {
       console.error("Failed to load new city activity events:", eventsError);
       return;
     }
     const rows = (data ?? []) as unknown as CityMatchEvent[];
     if (rows.length === 0) return;
-    lastEventIdRef.current = rows[rows.length - 1].id;
-    setEvents((prev) => [...prev, ...rows]);
+    setEvents((prev) => {
+      const merged = mergeEvents(prev, rows);
+      lastEventIdRef.current = merged.length ? merged[merged.length - 1].id : 0;
+      return merged;
+    });
   }, [supabase]);
 
   // Realtime as a notifier only: a change ping triggers a refetch of
@@ -623,6 +661,15 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
             clearTimeout(realtimeOfflineTimerRef.current);
             realtimeOfflineTimerRef.current = null;
           }
+          // A code-review pass caught a gap the events feed didn't share
+          // with the rest of this file: every other table gets a fresh read
+          // on every reconnect via refetch() below, but fetchNewEvents only
+          // ever ran on a live INSERT ping — if the channel dropped right as
+          // a match's last event fired (its own closing bankrupt/finish
+          // row), nothing would ever trigger the catch-up that would have
+          // picked it up. Firing it here closes that gap the same way
+          // refetch() already does for current state.
+          void fetchNewEvents();
           setRealtimeStatus("connected");
         } else {
           setRealtimeStatus("reconnecting");
