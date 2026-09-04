@@ -951,12 +951,17 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     if (!supabase || !id) return;
     const { error: e } = await supabase.rpc("city_settle_auction", { p_match_id: id });
     if (e) {
-      console.error("City settle-auction failed:", e);
       // CITY_AUCTION_STILL_RUNNING / CITY_NO_AUCTION are the expected
       // outcome of the race this function is designed to lose (another
-      // client settled first, or it genuinely isn't over yet) — anything
-      // else is a real failure and should actually surface.
+      // client settled first, or it genuinely isn't over yet) — every client
+      // in the match fires this optimistically, so losing that race is the
+      // ordinary case, not a failure. console.error was previously
+      // unconditional here, so Next's dev overlay popped a full-screen
+      // "Console Error" for completely normal gameplay on every single race
+      // this function is designed to lose — logged (and surfaced) only for
+      // an actually-unexpected outcome now.
       if (!/CITY_AUCTION_STILL_RUNNING|CITY_NO_AUCTION/.test(e.message)) {
+        console.error("City settle-auction failed:", e);
         setError(friendlyCommandError(e.message));
       }
       return;
@@ -974,12 +979,21 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     if (!supabase || !id) return;
     const { error: e } = await supabase.rpc("city_claim_timeout", { p_match_id: id });
     if (e) {
-      console.error("City claim-timeout failed:", e);
       // CITY_TURN_CLOCK_STILL_RUNNING / CITY_TURN_CLOCK_PAUSED are the
-      // expected outcome of an early or duplicate attempt — this function
-      // is deliberately fired optimistically by multiple clients. Anything
-      // else is a real failure and should actually surface.
+      // expected outcome of an early or duplicate attempt — every client
+      // watching this turn fires claimTimeout optimistically the instant its
+      // own local clock crosses the deadline (city-match-shell.tsx), so
+      // losing that race to whichever client's request lands first is the
+      // ordinary case, not a failure. console.error was previously
+      // unconditional here, so Next's dev overlay popped a full-screen
+      // "Console Error" (reading as an opaque "{}" — Error objects don't
+      // have enumerable own properties, so the overlay's JSON.stringify
+      // renders one that way regardless of what the real error says) for
+      // completely normal gameplay, on nearly every stalled turn in any
+      // multi-tab session. Logged (and surfaced) only for an
+      // actually-unexpected outcome now.
       if (!/CITY_TURN_CLOCK_STILL_RUNNING|CITY_TURN_CLOCK_PAUSED/.test(e.message)) {
+        console.error("City claim-timeout failed:", e);
         setError(friendlyCommandError(e.message));
       }
       return;
