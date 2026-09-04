@@ -482,6 +482,7 @@ export default function HomePage() {
             <Link href="/explore" className="inline-flex items-center py-2 hover:text-foreground transition-colors">Explore</Link>
             <Link href="/create" className="inline-flex items-center py-2 hover:text-foreground transition-colors">Create Room</Link>
             <Link href="/for-teachers" className="inline-flex items-center py-2 hover:text-foreground transition-colors">For Teachers</Link>
+            <Link href="/spintra-city" className="inline-flex items-center py-2 hover:text-foreground transition-colors">Spintra City</Link>
             <Link href="/legal/terms" className="inline-flex items-center py-2 hover:text-foreground transition-colors">Terms</Link>
             <Link href="/legal/privacy" className="inline-flex items-center py-2 hover:text-foreground transition-colors">Privacy</Link>
             <span>© 2026 Spintra</span>

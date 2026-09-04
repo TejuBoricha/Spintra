@@ -36,7 +36,7 @@ const COMING: Announcement[] = [
   {
     icon: Building2,
     title: "Spintra City",
-    body: "A property-trading board game for 2-8 players — roll, buy, develop, and negotiate. The server referees every move, so nobody can cheat. In final review now.",
+    body: "A Monopoly-style property-trading board game for 2-8 players — roll, buy, develop, and negotiate. The server referees every move, so nobody can cheat. In final review now.",
   },
 ];
 

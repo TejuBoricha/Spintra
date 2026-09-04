@@ -5,7 +5,7 @@ import { GAMES } from "@/lib/games";
 const BASE_URL = "https://spintra.io";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const staticPaths = ["", "/tools", "/explore", "/create", "/for-teachers", "/legal/terms", "/legal/privacy"];
+  const staticPaths = ["", "/tools", "/explore", "/create", "/for-teachers", "/spintra-city", "/legal/terms", "/legal/privacy"];
   const toolPaths = [...new Set(GAMES.map((g) => g.href))].filter((href) =>
     href.startsWith("/tools/")
   );

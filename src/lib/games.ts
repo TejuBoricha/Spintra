@@ -220,9 +220,9 @@ export const GAMES: GameDefinition[] = [
     label: "Spintra City",
     icon: Building2,
     color: "from-amber-500 to-yellow-500",
-    desc: "Buy, build, and trade your way to the top",
+    desc: "A Monopoly-style board game — buy, build, and trade your way to the top",
     featureDescription:
-      "A property-trading board game for 2-8 players. Roll, buy, develop, and negotiate — the board is refereed by the server, so nobody can cheat.",
+      "A Monopoly-style property-trading board game for 2-8 players. Roll, buy, develop, and negotiate — the board is refereed by the server, so nobody can cheat.",
     stats: "2-8 players, one winner",
     // No standalone tool page: Spintra City needs at least 2 real people (no
     // bots by design), so there is nothing to play solo. Uses the same
