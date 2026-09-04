@@ -342,7 +342,17 @@ Pre-launch hardening — required before publishing the site publicly on the ope
   `CITY-EVENTS` assertion closes a gap the review itself found (zero coverage of
   `city_match_events`). Review is now a standing gate before any City work is considered done, not
   an occasional step — see `CHANGELOG_AI.md`'s three entries for this day's work.
-  Migrations `0093`–`0095` are local only, not yet on production.
+  Migrations `0093`–`0095` are local only, not yet on production. **Follow-up 2026-09-04:** a
+  launch-readiness audit found and fixed 2 real CI-blocking test bugs (stale `city-lobby.spec.ts`
+  assertions checking for UI text that no longer exists; `qa-x1-browsers.spec.ts` hard-failing when
+  Firefox/WebKit aren't installed, which CI deliberately doesn't do) — 92/93 local smoke suite after.
+  User feedback closed two more gaps same day: zero user-facing copy said "Monopoly" anywhere (fixed
+  via comparative "Monopoly-style" language + a new `/spintra-city` SEO landing page — see the Growth
+  section below), and rolling the dice had no visual feedback at all beyond text narration (fixed via
+  a real animated 3D-CSS dice pair, `city-dice.tsx`, pip-verified correct against the live database
+  across all 6 face values). PR #43 is now **8+ commits behind local `HEAD`** — none of this session's
+  work has reached it; still needs the branch pushed, migrations `0093`–`0095` applied to production,
+  and a human review before any of it reaches spintra.io.
 
 - `[ ]` **Activity feed v2 — event kinds deliberately left out of migration `0093`'s v1.** Logged
   as a real scope decision, not an oversight, so it isn't silently forgotten: turn-change (would

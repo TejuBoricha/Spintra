@@ -29,6 +29,7 @@ import {
 import { useRoomActivity } from "../context/room-activity-context";
 import { CityActivityFeed } from "./city-activity-feed";
 import { CityBoard } from "./city-board";
+import { CityDice } from "./city-dice";
 import { CityHoldings } from "./city-holdings";
 import { CityTrade } from "./city-trade";
 import { CityAuction } from "./city-auction";
@@ -528,6 +529,13 @@ export function CityMatchShell() {
           selectedIdx={selected}
           onSelect={setSelected}
         />
+
+        {!auction && effectiveRoll && (
+          <CityDice
+            dice={effectiveRoll.dice as [number, number]}
+            rollKey={`${match.turn_number}-${match.doubles_count}-${effectiveRoll.dice[0]}-${effectiveRoll.dice[1]}`}
+          />
+        )}
 
         <div
           className={

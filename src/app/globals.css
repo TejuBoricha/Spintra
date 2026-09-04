@@ -380,6 +380,10 @@
   --animate-float: float 6s ease-in-out infinite;
   --animate-glow: glow 2s ease-in-out infinite;
   --animate-spin-slow: spin 8s linear infinite;
+  /* city-dice.tsx: rotateX/Y target is per-roll (which face lands forward),
+     so it's supplied per-die via --city-dice-final-rx/-ry custom properties
+     rather than baked into the keyframes themselves. */
+  --animate-city-dice-roll: city-dice-roll 850ms cubic-bezier(.22,.9,.32,1) forwards;
 
   @keyframes aurora {
     0%, 100% { background-position: 0% 50%; }
@@ -392,6 +396,12 @@
   @keyframes glow {
     0%, 100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.3); }
     50% { box-shadow: 0 0 40px rgba(139, 92, 246, 0.6); }
+  }
+  @keyframes city-dice-roll {
+    0% { transform: rotateX(0deg) rotateY(0deg); }
+    100% {
+      transform: rotateX(var(--city-dice-final-rx)) rotateY(var(--city-dice-final-ry));
+    }
   }
 }
 
