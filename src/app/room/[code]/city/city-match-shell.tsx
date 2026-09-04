@@ -190,6 +190,15 @@ export function CityMatchShell() {
   // anything once the match is live — every early return below happens after
   // this, so the guards live inside the effect instead of around the call.
   const claimedTurnRef = useRef<string | null>(null);
+
+  // CityDice's remount key (see its computation below, near where
+  // effectiveRoll is derived) — also unconditional for the same Rules of
+  // Hooks reason. State, not a ref: this repo's React Compiler lint rule
+  // (react-hooks/refs) forbids reading/writing a ref's .current during
+  // render, so this uses the same "adjust state during render" pattern
+  // already established for lastRollTurn/eventsMatchId in use-city-match.ts.
+  const [lastRollObjSeen, setLastRollObjSeen] = useState<CityRollResult | null>(null);
+  const [rollSeq, setRollSeq] = useState(0);
   useEffect(() => {
     if (!match || match.status !== "active" || match.phase === "auction") return;
 
@@ -446,6 +455,32 @@ export function CityMatchShell() {
       match.last_roll_turn === match.turn_number ? match.last_roll_result : null;
     const effectiveRoll = lastRoll ?? freshServerRoll;
 
+    // CityDice's remount key, below. A code-review pass found the first
+    // version (`${turn_number}-${doubles_count}-${dice}`) double-animated
+    // every doubles roll: rollDice() sets lastRoll synchronously, a render
+    // before the separate refetch() updates match.doubles_count, so that
+    // first render's key still carries the OLD doubles_count — a mount/
+    // tumble — and once refetch() lands moments later, doubles_count changes
+    // and the key changes again for the identical dice, remounting a second
+    // time. match.doubles_count is only ever stale like this for the roller's
+    // own optimistic lastRoll — every other client only ever observes a roll
+    // via freshServerRoll, which by construction can't see a new roll before
+    // match.doubles_count has already caught up in that same refetched row.
+    // So: while this tab has its own fresh lastRoll, key off lastRoll's own
+    // object identity (a new object every rollDice() call, no server
+    // round-trip needed); once it's cleared (a fresh reload, or watching
+    // another seat's turn), fall back to the value-based key, which is
+    // lag-free for that case.
+    if (lastRoll && lastRoll !== lastRollObjSeen) {
+      setLastRollObjSeen(lastRoll);
+      setRollSeq((n) => n + 1);
+    }
+    const rollKey = lastRoll
+      ? `mine-${rollSeq}`
+      : effectiveRoll
+        ? `${match.turn_number}-${match.doubles_count}-${effectiveRoll.dice[0]}-${effectiveRoll.dice[1]}`
+        : "";
+
     return (
       <div className="max-w-5xl mx-auto">
         {/* BUG-042: City's own realtime channel had no visible failure state
@@ -530,12 +565,13 @@ export function CityMatchShell() {
           onSelect={setSelected}
         />
 
-        {!auction && effectiveRoll && (
-          <CityDice
-            dice={effectiveRoll.dice as [number, number]}
-            rollKey={`${match.turn_number}-${match.doubles_count}-${effectiveRoll.dice[0]}-${effectiveRoll.dice[1]}`}
-          />
-        )}
+        {/* No !auction gate — a review pass found one here previously fully
+            unmounted CityDice while an auction ran, so it remounted (and
+            replayed its tumble) the instant the auction settled, even though
+            it was still the same already-shown roll. The text narration
+            below never had that gate either, so this also fixes the
+            visible inconsistency between the two during an auction. */}
+        {effectiveRoll && <CityDice dice={effectiveRoll.dice} rollKey={rollKey} />}
 
         <div
           className={

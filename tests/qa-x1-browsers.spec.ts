@@ -19,7 +19,16 @@ for (const [name, launcher] of [['firefox',firefox],['webkit',webkit],['chromium
     try {
       br = await launcher.launch();
     } catch (e) {
-      test.skip(true, `${name} not installed: ${(e as Error).message.split('\n')[0].slice(0, 160)}`);
+      const msg = (e as Error).message;
+      // Only a genuinely missing executable should skip silently — a review
+      // pass found this catch was unconditional, so a REAL launch failure on
+      // a machine that does have the browser (corrupted profile, resource
+      // exhaustion, a Playwright/browser version mismatch) would also get
+      // silently mislabeled "not installed" and skipped instead of failing,
+      // masking an actual regression. Playwright's own missing-executable
+      // error always contains this exact phrase.
+      if (!/Executable doesn't exist/.test(msg)) throw e;
+      test.skip(true, `${name} not installed: ${msg.split('\n')[0].slice(0, 160)}`);
       return;
     }
     try {

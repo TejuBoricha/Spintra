@@ -115,10 +115,16 @@ export function CityDice({
   dice,
   rollKey,
 }: {
-  dice: [number, number] | null;
+  // CityRollResult.dice is number[], not a tuple — a review pass found the
+  // call site force-casting it to [number, number] with no runtime check, so
+  // a malformed/partial realtime payload could silently show a wrong face
+  // (FACE_REVEAL[undefined] ?? FACE_REVEAL[1]) instead of the missing data
+  // being at all visible. Checking the real length here means a shape bug
+  // upstream shows as no dice rather than a silently wrong one.
+  dice: number[] | null;
   rollKey: string;
 }) {
-  if (!dice) return null;
+  if (!dice || dice.length !== 2) return null;
   return (
     <div className="flex items-center justify-center gap-3 mb-2" aria-hidden="true">
       <div key={rollKey} className="flex items-center gap-3">

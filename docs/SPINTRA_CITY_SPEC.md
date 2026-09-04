@@ -503,9 +503,16 @@ Needing the user, not blocking Phase 1:
 Phase 1's blockers above are all closed and schema/implementation work is done. What's actually
 left, in order:
 
-1. ~~Branch never pushed~~ → **Done.** Pushed; PR #43 open against `main`
-   (https://github.com/TejuBoricha/Spintra/pull/43). Not yet reviewed by a human or merged.
-1b. **PR #43's own code review — done, fixed, live-verified.** A 2-round, 20-agent `/code-review
+1. ~~Branch never pushed~~ → **Partially stale as of 2026-09-04.** PR #43 was opened
+   (https://github.com/TejuBoricha/Spintra/pull/43) against the branch's 2026-09-03 state, but a
+   2026-09-04 launch-readiness audit found the pushed branch is now **8+ commits behind local
+   `HEAD`** — the persistent activity feed, board redesign, What's Next feature, the animated dice
+   roll, a real site-wide room-join race fix, and the `/spintra-city` SEO page have all landed
+   locally since, none of them pushed. The PR still needs: the branch actually pushed, migrations
+   `0093`–`0095` applied to production, and only then a human review and merge. See
+   `CHANGELOG_AI.md`'s 2026-09-04 audit entry.
+1b. **PR #43's own code review — done, fixed, live-verified (as of 2026-09-03; superseded by more
+   local work since, per item 1 above).** A 2-round, 20-agent `/code-review
    high` pass found 2 critical bugs (bankruptcy permanently deadlocking the match; a finished match
    being resurrectable with a live turn state — both independently rediscovered by 5+ agents each,
    then personally verified against the actual SQL and live-reproduced end-to-end, not just
@@ -546,6 +553,12 @@ left, in order:
 5. **Docs were stale until this pass.** This file, `DESIGN.md`, and the top-level session docs said
    "design phase, zero code" through 47 implementation commits — fixed 2026-09-03.
 6. Board art, and trademark clearance on "Spintra City"/"The Wheelworks" (item 4/5 above) — still
-   outstanding, still the user's call, not code.
+   outstanding, still the user's call, not code. **One related, narrower decision was made and
+   shipped 2026-09-04:** the product name itself stays "Spintra City" (unchanged — putting the
+   Hasbro-trademarked "Monopoly" name into the product's own branding would be real infringement
+   risk), but user-facing copy now uses "Monopoly-style" as comparative description (the `/create`
+   card, the What's Next dialog, and a new `/spintra-city` SEO landing page, which also carries an
+   explicit non-affiliation disclaimer) — nominative fair use, not a trademark-clearance
+   substitute. See `CHANGELOG_AI.md`'s 2026-09-04 entry for the full reasoning.
 
 Everything else in `DESIGN.md` §4.1 can be sequenced alongside the slices.
