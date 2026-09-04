@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useSyncExternalStore, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/components/theme-provider";
 import Link from "next/link";
@@ -11,6 +11,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { checkCanJoinRoom, ROOM_JOIN_ERROR_MESSAGES } from "@/lib/room-join-check";
 import { getOrCreateRoomUser } from "@/lib/room-user";
 import { fireConfetti } from "@/components/celebration";
+import { useHasMounted } from "@/lib/use-has-mounted";
 import {
   Sun,
   Moon,
@@ -27,10 +28,6 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useWhatsNew, WhatsNewTrigger, WhatsNewDialog } from "@/components/layout/whats-new-dialog";
 import { cn } from "@/lib/utils";
 
-const subscribeToClient = () => () => {};
-const getClientSnapshot = () => true;
-const getServerSnapshot = () => false;
-
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -43,11 +40,7 @@ export function Navbar() {
   const joinCode = codeDigits.join("");
 
   const router = useRouter();
-  const mounted = useSyncExternalStore(
-    subscribeToClient,
-    getClientSnapshot,
-    getServerSnapshot
-  );
+  const mounted = useHasMounted();
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
@@ -328,8 +321,15 @@ export function Navbar() {
                     real fix is symmetric: hide both from this panel at that
                     width, not just one, so the grid above stays a clean
                     2-item row instead of trading one layout bug for a
-                    duplicate-affordance one. */}
-                <div className="sm:hidden grid grid-cols-2 gap-2 mt-2">
+                    duplicate-affordance one.
+                    No mt-2 here (unlike the grid above it): this div and its
+                    sibling are both direct children of the parent's own
+                    `flex flex-col gap-2`, so that gap alone already spaces
+                    the two rows apart. A later review caught that an mt-2
+                    here stacks on top of the parent's gap instead of
+                    replacing it, doubling the row-to-row gap versus the
+                    single combined grid this replaced. */}
+                <div className="sm:hidden grid grid-cols-2 gap-2">
                   <Link href="/settings" onClick={() => setMobileOpen(false)}>
                     <Button variant="ghost" className="w-full rounded-2xl h-12 bg-(--surface-sunken)/50">
                       <Settings className="w-4 h-4 mr-2" />

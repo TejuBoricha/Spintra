@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useRef, useState } from "react";
 import {
   Lightbulb,
   Building2,
@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { safeStorageGet, safeStorageSet } from "@/lib/utils";
+import { useHasMounted } from "@/lib/use-has-mounted";
 
 // "By clicking on it they can get to know what next we're launching and
 // updates" — a lightbulb affordance in the navbar, next to Settings/theme,
@@ -21,14 +22,6 @@ import { safeStorageGet, safeStorageSet } from "@/lib/utils";
 // actually changes — it isn't tied to a specific item, so editing COMING/
 // UPDATES below without bumping it means returning users won't notice.
 const SEEN_KEY = "spintra-whats-new-seen-v1";
-
-// Same client-mounted detector navbar.tsx uses for its own theme toggle —
-// setState-in-an-effect (even just for a "mounted" flag) trips this repo's
-// React Compiler lint rule, and useSyncExternalStore with a no-op
-// subscription is the established workaround here, not a one-off.
-const subscribeToClient = () => () => {};
-const getClientSnapshot = () => true;
-const getServerSnapshot = () => false;
 
 interface Announcement {
   icon: typeof Lightbulb;
@@ -116,7 +109,7 @@ export function useWhatsNew(onDialogClosed?: () => void): WhatsNewState {
   // Hydration guard: the real localStorage read above can only run
   // client-side, so the badge would otherwise mismatch between the server
   // render and the client's first paint whenever it's genuinely unseen.
-  const mounted = useSyncExternalStore(subscribeToClient, getClientSnapshot, getServerSnapshot);
+  const mounted = useHasMounted();
 
   // A code-review pass caught a second bug in the first version of this
   // fix: onDialogClosed fired unconditionally on every close, regardless of

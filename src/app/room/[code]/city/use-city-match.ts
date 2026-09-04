@@ -556,60 +556,78 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   // already loaded (id > lastEventIdRef), unlike every other table here,
   // which refetches its whole current-state snapshot. Events are append-only
   // history, not current state, so "what changed" really does mean "what's
-  // new since last time" here, not "re-read everything." A code-review pass
-  // found two races this didn't originally guard against: concurrent pings
-  // (e.g. a roll that also triggers a rent charge in the same transaction)
-  // both reading the same stale cursor and both appending the same rows, and
-  // a response resolving after the match itself changed. mergeEvents (byid,
+  // new since last time" here, not "re-read everything." mergeEvents (byid,
   // above) makes a duplicate fetch a no-op instead of a duplicate row; the
   // matchIdRef check discards a response for a match that's no longer live.
-  // This has been through three prior passes, each fixing a real bug the
-  // last one introduced: unbounded (could turn "fetch what's new" into
-  // "fetch the whole match" if it raced the initial-load effect's cursor
-  // reset) -> capped ascending (self-healing via repeated pings, but a
-  // single capped fetch could leave a gap behind the initial-load effect's
-  // own most-recent-200 window) -> capped descending (fixed that race, but
-  // for a plain backlog >500 with no race at all, jumping the cursor
-  // straight to "now" meant the skipped middle was gone for good — no
-  // future ping ever asks for it again, since every later call is also
-  // anchored at "newest 500 above cursor"). A loop closes this properly
-  // instead of shuffling the gap somewhere else again: keep paging forward
-  // in id order until a page comes back short of FETCH_PAGE_SIZE, which is
-  // the only actual signal "there's nothing left" — not a guess about how
-  // large one page needs to be. 20 pages (10,000 events) is a sanity
-  // backstop against a runaway loop, not a real ceiling any match
-  // approaches.
-  const FETCH_PAGE_SIZE = 500;
+  //
+  // This has been through several prior passes, each fixing a real bug the
+  // last one introduced: unbounded -> capped ascending (self-healing via
+  // repeated pings, but a single capped fetch could leave a gap behind the
+  // initial-load effect's own most-recent-200 window) -> capped descending
+  // (fixed that race, but for a plain backlog with no race at all, jumping
+  // the cursor straight to "now" meant the skipped middle was gone for good)
+  // -> a 20-page ascending loop (closed the gap properly, but a mid-loop
+  // query error discarded every already-fetched page instead of keeping
+  // partial progress, and concurrent pings each re-paged the same range from
+  // scratch with no coordination). FETCH_LIMIT set generously above any real
+  // match's per-ping backlog keeps the same self-healing property a single
+  // capped ascending fetch already had — the cursor only advances to what
+  // was actually merged, so a still-larger backlog is picked up whole by the
+  // next ping rather than silently skipped — without a loop's multi-await
+  // window or its all-or-nothing error handling. isFetchingRef/queuedRef
+  // below replace the loop's per-page matchIdRef re-check for the one thing
+  // a single query doesn't fix on its own: two pings landing close together
+  // (e.g. a roll that also triggers a rent charge in the same transaction)
+  // both reading the same stale cursor. Rather than dropping the second one
+  // outright — which could lose whatever it was signalling if that row
+  // wasn't yet visible to the first query — it's coalesced into exactly one
+  // more run right after the first finishes.
+  const FETCH_LIMIT = 2000;
+  const isFetchingEventsRef = useRef(false);
+  const queuedEventsFetchRef = useRef(false);
   const fetchNewEvents = useCallback(async () => {
     if (!supabase || !matchIdRef.current) return;
-    const fetchingFor = matchIdRef.current;
-    const collected: CityMatchEvent[] = [];
-    let cursor = lastEventIdRef.current;
-    for (let page = 0; page < 20; page += 1) {
-      const { data, error: eventsError } = await supabase
-        .from("city_match_events")
-        .select("id, created_at, kind, actor_seat, payload")
-        .eq("match_id", fetchingFor)
-        .gt("id", cursor)
-        .order("id", { ascending: true })
-        .limit(FETCH_PAGE_SIZE);
-      if (matchIdRef.current !== fetchingFor) return;
-      if (eventsError) {
-        console.error("Failed to load new city activity events:", eventsError);
-        return;
-      }
-      const rows = (data ?? []) as unknown as CityMatchEvent[];
-      if (rows.length === 0) break;
-      collected.push(...rows);
-      cursor = rows[rows.length - 1].id;
-      if (rows.length < FETCH_PAGE_SIZE) break;
+    if (isFetchingEventsRef.current) {
+      queuedEventsFetchRef.current = true;
+      return;
     }
-    if (collected.length === 0) return;
-    setEvents((prev) => {
-      const merged = mergeEvents(prev, collected);
-      lastEventIdRef.current = merged.length ? merged[merged.length - 1].id : 0;
-      return merged;
-    });
+    isFetchingEventsRef.current = true;
+    try {
+      do {
+        queuedEventsFetchRef.current = false;
+        const fetchingFor: string | null = matchIdRef.current;
+        if (!fetchingFor) break;
+        const { data, error: eventsError } = await supabase
+          .from("city_match_events")
+          .select("id, created_at, kind, actor_seat, payload")
+          .eq("match_id", fetchingFor)
+          .gt("id", lastEventIdRef.current)
+          .order("id", { ascending: true })
+          .limit(FETCH_LIMIT);
+        if (matchIdRef.current !== fetchingFor) break;
+        if (eventsError) {
+          console.error("Failed to load new city activity events:", eventsError);
+          break;
+        }
+        const rows = (data ?? []) as unknown as CityMatchEvent[];
+        if (rows.length === 0) continue;
+        if (rows.length === FETCH_LIMIT) {
+          // Not silent: the next ping (a future INSERT, or SUBSCRIBED on
+          // reconnect) resumes right where this cursor lands, same
+          // self-healing property the ascending order already relies on.
+          console.warn(
+            `City activity feed hit its ${FETCH_LIMIT}-row fetch cap — more events may remain.`
+          );
+        }
+        setEvents((prev) => {
+          const merged = mergeEvents(prev, rows);
+          lastEventIdRef.current = merged.length ? merged[merged.length - 1].id : 0;
+          return merged;
+        });
+      } while (queuedEventsFetchRef.current);
+    } finally {
+      isFetchingEventsRef.current = false;
+    }
   }, [supabase]);
 
   // Realtime as a notifier only: a change ping triggers a refetch of
