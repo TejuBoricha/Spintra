@@ -2252,3 +2252,33 @@ Plus a real, confirmed data-correctness bug (the `0082` mortgage-rounding fix wa
 **Verified:** the ring fix via a live screenshot (lime seat, cream property tile, both rings visible), typecheck/lint clean, full regression suite still 58/58 (no schema changes this round, so no fresh replay needed), `npm run verify` clean.
 
 **A repeated process note:** the live-verification pass for this round again needed `.env.local` re-pointed to local Supabase and back — checked explicitly this time before starting, unlike the previous round's accidental production hit.
+
+---
+
+## [2026-09-04] — Session 66 (continued): "What's Next" navbar feature (`/goal`)
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** User via `/goal`: "i want to introduce section like bulb icon something like that by clicking on it they can get to know what next we're launching and updates." Unrelated to Spintra City — landed on this branch only because it was the active one.
+
+**Files Modified:** `src/components/layout/whats-new-dialog.tsx` (NEW), `src/components/layout/navbar.tsx`.
+
+**Outcome:** A lightbulb icon in the navbar (icon-only desktop/tablet, a labeled row in the mobile hamburger menu) opens a two-section dialog: "Coming soon" (Spintra City — real, in-progress, sourced from this session's own work, not invented) and "Already live" (Classroom Mode, Party Mode — real features already on `main`, chosen because grepping `games.ts` confirmed `city` does NOT exist there yet, so Spintra City is genuinely accurate as "coming," and because neither Classroom nor Party Mode is the default `/create` path, making them genuinely easy to miss). A badge dot marks it unread until first opened, tracked via `localStorage` (`spintra-whats-new-seen-v1`).
+
+**Verified:** typecheck/lint/`npm run verify` clean, live two-viewport check (desktop badge + dialog content, mobile hamburger entry).
+
+**Risks:** shipped without a `code-review` pass, breaking this session's own just-established standing rule — caught and corrected in the next entry.
+
+---
+
+## [2026-09-04] — Session 66 (continued): review of the What's Next feature — found and fixed a real mobile bug
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** User: "yes" (run review), then a background rate-limit failure, then "continue" once it cleared. 10-agent `code-review` against the What's Next commit (and, still pending from the previous round, the city fix commit) — this time succeeded outright.
+
+**Findings — the standout, confirmed independently while tracing the actual unmount path:** opening the mobile "full" trigger called `onNavigate()` (closing the hamburger menu) at the same moment it opened the dialog. Since the dialog was a React child of the hamburger's conditionally-rendered subtree, closing the menu unmounted the dialog's own portal a few hundred ms later, mid-animation — on mobile, the panel flashed open and then silently tore itself down before the user could read it. Corroborating findings from nearly every one of the 10 agents: the desktop icon (permanently mounted) and mobile full button (mount-on-open) each owned an independent `hasUnseen`/`open` state with no cross-sync, so dismissing the badge via one didn't update the other until it happened to remount (e.g. resizing across the `sm` breakpoint mid-session could bring the badge back). One agent also caught a genuine CSS bug: the mobile trigger was wrapped in an extra `sm:hidden` on top of the hamburger panel's own `lg:hidden`, leaving Settings alone with an orphaned empty grid cell for 640–1024px viewports. Separately, in the *other* commit under review: `fetchNewEvents`' `.limit(500)` fix from the previous round used ascending order, so under its own documented race it could return the *oldest* 500 new events rather than the most recent — for a very long match, a permanent gap in the middle of history instead of catching up to the tail. And: this feature's own commit skipped documentation sync entirely, the exact discipline every other commit this session followed.
+
+**The fix — a real restructure, not a patch:** `whats-new-dialog.tsx` now exports a `useWhatsNew()` hook owning one shared `{ open, hasUnseen, mounted }` state, a `WhatsNewTrigger` presentational component (icon/full variant, no state of its own), and a `WhatsNewDialog` rendered exactly **once** at `Navbar`'s top level — never nested inside the hamburger's conditional subtree, so closing that menu can no longer unmount it. Closing the mobile menu now happens *when the dialog closes* (via an `onDialogClosed` callback passed into the hook), not when it opens. The mobile trigger's redundant `sm:hidden` was removed, restoring the clean 2×2 grid. `fetchNewEvents` now orders `id` descending before applying `.limit(500)` and reverses before merging — the same "most recent N" shape the initial-load effect already uses — so any gap a long match's backlog leaves sits behind an unbroken run of the newest events, not behind a stale wall that never catches up.
+
+**Empirically re-verified, not assumed:** the reviewers' third concern — the reverted double-ring (white+black box-shadow, ~4px spread) possibly getting clipped by a board tile's `overflow-hidden`, flagged independently by 3 agents with real geometric reasoning — was checked directly against the single worst case that would break it: a corner tile crowded with 8 tokens, current-seat token first in the stack (least horizontal room). Two separate zoomed screenshots (a plain property tile, then the crowded corner tile) both show the ring rendering completely, uncut. Confirmed false positive from the agents' static analysis, not fixed further.
+
+**Verified:** typecheck/lint clean, live mobile check confirming the dialog now survives past the hamburger's exit-animation window (screenshotted immediately on open and again 1.2s later — identical, fully-rendered content both times), 58/58 regression suite (unaffected — no SQL touched this round), `npm run verify` clean. `docs/HANDOFF.md`'s "Last Completed Task" updated to cover everything from the activity feed through this entry — the exact gap the review caught.
+
+**Risks:** Migrations `0093`–`0095` and all of this session's client-side work remain local only. PR #43 still unmerged.

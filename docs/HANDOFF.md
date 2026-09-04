@@ -16,6 +16,13 @@ Portable session-continuity note for any AI assistant to resume work immediately
 
 **Where this leaves things:** `SPINTRA_CITY_SPEC.md` §12 is still the authoritative checklist — only "PR #43 needs a human review + merge" and "full economy/balance playtesting" remain open. The database is live and functionally proven; the deployed app at spintra.io hasn't changed yet (that's what merging PR #43 does).
 
+**2026-09-03/04, same branch, continued — persistent activity feed, board redesign, two full `code-review` rounds on that work, then a separate "What's Next" navbar feature and its own review round.** Full detail across 6 `CHANGELOG_AI.md` entries ("persistent activity feed", "board redesign", "second review round, on the fix commit itself", plus this session's What's Next entries below) — summarized here:
+- Activity feed (migration `0093`, `city_match_events` table + 11 instrumented functions + `city-activity-feed.tsx`) — user-requested, richup.io-style running history.
+- Board redesign (`city-board.tsx`) — real SVG flags built from each country's actual construction spec (not eyeballed), `lucide-react` icons replacing bare Unicode, per-seat token gradient matching the app's own avatar style.
+- **Review is now a standing gate, not an occasional step** — user: "start this process from now on with review, it won't go next." Two full 10-agent rounds ran against the above and found (then fixed) an event-ordering inversion, a card-charge mislabeling bug, a duplicate/lost-row race in the realtime events fetch, and two accessibility regressions in the redesign (migrations `0094`/`0095`, plus TS-side fixes) — see `CHANGELOG_AI.md` for the full list.
+- **New, unrelated feature, same branch (only because it was the active one — not Spintra City scope):** a lightbulb "What's Next" button in the navbar (`whats-new-dialog.tsx`) — Coming Soon (Spintra City) / Already Live (Classroom Mode, Party Mode), badge dot cleared on first view. Its own review round found and fixed a real bug (opening it on mobile closed the hamburger menu, which unmounted the dialog before the user could read it) plus a badge-desync issue between the desktop/mobile triggers — both fixed by restructuring to one shared state + one Dialog instance instead of two independent ones.
+- Migrations `0093`–`0095`: **local only, not applied to production.** PR #43 is still unmerged and still the blocker for all of the above reaching spintra.io.
+
 ---
 
 ## Prior state this same day (superseded by the above, kept for the full verification trail)

@@ -531,16 +531,10 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
         .eq("match_id", loadingFor)
         .order("id", { ascending: false })
         .limit(200);
-      // A slow reload for the OLD match landing after the NEW match's own
-      // state is already up would merge stale rows into the current feed —
-      // `cancelled` alone already prevents this: this effect is keyed on
-      // match?.id, so a match change tears down THIS instance (setting its
-      // own `cancelled = true`) before the new instance's effect ever runs.
-      // (A second check against matchIdRef.current was here too at one
-      // point; a code-review pass confirmed it was permanently redundant
-      // with `cancelled` for this specific effect, since both close over the
-      // same match?.id transition — removed rather than kept as defensive
-      // clutter with no actual guarantee behind it.)
+      // `cancelled` alone is sufficient: this effect is keyed on match?.id,
+      // so a match change tears this instance down before a new one runs. A
+      // second matchIdRef check was here too at one point; confirmed
+      // redundant and removed.
       if (cancelled) return;
       if (eventsError) {
         console.error("Failed to load the city activity feed:", eventsError);
@@ -573,10 +567,17 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   // reconnect (below), which can race the initial-load effect's own
   // synchronous `lastEventIdRef.current = 0` reset for a brand-new match —
   // without a cap, that combination turns "fetch what's new" into "fetch
-  // every event the match has ever logged" in one unbounded query. 500 is
-  // generous headroom over the 200-row initial page; a match logging more
-  // than that between two realtime pings is not a case this needs to handle
-  // in one round trip — the next ping catches up the rest.
+  // every event the match has ever logged" in one unbounded query. A THIRD
+  // pass then caught the cap itself being wrong: ordering ascending means a
+  // capped fetch returns the OLDEST rows above the cursor, not the newest —
+  // for a match with enough of a backlog, that can leave a permanent gap
+  // between the capped batch and whatever the initial-load effect's own
+  // most-recent-200 fetch already has, since lastEventIdRef then jumps
+  // straight to the newest known id and nothing ever asks for the gap
+  // again. Ordering DESC + limit, then reversing before merging — the exact
+  // same "most recent N" shape the initial-load effect already uses — means
+  // any gap this leaves sits in older history behind an unbroken run of the
+  // newest rows, instead of behind a stale wall that never catches up.
   const fetchNewEvents = useCallback(async () => {
     if (!supabase || !matchIdRef.current) return;
     const fetchingFor = matchIdRef.current;
@@ -585,14 +586,14 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
       .select("id, created_at, kind, actor_seat, payload")
       .eq("match_id", fetchingFor)
       .gt("id", lastEventIdRef.current)
-      .order("id", { ascending: true })
+      .order("id", { ascending: false })
       .limit(500);
     if (matchIdRef.current !== fetchingFor) return;
     if (eventsError) {
       console.error("Failed to load new city activity events:", eventsError);
       return;
     }
-    const rows = (data ?? []) as unknown as CityMatchEvent[];
+    const rows = ((data ?? []) as unknown as CityMatchEvent[]).slice().reverse();
     if (rows.length === 0) return;
     setEvents((prev) => {
       const merged = mergeEvents(prev, rows);

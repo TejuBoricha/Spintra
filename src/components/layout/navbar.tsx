@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { WhatsNewButton } from "@/components/layout/whats-new-dialog";
+import { useWhatsNew, WhatsNewTrigger, WhatsNewDialog } from "@/components/layout/whats-new-dialog";
 import { cn } from "@/lib/utils";
 
 const subscribeToClient = () => () => {};
@@ -35,6 +35,7 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
+  const whatsNew = useWhatsNew(() => setMobileOpen(false));
   const [codeDigits, setCodeDigits] = useState<string[]>(() => Array(6).fill(""));
   const [joining, setJoining] = useState(false);
   const [currentUser] = useState(getOrCreateRoomUser);
@@ -231,7 +232,7 @@ export function Navbar() {
           {/* Right: Icons & Menus */}
           <div className="flex items-center gap-1.5 shrink-0">
             <div className="hidden sm:block">
-              <WhatsNewButton />
+              <WhatsNewTrigger variant="icon" whatsNew={whatsNew} />
             </div>
 
             <Link href="/settings" className="hidden sm:block">
@@ -323,9 +324,7 @@ export function Navbar() {
                       Settings
                     </Button>
                   </Link>
-                  <div className="sm:hidden">
-                    <WhatsNewButton variant="full" onNavigate={() => setMobileOpen(false)} />
-                  </div>
+                  <WhatsNewTrigger variant="full" whatsNew={whatsNew} />
                 </div>
               </div>
             </motion.div>
@@ -414,6 +413,14 @@ export function Navbar() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Rendered once here, not inside either trigger — both the desktop
+          icon and the mobile-menu button above just call whatsNew.show().
+          A prior version gave each trigger its own Dialog; nesting one of
+          them inside the hamburger's conditionally-unmounted panel meant
+          opening it also tore it down moments later. See
+          whats-new-dialog.tsx's own comment for the full story. */}
+      <WhatsNewDialog whatsNew={whatsNew} />
     </motion.nav>
   );
 }
