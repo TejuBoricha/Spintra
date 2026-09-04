@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { WhatsNewButton } from "@/components/layout/whats-new-dialog";
 import { cn } from "@/lib/utils";
 
 const subscribeToClient = () => () => {};
@@ -229,7 +230,9 @@ export function Navbar() {
 
           {/* Right: Icons & Menus */}
           <div className="flex items-center gap-1.5 shrink-0">
-
+            <div className="hidden sm:block">
+              <WhatsNewButton />
+            </div>
 
             <Link href="/settings" className="hidden sm:block">
               <Button
@@ -314,12 +317,15 @@ export function Navbar() {
                       Quick Tools
                     </Button>
                   </Link>
-                  <Link href="/settings" onClick={() => setMobileOpen(false)} className="col-span-2">
+                  <Link href="/settings" onClick={() => setMobileOpen(false)}>
                     <Button variant="ghost" className="w-full rounded-2xl h-12 bg-(--surface-sunken)/50">
                       <Settings className="w-4 h-4 mr-2" />
                       Settings
                     </Button>
                   </Link>
+                  <div className="sm:hidden">
+                    <WhatsNewButton variant="full" onNavigate={() => setMobileOpen(false)} />
+                  </div>
                 </div>
               </div>
             </motion.div>
