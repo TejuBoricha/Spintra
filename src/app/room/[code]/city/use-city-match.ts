@@ -563,40 +563,50 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   // a response resolving after the match itself changed. mergeEvents (byid,
   // above) makes a duplicate fetch a no-op instead of a duplicate row; the
   // matchIdRef check discards a response for a match that's no longer live.
-  // The .limit below is a second-pass fix: this now also fires on realtime
-  // reconnect (below), which can race the initial-load effect's own
-  // synchronous `lastEventIdRef.current = 0` reset for a brand-new match —
-  // without a cap, that combination turns "fetch what's new" into "fetch
-  // every event the match has ever logged" in one unbounded query. A THIRD
-  // pass then caught the cap itself being wrong: ordering ascending means a
-  // capped fetch returns the OLDEST rows above the cursor, not the newest —
-  // for a match with enough of a backlog, that can leave a permanent gap
-  // between the capped batch and whatever the initial-load effect's own
-  // most-recent-200 fetch already has, since lastEventIdRef then jumps
-  // straight to the newest known id and nothing ever asks for the gap
-  // again. Ordering DESC + limit, then reversing before merging — the exact
-  // same "most recent N" shape the initial-load effect already uses — means
-  // any gap this leaves sits in older history behind an unbroken run of the
-  // newest rows, instead of behind a stale wall that never catches up.
+  // This has been through three prior passes, each fixing a real bug the
+  // last one introduced: unbounded (could turn "fetch what's new" into
+  // "fetch the whole match" if it raced the initial-load effect's cursor
+  // reset) -> capped ascending (self-healing via repeated pings, but a
+  // single capped fetch could leave a gap behind the initial-load effect's
+  // own most-recent-200 window) -> capped descending (fixed that race, but
+  // for a plain backlog >500 with no race at all, jumping the cursor
+  // straight to "now" meant the skipped middle was gone for good — no
+  // future ping ever asks for it again, since every later call is also
+  // anchored at "newest 500 above cursor"). A loop closes this properly
+  // instead of shuffling the gap somewhere else again: keep paging forward
+  // in id order until a page comes back short of FETCH_PAGE_SIZE, which is
+  // the only actual signal "there's nothing left" — not a guess about how
+  // large one page needs to be. 20 pages (10,000 events) is a sanity
+  // backstop against a runaway loop, not a real ceiling any match
+  // approaches.
+  const FETCH_PAGE_SIZE = 500;
   const fetchNewEvents = useCallback(async () => {
     if (!supabase || !matchIdRef.current) return;
     const fetchingFor = matchIdRef.current;
-    const { data, error: eventsError } = await supabase
-      .from("city_match_events")
-      .select("id, created_at, kind, actor_seat, payload")
-      .eq("match_id", fetchingFor)
-      .gt("id", lastEventIdRef.current)
-      .order("id", { ascending: false })
-      .limit(500);
-    if (matchIdRef.current !== fetchingFor) return;
-    if (eventsError) {
-      console.error("Failed to load new city activity events:", eventsError);
-      return;
+    const collected: CityMatchEvent[] = [];
+    let cursor = lastEventIdRef.current;
+    for (let page = 0; page < 20; page += 1) {
+      const { data, error: eventsError } = await supabase
+        .from("city_match_events")
+        .select("id, created_at, kind, actor_seat, payload")
+        .eq("match_id", fetchingFor)
+        .gt("id", cursor)
+        .order("id", { ascending: true })
+        .limit(FETCH_PAGE_SIZE);
+      if (matchIdRef.current !== fetchingFor) return;
+      if (eventsError) {
+        console.error("Failed to load new city activity events:", eventsError);
+        return;
+      }
+      const rows = (data ?? []) as unknown as CityMatchEvent[];
+      if (rows.length === 0) break;
+      collected.push(...rows);
+      cursor = rows[rows.length - 1].id;
+      if (rows.length < FETCH_PAGE_SIZE) break;
     }
-    const rows = ((data ?? []) as unknown as CityMatchEvent[]).slice().reverse();
-    if (rows.length === 0) return;
+    if (collected.length === 0) return;
     setEvents((prev) => {
-      const merged = mergeEvents(prev, rows);
+      const merged = mergeEvents(prev, collected);
       lastEventIdRef.current = merged.length ? merged[merged.length - 1].id : 0;
       return merged;
     });

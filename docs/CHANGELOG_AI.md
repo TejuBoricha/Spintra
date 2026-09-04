@@ -2282,3 +2282,23 @@ Plus a real, confirmed data-correctness bug (the `0082` mortgage-rounding fix wa
 **Verified:** typecheck/lint clean, live mobile check confirming the dialog now survives past the hamburger's exit-animation window (screenshotted immediately on open and again 1.2s later — identical, fully-rendered content both times), 58/58 regression suite (unaffected — no SQL touched this round), `npm run verify` clean. `docs/HANDOFF.md`'s "Last Completed Task" updated to cover everything from the activity feed through this entry — the exact gap the review caught.
 
 **Risks:** Migrations `0093`–`0095` and all of this session's client-side work remain local only. PR #43 still unmerged.
+
+---
+
+## [2026-09-04] — Session 66 (continued): review of the fix commit itself — the restructure introduced a new bug, and the previous "fix" for the event-fetch gap only relocated it
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** User: "yes" — review the previous fix commit (`f28addc`), per the standing rule. 7-agent `code-review` round.
+
+**Findings, corroborated by 5-7 of 7 agents each:**
+1. `onDialogClosed` (the callback that closes the mobile hamburger menu when the What's Next dialog closes) fired unconditionally on *every* close, regardless of which trigger opened it. Between 640-1024px, both the desktop icon and the mobile hamburger are simultaneously reachable — opening the dialog via the desktop icon while the hamburger happened to already be open, then closing the dialog, silently collapsed the hamburger the user never touched. A real cross-trigger side effect the previous restructure introduced while fixing its own bug.
+2. The previous round removed the mobile trigger's `sm:hidden` wrapper to fix an orphaned-grid-cell layout bug — but removed it asymmetrically, leaving both Settings and What's Next visible in *both* the top bar and the mobile hamburger panel for the whole 640-1024px band. Two entry points for the same action, on screen at once.
+3. Most substantively: the *previous* round's fix for `fetchNewEvents`'s gap risk (switching to `DESC` order + `.limit(500)`) was itself incomplete — it relocated the gap rather than closing it. For a match with a plain backlog over 500 events (no race required, just an extended disconnect), the cursor jumps straight to "now" after one capped fetch, and no future ping — however much further activity follows — ever re-requests the skipped middle. The *original* ascending-order version was actually self-healing for this exact case (each ping walked forward another 500 rows); the "fix" traded a race-condition bug for a plain-backlog bug.
+
+**The fix:**
+- `whats-new-dialog.tsx`: `show()` now takes an optional `fromMobile` flag, recorded in a ref; `onDialogClosed` only fires if the dialog was actually opened from the mobile trigger. `WhatsNewState` now exposes a single derived `showBadge` instead of raw `mounted`/`hasUnseen`, per a reuse finding.
+- `navbar.tsx`: Settings and What's Next are now both wrapped in one `sm:hidden` group inside the mobile panel, so the 640-1024px band cleanly shows only Live Rooms/Tools there (already reachable via the top-bar icons) instead of duplicating either.
+- `use-city-match.ts`: `fetchNewEvents` now loops — paging forward in ascending `id` order, 500 rows at a time, until a page comes back short (the only real signal "caught up," not an assumption about page size) or a 20-page (10,000-event) sanity backstop. This closes the gap outright instead of relocating it again; the dead `.slice().reverse()` a separate finding pointed out (the merge always re-sorts regardless of input order) is gone along with the DESC ordering it was paired with.
+
+**Verified:** typecheck/lint clean, a live check at 768px (squarely in the affected band) — hamburger menu shows the clean 2-item row, opening What's Next via the desktop icon while the hamburger was already open and then closing it leaves the hamburger genuinely still open (screenshotted before and after) — 58/58 regression suite (unaffected, no SQL this round), `npm run verify` clean.
+
+**Risks:** same as above — local only, PR #43 unmerged. The looping `fetchNewEvents` fix was verified by type-checking and tracing the logic against the already-proven single-page case, not by constructing a live 500+-event match to force the loop to actually iterate — a real, if low-probability, residual gap in verification depth for a code path unlikely to trigger in a real game's event volume.

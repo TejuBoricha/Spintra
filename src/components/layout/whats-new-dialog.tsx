@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import {
   Lightbulb,
   Building2,
@@ -76,9 +76,13 @@ function AnnouncementRow({ icon: Icon, title, body }: Announcement) {
 
 export interface WhatsNewState {
   open: boolean;
-  hasUnseen: boolean;
-  mounted: boolean;
-  show: () => void;
+  /** Whether a trigger should render its unread-badge dot — already
+   *  combines `hasUnseen` with the post-hydration guard, so a consumer
+   *  never has to re-derive (or forget) that pairing itself. */
+  showBadge: boolean;
+  /** `fromMobile: true` only for the trigger living inside the hamburger
+   *  menu — see onDialogClosed below for why this matters. */
+  show: (fromMobile?: boolean) => void;
   onOpenChange: (open: boolean) => void;
 }
 
@@ -114,6 +118,19 @@ export function useWhatsNew(onDialogClosed?: () => void): WhatsNewState {
   // render and the client's first paint whenever it's genuinely unseen.
   const mounted = useSyncExternalStore(subscribeToClient, getClientSnapshot, getServerSnapshot);
 
+  // A code-review pass caught a second bug in the first version of this
+  // fix: onDialogClosed fired unconditionally on every close, regardless of
+  // which trigger opened it. Between 640-1024px both the desktop icon and
+  // the mobile hamburger are reachable at once — opening the dialog via the
+  // icon while the hamburger happened to already be open, then closing it,
+  // collapsed the hamburger too, even though the user never touched it.
+  // openedFromMobileRef records which trigger actually opened the dialog so
+  // the close side-effect only fires for the one that should own it. A ref,
+  // not state — it's written and read only inside event handlers (show/
+  // onOpenChange), never during render, so it doesn't need to be a
+  // re-render trigger itself.
+  const openedFromMobileRef = useRef(false);
+
   const onOpenChange = (next: boolean) => {
     setOpen(next);
     if (next && hasUnseen) {
@@ -122,12 +139,20 @@ export function useWhatsNew(onDialogClosed?: () => void): WhatsNewState {
     }
     // Closing (not opening) is when a caller wants side effects like
     // dismissing a mobile menu the trigger lived in — doing it on open, as
-    // the first version did, unmounted the Dialog itself before the user
+    // an earlier version did, unmounted the Dialog itself before the user
     // could read it, since it was still a child of that menu at the time.
-    if (!next) onDialogClosed?.();
+    if (!next && openedFromMobileRef.current) {
+      openedFromMobileRef.current = false;
+      onDialogClosed?.();
+    }
   };
 
-  return { open, hasUnseen, mounted, show: () => onOpenChange(true), onOpenChange };
+  const show = (fromMobile = false) => {
+    openedFromMobileRef.current = fromMobile;
+    onOpenChange(true);
+  };
+
+  return { open, showBadge: mounted && hasUnseen, show, onOpenChange };
 }
 
 export function WhatsNewTrigger({
@@ -140,13 +165,13 @@ export function WhatsNewTrigger({
   variant: "icon" | "full";
   whatsNew: WhatsNewState;
 }) {
-  const showBadge = whatsNew.mounted && whatsNew.hasUnseen;
+  const showBadge = whatsNew.showBadge;
   if (variant === "icon") {
     return (
       <Button
         variant="ghost"
         size="icon"
-        onClick={whatsNew.show}
+        onClick={() => whatsNew.show()}
         aria-label="What's launching next, and recent updates"
         className="relative rounded-full text-muted-foreground hover:text-foreground hover:bg-(--surface-sunken) transition-colors h-10 w-10"
       >
@@ -163,7 +188,7 @@ export function WhatsNewTrigger({
   return (
     <Button
       variant="ghost"
-      onClick={whatsNew.show}
+      onClick={() => whatsNew.show(true)}
       className="relative w-full rounded-2xl h-12 bg-(--surface-sunken)/50"
     >
       <Lightbulb className="w-4 h-4 mr-2" />

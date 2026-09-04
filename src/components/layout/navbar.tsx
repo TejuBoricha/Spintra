@@ -318,6 +318,18 @@ export function Navbar() {
                       Quick Tools
                     </Button>
                   </Link>
+                </div>
+
+                {/* Settings and What's Next are already reachable via the
+                    top-bar icons from 640px up (both `hidden sm:block`) — a
+                    review pass caught that dropping this sm:hidden wrapper
+                    (to fix an unrelated orphaned-grid-cell bug) left both
+                    duplicated here too for the whole 640-1024px band. The
+                    real fix is symmetric: hide both from this panel at that
+                    width, not just one, so the grid above stays a clean
+                    2-item row instead of trading one layout bug for a
+                    duplicate-affordance one. */}
+                <div className="sm:hidden grid grid-cols-2 gap-2 mt-2">
                   <Link href="/settings" onClick={() => setMobileOpen(false)}>
                     <Button variant="ghost" className="w-full rounded-2xl h-12 bg-(--surface-sunken)/50">
                       <Settings className="w-4 h-4 mr-2" />
