@@ -584,7 +584,6 @@ export function useRoomSubscription({
         }
 
         const isRoomHost = roomRow.host_id === currentUser.id;
-        const joined_at = new Date().toISOString();
 
         // 1. Existing participant row (reconnection safety) — reuse
         // verifyAccess's check when it ran one (every path except the host
@@ -644,7 +643,29 @@ export function useRoomSubscription({
         } else {
           // New join: perform upsert (triggers db-level max limit check on insert)
           // Using upsert handles the race condition gracefully where another call
-          // already inserted the row before this one finished.
+          // already inserted the row before this one finished — which is exactly
+          // why xp/rank AND joined_at are all omitted here, not just the
+          // reconnect branch above. This still reads as a "new join"
+          // (existingParticipant was null when checked), but the upsert's ON
+          // CONFLICT path runs as a real UPDATE at the database level if
+          // another call — or a stale row this client didn't know about yet —
+          // won that race. React's Strict Mode double-invokes this effect in
+          // dev, which reproduces the race on nearly every fresh join: the
+          // first invocation's insert wins, and the second's upsert then hits
+          // ON CONFLICT with a *freshly computed* `new Date().toISOString()`
+          // joined_at, a few milliseconds later than the first one's. restrict_
+          // host_participant_update (migration 0073) treats joined_at as
+          // identity/ordering, same tier as xp/rank/room_id/user_id, and
+          // rejects the whole write the instant it differs from the row's
+          // existing value — captured live via network trace: two POSTs
+          // ~115ms apart, second one 400s with exactly this trigger's message.
+          // Omitting the column (rather than sending a value that merely
+          // *might* match) also fixes what it's actually for: joined_at should
+          // reflect the FIRST time this row was created, not get silently
+          // overwritten by every subsequent reconnect/race anyway. The
+          // schema's own `default now()` (migration 0001) supplies it on a
+          // genuine insert; a conflict-triggered update simply never touches
+          // the column, leaving the original value intact.
           upsertResult = await supabaseClient
             .from("room_participants")
             .upsert({
@@ -652,11 +673,8 @@ export function useRoomSubscription({
               user_id: currentUser.id,
               role: (roomRow.host_id === currentUser.id) ? "host" : "participant",
               is_online: true,
-              joined_at,
               username: currentUserRef.current.username,
               avatar_url: currentUserRef.current.avatar_url,
-              xp: currentUserRef.current.xp,
-              rank: currentUserRef.current.rank,
             }, { onConflict: "room_id,user_id" })
             .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
         }
@@ -678,6 +696,9 @@ export function useRoomSubscription({
               .eq("id", existingParticipant.id)
               .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
           } else {
+            // Same reasoning as the primary new-join upsert above: xp/rank
+            // and joined_at omitted so a conflict here can't hit restrict_
+            // host_participant_update's rejection either.
             upsertResult = await supabaseClient
               .from("room_participants")
               .upsert({
@@ -685,11 +706,8 @@ export function useRoomSubscription({
                 user_id: currentUser.id,
                 role: "participant",
                 is_online: true,
-                joined_at,
                 username: currentUserRef.current.username,
                 avatar_url: currentUserRef.current.avatar_url,
-                xp: currentUserRef.current.xp,
-                rank: currentUserRef.current.rank,
               }, { onConflict: "room_id,user_id" })
               .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
           }
