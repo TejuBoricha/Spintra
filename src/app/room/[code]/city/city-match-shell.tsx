@@ -81,7 +81,11 @@ const SeatBadge = memo(function SeatBadge({
   const reconnecting = !terminal && !!s.disconnected_at && disconnectedMs < 60_000;
   const away = !terminal && !!s.disconnected_at && disconnectedMs >= 60_000;
   return (
-    <Badge variant={isCurrent ? "default" : "secondary"} className={`gap-1 ${terminal ? "opacity-50" : ""}`}>
+    <Badge
+      variant={isCurrent ? "default" : "secondary"}
+      className={`gap-1 ${terminal ? "opacity-50" : ""}`}
+      data-testid="city-seat-badge"
+    >
       <span className={terminal ? "line-through" : undefined}>{s.username}</span>
       {terminal ? (
         // A bare $0 read as "just poor," indistinguishable from an

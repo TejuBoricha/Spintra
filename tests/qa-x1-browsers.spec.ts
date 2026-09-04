@@ -8,7 +8,20 @@ for (const [name, launcher] of [['firefox',firefox],['webkit',webkit],['chromium
     test.setTimeout(300_000);
     const log:string[]=[]; const note=(s:string)=>{log.push(s);console.log(`### [${name}] ${s}`);};
     const errs:string[]=[];
-    const br=await launcher.launch();
+    // CI (ci.yml) deliberately installs only chromium — matches
+    // playwright.config.ts's own single-project scope, keeping the fast
+    // gates fast. This loop still tries firefox/webkit for a real dev
+    // machine with the full `playwright install` set, but a missing
+    // executable there shouldn't fail the whole run the way every other
+    // problem in this file already doesn't (see the broad try/catch below) —
+    // skip that one browser instead.
+    let br;
+    try {
+      br = await launcher.launch();
+    } catch (e) {
+      test.skip(true, `${name} not installed: ${(e as Error).message.split('\n')[0].slice(0, 160)}`);
+      return;
+    }
     try {
       const A=await (await br.newContext({viewport:{width:1280,height:900}})).newPage();
       const B=await (await br.newContext({viewport:{width:1280,height:900}})).newPage();

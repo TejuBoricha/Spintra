@@ -86,19 +86,34 @@ test('Spintra City: two players seat, ready up, start, and survive a reload', as
     await expect(startButton).toBeEnabled({ timeout: 15000 });
 
     // ── Start ─────────────────────────────────────────────────────────────
+    // "Roll dice" is the reliable "we're on the active-match board now, not
+    // the lobby" signal for either viewer — it renders (disabled off-turn)
+    // for whoever's turn it isn't, so it doesn't depend on which seat the
+    // server happened to pick to go first. The literal string this used to
+    // check for ("match in progress") doesn't exist anywhere in the current
+    // UI — a stale assertion caught by the 2026-09-04 launch audit; the
+    // match itself was starting fine the whole time.
     await startButton.click();
-    await expect(page.getByText(/match in progress/i)).toBeVisible({ timeout: 20000 });
+    await expect(page.getByRole('button', { name: /roll dice/i })).toBeVisible({ timeout: 20000 });
 
     // Realtime again: the guest transitions without reloading.
-    await expect(guest.getByText(/match in progress/i)).toBeVisible({ timeout: 20000 });
+    await expect(guest.getByRole('button', { name: /roll dice/i })).toBeVisible({ timeout: 20000 });
 
     // ── Reload restores the seat, not spectator ───────────────────────────
     await guest.reload();
-    await expect(guest.getByText(/match in progress/i)).toBeVisible({ timeout: 30000 });
-    // Both seats still rendered after the reload, proving the authoritative
-    // snapshot was re-read rather than the client relying on in-memory state.
-    await expect(guest.getByText(/Seat 1 ·/)).toBeVisible({ timeout: 15000 });
-    await expect(guest.getByText(/Seat 2 ·/)).toBeVisible({ timeout: 15000 });
+    await expect(guest.getByRole('button', { name: /roll dice/i })).toBeVisible({ timeout: 30000 });
+    // Both seats' badges re-rendered after the reload, proving the
+    // authoritative snapshot was re-read rather than the client relying on
+    // in-memory state (data-testid="city-seat-badge" on each SeatBadge in
+    // city-match-shell.tsx). The previous `/Seat 1 ·/` text this checked for
+    // was also stale — that roster format only ever existed in the lobby
+    // view, never the active-match one this assertion actually runs against.
+    await expect(guest.getByTestId('city-seat-badge')).toHaveCount(2);
+    // The seat-owner-only "Retire" button proves the guest is the actual
+    // occupant of their seat post-reload, not merely an onlooker watching a
+    // match with the right headcount — the specific richup.io-style bug
+    // this test exists to catch.
+    await expect(guest.getByRole('button', { name: /^retire$/i })).toBeVisible({ timeout: 15000 });
 
     // ── Roster is locked after start ──────────────────────────────────────
     await expect(guest.getByRole('button', { name: /take a seat/i })).toHaveCount(0);
