@@ -84,7 +84,14 @@ test('city: participant action buttons register a click immediately after openin
 });
 
 test('site: resizing past the mobile breakpoint with the drawer open does not freeze the page', async () => {
-  test.setTimeout(60_000);
+  // Locally this runs in ~48s of a 60s budget with a warm dev server and no
+  // contention. In CI (db-integration runs alongside ~10 Supabase Docker
+  // containers -- see the timeout comment in playwright.config.ts) that
+  // margin isn't enough: this test timed out on the initial attempt and
+  // both retries, consistently, on two separate commits -- a tight budget
+  // under real contention, not a genuine freeze (the same interactions
+  // pass cleanly locally).
+  test.setTimeout(120_000);
   const browser = await chromium.launch();
   const host = await (
     await browser.newContext({ viewport: { width: 390, height: 844 } })
