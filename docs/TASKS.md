@@ -296,11 +296,109 @@ Pre-launch hardening — required before publishing the site publicly on the ope
 - `[x]` **Legal Basics:** Add a Terms of Service, Privacy Policy, and cookie/consent notice covering the anonymous Supabase auth sessions and any stored data. Required before onboarding real public users. Placeholders filled in 2026-07-04 (Session 36): operator is Tejas Gogara, jurisdiction is India, contact is `tejasboricha225@gmail.com` for both support and privacy inquiries. Not reviewed by counsel — acceptable for a solo/hobby project at this scale, worth revisiting if the site starts handling payments or scales significantly.
 - `[x]` **Production Error Monitoring:** Wire up error tracking/alerting (Sentry) so failures and abuse patterns are visible once real strangers — not just known testers — are using the site. **Correction (2026-07-14):** the SDK had been scaffolded (`sentry.client.config.ts`, `next.config.ts`'s `withSentryConfig`) since an earlier session but was never actually functional — `sentry.client.config.ts` is not loaded at all under Turbopack (confirmed via the SDK's own webpack.js deprecation warning; this project's dev/build always runs under Turbopack), so client-side error monitoring silently did nothing regardless of whether a DSN was ever set. Fixed by moving init to `src/instrumentation-client.ts`; verified live with a real Sentry project — a genuine uncaught error now produces an actual request to Sentry's ingest endpoint. Also found and fixed while wiring this up: `deploy.yml` and `db-backup.yml` had zero repo secrets configured and had been silently failing on every run (deploy: since creation; backups: 5+ consecutive days) — both now configured and verified with real successful runs, including a genuine 410 KiB backup upload (the db-backup fix itself took 3 follow-up rounds: a Postgres server/client version mismatch, a missing apt repository for the newer client, and apt-installing a version without it becoming the one actually invoked — each only surfaced by really running the workflow, not by reading it).
 - `[x]` **Tournament room activity was fundamentally broken:** Found via a full pre-launch Product Readiness Audit (Session 37) — the room-based Tournament activity only generated one flat round of random pairings with no scoring/advancement/winner, so a Tournament room could never actually finish. Fixed by extracting the standalone `/tools/tournament` page's bracket engine into `src/lib/tournament-engine.ts` and building a real room activity on top of it (all 4 formats, realtime-synced). See `CHANGELOG_AI.md` Session 37.
+- `[x]` **Site-wide room-join race: React Strict Mode's dev double-invoke could reject a fresh join outright.** Found Session 66 (2026-09-04), live, while a user was checking an unrelated feature — `"Failed to register participant in DB: Scores and identity are set by the server, not by the player."`, kicking the user back to `/explore`. Root cause via a live network trace (not just static reading, after a first fix — real, but insufficient — turned out not to be it): `use-room-subscription.ts`'s "new join" upsert computed `joined_at` fresh via `new Date().toISOString()` on every call; Strict Mode's double-invoked effect races two upserts for the same row a few ms apart, and `restrict_host_participant_update` (migration `0073`) rejects any self-write where `joined_at` differs from the row's current value, same as it does for `xp`/`rank`. Fixed by omitting `joined_at` from the upsert payload entirely — the schema's own `default now()` (migration `0001`) covers a genuine insert, and a conflict-triggered update simply never touches an absent column. Not City-specific — affects every room type on the site. See `CHANGELOG_AI.md`.
 - `[x]` **CRITICAL — `rooms` table privacy bypass, fixed and deployed:** Found Session 63 while investigating the Explore page's public-room display. `rooms_select` has been `using (true)` since anonymous auth was introduced (migration `0005`) and was never tightened when `room_participants`/`chat_messages` got the same treatment in `0009` — confirmed live against production that the plain public anon key (no privilege escalation needed) could list every one of 294 rooms including private ones, with each room's `code` — the actual join credential — fully exposed. This defeated "Off = invite-only via code" for any private, unlocked room: no invite needed, codes were directly enumerable via the raw REST API. Fix is migration `0062` (tightens the policy to `is_public OR host OR is_member_of_room`, adds a `get_room_by_code` RPC so the legitimate "I have a code, let me join" flow still works — RLS can't tell "knew the code" from "enumerated everything", so that distinction has to live in an RPC instead) plus 6 client call sites converted to use it. Verified against a local Docker Supabase reset (vulnerability reproduced locally, confirmed closed post-fix including against a freshly-minted real anonymous session, confirmed genuine members still see their own room, full Playwright suite 63/63 green). **Applied to the live Supabase project via `supabase db push` and independently verified** — broad enumeration now returns empty, `get_room_by_code` still resolves a real room by its exact code. Committed and deployed (`de6b462`). See `CHANGELOG_AI.md` and `ARCHITECTURE.md` §4 (migration `0062`).
 
 ---
 
 ## Medium Priority
+
+### Spintra City — new multiplayer feature (implemented, pre-launch checklist below)
+
+- `[~]` **"Spintra City" (Monopoly-style property-trading game).** All 7 vertical slices plus a
+  cross-cutting reliability layer (disconnect/autopilot/retire/durable-pause/trade-pause/auction
+  auto-pass) are built on `feat/spintra-city-design` — a multiplayer board-trading game for 2–8
+  players, server-authoritative (PostgreSQL as referee, not the existing lightweight
+  activity-event-log pattern the other 14 games use). A 298-case QA audit (`QA_REPORT.md`, held
+  outside this repo) found 44 bugs; all closed across 8+ fix rounds. A dedicated 58-case regression
+  harness (`npm run test:city-regression`) passes clean. **Not yet launched — see
+  `docs/SPINTRA_CITY_SPEC.md` §12 for the exact remaining checklist**: the branch has never been
+  pushed/opened as a PR; migrations `0063`–`0091` are verified on local Docker only, **not yet
+  applied to the live Supabase project**; a 2026-09-03 verification pass found and fixed two real
+  environment bugs (a stale test port; local Supabase's anonymous-auth rate limit left far too low
+  for this suite's volume, likely also the fix for a previously-unexplained CI flake) and, after
+  fixing both, found no evidence of an actual code defect in the remaining scattered e2e failures
+  (all connection/auth-layer, zero assertion mismatches) — see `CHANGELOG_AI.md`; the economy has
+  never been playtested by real users; board art and trademark clearance on "Spintra
+  City"/"The Wheelworks" are still open, user-owned items.
+  **Follow-up:** PR #43 opened against `main`; a 2-round code review found 2 critical bugs
+  (bankruptcy deadlock, finished-match resurrection — both live-verified as fixed) plus 10 more
+  findings, 11 of 12 fixed in migration `0092` plus 4 client-side fixes (one test-helper-duplication
+  finding deliberately deferred — see `CHANGELOG_AI.md`). **Migrations `0063`–`0092` are now applied
+  and independently verified on production** (`supabase db push --linked`, confirmed via
+  `verify:migration` + `supabase migration list` — zero drift). PR #43 still needs a human review
+  and merge; the app itself isn't deployed with this feature until that merge happens.
+  `docs/SPINTRA_CITY_SPEC.md` is the wired-up engineering spec (requirements, traceability matrix,
+  as-built status in §12); `docs/SPINTRA_CITY_DESIGN.md` holds the decision log;
+  `docs/SPINTRA_CITY_CONTENT.md` holds the board content. **Follow-up 2026-09-03:** user feedback
+  ("who has aquired what live feed is missing," then "like richup.io") added a persistent
+  activity feed — migration `0093`, new `city_match_events` table, 11 functions instrumented, a
+  new `use-city-match.ts` `events` state, and `city-activity-feed.tsx`. **Follow-up 2026-09-03:**
+  user said "redesign" — board flags/icons/tokens/centre tile redesigned per the earlier-logged
+  visual-identity feedback (see the deferred item below, now implemented). **Follow-up
+  2026-09-03:** user: "u should have done pr review" — a `code-review` pass (10 agents) against
+  both of the above, unreviewed until this point, found 11 confirmed issues; all fixed (migrations
+  `0094`/`0095`, plus client-side fixes to `use-city-match.ts`/`city-board.tsx`/
+  `city-activity-feed.tsx`). The regression harness is now 58 cases, up from 57 — a new
+  `CITY-EVENTS` assertion closes a gap the review itself found (zero coverage of
+  `city_match_events`). Review is now a standing gate before any City work is considered done, not
+  an occasional step — see `CHANGELOG_AI.md`'s three entries for this day's work.
+  Migrations `0093`–`0095` are local only, not yet on production. **Follow-up 2026-09-04:** a
+  launch-readiness audit found and fixed 2 real CI-blocking test bugs (stale `city-lobby.spec.ts`
+  assertions checking for UI text that no longer exists; `qa-x1-browsers.spec.ts` hard-failing when
+  Firefox/WebKit aren't installed, which CI deliberately doesn't do) — 92/93 local smoke suite after.
+  User feedback closed two more gaps same day: zero user-facing copy said "Monopoly" anywhere (fixed
+  via comparative "Monopoly-style" language + a new `/spintra-city` SEO landing page — see the Growth
+  section below), and rolling the dice had no visual feedback at all beyond text narration (fixed via
+  a real animated 3D-CSS dice pair, `city-dice.tsx`, pip-verified correct against the live database
+  across all 6 face values). A follow-up code-review round then found and fixed 2 real
+  dice-animation bugs (every doubles roll double-played its tumble; the dice fully remounted and
+  replayed whenever an auction opened and settled), hardened a test's overly-broad failure catch,
+  and caught 2 stale docs. **2026-09-05: branch pushed** (PR #43 now reflects real `HEAD`) **and
+  migrations `0093`–`0095` applied to production**, independently verified (`verify-migration.mjs`,
+  `migration list`) — the 14-commit gap and the local-only migrations are both closed. Still needs:
+  PR CI to finish (the `npm audit` gate is expected-red, pre-existing on `main`; `db-integration`
+  was still running as of this note) and an actual human review before any of it reaches
+  spintra.io.
+
+- `[ ]` **Activity feed v2 — event kinds deliberately left out of migration `0093`'s v1.** Logged
+  as a real scope decision, not an oversight, so it isn't silently forgotten: turn-change (would
+  be the highest-frequency event by far, and the seat highlight on the board already shows whose
+  turn it is — low narrative value for the noise), trade proposed/declined/withdrawn (only
+  `trade_accepted` ships in v1 — a proposal/decline pair roughly doubles trade-related event
+  volume for less payoff than the completed trade itself), and detention exits (`visa`/`pay`/
+  `roll` — 3 more insertion points in `city_leave_detention_core` for a lower-value narration).
+  If picked up: same pattern as the 12 functions `0093`/`0094` already instrument — one
+  `insert into city_match_events` per mutation, after the state change, before the `return`,
+  never before an early-exit guard, with the event's own insert always preceding any call to
+  another already-instrumented function (0094 fixed two places that got this backwards).
+
+- `[ ]` **A shared `city_log_event(...)` SQL helper for `city_match_events` inserts was
+  considered and deliberately not built** (a `code-review` finding, 2026-09-03) — 15 call sites
+  across migrations `0093`/`0094` hand-copy the same `insert into city_match_events (...) values
+  (...)` shape, with no compile-time check that a future one matches. Migration `0095`'s `CHECK`
+  constraint on `kind` closes the highest-value part of this (a typo can't silently insert) without
+  the larger, higher-risk refactor of touching all 15 sites again to route through a helper
+  function. Worth revisiting if a v2 batch (see the item above) pushes the count meaningfully
+  higher, not before.
+
+- `[~]` **Spintra City's visual identity read as a functional placeholder, not a finished look —
+  user feedback 2026-09-03.** Flagged directly: "some icon, flags, player token many thing looks
+  like low effort and also not only this but there are many design things like this" plus a
+  follow-up emphasizing the game board's overall look and feel specifically. The 3 concrete
+  examples are fixed (2026-09-03, "Direction A" of the design-review artifact, then corrected by a
+  code-review pass — see `CHANGELOG_AI.md`): country flags are now real SVG vector art built from
+  each flag's actual published spec (Australia's Southern Cross, Canada's maple leaf, India's
+  Ashoka Chakra all genuinely correct, not approximated); corner/space icons are `lucide-react`,
+  not bare Unicode/emoji; player tokens picked up the app's own avatar-gradient style (contrast
+  re-verified against every seat colour after the review caught a regression in the first pass).
+  **Still open:** the user's broader framing — "the board's general look and feel needs a pass
+  too, not just these isolated elements" — is not addressed by the above, which reused the existing
+  brand system rather than pursuing a distinct visual identity (that would be Direction B or
+  similar from the design-review artifact). Deliberately not scoped further here; when picked up,
+  mock up 2-3 concrete visual directions first (the `design` skill's canvas is a good fit) before
+  writing any component code, since "unique identity" is a taste call this doc can't make
+  unilaterally.
 
 - `[x]` **Room auto-expiry / lifecycle cleanup:** Done Session 40 — migration `0020` enables `pg_cron` and schedules the `cleanup_inactive_rooms()` function (already defined in migration `0009`, deletes rooms with no online participants that are >2h old) to run every 30 minutes. Along the way, discovered `0009` itself had never actually executed live (see the new item below) — re-ran it for real, which deleted 23 genuinely abandoned rooms on the spot.
 - `[x]` **Systematic migration-history audit:** Done Session 40 — cross-checked all 20 migrations' expected live objects (tables, columns, functions, triggers, policies, constraints, indexes, extensions, realtime publication membership, replica identity, seed-data row counts) against the live database. No further gaps found beyond `0009` (already fixed same session); `0001`–`0008` and `0010`–`0019` all confirmed genuinely live and matching source exactly, seed data counts clean (44 prompts, 50 trivia questions, no duplicates).
@@ -324,6 +422,7 @@ Pre-launch hardening — required before publishing the site publicly on the ope
 - `[~]` **Google Search Console setup (user action):** Domain verified and indexing requested by the user (2026-07-15/16), after the Session 63 sitemap fix added `/tools`. Indexing takes days-to-weeks to actually land — nothing to act on until the Performance report has real impression data. **Next step once it does:** check which tool queries earn impressions but few clicks; that data (not guesses) should steer which tool pages get further content enrichment. Complements the already-live GA4.
 - `[~]` **Above-the-fold keyword enrichment:** Done Session 63 (follow-up) — enriched all 14 tool pages' subtitle `<p>` to lead with the head search term (e.g. Lucky Wheel → "A free online spinner wheel — …", Name Draw → "A free random name picker — …"). **Still deferred — actual H1 renames:** the visible H1s are kept as the branded product names (e.g. "Name Draw", "Team Maker"). Most H1s are already the exact search term; renaming the four brand-named ones would clash with the nav/`GAMES` labels, so overwriting them is left as a user branding decision rather than an SEO default.
 - `[x]` **Per-tool OpenGraph images:** Done Session 63 — all 14 `/tools/*` routes now get their own generated social-share image via Next's `opengraph-image.tsx` file convention (`next/og`), driven from one shared `src/lib/og-image.tsx` (gradient hex + label/desc from the `GAMES` registry). Gradient hex values were extracted from the real running app via Playwright (not guessed from a memorized Tailwind palette — v4's defaults differ from v3's for several colors). Verified live: build produces all 14 static routes, generated PNGs visually inspected, and the real `/tools/trivia` page's `<meta property="og:image">` confirmed pointing at the new per-tool image. See `CHANGELOG_AI.md`.
+- `[x]` **Spintra City had no "Monopoly" anywhere in user-facing copy, and no standalone SEO page:** Done Session 66 (2026-09-04) — user feedback: every "Monopoly-style" framing lived only in internal docs, never on a page a visitor sees. Fixed via comparative "Monopoly-style" language (not the mark in the product's own name — trademark-relevant distinction) in `games.ts`'s `/create` card and the What's Next dialog, plus a new `/spintra-city` landing page mirroring `/for-teachers`'s shape (hero, FAQ w/ `FAQPage` schema incl. an explicit Hasbro non-affiliation disclaimer, OG image with a properly oklch()-converted gradient hex, added to `sitemap.ts`, linked from the homepage footer). Same as `/for-teachers`: nothing to act on for real SEO impact until it's deployed and indexed. See `CHANGELOG_AI.md`.
 - `[x]` **`/for-teachers` landing page:** Done Session 64 — new `src/app/for-teachers/page.tsx` targets teacher search terms, curates the 11 `classroomSafe` `GAMES` entries into an ideas section + full tool grid, and adds an FAQ (`FAQPage` JSON-LD). Its own OG image reuses Bingo's already-verified gradient rather than guessing a new one; `renderOgImage()` was factored out of `src/lib/og-image.tsx` so the tool pages' 14 existing OG images are unaffected. Added to `sitemap.ts` and linked from the homepage footer. **Deliberately scoped around the teacher as operator** (not "give this to your students"), since `legal/privacy/page.tsx` §6 states the Service isn't directed at children under 13 — no new compliance claims were added. Committed and pushed to `main` (`72ad257`), deployed live. See `CHANGELOG_AI.md` Session 64. **Non-code distribution (seeding r/Teachers, teacher Facebook groups, Pinterest) is still on the user, not built here.**
 - `[x]` **`/create?type=classroom` didn't actually enforce the classroom-safe restriction it implied:** Found via the user cross-checking the `/for-teachers` CTA. The "Choose Game Type" grid showed all 16 games unfiltered (Truth or Dare/Would You Rather/Never Have I Ever included and directly clickable) — the real `classroomSafe` filter only existed one layer deeper, in the in-room activity picker (`activity-picker-dialog.tsx`), which never runs until after a classroom room already exists. Fixed in `src/app/create/create-client.tsx`: the grid now filters to `classroomSafe !== false` whenever "Classroom" is selected, reusing that same proven condition, plus a "Classroom mode — party/social games are hidden" caption. Default `/create` (no type param) unaffected. Verified via Playwright (13 cards vs. 16). Committed and pushed to `main`. See `CHANGELOG_AI.md` Session 64.
 - `[x]` **In-room "Choose an Activity" dialog rendered flat, uncolored icons — inconsistent with every other game grid in the app:** User spotted it via screenshot. `activity-picker-dialog.tsx` (pre-existing, used by every multi-game room) never got the colored gradient-icon-badge treatment `/create`/`/tools`/`/for-teachers` all use. Fixed by adding the same `bg-gradient-to-br ${g.color}` badge, reusing the existing `GAMES[].color` field. Verified live by creating a real classroom room and opening the dialog. Committed and pushed to `main`. See `CHANGELOG_AI.md` Session 64.
@@ -341,6 +440,7 @@ Pre-launch hardening — required before publishing the site publicly on the ope
 
 ## Low Priority
 
+- `[ ]` **`ARCHITECTURE.md` documents `.glass`/`.glass-card` Tailwind utility classes that don't exist.** Found during Session 65's Spintra City research and mentioned in `CHANGELOG_AI.md`/`HANDOFF.md` across two sessions since ("worth a separate fix") but never actually logged here — a gap in AI_RULES.md's Technical Debt Logging rule, closed by this entry. The real pattern is CSS custom properties consumed via Tailwind v4 arbitrary-value syntax (e.g. `bg-(--surface-glass-strong)`) — `ARCHITECTURE.md`'s relevant section needs correcting to describe that instead.
 - `[x]` **Trivia Database Migration:** Migrate the static [`src/lib/trivia-questions.ts`](file:///c:/Users/tejas/Desktop/Spintra-1/src/lib/trivia-questions.ts) file to a database table to support dynamic admin editing/moderation. Intentionally deferred — see `ENGINEERING_GOVERNANCE_REVIEW.md` §3 for the reasoning (hardcoded lists stay lightweight and support the offline `BroadcastChannel` fallback with zero DB setup). **Session 38 note:** the migration creating this table (`0010`) was discovered to have never actually applied in production (see `CHANGELOG_AI.md` Session 37/38) — fixed and re-applied for real; the static file remains the intentional fallback.
 - `[x]` **Static Prompt Lists → Database-Driven:** Truth or Dare / Would You Rather / Never Have I Ever already have a dynamic path via `activity_prompts` (migration `0008`), but Word Scramble's word bank is still a hardcoded array. Same deferral reasoning as above applies. **Session 38 note:** same discovery as above — migration `0008` had also never actually applied in production; fixed and re-applied.
 - `[x]` **Investigate Zustand for Game State:** Zustand is installed (`ARCHITECTURE.md` §1) but unused. Worth investigating only if game state ever needs to persist across activity switches — not currently needed (see `ARCHITECTURE.md` §6 "No Zustand in Rooms"). See [ZUSTAND_INVESTIGATION.md](file:///c:/Users/tejas/Desktop/Spintra-1/docs/ZUSTAND_INVESTIGATION.md).

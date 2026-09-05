@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -137,6 +132,538 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "rooms"
             referencedColumns: ["code"]
+          },
+        ]
+      }
+      city_assets: {
+        Row: {
+          acquired_at: string
+          buildings: number
+          id: string
+          is_mortgaged: boolean
+          match_id: string
+          owner_seat: number
+          space_idx: number
+        }
+        Insert: {
+          acquired_at?: string
+          buildings?: number
+          id?: string
+          is_mortgaged?: boolean
+          match_id: string
+          owner_seat: number
+          space_idx: number
+        }
+        Update: {
+          acquired_at?: string
+          buildings?: number
+          id?: string
+          is_mortgaged?: boolean
+          match_id?: string
+          owner_seat?: number
+          space_idx?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_assets_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_match_results"
+            referencedColumns: ["match_id"]
+          },
+          {
+            foreignKeyName: "city_assets_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "city_assets_space_idx_fkey"
+            columns: ["space_idx"]
+            isOneToOne: false
+            referencedRelation: "city_board_spaces"
+            referencedColumns: ["idx"]
+          },
+        ]
+      }
+      city_auctions: {
+        Row: {
+          created_at: string
+          ends_at: string
+          hard_ends_at: string
+          high_bid: number
+          high_seat: number | null
+          id: string
+          match_id: string
+          passed_seats: number[]
+          settled_at: string | null
+          space_idx: number
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          ends_at: string
+          hard_ends_at: string
+          high_bid?: number
+          high_seat?: number | null
+          id?: string
+          match_id: string
+          passed_seats?: number[]
+          settled_at?: string | null
+          space_idx: number
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          ends_at?: string
+          hard_ends_at?: string
+          high_bid?: number
+          high_seat?: number | null
+          id?: string
+          match_id?: string
+          passed_seats?: number[]
+          settled_at?: string | null
+          space_idx?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_auctions_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_match_results"
+            referencedColumns: ["match_id"]
+          },
+          {
+            foreignKeyName: "city_auctions_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "city_auctions_space_idx_fkey"
+            columns: ["space_idx"]
+            isOneToOne: false
+            referencedRelation: "city_board_spaces"
+            referencedColumns: ["idx"]
+          },
+        ]
+      }
+      city_board_spaces: {
+        Row: {
+          build_cost: number | null
+          country: string | null
+          deck: string | null
+          idx: number
+          kind: string
+          name: string
+          price: number | null
+          rent: number[] | null
+          tax_amount: number | null
+        }
+        Insert: {
+          build_cost?: number | null
+          country?: string | null
+          deck?: string | null
+          idx: number
+          kind: string
+          name: string
+          price?: number | null
+          rent?: number[] | null
+          tax_amount?: number | null
+        }
+        Update: {
+          build_cost?: number | null
+          country?: string | null
+          deck?: string | null
+          idx?: number
+          kind?: string
+          name?: string
+          price?: number | null
+          rent?: number[] | null
+          tax_amount?: number | null
+        }
+        Relationships: []
+      }
+      city_cards: {
+        Row: {
+          deck: string
+          effect: Json
+          id: number
+          text: string
+        }
+        Insert: {
+          deck: string
+          effect: Json
+          id: number
+          text: string
+        }
+        Update: {
+          deck?: string
+          effect?: Json
+          id?: number
+          text?: string
+        }
+        Relationships: []
+      }
+      city_command_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          room_code: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          room_code: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          room_code?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      city_debt_queue: {
+        Row: {
+          amount: number
+          creditor_seat: number | null
+          debtor_seat: number
+          id: string
+          match_id: string
+          queued_at: string
+        }
+        Insert: {
+          amount: number
+          creditor_seat?: number | null
+          debtor_seat: number
+          id?: string
+          match_id: string
+          queued_at?: string
+        }
+        Update: {
+          amount?: number
+          creditor_seat?: number | null
+          debtor_seat?: number
+          id?: string
+          match_id?: string
+          queued_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_debt_queue_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_match_results"
+            referencedColumns: ["match_id"]
+          },
+          {
+            foreignKeyName: "city_debt_queue_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      city_match_events: {
+        Row: {
+          actor_seat: number | null
+          created_at: string
+          id: number
+          kind: string
+          match_id: string
+          payload: Json
+        }
+        Insert: {
+          actor_seat?: number | null
+          created_at?: string
+          id?: never
+          kind: string
+          match_id: string
+          payload?: Json
+        }
+        Update: {
+          actor_seat?: number | null
+          created_at?: string
+          id?: never
+          kind?: string
+          match_id?: string
+          payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_match_events_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_match_results"
+            referencedColumns: ["match_id"]
+          },
+          {
+            foreignKeyName: "city_match_events_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      city_match_players: {
+        Row: {
+          cash: number
+          consecutive_autopilot_turns: number
+          detention_turns: number
+          disconnected_at: string | null
+          exit_reason: string | null
+          final_net_worth: number | null
+          id: string
+          in_detention: boolean
+          is_ready: boolean
+          joined_at: string
+          match_id: string
+          pending_creditor_seat: number | null
+          pending_debt: number
+          position: number
+          seat: number
+          status: string
+          time_reserve_ms: number
+          transit_visas: number
+          user_id: string
+          username: string
+        }
+        Insert: {
+          cash?: number
+          consecutive_autopilot_turns?: number
+          detention_turns?: number
+          disconnected_at?: string | null
+          exit_reason?: string | null
+          final_net_worth?: number | null
+          id?: string
+          in_detention?: boolean
+          is_ready?: boolean
+          joined_at?: string
+          match_id: string
+          pending_creditor_seat?: number | null
+          pending_debt?: number
+          position?: number
+          seat: number
+          status?: string
+          time_reserve_ms?: number
+          transit_visas?: number
+          user_id: string
+          username: string
+        }
+        Update: {
+          cash?: number
+          consecutive_autopilot_turns?: number
+          detention_turns?: number
+          disconnected_at?: string | null
+          exit_reason?: string | null
+          final_net_worth?: number | null
+          id?: string
+          in_detention?: boolean
+          is_ready?: boolean
+          joined_at?: string
+          match_id?: string
+          pending_creditor_seat?: number | null
+          pending_debt?: number
+          position?: number
+          seat?: number
+          status?: string
+          time_reserve_ms?: number
+          transit_visas?: number
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_match_players_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_match_results"
+            referencedColumns: ["match_id"]
+          },
+          {
+            foreignKeyName: "city_match_players_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      city_matches: {
+        Row: {
+          bp_draw: number
+          building_supply_limit: number | null
+          cf_draw: number
+          created_at: string
+          created_by: string
+          current_seat: number | null
+          debt_started_at: string | null
+          doubles_count: number
+          finished_at: string | null
+          id: string
+          last_roll: number[] | null
+          last_roll_result: Json | null
+          last_roll_turn: number | null
+          mode: string
+          pace_seconds: number
+          paused_at: string | null
+          phase: string | null
+          rng_counter: number
+          rng_seed: number
+          room_code: string
+          started_at: string | null
+          status: string
+          time_limit_minutes: number | null
+          trade_pause_ms_used: number
+          trade_pause_started_at: string | null
+          turn_clock_elapsed_ms: number
+          turn_clock_paused_at: string | null
+          turn_number: number
+          turn_started_at: string | null
+        }
+        Insert: {
+          bp_draw?: number
+          building_supply_limit?: number | null
+          cf_draw?: number
+          created_at?: string
+          created_by: string
+          current_seat?: number | null
+          debt_started_at?: string | null
+          doubles_count?: number
+          finished_at?: string | null
+          id?: string
+          last_roll?: number[] | null
+          last_roll_result?: Json | null
+          last_roll_turn?: number | null
+          mode?: string
+          pace_seconds?: number
+          paused_at?: string | null
+          phase?: string | null
+          rng_counter?: number
+          rng_seed: number
+          room_code: string
+          started_at?: string | null
+          status?: string
+          time_limit_minutes?: number | null
+          trade_pause_ms_used?: number
+          trade_pause_started_at?: string | null
+          turn_clock_elapsed_ms?: number
+          turn_clock_paused_at?: string | null
+          turn_number?: number
+          turn_started_at?: string | null
+        }
+        Update: {
+          bp_draw?: number
+          building_supply_limit?: number | null
+          cf_draw?: number
+          created_at?: string
+          created_by?: string
+          current_seat?: number | null
+          debt_started_at?: string | null
+          doubles_count?: number
+          finished_at?: string | null
+          id?: string
+          last_roll?: number[] | null
+          last_roll_result?: Json | null
+          last_roll_turn?: number | null
+          mode?: string
+          pace_seconds?: number
+          paused_at?: string | null
+          phase?: string | null
+          rng_counter?: number
+          rng_seed?: number
+          room_code?: string
+          started_at?: string | null
+          status?: string
+          time_limit_minutes?: number | null
+          trade_pause_ms_used?: number
+          trade_pause_started_at?: string | null
+          turn_clock_elapsed_ms?: number
+          turn_clock_paused_at?: string | null
+          turn_number?: number
+          turn_started_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_matches_room_code_fkey"
+            columns: ["room_code"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      city_trade_offers: {
+        Row: {
+          created_at: string
+          created_turn: number
+          expires_at: string
+          from_seat: number
+          get_cash: number
+          get_spaces: number[]
+          give_cash: number
+          give_spaces: number[]
+          id: string
+          match_id: string
+          queued: boolean
+          resolved_at: string | null
+          status: string
+          to_seat: number
+        }
+        Insert: {
+          created_at?: string
+          created_turn: number
+          expires_at: string
+          from_seat: number
+          get_cash?: number
+          get_spaces?: number[]
+          give_cash?: number
+          give_spaces?: number[]
+          id?: string
+          match_id: string
+          queued?: boolean
+          resolved_at?: string | null
+          status?: string
+          to_seat: number
+        }
+        Update: {
+          created_at?: string
+          created_turn?: number
+          expires_at?: string
+          from_seat?: number
+          get_cash?: number
+          get_spaces?: number[]
+          give_cash?: number
+          give_spaces?: number[]
+          id?: string
+          match_id?: string
+          queued?: boolean
+          resolved_at?: string | null
+          status?: string
+          to_seat?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_trade_offers_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_match_results"
+            referencedColumns: ["match_id"]
+          },
+          {
+            foreignKeyName: "city_trade_offers_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "city_matches"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -542,7 +1069,28 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      city_match_results: {
+        Row: {
+          final_net_worth: number | null
+          finished_at: string | null
+          match_id: string | null
+          mode: string | null
+          place: number | null
+          room_code: string | null
+          seat: number | null
+          status: string | null
+          username: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_matches_room_code_fkey"
+            columns: ["room_code"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
     }
     Functions: {
       _record_award: {
@@ -575,6 +1123,243 @@ export type Database = {
         Args: { p_guess: number; p_room_code: string }
         Returns: string
       }
+      city_accept_trade: { Args: { p_offer_id: string }; Returns: Json }
+      city_advance_turn: { Args: { p_match_id: string }; Returns: number }
+      city_apply_card: {
+        Args: {
+          p_card: Database["public"]["Tables"]["city_cards"]["Row"]
+          p_dice_total: number
+          p_match_id: string
+          p_seat: number
+        }
+        Returns: Json
+      }
+      city_assert_can_manage: {
+        Args: {
+          p_allow_off_turn_debt?: boolean
+          p_block_required_decision?: boolean
+          p_match_id: string
+          p_user_id: string
+        }
+        Returns: {
+          cash: number
+          consecutive_autopilot_turns: number
+          detention_turns: number
+          disconnected_at: string | null
+          exit_reason: string | null
+          final_net_worth: number | null
+          id: string
+          in_detention: boolean
+          is_ready: boolean
+          joined_at: string
+          match_id: string
+          pending_creditor_seat: number | null
+          pending_debt: number
+          position: number
+          seat: number
+          status: string
+          time_reserve_ms: number
+          transit_visas: number
+          user_id: string
+          username: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "city_match_players"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      city_bankrupt_seat: {
+        Args: { p_creditor_seat: number; p_match_id: string; p_seat: number }
+        Returns: undefined
+      }
+      city_build: {
+        Args: { p_match_id: string; p_space_idx: number }
+        Returns: Json
+      }
+      city_buy_property: { Args: { p_match_id: string }; Returns: Json }
+      city_charge: {
+        Args: {
+          p_amount: number
+          p_creditor_seat: number
+          p_kind: string
+          p_match_id: string
+          p_seat: number
+        }
+        Returns: Json
+      }
+      city_claim_timeout: { Args: { p_match_id: string }; Returns: Json }
+      city_create_match: {
+        Args: {
+          p_mode?: string
+          p_pace_seconds?: number
+          p_room_code: string
+          p_seed?: number
+          p_time_limit_minutes?: number
+        }
+        Returns: string
+      }
+      city_declare_bankruptcy: {
+        Args: { p_match_id: string }
+        Returns: undefined
+      }
+      city_decline_purchase: { Args: { p_match_id: string }; Returns: Json }
+      city_decline_purchase_core: {
+        Args: { p_match_id: string; p_seat: number }
+        Returns: Json
+      }
+      city_derive_dice: {
+        Args: { p_counter: number; p_seed: number }
+        Returns: number[]
+      }
+      city_draw_card: {
+        Args: { p_deck: string; p_match_id: string }
+        Returns: {
+          deck: string
+          effect: Json
+          id: number
+          text: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "city_cards"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      city_end_turn: { Args: { p_match_id: string }; Returns: Json }
+      city_end_turn_core: {
+        Args: { p_match_id: string; p_seat: number }
+        Returns: Json
+      }
+      city_finish_match: {
+        Args: { p_match_id: string; p_reason: string }
+        Returns: Json
+      }
+      city_grant_reroll: { Args: { p_match_id: string }; Returns: undefined }
+      city_join_seat: {
+        Args: { p_match_id: string; p_username: string }
+        Returns: number
+      }
+      city_leave_detention: {
+        Args: { p_match_id: string; p_method: string }
+        Returns: Json
+      }
+      city_leave_detention_core: {
+        Args: { p_match_id: string; p_method: string; p_seat: number }
+        Returns: Json
+      }
+      city_leave_seat: { Args: { p_match_id: string }; Returns: undefined }
+      city_liquidate_for_debt: {
+        Args: { p_match_id: string; p_seat: number }
+        Returns: boolean
+      }
+      city_max_liquidation: {
+        Args: { p_match_id: string; p_seat: number }
+        Returns: number
+      }
+      city_maybe_resume_trade_clock: {
+        Args: { p_match_id: string }
+        Returns: undefined
+      }
+      city_mortgage: {
+        Args: { p_match_id: string; p_space_idx: number }
+        Returns: Json
+      }
+      city_mortgage_core: {
+        Args: { p_match_id: string; p_seat: number; p_space_idx: number }
+        Returns: Json
+      }
+      city_net_worth: {
+        Args: { p_match_id: string; p_seat: number }
+        Returns: number
+      }
+      city_pass_auction: { Args: { p_match_id: string }; Returns: Json }
+      city_place_bid: {
+        Args: { p_amount: number; p_match_id: string }
+        Returns: Json
+      }
+      city_propose_trade: {
+        Args: {
+          p_get_cash?: number
+          p_get_spaces: number[]
+          p_give_cash?: number
+          p_give_spaces: number[]
+          p_match_id: string
+          p_to_seat: number
+        }
+        Returns: string
+      }
+      city_rate_limit_check: {
+        Args: { p_room_code: string; p_user_id: string }
+        Returns: undefined
+      }
+      city_rent_for: {
+        Args: { p_dice_total: number; p_match_id: string; p_space_idx: number }
+        Returns: number
+      }
+      city_resolve_autopilot_turn: {
+        Args: { p_match_id: string; p_seat: number }
+        Returns: string
+      }
+      city_resolve_landing: {
+        Args: {
+          p_dice_total: number
+          p_flat_rent_multiplier?: number
+          p_match_id: string
+          p_rent_multiplier?: number
+          p_seat: number
+          p_space_idx: number
+        }
+        Returns: Json
+      }
+      city_resolve_trade: {
+        Args: { p_action: string; p_offer_id: string }
+        Returns: undefined
+      }
+      city_retire_seat: {
+        Args: { p_match_id: string; p_seat: number }
+        Returns: undefined
+      }
+      city_retire_self: { Args: { p_match_id: string }; Returns: undefined }
+      city_roll_dice: { Args: { p_match_id: string }; Returns: Json }
+      city_roll_dice_core: {
+        Args: { p_match_id: string; p_seat: number }
+        Returns: Json
+      }
+      city_run_autopilot_from_current: {
+        Args: { p_match_id: string }
+        Returns: undefined
+      }
+      city_sell_building: {
+        Args: { p_match_id: string; p_space_idx: number }
+        Returns: Json
+      }
+      city_sell_building_core: {
+        Args: { p_match_id: string; p_seat: number; p_space_idx: number }
+        Returns: Json
+      }
+      city_set_ready: {
+        Args: { p_match_id: string; p_ready: boolean }
+        Returns: undefined
+      }
+      city_settle_auction:
+        | { Args: { p_match_id: string }; Returns: Json }
+        | { Args: { p_force: boolean; p_match_id: string }; Returns: Json }
+      city_space_is_tradeable: {
+        Args: { p_match_id: string; p_space_idx: number }
+        Returns: boolean
+      }
+      city_start_match: { Args: { p_match_id: string }; Returns: undefined }
+      city_try_settle_debt: {
+        Args: { p_match_id: string; p_seat: number }
+        Returns: boolean
+      }
+      city_unmortgage: {
+        Args: { p_match_id: string; p_space_idx: number }
+        Returns: Json
+      }
       cleanup_inactive_rooms: { Args: never; Returns: undefined }
       elect_room_host: {
         Args: { p_room_code: string; p_user_id: string }
@@ -598,6 +1383,10 @@ export type Database = {
       }
       is_member_of_room: {
         Args: { room_code: string; user_uuid: string }
+        Returns: boolean
+      }
+      is_seated_in_match: {
+        Args: { p_match_id: string; p_user_id: string }
         Returns: boolean
       }
       log_moderation_event: {
@@ -762,3 +1551,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+

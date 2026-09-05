@@ -120,6 +120,7 @@ built on top of it.
 | `npm run verify` | typecheck + lint + docs:check |
 | `npm run verify:migration [name]` | Confirms a migration's objects actually exist live in the linked Supabase project (not just tracked as "applied") — run after every `supabase db push` |
 | `npm run test:smoke` | Playwright smoke test (room create/join flow) |
+| `npm run test:city-regression` | Spintra City release-blocker regression suite — asserts the fixed behaviour for each open blocker, so it stays red until the fix lands. Requires the local Supabase stack. |
 | `npm run ci` | verify + npm audit + build + test:smoke (full CI gate, locally) |
 
 ## Project structure

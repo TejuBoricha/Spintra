@@ -10,6 +10,7 @@
     "build": "next build",
     "start": "next start",
     "test:smoke": "npx playwright test",
+    "test:city-regression": "node scripts/city-regression.mjs",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "docs:check": "node scripts/check-docs-drift.mjs",

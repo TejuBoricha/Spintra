@@ -584,7 +584,6 @@ export function useRoomSubscription({
         }
 
         const isRoomHost = roomRow.host_id === currentUser.id;
-        const joined_at = new Date().toISOString();
 
         // 1. Existing participant row (reconnection safety) — reuse
         // verifyAccess's check when it ran one (every path except the host
@@ -617,7 +616,20 @@ export function useRoomSubscription({
 
         let upsertResult;
         if (existingParticipant) {
-          // Reconnection: update status without trigger limit validation
+          // Reconnection: update status without trigger limit validation.
+          // xp/rank deliberately omitted — restrict_host_participant_update
+          // (migration 0073) rejects any self-update where they differ from
+          // the server's current value, by design ("scoring... written only
+          // via _record_award/award_score"). A client that just watched a
+          // match finish still holds its pre-award xp locally; submitting it
+          // on reconnect always mismatched the server's just-updated value
+          // and had this whole upsert rejected, which every branch below
+          // treats identically to a genuine join failure — banned, room
+          // full, whatever — toasting an error and redirecting to /explore,
+          // even though the room, this seat, and the match results were all
+          // still fully intact. There's no legitimate reason for a
+          // reconnecting client to write its own xp/rank at all; the server
+          // already owns and maintains both independently of this call.
           upsertResult = await supabaseClient
             .from("room_participants")
             .update({
@@ -625,15 +637,35 @@ export function useRoomSubscription({
               role: isRoomHost ? "host" : existingParticipant.role,
               username: currentUserRef.current.username,
               avatar_url: currentUserRef.current.avatar_url,
-              xp: currentUserRef.current.xp,
-              rank: currentUserRef.current.rank,
             })
             .eq("id", existingParticipant.id)
             .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
         } else {
           // New join: perform upsert (triggers db-level max limit check on insert)
           // Using upsert handles the race condition gracefully where another call
-          // already inserted the row before this one finished.
+          // already inserted the row before this one finished — which is exactly
+          // why xp/rank AND joined_at are all omitted here, not just the
+          // reconnect branch above. This still reads as a "new join"
+          // (existingParticipant was null when checked), but the upsert's ON
+          // CONFLICT path runs as a real UPDATE at the database level if
+          // another call — or a stale row this client didn't know about yet —
+          // won that race. React's Strict Mode double-invokes this effect in
+          // dev, which reproduces the race on nearly every fresh join: the
+          // first invocation's insert wins, and the second's upsert then hits
+          // ON CONFLICT with a *freshly computed* `new Date().toISOString()`
+          // joined_at, a few milliseconds later than the first one's. restrict_
+          // host_participant_update (migration 0073) treats joined_at as
+          // identity/ordering, same tier as xp/rank/room_id/user_id, and
+          // rejects the whole write the instant it differs from the row's
+          // existing value — captured live via network trace: two POSTs
+          // ~115ms apart, second one 400s with exactly this trigger's message.
+          // Omitting the column (rather than sending a value that merely
+          // *might* match) also fixes what it's actually for: joined_at should
+          // reflect the FIRST time this row was created, not get silently
+          // overwritten by every subsequent reconnect/race anyway. The
+          // schema's own `default now()` (migration 0001) supplies it on a
+          // genuine insert; a conflict-triggered update simply never touches
+          // the column, leaving the original value intact.
           upsertResult = await supabaseClient
             .from("room_participants")
             .upsert({
@@ -641,11 +673,8 @@ export function useRoomSubscription({
               user_id: currentUser.id,
               role: (roomRow.host_id === currentUser.id) ? "host" : "participant",
               is_online: true,
-              joined_at,
               username: currentUserRef.current.username,
               avatar_url: currentUserRef.current.avatar_url,
-              xp: currentUserRef.current.xp,
-              rank: currentUserRef.current.rank,
             }, { onConflict: "room_id,user_id" })
             .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
         }
@@ -654,6 +683,8 @@ export function useRoomSubscription({
         if (upsertResult.error && upsertResult.error.message?.includes("already has an online host")) {
           console.warn("Host election conflict detected. Retrying registration as regular participant.");
           if (existingParticipant) {
+            // Same reasoning as the primary reconnect update above: xp/rank
+            // are server-owned and deliberately omitted here too.
             upsertResult = await supabaseClient
               .from("room_participants")
               .update({
@@ -661,12 +692,13 @@ export function useRoomSubscription({
                 role: "participant",
                 username: currentUserRef.current.username,
                 avatar_url: currentUserRef.current.avatar_url,
-                xp: currentUserRef.current.xp,
-                rank: currentUserRef.current.rank,
               })
               .eq("id", existingParticipant.id)
               .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
           } else {
+            // Same reasoning as the primary new-join upsert above: xp/rank
+            // and joined_at omitted so a conflict here can't hit restrict_
+            // host_participant_update's rejection either.
             upsertResult = await supabaseClient
               .from("room_participants")
               .upsert({
@@ -674,11 +706,8 @@ export function useRoomSubscription({
                 user_id: currentUser.id,
                 role: "participant",
                 is_online: true,
-                joined_at,
                 username: currentUserRef.current.username,
                 avatar_url: currentUserRef.current.avatar_url,
-                xp: currentUserRef.current.xp,
-                rank: currentUserRef.current.rank,
               }, { onConflict: "room_id,user_id" })
               .select("id, room_id, user_id, role, is_online, joined_at, username, avatar_url, xp, rank");
           }
@@ -1095,7 +1124,7 @@ export function useRoomSubscription({
                     const history = JSON.parse(stored).filter((h: { code: string }) => h.code !== roomCode);
                     window.localStorage.setItem("spintra-room-history", JSON.stringify(history));
                   }
-                } catch (e) {}
+                } catch {}
               }
               toast.error("You were removed from the room by the host.", { id: "kicked-toast" });
               router.push("/explore");
@@ -1112,7 +1141,7 @@ export function useRoomSubscription({
                   const history = JSON.parse(stored).filter((h: { code: string }) => h.code !== roomCode);
                   window.localStorage.setItem("spintra-room-history", JSON.stringify(history));
                 }
-              } catch (e) {}
+              } catch {}
             }
             toast.error("The host closed this room.", { id: "room-closed-toast" });
             router.push("/explore");

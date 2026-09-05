@@ -13,6 +13,9 @@
 | Previous implementation ("what exactly changed, and when?") | `CHANGELOG_AI.md` |
 | Planning / prioritizing new work | `TASKS.md` |
 | Reviewing the documentation system itself | `ENGINEERING_GOVERNANCE_REVIEW_V2.md` (current; V1 is historical) |
+| Anything to do with the "Spintra City" feature | **`SPINTRA_CITY_SPEC.md` first** — requirements, integration, slices, traceability |
+| Why a Spintra City decision was made (or what's still open) | `SPINTRA_CITY_DESIGN.md` |
+| Editing the "Spintra City" board, economy, or card content | `SPINTRA_CITY_CONTENT.md` |
 
 Load only what the row tells you to. Don't read every document by default — see `AI_RULES.md` §8 (Context Optimization).
 
@@ -35,5 +38,8 @@ Load only what the row tells you to. Don't read every document by default — se
 | `HOST_MIGRATION_AUDIT.md` | Host-migration investigation report — findings across all 14 games and the multiplayer infra when a room's host disconnects and another participant is promoted. |
 | `ENGINEERING_GOVERNANCE_REVIEW_V2.md` | The **current** point-in-time audit of this documentation system (dated 2026-07-04). Not part of daily workflow. |
 | `ENGINEERING_GOVERNANCE_REVIEW.md` | The **superseded** V1 audit (dated 2026-07-03) — kept as historical record, not current. |
+| `SPINTRA_CITY_SPEC.md` | **Entry point for the Spintra City feature.** Numbered requirements, technology, exactly what existing code is reused/adapted/new, slice plan, verification, risks, and a requirement→build→proof traceability matrix. |
+| `SPINTRA_CITY_DESIGN.md` | Spintra City's decision log — what's approved vs. decided-by-delegation vs. still open, plus the research and gap audit behind each. Read for *why*; read the spec for *what*. |
+| `SPINTRA_CITY_CONTENT.md` | Spintra City's board content — the 40-space "Wheelworks" layout, economy/rent tables, both card decks, tokens, rule toggles. First draft, unapproved. |
 
 Not sure where to start? `TASKS.md` + `HANDOFF.md` together answer "what's happening and where did we leave off."

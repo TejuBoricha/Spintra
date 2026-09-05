@@ -16,6 +16,7 @@ import { IdleScreen } from "./activities/idle-screen";
 import { AggregateIdleScreen } from "./activities/aggregate-idle-screen";
 import { ActivityPickerDialog } from "./activities/activity-picker-dialog";
 import { ACTIVITY_REGISTRY } from "./activities/activity-registry";
+import { CityMatchShell } from "./city/city-match-shell";
 import { RoomActivityContext, RoomParticipantsContext } from "./context/room-activity-context";
 import { useRouter } from "next/navigation";
 import { Emoji, type EmojiName } from "@/components/emoji";
@@ -108,6 +109,7 @@ const RoomGameArea = memo(function RoomGameArea({
             {activeActivity &&
               activeActivity.type !== "party" &&
               activeActivity.type !== "classroom" &&
+              activeActivity.type !== "city" &&
               ActiveGame && (
                 <ErrorBoundary
                   key={activeActivity.type}
@@ -131,6 +133,27 @@ const RoomGameArea = memo(function RoomGameArea({
                 activityType={activeActivity.type}
                 isHost={isHost}
               />
+            )}
+
+            {/* ── SPINTRA CITY ──
+                Not in ACTIVITY_REGISTRY by design: the match is refereed by
+                Postgres and talks to its own city_* tables via RPCs, rather
+                than using the activity event bus every other game shares.
+                See docs/SPINTRA_CITY_DESIGN.md §2.2. */}
+            {activeActivity?.type === "city" && (
+              <ErrorBoundary
+                key="city"
+                fallback={
+                  <div className="bg-(--surface-panel) p-8 rounded-2xl text-center border border-red-500/20 max-w-md mx-auto mt-8">
+                    <p className="text-xl font-bold text-red-400 mb-2">Something went wrong</p>
+                    <p className="text-sm text-muted-foreground">
+                      The match failed to load. Try refreshing the page — your seat is saved.
+                    </p>
+                  </div>
+                }
+              >
+                <CityMatchShell />
+              </ErrorBoundary>
             )}
           </AnimatePresence>
         </RoomParticipantsContext.Provider>
@@ -269,7 +292,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                 const history = JSON.parse(stored).filter((h: { code: string }) => h.code !== roomCode);
                 window.localStorage.setItem("spintra-room-history", JSON.stringify(history));
               }
-            } catch (e) {}
+            } catch {}
           }
           return;
         }
@@ -303,7 +326,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
                 const history = JSON.parse(stored).filter((h: { code: string }) => h.code !== roomCode);
                 window.localStorage.setItem("spintra-room-history", JSON.stringify(history));
               }
-            } catch (e) {}
+            } catch {}
           }
           return;
         }
@@ -571,7 +594,15 @@ function RoomUIInner({
   const [isDesktopSidebar, setIsDesktopSidebar] = useState(false);
   useEffect(() => {
     const mql = window.matchMedia("(min-width: 768px)");
-    const update = () => setIsDesktopSidebar(mql.matches);
+    const update = () => {
+      setIsDesktopSidebar(mql.matches);
+      // The mobile Sheet's own modal overlay stays mounted and open purely
+      // from isMobileSidebarOpen — resizing/rotating past this breakpoint
+      // while it was open otherwise left that overlay active with nothing
+      // rendered inside it (sidebarContent moves to the desktop rail
+      // instead), silently blocking every click on the page underneath.
+      if (mql.matches) setIsMobileSidebarOpen(false);
+    };
     update();
     mql.addEventListener("change", update);
     return () => mql.removeEventListener("change", update);

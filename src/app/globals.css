@@ -127,6 +127,28 @@
   --blur-glass: 16px;
   --blur-glass-soft: 10px;
 
+
+  /* Spintra City board — built from the site ramp, not its own palette. The
+     brass/green it started with came from an abandoned theme and made the mode
+     read as bolted on. Tile faces, corners and felt stay constant across
+     themes: a board doesn't change colour with the room lights, and pinning
+     them avoids a contrast cliff on the felt's small type. Only the FRAME
+     follows the theme, so the board doesn't sit on cream as a dark slab. */
+  --city-frame-a: var(--ink-650);
+  --city-frame-b: var(--ink-900);
+  --city-gap: var(--ink-950);
+  --city-tile-a: var(--cream-50);
+  --city-tile-b: var(--cream-300);
+  --city-tile-hi-a: #ffffff;
+  --city-tile-hi-b: var(--cream-100);
+  --city-tile-ink: #14120f;
+  --city-price-ink: #55524a;
+  --city-corner-a: var(--ink-700);
+  --city-corner-b: var(--ink-950);
+  --city-felt-a: var(--ink-800);
+  --city-felt-b: var(--ink-950);
+  --city-on-dark: var(--cream-100);
+  --city-on-dark-soft: var(--fog-500);
   color-scheme: dark;
 
   /* shadcn/Tailwind-facing vars, remapped onto the ramp above */
@@ -196,6 +218,28 @@
   --text-secondary: var(--fog-500);
   --text-link: var(--lime-400);
   --text-accent: var(--brand-primary);
+
+  /* Spintra City board — built from the site ramp, not its own palette. The
+     brass/green it started with came from an abandoned theme and made the mode
+     read as bolted on. Tile faces, corners and felt stay constant across
+     themes: a board doesn't change colour with the room lights, and pinning
+     them avoids a contrast cliff on the felt's small type. Only the FRAME
+     follows the theme, so the board doesn't sit on cream as a dark slab. */
+  --city-frame-a: var(--ink-650);
+  --city-frame-b: var(--ink-900);
+  --city-gap: var(--ink-950);
+  --city-tile-a: var(--cream-50);
+  --city-tile-b: var(--cream-300);
+  --city-tile-hi-a: #ffffff;
+  --city-tile-hi-b: var(--cream-100);
+  --city-tile-ink: #14120f;
+  --city-price-ink: #55524a;
+  --city-corner-a: var(--ink-700);
+  --city-corner-b: var(--ink-950);
+  --city-felt-a: var(--ink-800);
+  --city-felt-b: var(--ink-950);
+  --city-on-dark: var(--cream-100);
+  --city-on-dark-soft: var(--fog-500);
   color-scheme: dark;
 }
 
@@ -222,6 +266,11 @@
   /* :root's lime-500/coral-400 are dark-surface choices — unreadable on cream/white */
   --brand-primary-strong: var(--lime-700);
   --destructive-strong: var(--coral-600);
+
+  /* Board frame lightens to sit on cream; the board face itself does not. */
+  --city-frame-a: var(--cream-200);
+  --city-frame-b: var(--cream-300);
+  --city-gap: #b8b2a6;
   color-scheme: light;
 
   /* shadcn/Tailwind-facing vars, remapped onto the ramp above */
@@ -331,6 +380,10 @@
   --animate-float: float 6s ease-in-out infinite;
   --animate-glow: glow 2s ease-in-out infinite;
   --animate-spin-slow: spin 8s linear infinite;
+  /* city-dice.tsx: rotateX/Y target is per-roll (which face lands forward),
+     so it's supplied per-die via --city-dice-final-rx/-ry custom properties
+     rather than baked into the keyframes themselves. */
+  --animate-city-dice-roll: city-dice-roll 850ms cubic-bezier(.22,.9,.32,1) forwards;
 
   @keyframes aurora {
     0%, 100% { background-position: 0% 50%; }
@@ -343,6 +396,12 @@
   @keyframes glow {
     0%, 100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.3); }
     50% { box-shadow: 0 0 40px rgba(139, 92, 246, 0.6); }
+  }
+  @keyframes city-dice-roll {
+    0% { transform: rotateX(0deg) rotateY(0deg); }
+    100% {
+      transform: rotateX(var(--city-dice-final-rx)) rotateY(var(--city-dice-final-ry));
+    }
   }
 }
 

@@ -39,6 +39,7 @@ export default function CreateRoomClient() {
     "team-maker", "lucky-wheel", "name-draw", "tournament", "coin-flip",
     "dice", "guess-number", "rps", "truth-or-dare", "would-you-rather",
     "never-have-i-ever", "trivia", "bingo", "word-scramble", "party", "classroom",
+    "city",
   ];
   const preselected = rawType && RAW_ROOM_TYPES.includes(rawType as RoomType)
     ? (rawType as RoomType)
