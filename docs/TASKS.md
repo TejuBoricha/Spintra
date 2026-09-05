@@ -351,9 +351,15 @@ Pre-launch hardening — required before publishing the site publicly on the ope
   via comparative "Monopoly-style" language + a new `/spintra-city` SEO landing page — see the Growth
   section below), and rolling the dice had no visual feedback at all beyond text narration (fixed via
   a real animated 3D-CSS dice pair, `city-dice.tsx`, pip-verified correct against the live database
-  across all 6 face values). PR #43 is now **8+ commits behind local `HEAD`** — none of this session's
-  work has reached it; still needs the branch pushed, migrations `0093`–`0095` applied to production,
-  and a human review before any of it reaches spintra.io.
+  across all 6 face values). A follow-up code-review round then found and fixed 2 real
+  dice-animation bugs (every doubles roll double-played its tumble; the dice fully remounted and
+  replayed whenever an auction opened and settled), hardened a test's overly-broad failure catch,
+  and caught 2 stale docs. **2026-09-05: branch pushed** (PR #43 now reflects real `HEAD`) **and
+  migrations `0093`–`0095` applied to production**, independently verified (`verify-migration.mjs`,
+  `migration list`) — the 14-commit gap and the local-only migrations are both closed. Still needs:
+  PR CI to finish (the `npm audit` gate is expected-red, pre-existing on `main`; `db-integration`
+  was still running as of this note) and an actual human review before any of it reaches
+  spintra.io.
 
 - `[ ]` **Activity feed v2 — event kinds deliberately left out of migration `0093`'s v1.** Logged
   as a real scope decision, not an oversight, so it isn't silently forgotten: turn-change (would

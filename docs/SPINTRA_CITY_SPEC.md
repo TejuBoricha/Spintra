@@ -503,26 +503,26 @@ Needing the user, not blocking Phase 1:
 Phase 1's blockers above are all closed and schema/implementation work is done. What's actually
 left, in order:
 
-1. ~~Branch never pushed~~ → **Partially stale as of 2026-09-04.** PR #43 was opened
-   (https://github.com/TejuBoricha/Spintra/pull/43) against the branch's 2026-09-03 state, but a
-   2026-09-04 launch-readiness audit found the pushed branch is now **8+ commits behind local
-   `HEAD`** — the persistent activity feed, board redesign, What's Next feature, the animated dice
-   roll, a real site-wide room-join race fix, and the `/spintra-city` SEO page have all landed
-   locally since, none of them pushed. The PR still needs: the branch actually pushed, migrations
-   `0093`–`0095` applied to production, and only then a human review and merge. See
-   `CHANGELOG_AI.md`'s 2026-09-04 audit entry.
+1. ~~Branch never pushed~~ → **Done, 2026-09-05.** PR #43 (https://github.com/TejuBoricha/Spintra/pull/43)
+   now reflects the branch's real `HEAD` (`992cd2e`) — the 14-commit gap a 2026-09-04
+   launch-readiness audit found (persistent activity feed, board redesign, What's Next feature, the
+   animated dice roll, a real site-wide room-join race fix, the `/spintra-city` SEO page, and 2 full
+   review-fix rounds) has been pushed. CI is re-running against the actual current code; still
+   needs a human review and merge.
 1b. **PR #43's own code review — done, fixed, live-verified (as of 2026-09-03; superseded by more
-   local work since, per item 1 above).** A 2-round, 20-agent `/code-review
+   local work since, now on the PR per item 1 above).** A 2-round, 20-agent `/code-review
    high` pass found 2 critical bugs (bankruptcy permanently deadlocking the match; a finished match
    being resurrectable with a live turn state — both independently rediscovered by 5+ agents each,
    then personally verified against the actual SQL and live-reproduced end-to-end, not just
    unit-tested) plus 10 more findings. 11 of 12 fixed in migration `0092` and 4 client-side changes;
    one (a 16-file test-helper duplication) deliberately deferred as not worth the regression risk.
    Full detail: `CHANGELOG_AI.md`'s "Session 66 (continued)" entry.
-2. ~~Migrations not live~~ → **Done, 2026-09-03.** `supabase db push --linked` applied `0063`–`0092`
-   to production cleanly; `npm run verify:migration` independently confirmed all 8 objects from
-   `0092` exist live, and `supabase migration list` confirmed local=remote for every migration
-   `0001`–`0092`, zero drift. The database side of Spintra City is genuinely live now.
+2. ~~Migrations not live~~ → **Done, 2026-09-03 (`0063`–`0092`) and 2026-09-05 (`0093`–`0095`).**
+   `supabase db push --linked` applied all three cleanly; `node scripts/verify-migration.mjs`
+   independently confirmed all 15 objects from `0093` and all 6 from `0094` exist live (not just
+   tracked as applied — `0095` is a pure `CHECK` constraint, nothing that script checks for), and
+   `supabase migration list` confirmed local=remote for every migration `0001`–`0095`, zero drift.
+   The database side of Spintra City is fully live now, ahead of the app code that will use it.
 3. **Full CI gate not yet green end-to-end, for reasons unrelated to app correctness.** `npm run
    ci` stops at the `npm audit --audit-level=high` step — 14 vulnerabilities (10 high), confirmed
    pre-existing on `main` (identical `package-lock.json`), not introduced by this feature. Running
