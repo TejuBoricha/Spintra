@@ -2452,3 +2452,22 @@ Plus a real, confirmed data-correctness bug (the `0082` mortgage-rounding fix wa
 **CI status as of this entry:** `validate` failed in ~25s — the already-diagnosed, pre-existing `npm audit` gate (15 vulnerabilities, confirmed via a clean `package-lock.json` diff against `main` days ago, not caused by this branch). `db-integration` — the job that actually spins up a real Supabase stack and runs the full e2e suite, the one that would show whether today's test fixes (`efa205f`'s stale assertions, `ac1418f`'s dev-overlay fix, `992cd2e`'s dice-animation fixes) hold up in a from-scratch environment rather than this session's already-warm local one — was still running when this entry was written.
 
 **Risks:** none of this is merged or deployed yet. `docs/AI_CONTEXT.md`, `docs/SPINTRA_CITY_SPEC.md` §12, `docs/HANDOFF.md`, and `docs/TASKS.md` were all updated in the same pass to reflect the push and the migration application, so a future session reading any of them sees the same, current picture rather than the 2026-09-04 snapshot. Recommended next step (not yet actioned, needs the user or a human reviewer, not another AI round): confirm `db-integration` finishes clean, then get PR #43 actually reviewed by a person.
+
+## [2026-09-05] — Session 66 (continued): db-integration result — one real timeout fix, npm audit gate unchanged
+
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** Follow up on the previous entry's open item — check whether `db-integration` came back clean on the freshly-pushed commit (`7765af3`).
+
+**Findings:** Both checks failed again, but for two different, already-understood reasons, not new regressions:
+- `validate` — same pre-existing `npm audit` gate (15 vulnerabilities: `@tailwindcss/postcss`/postcss, `qs`, `sharp`, `undici`), confirmed via `gh run list` to have failed identically on every commit on this branch back to at least 2026-09-03, well before this session's work. Not actioned — this is the already-recommended "don't block merge on it, note it in the PR description" item.
+- `db-integration` — 90/93 tests passed; the one failure was `tests/qa-x19-visual-review-fixes.spec.ts:86` ("resizing past the mobile breakpoint with the drawer open does not freeze the page"), timing out at 60s on the initial attempt and both of its two CI retries. Confirmed via `gh run view` on the prior commit's run (`992cd2e`) that this exact test failed identically (3/3 timeouts) there too — not something this session's docs-only push introduced.
+
+**Diagnosis, not just assumed:** ran the same test locally against a warm dev server pointed at local Supabase — passed in 48.3s, doing the real interactions the test asserts (drawer opens, viewport resizes, "Open a match" is clickable, "Take a seat" appears) — so the underlying feature isn't frozen. `db-integration` in CI runs this suite alongside ~10 Supabase Docker containers (documented contention, see the `timeout: 60 * 1000` comment in `playwright.config.ts`), and 48s of a 60s local budget with zero contention leaves no real margin once that contention is added. Retries at the same 60s cap can't fix a consistently-slow environment, only a genuinely random flake — which is why retrying didn't save it either time.
+
+**Files Modified:** `tests/qa-x19-visual-review-fixes.spec.ts` — bumped this one test's `test.setTimeout()` from `60_000` to `120_000` with a comment explaining why, leaving the global 60s default and every other test untouched.
+
+**Verification:** re-ran the full `qa-x19-visual-review-fixes.spec.ts` file locally (4/4 passed, 1.1m), `npm run verify` (typecheck/lint/docs:check all clean), and a `code-review` pass (targeted, since the diff was a 2-line timeout+comment change — checked `playwright.config.ts`'s per-test-override semantics, `ci.yml`'s 40-minute job budget headroom, and git blame on the test's original addition; zero findings). Committed as `877571b` and pushed to `origin/feat/spintra-city-design`, restarting CI on the branch a second time.
+
+**Outcome:** the one real, reproducible test failure blocking a clean `db-integration` run is fixed. `validate`'s `npm audit` failure remains the sole known-and-accepted gate failure, per the existing recommendation to surface it in the PR description rather than chase it pre-merge.
+
+**Risks:** none — test-only change, no production code touched, no new migration. Still not merged; still needs a human reviewer on PR #43.
