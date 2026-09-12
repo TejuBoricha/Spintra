@@ -1,13 +1,10 @@
-import { test, expect, chromium, type Page } from '@playwright/test';
+import { test, expect, chromium } from '@playwright/test';
 import { execSync } from 'child_process';
+import { acceptCookieBanner as accept } from './qa-city-helpers';
 
 const BASE = 'http://127.0.0.1:4000';
 const sql = (q: string) =>
   execSync(`docker exec supabase_db_Spintra-1 psql -U postgres -d postgres -t -A -c "${q.replace(/"/g, '\\"')}"`).toString().trim();
-const accept = async (p: Page) => {
-  const b = p.getByRole('button', { name: /^accept$/i });
-  if (await b.count()) await b.first().click().catch(() => {});
-};
 
 // BUG-006: a visible, ticking countdown now exists for the running turn
 // clock, matching city_claim_timeout's own deadline exactly.
@@ -34,8 +31,11 @@ test('city: a live turn countdown is visible and actually ticks down', async () 
   const mid = sql(`select id from city_matches where room_code='${code}' and status='active'`);
   // Backdate the clock so the countdown starts at a known, small value.
   sql(`update city_matches set turn_started_at = now() - interval '35 seconds', pace_seconds = 40 where id='${mid}'`);
+  // No repeat accept(host) here -- consent is localStorage-gated (line 18
+  // already accepted it in this same context) and can't reappear on
+  // reload, so it would only cost time against this test's deliberately
+  // tight ~5s countdown margin for no effect.
   await host.reload();
-  await accept(host);
   await host.waitForTimeout(1000);
 
   const timer = host.getByRole('timer');

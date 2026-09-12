@@ -1,8 +1,8 @@
-import { test, chromium , type Page } from '@playwright/test';
+import { test, chromium } from '@playwright/test';
 import { execSync } from 'child_process';
+import { acceptCookieBanner as accept } from './qa-city-helpers';
 const BASE='http://127.0.0.1:4000';
 const sql=(q:string)=>execSync(`docker exec supabase_db_Spintra-1 psql -U postgres -d postgres -t -A -c "${q.replace(/"/g,'\\"')}"`).toString().trim();
-const accept=async(p:Page)=>{const b=p.getByRole('button',{name:/^accept$/i}); if(await b.count()) await b.first().click().catch(()=>{});};
 
 test('TC-MULTI-11: auction in a live match', async () => {
   test.setTimeout(300_000);
@@ -31,7 +31,7 @@ test('TC-MULTI-11: auction in a live match', async () => {
   sql(`update city_matches set phase='required_decision' where id='${mid}'`);
   const onTurn = seat==='0' ? A : B;
   const offTurn = seat==='0' ? B : A;
-  await onTurn.reload(); await onTurn.waitForTimeout(3500); await accept(onTurn);
+  await onTurn.reload(); await onTurn.waitForTimeout(3500);
 
   const pass=onTurn.getByRole('button',{name:/^pass$|decline/i});
   note(`Pass/decline button present: ${await pass.count()>0}`);

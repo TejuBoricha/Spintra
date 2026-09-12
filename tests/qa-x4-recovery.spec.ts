@@ -1,8 +1,8 @@
-import { test, chromium , type Page } from '@playwright/test';
+import { test, chromium } from '@playwright/test';
 import { execSync } from 'child_process';
+import { acceptCookieBanner as accept } from './qa-city-helpers';
 const BASE='http://127.0.0.1:4000';
 const sql=(q:string)=>execSync(`docker exec supabase_db_Spintra-1 psql -U postgres -d postgres -t -A -c "${q.replace(/"/g,'\\"')}"`).toString().trim();
-const accept=async(p:Page)=>{const b=p.getByRole('button',{name:/^accept$/i}); if(await b.count()) await b.first().click().catch(()=>{});};
 
 test('TC-REC-05/06/07: offline mid-turn, reconnect, leave and rejoin', async () => {
   test.setTimeout(360_000);
@@ -58,7 +58,7 @@ test('TC-REC-05/06/07: offline mid-turn, reconnect, leave and rejoin', async () 
 
   // TC-REC-07: leave the room entirely and come back
   await B.goto(`${BASE}/`); await B.waitForTimeout(2500);
-  await B.goto(`${BASE}/room/${code}`); await B.waitForTimeout(5000); await accept(B);
+  await B.goto(`${BASE}/room/${code}`); await B.waitForTimeout(5000);
   const bText=await B.locator('body').innerText();
   const stillSeated = !/take a seat/i.test(bText) && /\d[,.]?\d*/.test(bText);
   note(`after leaving and returning, B is restored to their seat (not spectator): ${stillSeated}`);

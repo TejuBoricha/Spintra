@@ -1,8 +1,8 @@
-import { test, chromium , type Page } from '@playwright/test';
+import { test, chromium } from '@playwright/test';
 import { execSync } from 'child_process';
+import { acceptCookieBanner as accept } from './qa-city-helpers';
 const BASE='http://127.0.0.1:4000';
 const sql=(q:string)=>execSync(`docker exec supabase_db_Spintra-1 psql -U postgres -d postgres -t -A -c "${q.replace(/"/g,'\\"')}"`).toString().trim();
-const accept=async(p:Page)=>{const b=p.getByRole('button',{name:/^accept$/i}); if(await b.count()) await b.first().click().catch(()=>{});};
 
 test('TC-MULTI-10: does a sent trade offer reach the recipient without a reload?', async () => {
   test.setTimeout(300_000);
@@ -24,8 +24,8 @@ test('TC-MULTI-10: does a sent trade offer reach the recipient without a reload?
   await A.waitForTimeout(3000);
   const mid=sql(`select id from city_matches where room_code='${code}' and status='active'`);
   sql(`insert into city_assets(match_id,space_idx,owner_seat,buildings,is_mortgaged) values ('${mid}',1,0,0,false),('${mid}',3,0,0,false),('${mid}',6,1,0,false) on conflict do nothing`);
-  await A.reload(); await A.waitForTimeout(3500); await accept(A);
-  await B.reload(); await B.waitForTimeout(3500); await accept(B);
+  await A.reload(); await A.waitForTimeout(3500);
+  await B.reload(); await B.waitForTimeout(3500);
 
   const bBefore=(await B.locator('body').innerText()).toLowerCase();
   note(`B mentions an offer BEFORE send: ${/offer|wants|proposes|trade from/.test(bBefore)}`);
@@ -50,7 +50,7 @@ test('TC-MULTI-10: does a sent trade offer reach the recipient without a reload?
     if (/offer|wants|proposes|accept/.test(t) && (await B.getByRole('button',{name:/accept/i}).count())>0){ seen=true; at=i+1; break; }
   }
   note(`B saw the incoming offer WITHOUT reload: ${seen}${seen?` (after ~${at}s)`:' (waited 20s)'}`);
-  if (!seen){ await B.reload(); await B.waitForTimeout(3500); await accept(B);
+  if (!seen){ await B.reload(); await B.waitForTimeout(3500);
     const after=(await B.locator('body').innerText()).toLowerCase();
     note(`after a manual reload B sees it: ${/offer|wants|proposes/.test(after) && (await B.getByRole('button',{name:/accept/i}).count())>0}`); }
   note(`VERDICT: ${seen?'trade offers propagate live — PASS':'offer NOT pushed to recipient — FAIL'}`);

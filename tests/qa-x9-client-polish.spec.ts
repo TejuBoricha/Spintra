@@ -1,13 +1,10 @@
-import { test, expect, chromium, type Page } from '@playwright/test';
+import { test, expect, chromium } from '@playwright/test';
 import { execSync } from 'child_process';
+import { acceptCookieBanner as accept } from './qa-city-helpers';
 
 const BASE = 'http://127.0.0.1:4000';
 const sql = (q: string) =>
   execSync(`docker exec supabase_db_Spintra-1 psql -U postgres -d postgres -t -A -c "${q.replace(/"/g, '\\"')}"`).toString().trim();
-const accept = async (p: Page) => {
-  const b = p.getByRole('button', { name: /^accept$/i });
-  if (await b.count()) await b.first().click().catch(() => {});
-};
 
 test('site-wide: nav does not overflow its container at 768x1024', async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
@@ -120,7 +117,6 @@ test('city: status text and off-turn narration are correct through a real turn',
   // stale "roll the dice" fallback.
   await host.reload();
   await host.waitForTimeout(1500);
-  await accept(host);
   const hostStatusAfterRefresh = await host.getByRole('status').last().textContent();
   console.log('BUG-034 host status text after refresh, post-roll:', hostStatusAfterRefresh);
   expect(hostStatusAfterRefresh).not.toMatch(/roll the dice/i);

@@ -1,5 +1,6 @@
-import { test, firefox, webkit, chromium, type Page } from '@playwright/test';
+import { test, firefox, webkit, chromium } from '@playwright/test';
 import { execSync } from 'child_process';
+import { acceptCookieBanner as accept } from './qa-city-helpers';
 const BASE='http://127.0.0.1:4000';
 const sql=(q:string)=>execSync(`docker exec supabase_db_Spintra-1 psql -U postgres -d postgres -t -A -c "${q.replace(/"/g,'\\"')}"`).toString().trim();
 
@@ -38,8 +39,6 @@ for (const [name, launcher] of [['firefox',firefox],['webkit',webkit],['chromium
         p.on('pageerror',e=>errs.push(`${who} PAGEERROR ${e.message.slice(0,120)}`));
         p.on('console',m=>{ if(m.type()==='error' && !/google-analytics|gtag/.test(m.text())) errs.push(`${who} CONSOLE ${m.text().slice(0,120)}`); });
       }
-      const accept=async(p:Page)=>{const b=p.getByRole('button',{name:/^accept$/i}); if(await b.count()) await b.first().click().catch(()=>{});};
-
       await A.goto(`${BASE}/create?type=city`); await accept(A);
       await A.locator('[data-testid="create-room-button-client"]').click({timeout:40000});
       await A.waitForURL(/\/room\/[A-Z0-9]+/,{timeout:60000});

@@ -1,13 +1,10 @@
 import { test, chromium, type Page } from '@playwright/test';
 import { execSync } from 'child_process';
+import { acceptCookieBanner as accept } from './qa-city-helpers';
 
 const BASE = 'http://127.0.0.1:4000';
 const sql = (q: string) =>
   execSync(`docker exec supabase_db_Spintra-1 psql -U postgres -d postgres -t -A -c "${q.replace(/"/g, '\\"')}"`).toString().trim();
-const accept = async (p: Page) => {
-  const b = p.getByRole('button', { name: /^accept$/i });
-  if (await b.count()) await b.first().click().catch(() => {});
-};
 
 // Behavioral proof for BUG-038: a client idling on match 1 must NOT refetch
 // when a trade or auction happens in a completely separate match. This is the
@@ -48,7 +45,6 @@ test('BUG-038: idle client on match 1 does not refetch on match 2 activity', asy
   sql(`insert into city_assets(match_id,space_idx,owner_seat,buildings,is_mortgaged) values ('${m1.mid}',1,0,0,false),('${m1.mid}',6,1,0,false) on conflict do nothing`);
   await m1.host.reload();
   await m1.host.waitForTimeout(3500);
-  await accept(m1.host);
 
   const countReqs = (p: Page) => {
     let n = 0;
@@ -65,7 +61,6 @@ test('BUG-038: idle client on match 1 does not refetch on match 2 activity', asy
   sql(`insert into city_assets(match_id,space_idx,owner_seat,buildings,is_mortgaged) values ('${m2.mid}',1,0,0,false),('${m2.mid}',6,1,0,false) on conflict do nothing`);
   await m2.host.reload();
   await m2.host.waitForTimeout(3000);
-  await accept(m2.host);
   await m2.host.getByRole('button', { name: /propose a trade/i }).first().click({ timeout: 15000 });
   const panel = m2.host.locator('[data-testid="trade-panel"]');
   await panel.waitFor({ timeout: 15000 });

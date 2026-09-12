@@ -1,23 +1,7 @@
-import { test, expect, chromium, type Page } from '@playwright/test';
+import { test, expect, chromium } from '@playwright/test';
+import { acceptCookieBanner as accept } from './qa-city-helpers';
 
 const BASE = 'http://127.0.0.1:4000';
-// A fire-and-forget accept() (count() then maybe-click, silently caught) is
-// enough for other specs in this suite, whose actionable elements sit clear
-// of the viewport's bottom edge. This test's trade panel does not — its
-// "Send offer" button can render close enough to the fixed-position cookie
-// banner that a not-yet-dismissed banner genuinely intercepts the click
-// (confirmed directly: Playwright's own actionability retry log named the
-// cookie-notice region as the intercepting element). Wait for the banner
-// and confirm it's actually gone, rather than a zero-wait best-effort.
-const accept = async (p: Page) => {
-  const b = p.getByRole('button', { name: /^accept$/i });
-  await b.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
-  if (await b.count()) await b.first().click().catch(() => {});
-  await p
-    .getByRole('region', { name: /cookie notice/i })
-    .waitFor({ state: 'hidden', timeout: 5000 })
-    .catch(() => {});
-};
 
 // BUG-007 round F (FR-33/FR-43): a real cash-only trade proposed and
 // accepted through the actual UI, confirming city_propose_trade and

@@ -1,16 +1,8 @@
-import { test, expect, chromium, type Page } from '@playwright/test';
+import { test, expect, chromium } from '@playwright/test';
 import { execSync } from 'child_process';
+import { acceptCookieBanner as accept } from './qa-city-helpers';
 
 const BASE = 'http://127.0.0.1:4000';
-const accept = async (p: Page) => {
-  const b = p.getByRole('button', { name: /^accept$/i });
-  await b.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
-  if (await b.count()) await b.first().click().catch(() => {});
-  await p
-    .getByRole('region', { name: /cookie notice/i })
-    .waitFor({ state: 'hidden', timeout: 5000 })
-    .catch(() => {});
-};
 
 const psql = (sql: string) =>
   execSync(`docker exec supabase_db_Spintra-1 psql -U postgres -d postgres -t -A -c "${sql}"`)
@@ -84,13 +76,20 @@ test('city: participant action buttons register a click immediately after openin
 });
 
 test('site: resizing past the mobile breakpoint with the drawer open does not freeze the page', async () => {
-  // Locally this runs in ~48s of a 60s budget with a warm dev server and no
-  // contention. In CI (db-integration runs alongside ~10 Supabase Docker
-  // containers -- see the timeout comment in playwright.config.ts) that
-  // margin isn't enough: this test timed out on the initial attempt and
-  // both retries, consistently, on two separate commits -- a tight budget
-  // under real contention, not a genuine freeze (the same interactions
-  // pass cleanly locally).
+  // The repeated 60s AND 120s timeouts on this test (992cd2e, 7765af3,
+  // 877571b) turned out to be the cookie-consent banner never getting
+  // dismissed in CI: acceptCookieBanner() (qa-city-helpers.ts) only matched
+  // an "Accept" button, but with no NEXT_PUBLIC_GA_MEASUREMENT_ID set (true
+  // in CI) the banner renders a single "Got it" button instead -- confirmed
+  // by reproducing the exact hang locally with that env var unset, then
+  // fixing the regex there (shared by all city QA specs, not just this
+  // one). That was the deterministic cause of the full-timeout hangs, but
+  // even with it fixed this test's own baseline (real room creation +
+  // realtime round trips) runs 48-54s locally with zero contention -- too
+  // close to the bare 60s default once CI's ~10 Supabase Docker containers
+  // add real load on top, so real headroom above that baseline stays
+  // warranted; 120s is the value already proven not to be the limiting
+  // factor once the actual hang is gone.
   test.setTimeout(120_000);
   const browser = await chromium.launch();
   const host = await (
@@ -99,7 +98,7 @@ test('site: resizing past the mobile breakpoint with the drawer open does not fr
 
   await host.goto(`${BASE}/create?type=city`);
   await accept(host);
-  await host.locator('[data-testid="create-room-button-client"]').click();
+  await host.locator('[data-testid="create-room-button-client"]').click({ timeout: 40000 });
   await host.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 40000 });
   await host.waitForTimeout(1000);
 

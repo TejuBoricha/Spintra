@@ -1,18 +1,7 @@
-import { test, expect, chromium, type Page } from '@playwright/test';
+import { test, expect, chromium } from '@playwright/test';
+import { acceptCookieBanner as accept } from './qa-city-helpers';
 
 const BASE = 'http://127.0.0.1:4000';
-// Same rationale as qa-x13's own accept() — a bare best-effort dismissal is
-// not reliable for a trade panel that can render close to the viewport's
-// bottom edge.
-const accept = async (p: Page) => {
-  const b = p.getByRole('button', { name: /^accept$/i });
-  await b.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
-  if (await b.count()) await b.first().click().catch(() => {});
-  await p
-    .getByRole('region', { name: /cookie notice/i })
-    .waitFor({ state: 'hidden', timeout: 5000 })
-    .catch(() => {});
-};
 
 // BUG-007 round H: this specific scenario (a trade proposed to an
 // unresponsive partner) was the whole reason the server-side 45s escape

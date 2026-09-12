@@ -1,16 +1,8 @@
-import { test, expect, chromium, type Page } from '@playwright/test';
+import { test, expect, chromium } from '@playwright/test';
 import { execSync } from 'child_process';
+import { acceptCookieBanner as accept } from './qa-city-helpers';
 
 const BASE = 'http://127.0.0.1:4000';
-const accept = async (p: Page) => {
-  const b = p.getByRole('button', { name: /^accept$/i });
-  await b.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
-  if (await b.count()) await b.first().click().catch(() => {});
-  await p
-    .getByRole('region', { name: /cookie notice/i })
-    .waitFor({ state: 'hidden', timeout: 5000 })
-    .catch(() => {});
-};
 
 const psql = (sql: string) =>
   execSync(`docker exec supabase_db_Spintra-1 psql -U postgres -d postgres -t -A -c "${sql}"`)

@@ -1,10 +1,7 @@
-import { test, expect, chromium, type Page } from '@playwright/test';
+import { test, expect, chromium } from '@playwright/test';
+import { acceptCookieBanner as accept } from './qa-city-helpers';
 
 const BASE = 'http://127.0.0.1:4000';
-const accept = async (p: Page) => {
-  const b = p.getByRole('button', { name: /^accept$/i });
-  if (await b.count()) await b.first().click().catch(() => {});
-};
 
 // BUG-007 round E (FR-29): a player can voluntarily retire from a live match,
 // distinct from a disconnect. Confirms the button, the confirm dialog
@@ -65,7 +62,6 @@ test('city: a player can voluntarily retire mid-match and the match carries on',
   // The match itself is still running for the two remaining players — proves
   // this is "one seat leaves," not "the match ended."
   await host.reload();
-  await accept(host);
   await host.waitForTimeout(1000);
   await expect(host.getByText(/waiting for|your turn|roll the dice/i)).toBeVisible({ timeout: 15000 });
   await expect(host.getByRole('heading', { name: /wins$/i })).toHaveCount(0);

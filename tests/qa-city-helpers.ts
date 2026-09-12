@@ -52,10 +52,48 @@ export function shot(p: Page, name: string) {
 /** Creates a city room, returns the code. */
 export async function createCityRoom(page: Page): Promise<string> {
   await page.goto(`${BASE}/create?type=city`);
+  await acceptCookieBanner(page);
   await page.waitForSelector('[data-testid="create-room-button-client"]', { timeout: 60000 });
   await page.click('[data-testid="create-room-button-client"]');
   await page.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 60000 });
   return page.url().split('/room/')[1].split(/[?#]/)[0];
+}
+
+/**
+ * Dismisses the cookie-consent banner (src/components/cookie-consent-banner.tsx).
+ * Its button label depends on NEXT_PUBLIC_GA_MEASUREMENT_ID: "Accept"/"Decline"
+ * when set, a single "Got it" when unset -- true in CI, where this banner
+ * would otherwise sit fixed at the bottom of the viewport and can intercept
+ * clicks on anything rendered near there (confirmed directly: a narrow
+ * mobile viewport with the banner never dismissed left create-room-button
+ * unreachable, hanging every test.setTimeout it was given).
+ *
+ * Scoped to the "Cookie notice" region rather than a page-wide button
+ * search: the city trade panel has its own real "Accept" button (accepting
+ * a trade offer, city-trade.tsx), and an unscoped search could click that
+ * instead once the cookie banner itself is already gone.
+ *
+ * The 5000ms visible-wait matches what the pre-consolidation qa-x13/qa-x14
+ * helpers used, chosen there because a shorter wait had caused a real,
+ * confirmed click-interception failure (Playwright's own actionability
+ * retry log named the cookie-notice region as the intercepting element).
+ * Keep it at that proven value for every caller -- callers that already
+ * dismissed the banner once in this same browser context (consent persists
+ * in localStorage, so it can't reappear) should NOT call this again at all;
+ * that redundant-call cost belongs at the call site (skip the call), not
+ * fixed by shortening the one number that exists specifically to survive
+ * slow, contended CI runs.
+ */
+export async function acceptCookieBanner(p: Page): Promise<void> {
+  const region = p.getByRole('region', { name: /cookie notice/i });
+  await region.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+  if ((await region.count()) === 0) return;
+  await region
+    .getByRole('button', { name: /^(accept|got it)$/i })
+    .first()
+    .click()
+    .catch((e) => console.warn(`acceptCookieBanner: banner was present but click failed (${String(e).slice(0, 150)})`));
+  await region.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
 }
 
 /** Reads authoritative rows straight from Postgres, bypassing the UI entirely. */

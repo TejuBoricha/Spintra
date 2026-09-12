@@ -1,13 +1,10 @@
-import { test, expect, chromium, type Page } from '@playwright/test';
+import { test, expect, chromium } from '@playwright/test';
 import { execSync } from 'child_process';
+import { acceptCookieBanner as accept } from './qa-city-helpers';
 
 const BASE = 'http://127.0.0.1:4000';
 const sql = (q: string) =>
   execSync(`docker exec supabase_db_Spintra-1 psql -U postgres -d postgres -t -A -c "${q.replace(/"/g, '\\"')}"`).toString().trim();
-const accept = async (p: Page) => {
-  const b = p.getByRole('button', { name: /^accept$/i });
-  if (await b.count()) await b.first().click().catch(() => {});
-};
 
 // BUG-033 (pace half): host picks a pace preset before opening the match,
 // and it actually persists to the row (FR-42).
@@ -59,7 +56,6 @@ test('city: mortgage raises the correctly-rounded amount, live', async () => {
   sql(`insert into city_assets(match_id,space_idx,owner_seat,buildings,is_mortgaged) values ('${mid}',1,0,0,false)`);
   const cashBefore = sql(`select cash from city_match_players where match_id='${mid}' and seat=0`);
   await host.reload();
-  await accept(host);
   await host.waitForTimeout(1500);
 
   await host.getByRole('button', { name: /^mortgage/i }).first().click();
