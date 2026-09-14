@@ -26,13 +26,17 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      # Threshold deliberately kept at `high` (not `moderate`): Next.js
-      # currently bundles a moderate-severity postcss advisory whose only
-      # npm-suggested "fix" is downgrading Next to 9.x — unfixable here
-      # until upstream ships a patched release. Dependabot (weekly) covers
-      # the fixable-bump path for lower severities.
+      # The threshold itself lives in package.json's "audit" script (single
+      # source of truth -- this and the local "ci" script both call it,
+      # instead of each hardcoding their own --audit-level and drifting, as
+      # happened 2026-09-12: this step stayed at `high` after "ci" moved to
+      # `moderate` once Next 16.2.10 -> 16.3.5 fixed the advisory that had
+      # justified the looser threshold; see docs/CHANGELOG_AI.md). If a
+      # future moderate-severity advisory is similarly unfixable, weekly
+      # Dependabot still covers the fixable-bump path for lower severities --
+      # only fall back to loosening the threshold if that doesn't resolve it.
       - name: Strict Dependency Security Audit
-        run: npm audit --audit-level=high # Block build on high or critical vulnerability findings
+        run: npm run audit # Block build on moderate, high, or critical vulnerability findings
 
       - name: TypeScript Type Checking
         run: npm run typecheck

@@ -269,7 +269,7 @@ The original audit's Low/Nice-to-have findings (21/7) only existed in an ephemer
 - `[x]` **Explore search/quick-join inputs rely on placeholder as their only label** — both given `aria-label`s; quick-join input converted from a raw `<input>` to the shared `Input` component, picking up its consistent `focus-visible:ring-3` instead of a bespoke weaker one. Verified live: uppercase/6-char-cap behavior unchanged, both inputs reachable via `getByLabel`.
 
 **Nice-to-have:**
-- `[x]` **`npm audit` only blocks `high`/`critical` advisories** — Investigated and deliberately kept at `high`: lowering to `moderate` would immediately fail CI on Next.js's currently-bundled moderate postcss advisory, whose only npm-suggested "fix" is downgrading Next to 9.x — unfixable until upstream patches. Reasoning documented inline in `ci.yml`; Dependabot remains the fixable-bump path for lower severities.
+- `[x]` **`npm audit` only blocks `high`/`critical` advisories** — Investigated and deliberately kept at `high`: lowering to `moderate` would immediately fail CI on Next.js's currently-bundled moderate postcss advisory, whose only npm-suggested "fix" is downgrading Next to 9.x — unfixable until upstream patches. Reasoning documented inline in `ci.yml`; Dependabot remains the fixable-bump path for lower severities. *Superseded 2026-09-12: the underlying Next.js advisory got a real upstream fix — bumped Next 16.2.10→16.3.5, `npm audit` is now clean at every severity, and `ci.yml`'s threshold is back to `moderate`.*
 - `[x]` **Non-CSPRNG fallback for room-code generation** — `Math.random()` fallback removed entirely; `generateCode` only runs client-side in an event handler where `crypto.getRandomValues` has universal support, and failing loudly beats silently downgrading code randomness.
 - `[x]` **No provenance/audit trail on `activity_prompts`/`trivia_questions`** — Deliberately deferred until an admin-editing feature actually exists: writes are fully RLS-denied today, and adding speculative `created_by` columns for an unbuilt feature contradicts this repo's own dead-code discipline (`rooms.settings`, spectator role, and react-query were all removed for exactly that reason).
 - `[x]` **`persistTimerRef` debounce timer not cleared on unmount** — now cleared in the presence-cleanup effect's teardown in `use-room-subscription.ts`.
@@ -356,10 +356,18 @@ Pre-launch hardening — required before publishing the site publicly on the ope
   replayed whenever an auction opened and settled), hardened a test's overly-broad failure catch,
   and caught 2 stale docs. **2026-09-05: branch pushed** (PR #43 now reflects real `HEAD`) **and
   migrations `0093`–`0095` applied to production**, independently verified (`verify-migration.mjs`,
-  `migration list`) — the 14-commit gap and the local-only migrations are both closed. Still needs:
-  PR CI to finish (the `npm audit` gate is expected-red, pre-existing on `main`; `db-integration`
-  was still running as of this note) and an actual human review before any of it reaches
-  spintra.io.
+  `migration list`) — the 14-commit gap and the local-only migrations are both closed.
+  **2026-09-12/13: `db-integration` now passes on CI, and `validate`'s fix is ready but not yet
+  pushed.** `db-integration` had been failing on a mobile-viewport cookie-banner-dismissal bug (not
+  the Docker-contention theory earlier notes assumed); root-caused and fixed, consolidating a
+  19-file duplicated test helper in the process — pushed as `4fb77a1`, confirmed green on CI.
+  `validate`'s `npm audit` gate — previously accepted as pre-existing/not-worth-blocking-on — was
+  then actually fixed rather than left as a carve-out: a two-step `npm audit fix` (plain, then
+  `--force` bumping Next.js 16.2.10→16.3.5, which also carries fixed nested `postcss`/`sharp`)
+  resolved all 16 advisories (one critical), verified locally via a full build and 16 e2e tests,
+  but this fix is still uncommitted — `validate` will keep failing on GitHub until it's pushed. Still needs: push
+  this fix, confirm `validate` goes green on real CI, then an actual human review and merge before
+  any of it reaches spintra.io — not something an AI session can do.
 
 - `[ ]` **Activity feed v2 — event kinds deliberately left out of migration `0093`'s v1.** Logged
   as a real scope decision, not an oversight, so it isn't silently forgotten: turn-change (would
@@ -440,6 +448,7 @@ Pre-launch hardening — required before publishing the site publicly on the ope
 
 ## Low Priority
 
+- `[ ]` **`use-room-subscription.ts`'s `leaveRoom()` uses `window.location.href = "/"` instead of `router.push()`.** Surfaced 2026-09-12 as a new `@next/next/no-location-assign-relative-destination` lint warning (not error — doesn't fail `npm run lint` or CI) after bumping `eslint-config-next` to match a `next` version bump; the rule wasn't in the older lint config, so this pre-existing pattern was previously invisible to linting rather than newly introduced. Likely deliberate (a hard navigation guarantees the realtime subscriptions/component state from the just-left room are fully torn down, not just soft-routed away from) — not changed here, since verifying a soft-navigation swap doesn't leave stale WebSocket connections needs its own real testing, unrelated to the dependency bump that surfaced it.
 - `[ ]` **`ARCHITECTURE.md` documents `.glass`/`.glass-card` Tailwind utility classes that don't exist.** Found during Session 65's Spintra City research and mentioned in `CHANGELOG_AI.md`/`HANDOFF.md` across two sessions since ("worth a separate fix") but never actually logged here — a gap in AI_RULES.md's Technical Debt Logging rule, closed by this entry. The real pattern is CSS custom properties consumed via Tailwind v4 arbitrary-value syntax (e.g. `bg-(--surface-glass-strong)`) — `ARCHITECTURE.md`'s relevant section needs correcting to describe that instead.
 - `[x]` **Trivia Database Migration:** Migrate the static [`src/lib/trivia-questions.ts`](file:///c:/Users/tejas/Desktop/Spintra-1/src/lib/trivia-questions.ts) file to a database table to support dynamic admin editing/moderation. Intentionally deferred — see `ENGINEERING_GOVERNANCE_REVIEW.md` §3 for the reasoning (hardcoded lists stay lightweight and support the offline `BroadcastChannel` fallback with zero DB setup). **Session 38 note:** the migration creating this table (`0010`) was discovered to have never actually applied in production (see `CHANGELOG_AI.md` Session 37/38) — fixed and re-applied for real; the static file remains the intentional fallback.
 - `[x]` **Static Prompt Lists → Database-Driven:** Truth or Dare / Would You Rather / Never Have I Ever already have a dynamic path via `activity_prompts` (migration `0008`), but Word Scramble's word bank is still a hardcoded array. Same deferral reasoning as above applies. **Session 38 note:** same discovery as above — migration `0008` had also never actually applied in production; fixed and re-applied.

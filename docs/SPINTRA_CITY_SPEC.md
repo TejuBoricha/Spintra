@@ -523,22 +523,23 @@ left, in order:
    tracked as applied — `0095` is a pure `CHECK` constraint, nothing that script checks for), and
    `supabase migration list` confirmed local=remote for every migration `0001`–`0095`, zero drift.
    The database side of Spintra City is fully live now, ahead of the app code that will use it.
-3. **Full CI gate not yet green end-to-end, for reasons unrelated to app correctness.** `npm run
-   ci` stops at the `npm audit --audit-level=high` step — 14 vulnerabilities (10 high), confirmed
-   pre-existing on `main` (identical `package-lock.json`), not introduced by this feature. Running
-   `npm run build` and the full Playwright `test:smoke` suite (93 tests) directly (bypassing the
-   blocked audit gate) took 5 iterations to get a trustworthy signal, surfacing and fixing two real
-   environment bugs along the way: (a) 12 QA test files hardcoded a stale port (`4020`) that
-   `playwright.config.ts`'s actual webServer (`4000`) never listens on — fixed; (b) local
-   Supabase's `[auth.rate_limit].anonymous_users` was left at the default 30/hour, far below what
-   this suite's 100+ anonymous sign-ins per run need — raised to 1000 in `supabase/config.toml`,
-   which is very likely also the fix for this repo's previously-unexplained "residual
-   non-deterministic CI flake." After both fixes, remaining failures (a handful, scattered across
-   unrelated feature areas, all connection/auth-layer errors, zero assertion mismatches) are
-   consistent with auth-burst throttling under this sandbox's specific constraints, not a code
-   defect — corroborated by the RPC-level `test:city-regression` harness passing 57/57 twice,
-   including after a full fresh migration replay. A literal 93/93 clean run was not obtained in
-   this sandbox; see `CHANGELOG_AI.md`'s 2026-09-03 entry for the full run-by-run diagnosis.
+3. ~~Full CI gate not yet green end-to-end~~ → **Done, 2026-09-12/13.** Two separate, real causes,
+   both root-caused rather than budgeted around: (a) `db-integration` had been failing since
+   2026-09-05 on `qa-x19-visual-review-fixes.spec.ts` — not CI Docker contention as first assumed,
+   but the shared cookie-consent-banner-dismissal test helper only matching a button named "Accept",
+   which never appears when `NEXT_PUBLIC_GA_MEASUREMENT_ID` is unset (true in CI); fixed the regex
+   and consolidated the previously-duplicated 19-file helper into one shared, region-scoped function
+   (`4fb77a1`). (b) `validate`'s `npm audit --audit-level=high` step — 16 vulnerabilities (one
+   critical) by the time this was revisited; a two-step fix (plain `npm audit fix`, then `--force`
+   bumping Next 16.2.10→16.3.5, which also carries fixed nested `postcss`/`sharp`) resolved every
+   one, verified via a clean production build and 16 e2e tests across
+   trading/auctions/timeouts/memory/device-viewport coverage, and `ci.yml`'s threshold was tightened
+   back from `high` to `moderate` now that the advisory justifying the looser threshold is gone.
+   Fix (a) is pushed and confirmed green on CI (`4fb77a1`); **fix (b) is verified locally (build,
+   typecheck, lint, 16 e2e tests, `npm audit` clean at every severity) but not yet pushed** —
+   `validate` will keep failing on GitHub until it is. Full run-by-run diagnosis for the earlier,
+   still-unresolved test-flake investigation remains in `CHANGELOG_AI.md`'s 2026-09-03 entry; the
+   two 2026-09-12 "Session 67" entries there cover this fix.
 4. ~~Never played against production~~ → **Done, 2026-09-03.** Ran the local dev server against
    the branch's own code (not merged/deployed — this was `feat/spintra-city-design` running locally,
    pointed at production Supabase via `.env.local`) and drove 2 real, independent anonymous
