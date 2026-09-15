@@ -1,4 +1,5 @@
 import { test, expect, chromium } from '@playwright/test';
+import { skipIfDemoMode } from './qa-city-helpers';
 
 // Spintra City — Slice 1 (lobby) coverage.
 //
@@ -28,17 +29,7 @@ test('Spintra City: two players seat, ready up, start, and survive a reload', as
   await page.waitForURL(/\/room\/[A-Z0-9]+/);
   const roomCode = page.url().split('/room/')[1];
 
-  // Demo-mode guard: the BroadcastChannel fallback only syncs tabs sharing one
-  // localStorage identity, so a second context would never see this room.
-  // Spintra City additionally has no demo-mode implementation at all — it
-  // renders a "needs a database" notice — so bail out explicitly.
-  await Promise.race([
-    page.getByText(/this device only/i).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
-    page.getByText('Live', { exact: true }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
-  ]);
-  if (await page.getByText(/this device only/i).isVisible().catch(() => false)) {
-    test.skip(true, 'Running without Supabase configured — Spintra City requires a real backend');
-  }
+  await skipIfDemoMode(page);
 
   const browser = await chromium.launch();
   const guestContext = await browser.newContext();

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { execSync } from 'child_process';
 import path from 'path';
-import type { Page } from '@playwright/test';
+import { test, type Page } from '@playwright/test';
 
 export const SCRATCH = 'C:/Users/tejas/AppData/Local/Temp/claude/c--Users-tejas-Desktop-Spintra-1/cec4ff14-1fcd-49b4-a12a-68214422c5ee/scratchpad';
 export const SHOTS = path.join(SCRATCH, 'qa-shots');
@@ -94,6 +94,30 @@ export async function acceptCookieBanner(p: Page): Promise<void> {
     .click()
     .catch((e) => console.warn(`acceptCookieBanner: banner was present but click failed (${String(e).slice(0, 150)})`));
   await region.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+}
+
+/**
+ * City matches are inherently multiplayer -- every real test here needs a
+ * second, genuinely separate participant to see the host's room. Without
+ * NEXT_PUBLIC_SUPABASE_URL/NEXT_PUBLIC_SUPABASE_ANON_KEY configured (true in
+ * CI's `validate` job, which deliberately runs without Supabase to exercise
+ * the demo-mode/BroadcastChannel fallback instead -- see ci.yml), the app
+ * falls back to same-tab-only BroadcastChannel sync, and a second Playwright
+ * browser context (its own isolated storage) can never see the room at all.
+ * Call this right after a room is created/joined, before anything that
+ * assumes a second real participant -- skips with a clear reason instead of
+ * hanging until the test's own timeout. Pattern and reasoning verified
+ * directly in tests/multiplayer-loop.spec.ts before being centralized here.
+ */
+export async function skipIfDemoMode(p: Page): Promise<void> {
+  await Promise.race([
+    p.getByText(/this device only/i).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+    p.getByText('Live', { exact: true }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+  ]);
+  const isLocalOnlyMode = await p.getByText(/this device only/i).isVisible().catch(() => false);
+  if (isLocalOnlyMode) {
+    test.skip(true, 'App is running without Supabase configured (demo-mode BroadcastChannel fallback) — a second browser context can never see this room');
+  }
 }
 
 /** Reads authoritative rows straight from Postgres, bypassing the UI entirely. */

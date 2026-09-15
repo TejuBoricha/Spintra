@@ -1,5 +1,5 @@
 import { test, expect, chromium } from '@playwright/test';
-import { acceptCookieBanner as accept } from './qa-city-helpers';
+import { acceptCookieBanner as accept, skipIfDemoMode } from './qa-city-helpers';
 
 const BASE = 'http://127.0.0.1:4000';
 
@@ -20,6 +20,7 @@ test('city: a real trade proposal is visible and can be accepted live', async ()
   await accept(host);
   await host.locator('[data-testid="create-room-button-client"]').click();
   await host.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 40000 });
+  await skipIfDemoMode(host);
   const code = host.url().split('/room/')[1];
   // Slow (60s) pace, not the 40s default — this test fills in a trade form
   // by hand, and the default pace has been observed to legitimately expire

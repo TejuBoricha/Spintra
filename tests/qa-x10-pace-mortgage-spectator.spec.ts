@@ -1,6 +1,6 @@
 import { test, expect, chromium } from '@playwright/test';
 import { execSync } from 'child_process';
-import { acceptCookieBanner as accept } from './qa-city-helpers';
+import { acceptCookieBanner as accept, skipIfDemoMode } from './qa-city-helpers';
 
 const BASE = 'http://127.0.0.1:4000';
 const sql = (q: string) =>
@@ -17,6 +17,7 @@ test('city: host can pick a pace preset that persists to the match', async () =>
   await accept(host);
   await host.locator('[data-testid="create-room-button-client"]').click();
   await host.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 40000 });
+  await skipIfDemoMode(host);
   const code = host.url().split('/room/')[1];
 
   await host.getByRole('radio', { name: /slow/i }).click();
@@ -41,6 +42,7 @@ test('city: mortgage raises the correctly-rounded amount, live', async () => {
   await accept(host);
   await host.locator('[data-testid="create-room-button-client"]').click();
   await host.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 40000 });
+  await skipIfDemoMode(host);
   const code = host.url().split('/room/')[1];
   await host.getByRole('button', { name: /open a match/i }).click({ timeout: 40000 });
   await host.getByRole('button', { name: /take a seat/i }).click({ timeout: 30000 });
@@ -81,6 +83,7 @@ test('city: a never-seated room member sees a spectator message', async () => {
   await accept(host);
   await host.locator('[data-testid="create-room-button-client"]').click();
   await host.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 40000 });
+  await skipIfDemoMode(host);
   const code = host.url().split('/room/')[1];
   await host.getByRole('button', { name: /open a match/i }).click({ timeout: 40000 });
   await host.getByRole('button', { name: /take a seat/i }).click({ timeout: 30000 });

@@ -1,6 +1,6 @@
 import { test, expect, chromium } from '@playwright/test';
 import { execSync } from 'child_process';
-import { acceptCookieBanner as accept } from './qa-city-helpers';
+import { acceptCookieBanner as accept, skipIfDemoMode } from './qa-city-helpers';
 
 const BASE = 'http://127.0.0.1:4000';
 
@@ -27,6 +27,7 @@ test('city: the debt countdown is distinct from the turn clock, and forced liqui
   await accept(host);
   await host.locator('[data-testid="create-room-button-client"]').click();
   await host.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 40000 });
+  await skipIfDemoMode(host);
   const code = host.url().split('/room/')[1];
   await host.getByRole('radio', { name: /fast/i }).click();
   await host.getByRole('button', { name: /open a match/i }).click({ timeout: 40000 });

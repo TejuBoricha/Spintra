@@ -1,5 +1,5 @@
 import { test, expect, chromium } from '@playwright/test';
-import { acceptCookieBanner as accept } from './qa-city-helpers';
+import { acceptCookieBanner as accept, skipIfDemoMode } from './qa-city-helpers';
 
 const BASE = 'http://127.0.0.1:4000';
 
@@ -22,6 +22,7 @@ test('city: an unanswered trade proposal is force-withdrawn after 45s, with no c
   await accept(host);
   await host.locator('[data-testid="create-room-button-client"]').click();
   await host.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 40000 });
+  await skipIfDemoMode(host);
   const code = host.url().split('/room/')[1];
   // Slow (60s) pace -- well clear of the 45s escape hatch, so the ordinary
   // per-turn clock can't race it and fire first.

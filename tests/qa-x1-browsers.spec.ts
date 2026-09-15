@@ -1,6 +1,6 @@
 import { test, firefox, webkit, chromium } from '@playwright/test';
 import { execSync } from 'child_process';
-import { acceptCookieBanner as accept } from './qa-city-helpers';
+import { acceptCookieBanner as accept, skipIfDemoMode } from './qa-city-helpers';
 const BASE='http://127.0.0.1:4000';
 const sql=(q:string)=>execSync(`docker exec supabase_db_Spintra-1 psql -U postgres -d postgres -t -A -c "${q.replace(/"/g,'\\"')}"`).toString().trim();
 
@@ -42,6 +42,7 @@ for (const [name, launcher] of [['firefox',firefox],['webkit',webkit],['chromium
       await A.goto(`${BASE}/create?type=city`); await accept(A);
       await A.locator('[data-testid="create-room-button-client"]').click({timeout:40000});
       await A.waitForURL(/\/room\/[A-Z0-9]+/,{timeout:60000});
+      await skipIfDemoMode(A);
       const code=A.url().split('/room/')[1]; note(`room created: ${code}`);
       await A.getByRole('button',{name:/open a match/i}).click({timeout:40000}); note('match opened');
       await A.getByRole('button',{name:/take a seat/i}).click({timeout:30000}); note('A seated');
@@ -64,7 +65,15 @@ for (const [name, launcher] of [['firefox',firefox],['webkit',webkit],['chromium
       const pos=sql(`select coalesce(max(position),-1) from city_match_players where match_id='${mid}'`);
       note(`roll applied, max position now ${pos} (expect > 0)`);
       note(`RESULT: ${Number(pos)>0 ? 'CORE LOOP WORKS' : 'CORE LOOP FAILED'}`);
-    } catch(e){ note(`ERRORED: ${(e as Error).message.split('\n')[0].slice(0,160)}`); }
+    } catch(e){
+      // A test.skip() call inside this try (skipIfDemoMode) throws
+      // Playwright's own internal skip signal ("Test is skipped: ...") to
+      // unwind the test -- this broad catch would otherwise swallow that
+      // and mislabel a correct demo-mode skip as a genuine failure. Let it
+      // propagate; every other error still gets caught and logged below.
+      if (/^Test is skipped:/.test((e as Error).message)) { await br.close().catch(()=>{}); throw e; }
+      note(`ERRORED: ${(e as Error).message.split('\n')[0].slice(0,160)}`);
+    }
     note(`console/page errors: ${errs.length? errs.slice(0,4).join(' | ') : '(none)'}`);
     console.log(`\n===${name.toUpperCase()}===\n`+log.join('\n')+`\n===END===`);
     await br.close();

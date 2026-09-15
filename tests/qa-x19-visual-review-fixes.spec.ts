@@ -1,6 +1,6 @@
 import { test, expect, chromium } from '@playwright/test';
 import { execSync } from 'child_process';
-import { acceptCookieBanner as accept } from './qa-city-helpers';
+import { acceptCookieBanner as accept, skipIfDemoMode } from './qa-city-helpers';
 
 const BASE = 'http://127.0.0.1:4000';
 
@@ -21,6 +21,7 @@ test('city: debt status text shows the raise-funds message, not the stale buy-pr
   await accept(host);
   await host.locator('[data-testid="create-room-button-client"]').click();
   await host.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 40000 });
+  await skipIfDemoMode(host);
   const code = host.url().split('/room/')[1];
   await host.getByRole('button', { name: /open a match/i }).click({ timeout: 40000 });
   await host.getByRole('button', { name: /take a seat/i }).click({ timeout: 30000 });
@@ -56,6 +57,7 @@ test('city: participant action buttons register a click immediately after openin
   await accept(host);
   await host.locator('[data-testid="create-room-button-client"]').click();
   await host.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 40000 });
+  await skipIfDemoMode(host);
   const code = host.url().split('/room/')[1];
   await guest.goto(`${BASE}/room/${code}`);
   await accept(guest);
@@ -100,6 +102,7 @@ test('site: resizing past the mobile breakpoint with the drawer open does not fr
   await accept(host);
   await host.locator('[data-testid="create-room-button-client"]').click({ timeout: 40000 });
   await host.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 40000 });
+  await skipIfDemoMode(host);
   await host.waitForTimeout(1000);
 
   // Open the mobile sidebar drawer.
@@ -131,6 +134,7 @@ test('city: reloading right after a match finishes keeps the player in the room'
   await accept(host);
   await host.locator('[data-testid="create-room-button-client"]').click();
   await host.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 40000 });
+  await skipIfDemoMode(host);
   const code = host.url().split('/room/')[1];
   await host.getByRole('button', { name: /open a match/i }).click({ timeout: 40000 });
   await host.getByRole('button', { name: /take a seat/i }).click({ timeout: 30000 });

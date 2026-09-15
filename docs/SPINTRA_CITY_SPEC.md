@@ -523,23 +523,30 @@ left, in order:
    tracked as applied — `0095` is a pure `CHECK` constraint, nothing that script checks for), and
    `supabase migration list` confirmed local=remote for every migration `0001`–`0095`, zero drift.
    The database side of Spintra City is fully live now, ahead of the app code that will use it.
-3. ~~Full CI gate not yet green end-to-end~~ → **Done, 2026-09-12/13.** Two separate, real causes,
-   both root-caused rather than budgeted around: (a) `db-integration` had been failing since
-   2026-09-05 on `qa-x19-visual-review-fixes.spec.ts` — not CI Docker contention as first assumed,
-   but the shared cookie-consent-banner-dismissal test helper only matching a button named "Accept",
-   which never appears when `NEXT_PUBLIC_GA_MEASUREMENT_ID` is unset (true in CI); fixed the regex
-   and consolidated the previously-duplicated 19-file helper into one shared, region-scoped function
-   (`4fb77a1`). (b) `validate`'s `npm audit --audit-level=high` step — 16 vulnerabilities (one
-   critical) by the time this was revisited; a two-step fix (plain `npm audit fix`, then `--force`
-   bumping Next 16.2.10→16.3.5, which also carries fixed nested `postcss`/`sharp`) resolved every
-   one, verified via a clean production build and 16 e2e tests across
-   trading/auctions/timeouts/memory/device-viewport coverage, and `ci.yml`'s threshold was tightened
-   back from `high` to `moderate` now that the advisory justifying the looser threshold is gone.
-   Fix (a) is pushed and confirmed green on CI (`4fb77a1`); **fix (b) is verified locally (build,
-   typecheck, lint, 16 e2e tests, `npm audit` clean at every severity) but not yet pushed** —
-   `validate` will keep failing on GitHub until it is. Full run-by-run diagnosis for the earlier,
-   still-unresolved test-flake investigation remains in `CHANGELOG_AI.md`'s 2026-09-03 entry; the
-   two 2026-09-12 "Session 67" entries there cover this fix.
+3. **Full CI gate not yet green end-to-end.** Three separate, real causes found so far, each
+   root-caused rather than budgeted around: (a) `db-integration` had been failing since 2026-09-05
+   on `qa-x19-visual-review-fixes.spec.ts` — not CI Docker contention as first assumed, but the
+   shared cookie-consent-banner-dismissal test helper only matching a button named "Accept", which
+   never appears when `NEXT_PUBLIC_GA_MEASUREMENT_ID` is unset (true in CI); fixed the regex and
+   consolidated the previously-duplicated 19-file helper into one shared, region-scoped function.
+   **Pushed as `4fb77a1` — confirmed green on CI, stayed green since.** (b) `validate`'s
+   `npm audit --audit-level=high` step — 16 vulnerabilities (one critical) by the time this was
+   revisited; a two-step fix (plain `npm audit fix`, then `--force` bumping Next 16.2.10→16.3.5,
+   which also carries fixed nested `postcss`/`sharp`) resolved every one, `ci.yml`'s threshold
+   tightened back from `high` to `moderate`. **Pushed as `3fd8323`/`427df36`.** (c) `validate`
+   failed again after (b) — not npm audit this time: that job is deliberately built without
+   Supabase (to exercise the demo-mode fallback), and none of the ~19 Spintra City test files knew
+   to skip themselves without a real backend the way `multiplayer-loop.spec.ts` already did, so
+   they hung one by one until the job's own 25-minute timeout killed it — never reachable before
+   since the audit gate always failed first. Centralized `multiplayer-loop.spec.ts`'s proven skip
+   pattern into a new `skipIfDemoMode()` helper, wired into all 19 files (24 call sites) plus
+   `city-lobby.spec.ts`; also fixed a real bug where `qa-x1-browsers.spec.ts`'s own broad
+   error-catching swallowed the skip signal and reported it as a failure. Verified both ways
+   against fresh builds: 27 skip/3 pass/0 fail with no Supabase, 30/30 pass with real Supabase.
+   **Fix (c) is verified locally but not yet pushed** — `validate` will keep failing on GitHub
+   until it is. Full run-by-run diagnosis for the earlier, still-unresolved test-flake investigation
+   remains in `CHANGELOG_AI.md`'s 2026-09-03 entry; the 2026-09-12 and 2026-09-14/15 "Session 67"
+   entries there cover fixes (b) and (c).
 4. ~~Never played against production~~ → **Done, 2026-09-03.** Ran the local dev server against
    the branch's own code (not merged/deployed — this was `feat/spintra-city-design` running locally,
    pointed at production Supabase via `.env.local`) and drove 2 real, independent anonymous

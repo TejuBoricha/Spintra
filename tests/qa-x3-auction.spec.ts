@@ -1,6 +1,6 @@
 import { test, chromium } from '@playwright/test';
 import { execSync } from 'child_process';
-import { acceptCookieBanner as accept } from './qa-city-helpers';
+import { acceptCookieBanner as accept, skipIfDemoMode } from './qa-city-helpers';
 const BASE='http://127.0.0.1:4000';
 const sql=(q:string)=>execSync(`docker exec supabase_db_Spintra-1 psql -U postgres -d postgres -t -A -c "${q.replace(/"/g,'\\"')}"`).toString().trim();
 
@@ -14,6 +14,7 @@ test('TC-MULTI-11: auction in a live match', async () => {
   await A.goto(`${BASE}/create?type=city`); await accept(A);
   await A.locator('[data-testid="create-room-button-client"]').click();
   await A.waitForURL(/\/room\/[A-Z0-9]+/,{timeout:40000});
+  await skipIfDemoMode(A);
   const code=A.url().split('/room/')[1]; note(`room=${code}`);
   await A.getByRole('button',{name:/open a match/i}).click({timeout:40000});
   await A.getByRole('button',{name:/take a seat/i}).click({timeout:30000});
