@@ -543,8 +543,7 @@ left, in order:
    `city-lobby.spec.ts`; also fixed a real bug where `qa-x1-browsers.spec.ts`'s own broad
    error-catching swallowed the skip signal and reported it as a failure. Verified both ways
    against fresh builds: 27 skip/3 pass/0 fail with no Supabase, 30/30 pass with real Supabase.
-   **Fix (c) is verified locally but not yet pushed** — `validate` will keep failing on GitHub
-   until it is. Full run-by-run diagnosis for the earlier, still-unresolved test-flake investigation
+   **Fix (c) is committed and pushed (`ce14565`).** Full run-by-run diagnosis for the earlier, still-unresolved test-flake investigation
    remains in `CHANGELOG_AI.md`'s 2026-09-03 entry; the 2026-09-12 and 2026-09-14/15 "Session 67"
    entries there cover fixes (b) and (c).
 4. ~~Never played against production~~ → **Done, 2026-09-03.** Ran the local dev server against

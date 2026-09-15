@@ -306,6 +306,71 @@ function mergeEvents(prev: CityMatchEvent[], incoming: CityMatchEvent[]): CityMa
   return [...byId.values()].sort((a, b) => a.id - b.id);
 }
 
+// Resets dependent state when a derived key changes, adjusted during render
+// (React's documented pattern for this — see the two call sites below) rather
+// than a synchronous setState at the top of an effect, which the react-hooks/
+// set-state-in-effect lint rule forbids. Deliberately backed by useState, not
+// useRef: reading/writing a ref during render is exactly what the react-hooks/
+// refs rule (see the comment above `refetch`'s coalescing refs) forbids.
+function useResetOnChange<K>(key: K, onChange: () => void): void {
+  const [prevKey, setPrevKey] = useState<K>(key);
+  if (prevKey !== key) {
+    setPrevKey(key);
+    onChange();
+  }
+}
+
+// Shared by `refetch` (full bundle) and `makeNarrowRefetch` (single-table)
+// below — see the BUG-037 comment on `refetch` for why coalescing exists.
+const REFETCH_COALESCE_MS = 80;
+
+// A coalesced, single-table refetcher — the same debounce shape as `refetch`
+// above, but scoped to one table instead of the full 5-query bundle. Kept as
+// a plain factory (not a hook) so it can be constructed inside the
+// subscription effect below, where reading matchIdRef.current is safe (an
+// effect runs after render, not during it — see the react-hooks/refs
+// comment above `refetch`). Returns `trigger` (called once per realtime
+// ping; bursts of the same ping, e.g. rapid auction bids, coalesce into one
+// fetch) and `cancel`, mirroring refetchTimerRef's own cleanup-on-unmount so
+// a pending timer can't fire a setState after the effect that created it has
+// torn down.
+function makeNarrowRefetch<T>(
+  table: string,
+  apply: (rows: T[] | null) => void,
+  query: () => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
+): { trigger: () => Promise<void>; cancel: () => void } {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let inFlight: Promise<void> | null = null;
+  return {
+    trigger: () => {
+      if (inFlight) return inFlight;
+      const p = new Promise<void>((resolve) => {
+        timer = setTimeout(() => {
+          timer = null;
+          void Promise.resolve(query())
+            .then(({ data, error: fetchError }) => {
+              if (fetchError) {
+                console.error(`Failed to refresh ${table}:`, fetchError);
+                return;
+              }
+              apply(data);
+            })
+            .finally(() => {
+              inFlight = null;
+              resolve();
+            });
+        }, REFETCH_COALESCE_MS);
+      });
+      inFlight = p;
+      return p;
+    },
+    cancel: () => {
+      if (timer) clearTimeout(timer);
+      timer = null;
+    },
+  };
+}
+
 export function useCityMatch(roomCode: string, currentUserId: string): UseCityMatchResult {
   const [match, setMatch] = useState<CityMatch | null>(null);
   const [seats, setSeats] = useState<CitySeat[]>([]);
@@ -330,15 +395,9 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   // turn that ends any other way (timeout, forced bankruptcy, autopilot)
   // left it set, so this same player's *next* turn could show stale "you
   // rolled X, moved to Y" narration instead of "your turn — roll the dice."
-  // Adjusting state during render (React's documented pattern for "reset
-  // state when a prop/derived value changes") rather than in an effect —
-  // clearing on every turn-number change closes the gap regardless of how
+  // Clearing on every turn-number change closes the gap regardless of how
   // the previous turn ended.
-  const [lastRollTurn, setLastRollTurn] = useState<number | undefined>(match?.turn_number);
-  if (match?.turn_number !== lastRollTurn) {
-    setLastRollTurn(match?.turn_number);
-    setLastRoll(null);
-  }
+  useResetOnChange(match?.turn_number, () => setLastRoll(null));
 
   const supabase = getSupabaseBrowserClient();
   const isDemoMode = !supabase;
@@ -447,7 +506,6 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   // not a leading-edge throttle that would drop a solo action's own update.
   const refetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refetchPromiseRef = useRef<Promise<void> | null>(null);
-  const REFETCH_COALESCE_MS = 80;
 
   const refetch = useCallback(() => {
     if (refetchPromiseRef.current) return refetchPromiseRef.current;
@@ -470,6 +528,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     },
     []
   );
+
 
   // The board is immutable reference data shared by every match, so it is
   // fetched once and never refetched by the realtime notifier below. Prices
@@ -509,15 +568,11 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   // that legitimately re-reads from scratch; the realtime ping below only
   // ever fetches forward from here.
   //
-  // The reset itself happens during render (same "adjust state during
-  // render" pattern as lastRollTurn/lastRoll above) rather than as a
-  // synchronous setState at the top of the effect below, which the React
-  // Compiler lint rules forbid (react-hooks/set-state-in-effect).
-  const [eventsMatchId, setEventsMatchId] = useState<string | null>(null);
-  if ((match?.id ?? null) !== eventsMatchId) {
-    setEventsMatchId(match?.id ?? null);
-    setEvents([]);
-  }
+  // The reset itself happens during render (same useResetOnChange pattern as
+  // lastRoll above) rather than as a synchronous setState at the top of the
+  // effect below, which the React Compiler lint rules forbid
+  // (react-hooks/set-state-in-effect).
+  useResetOnChange(match?.id ?? null, () => setEvents([]));
 
   useEffect(() => {
     lastEventIdRef.current = 0;
@@ -661,6 +716,56 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
       }
     };
 
+    const narrowIfCurrentMatch =
+      (narrow: () => void) =>
+      (payload: { new: object; old: object }) => {
+        const changedMatchId =
+          (payload.new as { match_id?: string })?.match_id ??
+          (payload.old as { match_id?: string })?.match_id;
+        if (!matchIdRef.current || changedMatchId === matchIdRef.current) {
+          narrow();
+        }
+      };
+
+    // Constructed here (effect phase, not render) so matchIdRef.current is
+    // safe to read inside the query closures below.
+    const auctionRefetcher = makeNarrowRefetch<CityAuction>(
+      "city_auctions",
+      (rows) => setAuction((rows?.[0] as CityAuction | undefined) ?? null),
+      () => {
+        const id = matchIdRef.current;
+        if (!id) return Promise.resolve({ data: null, error: null });
+        return supabase
+          .from("city_auctions")
+          .select("id, space_idx, high_bid, high_seat, passed_seats, ends_at, hard_ends_at")
+          .eq("match_id", id)
+          .eq("status", "running")
+          .limit(1) as unknown as PromiseLike<{
+          data: CityAuction[] | null;
+          error: { message: string } | null;
+        }>;
+      }
+    );
+
+    const offersRefetcher = makeNarrowRefetch<CityTradeOffer>(
+      "city_trade_offers",
+      (rows) => setOffers(rows ?? []),
+      () => {
+        const id = matchIdRef.current;
+        if (!id) return Promise.resolve({ data: null, error: null });
+        return supabase
+          .from("city_trade_offers")
+          .select(
+            "id, from_seat, to_seat, give_spaces, get_spaces, give_cash, get_cash, status, expires_at, queued"
+          )
+          .eq("match_id", id)
+          .eq("status", "pending") as unknown as PromiseLike<{
+          data: CityTradeOffer[] | null;
+          error: { message: string } | null;
+        }>;
+      }
+    );
+
     const channel = supabase
       .channel(`city:${roomCode}`)
       .on(
@@ -671,12 +776,12 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "city_auctions" },
-        refetchIfCurrentMatch
+        narrowIfCurrentMatch(() => void auctionRefetcher.trigger())
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "city_trade_offers" },
-        refetchIfCurrentMatch
+        narrowIfCurrentMatch(() => void offersRefetcher.trigger())
       )
       .on(
         "postgres_changes",
@@ -730,6 +835,8 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
         clearTimeout(realtimeOfflineTimerRef.current);
         realtimeOfflineTimerRef.current = null;
       }
+      auctionRefetcher.cancel();
+      offersRefetcher.cancel();
       void supabase.removeChannel(channel);
     };
   }, [supabase, roomCode, refetch, fetchNewEvents]);
@@ -943,63 +1050,58 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     await runCommand(() => supabase!.rpc("city_pass_auction", { p_match_id: id }));
   }, [runCommand, supabase]);
 
-  // Called by whichever client notices the deadline pass. The server re-derives
-  // whether it actually has, so an early or lying call is simply refused — which
-  // is why this can be fired optimistically without a scheduler.
-  const settleAuction = useCallback(async () => {
-    const id = matchIdRef.current;
-    if (!supabase || !id) return;
-    const { error: e } = await supabase.rpc("city_settle_auction", { p_match_id: id });
-    if (e) {
-      // CITY_AUCTION_STILL_RUNNING / CITY_NO_AUCTION are the expected
-      // outcome of the race this function is designed to lose (another
-      // client settled first, or it genuinely isn't over yet) — every client
-      // in the match fires this optimistically, so losing that race is the
-      // ordinary case, not a failure. console.error was previously
-      // unconditional here, so Next's dev overlay popped a full-screen
-      // "Console Error" for completely normal gameplay on every single race
-      // this function is designed to lose — logged (and surfaced) only for
-      // an actually-unexpected outcome now.
-      if (!/CITY_AUCTION_STILL_RUNNING|CITY_NO_AUCTION/.test(e.message)) {
-        console.error("City settle-auction failed:", e);
-        setError(friendlyCommandError(e.message));
+  // Shared by settleAuction and claimTimeout below: both are fired
+  // optimistically by every client watching the same deadline (the server
+  // re-derives whether it's actually passed, so an early or duplicate call is
+  // simply refused), so losing that race — another client's call landed
+  // first, or it genuinely isn't over yet — is the ordinary case, not a
+  // failure. console.error was previously unconditional in each, so Next's
+  // dev overlay popped a full-screen "Console Error" (reading as an opaque
+  // "{}" — Error objects don't have enumerable own properties, so the
+  // overlay's JSON.stringify renders one that way regardless of what the
+  // real error says) for completely normal gameplay, on nearly every race
+  // either of these is designed to lose. Logged (and surfaced) only for an
+  // actually-unexpected outcome.
+  const runRaceableCommand = useCallback(
+    async (rpcName: "city_settle_auction" | "city_claim_timeout", expectedRaceCodes: RegExp, logLabel: string) => {
+      const id = matchIdRef.current;
+      if (!supabase || !id) return;
+      const { error: e } = await supabase.rpc(rpcName, { p_match_id: id });
+      if (e) {
+        if (!expectedRaceCodes.test(e.message)) {
+          console.error(`${logLabel} failed:`, e);
+          setError(friendlyCommandError(e.message));
+        }
+        return;
       }
-      return;
-    }
-    await refetch();
-  }, [supabase, refetch]);
+      await refetch();
+    },
+    [supabase, refetch]
+  );
+
+  // Called by whichever client notices the deadline pass.
+  const settleAuction = useCallback(
+    () =>
+      runRaceableCommand(
+        "city_settle_auction",
+        /CITY_AUCTION_STILL_RUNNING|CITY_NO_AUCTION/,
+        "City settle-auction"
+      ),
+    [runRaceableCommand]
+  );
 
   // Same shape as settleAuction: any client — including the stalled player's
   // own, if their tab is merely idle — may attempt this once its local clock
-  // says the turn has run past pace_seconds. city_claim_timeout re-derives the
-  // deadline from the match row itself, so an early or duplicate call is just
-  // refused; nothing here is trusted, only offered.
-  const claimTimeout = useCallback(async () => {
-    const id = matchIdRef.current;
-    if (!supabase || !id) return;
-    const { error: e } = await supabase.rpc("city_claim_timeout", { p_match_id: id });
-    if (e) {
-      // CITY_TURN_CLOCK_STILL_RUNNING / CITY_TURN_CLOCK_PAUSED are the
-      // expected outcome of an early or duplicate attempt — every client
-      // watching this turn fires claimTimeout optimistically the instant its
-      // own local clock crosses the deadline (city-match-shell.tsx), so
-      // losing that race to whichever client's request lands first is the
-      // ordinary case, not a failure. console.error was previously
-      // unconditional here, so Next's dev overlay popped a full-screen
-      // "Console Error" (reading as an opaque "{}" — Error objects don't
-      // have enumerable own properties, so the overlay's JSON.stringify
-      // renders one that way regardless of what the real error says) for
-      // completely normal gameplay, on nearly every stalled turn in any
-      // multi-tab session. Logged (and surfaced) only for an
-      // actually-unexpected outcome now.
-      if (!/CITY_TURN_CLOCK_STILL_RUNNING|CITY_TURN_CLOCK_PAUSED/.test(e.message)) {
-        console.error("City claim-timeout failed:", e);
-        setError(friendlyCommandError(e.message));
-      }
-      return;
-    }
-    await refetch();
-  }, [supabase, refetch]);
+  // says the turn has run past pace_seconds.
+  const claimTimeout = useCallback(
+    () =>
+      runRaceableCommand(
+        "city_claim_timeout",
+        /CITY_TURN_CLOCK_STILL_RUNNING|CITY_TURN_CLOCK_PAUSED/,
+        "City claim-timeout"
+      ),
+    [runRaceableCommand]
+  );
 
   const mySeat = seats.find((s) => s.user_id === currentUserId) ?? null;
 
@@ -1048,53 +1150,59 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   };
 }
 
+// Data, not control flow: each RPC error code maps to one copy string. Order
+// doesn't matter — every CITY_* code below is a distinct, non-overlapping
+// substring of any other (none is a prefix/suffix of another), so at most
+// one entry can ever match a given message.
+const COMMAND_ERROR_COPY: Record<string, string> = {
+  CITY_NOT_HOST: "Only the host can do that.",
+  CITY_MATCH_FULL: "All 8 seats are taken.",
+  CITY_NOT_ENOUGH_PLAYERS: "You need at least 2 players to start.",
+  CITY_PLAYERS_NOT_READY: "Everyone needs to be ready first.",
+  CITY_MATCH_ALREADY_STARTED: "The match has already started.",
+  CITY_MATCH_ALREADY_EXISTS: "A match is already open in this room.",
+  CITY_NOT_ROOM_MEMBER: "Join the room before taking a seat.",
+  CITY_RATE_LIMIT: "Slow down a moment, then try again.",
+  CITY_NOT_YOUR_TURN: "It's not your turn yet.",
+  CITY_WRONG_PHASE: "You've already rolled this turn.",
+  CITY_MUST_ROLL_FIRST: "Roll the dice before ending your turn.",
+  CITY_MATCH_NOT_ACTIVE: "This match isn't running.",
+  CITY_NOT_SEATED: "You're spectating this match.",
+  CITY_DECISION_PENDING: "Decide on this space before ending your turn.",
+  CITY_TURN_CLOCK_PAUSED: "A trade is in progress — wait for it to resolve.",
+  CITY_INSUFFICIENT_FUNDS: "You can't afford that.",
+  CITY_ALREADY_OWNED: "Someone already owns that.",
+  CITY_NOTHING_TO_BUY: "There's nothing to buy here.",
+  CITY_SEAT_OUT: "You're out of this match.",
+  CITY_SETTLE_DEBT_FIRST: "Settle what you owe first.",
+  CITY_SET_INCOMPLETE: "You need the whole country before building.",
+  CITY_EVEN_BUILD: "Build and sell evenly across a country.",
+  CITY_SELL_BUILDINGS_FIRST: "Sell its buildings before mortgaging.",
+  CITY_FULLY_BUILT: "That's fully built already.",
+  CITY_NOTHING_BUILT: "There's nothing built there.",
+  CITY_ALREADY_MORTGAGED: "That's already mortgaged.",
+  CITY_NOT_MORTGAGED: "That isn't mortgaged.",
+  CITY_NOT_YOURS: "You don't own that.",
+  CITY_CAN_PAY: "You can still cover this — sell or mortgage instead.",
+  CITY_OFFER_STALE: "The terms changed since this was offered, so it wasn't applied.",
+  CITY_OFFER_EXPIRED: "That offer has expired.",
+  CITY_OFFER_CLOSED: "That offer is no longer open.",
+  CITY_NOT_YOUR_OFFER: "That isn't your offer to answer.",
+  CITY_DEVELOPED_CANNOT_TRADE: "Sell the buildings in that country before trading it.",
+  CITY_THEY_CANT_AFFORD: "They don't have that much cash.",
+  CITY_NOT_THEIRS: "They don't own that.",
+  CITY_IN_DETENTION: "You're in Customs — get out first.",
+  CITY_NOT_DETAINED: "You're not in Customs.",
+  CITY_NO_VISA: "You don't have a Transit Visa.",
+  CITY_AUCTION_RUNNING: "Finish the auction first.",
+  CITY_BID_TOO_LOW: "Bid higher than the standing bid.",
+  CITY_BID_NOT_A_STEP: "Bids go up in tens.",
+  CITY_AUCTION_CLOSED: "That auction has closed.",
+  CITY_NO_AUCTION: "There's no auction running.",
+  CITY_OFFER_QUEUED: "That offer is queued until your turn ends.",
+};
+
 function friendlyCommandError(message: string): string {
-  if (message.includes("CITY_NOT_HOST")) return "Only the host can do that.";
-  if (message.includes("CITY_MATCH_FULL")) return "All 8 seats are taken.";
-  if (message.includes("CITY_NOT_ENOUGH_PLAYERS")) return "You need at least 2 players to start.";
-  if (message.includes("CITY_PLAYERS_NOT_READY")) return "Everyone needs to be ready first.";
-  if (message.includes("CITY_MATCH_ALREADY_STARTED")) return "The match has already started.";
-  if (message.includes("CITY_MATCH_ALREADY_EXISTS")) return "A match is already open in this room.";
-  if (message.includes("CITY_NOT_ROOM_MEMBER")) return "Join the room before taking a seat.";
-  if (message.includes("CITY_RATE_LIMIT")) return "Slow down a moment, then try again.";
-  if (message.includes("CITY_NOT_YOUR_TURN")) return "It's not your turn yet.";
-  if (message.includes("CITY_WRONG_PHASE")) return "You've already rolled this turn.";
-  if (message.includes("CITY_MUST_ROLL_FIRST")) return "Roll the dice before ending your turn.";
-  if (message.includes("CITY_MATCH_NOT_ACTIVE")) return "This match isn't running.";
-  if (message.includes("CITY_NOT_SEATED")) return "You're spectating this match.";
-  if (message.includes("CITY_DECISION_PENDING")) return "Decide on this space before ending your turn.";
-  if (message.includes("CITY_INSUFFICIENT_FUNDS")) return "You can't afford that.";
-  if (message.includes("CITY_ALREADY_OWNED")) return "Someone already owns that.";
-  if (message.includes("CITY_NOTHING_TO_BUY")) return "There's nothing to buy here.";
-  if (message.includes("CITY_SEAT_OUT")) return "You're out of this match.";
-  if (message.includes("CITY_SETTLE_DEBT_FIRST")) return "Settle what you owe first.";
-  if (message.includes("CITY_SET_INCOMPLETE")) return "You need the whole country before building.";
-  if (message.includes("CITY_EVEN_BUILD")) return "Build and sell evenly across a country.";
-  if (message.includes("CITY_SELL_BUILDINGS_FIRST")) return "Sell its buildings before mortgaging.";
-  if (message.includes("CITY_FULLY_BUILT")) return "That's fully built already.";
-  if (message.includes("CITY_NOTHING_BUILT")) return "There's nothing built there.";
-  if (message.includes("CITY_ALREADY_MORTGAGED")) return "That's already mortgaged.";
-  if (message.includes("CITY_NOT_MORTGAGED")) return "That isn't mortgaged.";
-  if (message.includes("CITY_NOT_YOURS")) return "You don't own that.";
-  if (message.includes("CITY_CAN_PAY")) return "You can still cover this — sell or mortgage instead.";
-  if (message.includes("CITY_OFFER_STALE"))
-    return "The terms changed since this was offered, so it wasn't applied.";
-  if (message.includes("CITY_OFFER_EXPIRED")) return "That offer has expired.";
-  if (message.includes("CITY_OFFER_CLOSED")) return "That offer is no longer open.";
-  if (message.includes("CITY_NOT_YOUR_OFFER")) return "That isn't your offer to answer.";
-  if (message.includes("CITY_DEVELOPED_CANNOT_TRADE"))
-    return "Sell the buildings in that country before trading it.";
-  if (message.includes("CITY_THEY_CANT_AFFORD")) return "They don't have that much cash.";
-  if (message.includes("CITY_NOT_THEIRS")) return "They don't own that.";
-  if (message.includes("CITY_IN_DETENTION")) return "You're in Customs — get out first.";
-  if (message.includes("CITY_NOT_DETAINED")) return "You're not in Customs.";
-  if (message.includes("CITY_NO_VISA")) return "You don't have a Transit Visa.";
-  if (message.includes("CITY_AUCTION_RUNNING")) return "Finish the auction first.";
-  if (message.includes("CITY_BID_TOO_LOW")) return "Bid higher than the standing bid.";
-  if (message.includes("CITY_BID_NOT_A_STEP")) return "Bids go up in tens.";
-  if (message.includes("CITY_AUCTION_CLOSED")) return "That auction has closed.";
-  if (message.includes("CITY_NO_AUCTION")) return "There's no auction running.";
-  if (message.includes("CITY_OFFER_QUEUED"))
-    return "That offer is queued until your turn ends.";
-  return "That didn't work. Please try again.";
+  const code = Object.keys(COMMAND_ERROR_COPY).find((c) => message.includes(c));
+  return code ? COMMAND_ERROR_COPY[code] : "That didn't work. Please try again.";
 }

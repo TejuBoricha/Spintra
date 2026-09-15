@@ -2399,6 +2399,108 @@ begin
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 
+-- ===========================================================================
+-- BUG-ROLL-FINISH-GUARD — a resumed /code-review high pass on PR #43 (paused
+-- 12 days earlier on a usage limit) found a second instance of the
+-- finished-match-resurrection bug class 0092 already fixed once, in
+-- city_advance_turn and city_run_autopilot_from_current: city_roll_dice_core
+-- has its own trailing UPDATE (phase/turn_started_at/rng_counter/last_roll*)
+-- and it had no `status = 'active'` guard. 0092's fix never reached this
+-- function since 0093/0094 only touched its event-insert ordering, not this
+-- trailing state write (see 0096's own migration header).
+--
+-- Real trigger: a roll lands on a property whose rent the roller can't cover
+-- even after city_max_liquidation (city_charge's own final branch,
+-- 0094 lines ~188-208, calls city_bankrupt_seat synchronously in that case,
+-- not the deferred pending_debt path). If the roller was the second-to-last
+-- active player, city_bankrupt_seat's own v_left <= 1 check fires
+-- city_finish_match (status='finished', phase=null, current_seat=null)
+-- inside the same call chain city_roll_dice_core is still running in --
+-- control then returns to city_roll_dice_core's trailing UPDATE.
+--
+-- Forces the exact real path (no shortcuts through city_charge/
+-- city_bankrupt_seat directly): retires seat 2 so only 2 seats are left
+-- active, gives seat 0 the board's highest-rent property, drops seat 1 to
+-- cash=1 owning nothing (so max_liquidation is 0 -- any positive rent
+-- bankrupts them immediately), then derives the match's own next dice roll
+-- via city_derive_dice (same technique 0086's changelog describes using
+-- for BUG-007-C's seed-dependent assertions) to place seat 1 exactly on
+-- that property before calling the real, public city_roll_dice.
+-- ===========================================================================
+do $blk$
+declare
+  m uuid; ok boolean := true; act text := '';
+  v_idx int; v_rent int[]; v_dice int[]; v_sum int;
+  seat1Status text; finalStatus text; finalPhase text; finalSeat int;
+begin
+  m := pg_temp.rg_match('CITYRG96', 5096);
+
+  update public.city_match_players set status = 'retired'
+   where match_id = m and seat = 2;
+
+  -- idx >= 12 guarantees idx - v_sum (v_sum maxes at 12) never goes negative.
+  -- rent is a 6-tier array (unbuilt through hotel); rent[1] is the flat,
+  -- unbuilt-property rent the real client charges here, since seat 0 never
+  -- builds on it.
+  select idx, rent into v_idx, v_rent from public.city_board_spaces
+   where kind = 'property' and rent[1] > 0 and idx >= 12
+   order by rent[1] desc limit 1;
+
+  insert into public.city_assets (match_id, space_idx, owner_seat, is_mortgaged, buildings)
+  values (m, v_idx, 0, false, 0)
+  on conflict (match_id, space_idx)
+  do update set owner_seat = 0, is_mortgaged = false, buildings = 0;
+
+  delete from public.city_assets where match_id = m and owner_seat = 1;
+  update public.city_match_players set cash = 1 where match_id = m and seat = 1;
+
+  update public.city_matches
+     set current_seat = 1, phase = 'awaiting_roll', status = 'active',
+         doubles_count = 0, turn_clock_paused_at = null
+   where id = m;
+
+  select public.city_derive_dice(rng_seed, rng_counter) into v_dice
+    from public.city_matches where id = m;
+  v_sum := v_dice[1] + v_dice[2];
+  update public.city_match_players set position = v_idx - v_sum
+   where match_id = m and seat = 1;
+
+  perform pg_temp.rg_as(1);
+  begin
+    perform public.city_roll_dice(m);
+  exception when others then
+    ok := false; act := act || format('the roll itself raised: %s; ', SQLERRM);
+  end;
+
+  if ok then
+    select status into seat1Status from public.city_match_players
+     where match_id = m and seat = 1;
+    if seat1Status is distinct from 'bankrupt' then
+      ok := false;
+      act := act || format(
+        'scenario did not actually bankrupt seat 1 (status=%s) -- rent=%s vs cash=1, dice_sum=%s, idx=%s; ',
+        seat1Status, v_rent, v_sum, v_idx);
+    end if;
+  end if;
+
+  if ok then
+    select status, phase, current_seat into finalStatus, finalPhase, finalSeat
+      from public.city_matches where id = m;
+    if finalStatus is distinct from 'finished' or finalPhase is not null or finalSeat is not null then
+      ok := false;
+      act := act || format(
+        'finished match was resurrected: status=%s phase=%s current_seat=%s (expected finished/null/null); ',
+        finalStatus, finalPhase, finalSeat);
+    end if;
+  end if;
+
+  insert into rg values (default,'BUG-ROLL-FINISH-GUARD',
+    'a mid-roll bankruptcy that finishes the match is not resurrected by city_roll_dice_core''s own trailing UPDATE',
+    'status=finished, phase=null, current_seat=null after the fatal roll',
+    case when ok then 'seat 1 bankrupted, match stayed finished/null/null' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
 -- ---------------------------------------------------------------------------
 -- teardown + report
 -- ---------------------------------------------------------------------------

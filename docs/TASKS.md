@@ -374,10 +374,9 @@ Pre-launch hardening — required before publishing the site publicly on the ope
   all 19 files (24 call sites) plus `city-lobby.spec.ts`; also fixed a real bug where
   `qa-x1-browsers.spec.ts`'s own broad error-catching was swallowing the skip signal and reporting
   it as a failure. Verified both ways against fresh builds: 27 skip/3 pass/0 fail with no Supabase,
-  30/30 pass with real Supabase restored. This fix is still uncommitted — `validate` will keep
-  failing on GitHub until it's pushed. Still needs: push this fix, confirm `validate` goes green on
-  real CI, then an actual human review and merge before any of it reaches spintra.io — not
-  something an AI session can do.
+  30/30 pass with real Supabase restored. Committed and pushed (`ce14565`). Still needs: confirm
+  `validate` goes green on real CI, then an actual human review and merge before any of it reaches
+  spintra.io — not something an AI session can do.
 
 - `[ ]` **Activity feed v2 — event kinds deliberately left out of migration `0093`'s v1.** Logged
   as a real scope decision, not an oversight, so it isn't silently forgotten: turn-change (would

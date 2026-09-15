@@ -43,13 +43,20 @@ export function CityHoldings({
   // What everything would raise if sold and mortgaged — mirrors
   // city_max_liquidation so the player can see whether they are actually able
   // to survive before they start dismantling their board position.
+  // Math.round, not Math.floor: city_max_liquidation and city_mortgage_core
+  // (migration 0082, BUG-030) round the true half-price rather than
+  // truncating it — Postgres's round(numeric) rounds .5 away from zero for
+  // every positive value here, exactly matching JS's Math.round. Porto (55),
+  // Lisbon (65), Sydney (235), Montréal/Vancouver (255) all hit this: this
+  // client copy previously floored and so silently disagreed with the
+  // server by 1 Spin per property, on every one of them.
   const canRaise = mine.reduce((t, a) => {
     const s = board[a.space_idx];
     if (!s) return t;
     return (
       t +
-      a.buildings * Math.floor((s.build_cost ?? 0) / 2) +
-      (a.is_mortgaged ? 0 : Math.floor((s.price ?? 0) / 2))
+      a.buildings * Math.round((s.build_cost ?? 0) / 2) +
+      (a.is_mortgaged ? 0 : Math.round((s.price ?? 0) / 2))
     );
   }, 0);
 
@@ -94,6 +101,7 @@ export function CityHoldings({
             const s = board[a.space_idx];
             if (!s) return null;
             const buildCost = s.build_cost ?? 0;
+            const liftCost = Math.ceil(((s.price ?? 0) / 2) * 1.1);
             const canDevelop = s.kind === "property";
             return (
               <li
@@ -143,7 +151,7 @@ export function CityHoldings({
                       title={!isMyTurn && !inDebt ? "Wait for your turn" : undefined}
                       onClick={() => onSell(a.space_idx)}
                     >
-                      Sell · +{Math.floor(buildCost / 2)}
+                      Sell · +{Math.round(buildCost / 2)}
                     </Button>
                   )}
                   {!a.is_mortgaged && a.buildings === 0 && (
@@ -155,24 +163,26 @@ export function CityHoldings({
                       title={!isMyTurn && !inDebt ? "Wait for your turn" : undefined}
                       onClick={() => onMortgage(a.space_idx)}
                     >
-                      Mortgage · +{Math.floor((s.price ?? 0) / 2)}
+                      Mortgage · +{Math.round((s.price ?? 0) / 2)}
                     </Button>
                   )}
                   {a.is_mortgaged && (
                     <Button
                       size="sm"
                       variant="outline"
-                      disabled={!isMyTurn || inDebt}
+                      disabled={!isMyTurn || inDebt || mySeat.cash < liftCost}
                       title={
                         !isMyTurn
                           ? "Wait for your turn"
                           : inDebt
                             ? "Settle your debt first"
-                            : undefined
+                            : mySeat.cash < liftCost
+                              ? "Not enough cash"
+                              : undefined
                       }
                       onClick={() => onUnmortgage(a.space_idx)}
                     >
-                      Lift · {Math.ceil(Math.floor((s.price ?? 0) / 2) * 1.1)}
+                      Lift · {liftCost}
                     </Button>
                   )}
                 </span>

@@ -149,7 +149,7 @@ User asked to add Google Analytics. Before writing code, found that standard GA4
 
 ## Current Blockers
 
-**The demo-mode-skip fix needs to actually be pushed, then PR #43 needs a human reviewer and merge.** `db-integration` is confirmed green on CI. The npm-audit fix (`3fd8323`/`427df36`) is pushed but `validate` still failed for a second, separate reason (Spintra City tests hanging without Supabase in that job) — that fix is verified locally (27 skip/3 pass with no Supabase, 30/30 pass with real Supabase) but sits uncommitted/unpushed; `validate` will keep failing on GitHub until it's pushed. See Last Completed Task above.
+**PR #43 needs a human reviewer and merge.** `db-integration` is confirmed green on CI. The npm-audit fix (`3fd8323`/`427df36`) is pushed but `validate` still failed for a second, separate reason (Spintra City tests hanging without Supabase in that job) — that fix is verified locally (27 skip/3 pass with no Supabase, 30/30 pass with real Supabase) and is now committed and pushed (`ce14565`). See Last Completed Task above.
 
 ---
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getToolSeoContent } from "@/lib/tool-seo-content";
 import { GAMES } from "@/lib/games";
+import { buildFaqSchema, FaqAccordion } from "@/components/faq-accordion";
 
 /**
  * Server-rendered SEO content that appears below each interactive tool widget.
@@ -19,15 +20,7 @@ export function ToolSeoSection({ href }: { href: string }) {
     .map((relHref) => GAMES.find((g) => g.href === relHref))
     .filter((g): g is NonNullable<typeof g> => Boolean(g));
 
-  const faqSchema = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: content.faqs.map((faq) => ({
-      "@type": "Question",
-      name: faq.q,
-      acceptedAnswer: { "@type": "Answer", text: faq.a },
-    })),
-  };
+  const faqSchema = buildFaqSchema(content.faqs);
 
   return (
     <section
@@ -91,21 +84,7 @@ export function ToolSeoSection({ href }: { href: string }) {
           <h2 className="font-display text-xl sm:text-2xl font-bold">
             Frequently asked questions
           </h2>
-          <div className="divide-y divide-(--border-hairline) rounded-2xl border border-(--border-hairline) bg-(--surface-sunken)">
-            {content.faqs.map((faq) => (
-              <details key={faq.q} className="group px-5">
-                <summary className="flex cursor-pointer items-center justify-between gap-4 py-4 font-medium list-none [&::-webkit-details-marker]:hidden">
-                  {faq.q}
-                  <span className="flex-none text-muted-foreground transition-transform group-open:rotate-45 text-xl leading-none">
-                    +
-                  </span>
-                </summary>
-                <p className="text-sm text-muted-foreground leading-relaxed pb-4">
-                  {faq.a}
-                </p>
-              </details>
-            ))}
-          </div>
+          <FaqAccordion faqs={content.faqs} />
         </div>
 
         {/* Related tools (internal links) */}

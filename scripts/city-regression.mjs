@@ -121,9 +121,9 @@ function runSql() {
 
 // A block that errors out inserts no row, which would otherwise show up as a
 // smaller total rather than a failure — the quietest way for a suite to lie.
-// 56 = 55 + CITY-EVENTS (migration 0093/0094's own review found this suite
-// had zero coverage of city_match_events at all).
-const EXPECTED_SQL_ASSERTIONS = 56;
+// 57 = 56 + BUG-ROLL-FINISH-GUARD (migration 0096, a second instance of the
+// finished-match-resurrection bug class 0092 already fixed once).
+const EXPECTED_SQL_ASSERTIONS = 57;
 
 const sqlRows = runSql();
 if (sqlRows.length !== EXPECTED_SQL_ASSERTIONS) {

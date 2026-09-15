@@ -9,6 +9,7 @@ import {
   Globe2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { buildFaqSchema, FaqAccordion } from "@/components/faq-accordion";
 
 export const metadata: Metadata = {
   title: "Free Online Monopoly-Style Game — Spintra City",
@@ -77,16 +78,19 @@ const FAQS = [
   },
 ];
 
+function StartMatchButton({ className }: { className?: string }) {
+  return (
+    <Link href="/create?type=city" className={className}>
+      <Button variant="brand" size="lg" className="rounded-full font-bold">
+        Start a Match
+        <ArrowRight className="w-4 h-4" />
+      </Button>
+    </Link>
+  );
+}
+
 export default function SpintraCityPage() {
-  const faqSchema = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: FAQS.map((faq) => ({
-      "@type": "Question",
-      name: faq.q,
-      acceptedAnswer: { "@type": "Answer", text: faq.a },
-    })),
-  };
+  const faqSchema = buildFaqSchema(FAQS);
 
   return (
     <div className="min-h-screen pt-28 pb-16 px-4">
@@ -110,12 +114,7 @@ export default function SpintraCityPage() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-            <Link href="/create?type=city">
-              <Button variant="brand" size="lg" className="rounded-full font-bold">
-                Start a Match
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
+            <StartMatchButton />
             <Link href="#faq">
               <Button variant="outline" size="lg" className="rounded-full font-bold">
                 How It Works
@@ -163,19 +162,7 @@ export default function SpintraCityPage() {
           <h2 className="font-display text-2xl sm:text-3xl font-black text-center">
             Frequently asked questions
           </h2>
-          <div className="divide-y divide-(--border-hairline) rounded-2xl border border-(--border-hairline) bg-(--surface-sunken)">
-            {FAQS.map((faq) => (
-              <details key={faq.q} className="group px-5">
-                <summary className="flex cursor-pointer items-center justify-between gap-4 py-4 font-medium list-none [&::-webkit-details-marker]:hidden">
-                  {faq.q}
-                  <span className="flex-none text-muted-foreground transition-transform group-open:rotate-45 text-xl leading-none">
-                    +
-                  </span>
-                </summary>
-                <p className="text-sm text-muted-foreground leading-relaxed pb-4">{faq.a}</p>
-              </details>
-            ))}
-          </div>
+          <FaqAccordion faqs={FAQS} />
         </div>
 
         {/* Bottom CTA */}
@@ -184,12 +171,7 @@ export default function SpintraCityPage() {
           <p className="text-muted-foreground">
             No sign-up, no install — open a room and share the code.
           </p>
-          <Link href="/create?type=city" className="inline-block">
-            <Button variant="brand" size="lg" className="rounded-full font-bold">
-              Start a Match
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-          </Link>
+          <StartMatchButton className="inline-block" />
         </div>
       </div>
     </div>
