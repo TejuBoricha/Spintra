@@ -367,9 +367,15 @@ export function RoomSidebar({
         ) : (
           <motion.div
             key="participants"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
+            // A horizontal slide (x: -20 -> 0) here previously meant every
+            // row's action buttons were still visibly in motion for a beat
+            // after the tab switched — a click aimed at a button's settled
+            // position could land on the ScrollArea viewport underneath it
+            // instead, mid-transition. Opacity-only removes that window
+            // without losing the transition entirely.
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             className="flex-1 overflow-hidden h-full"
           >
             <ScrollArea className="h-full px-4 py-4 overflow-y-auto">

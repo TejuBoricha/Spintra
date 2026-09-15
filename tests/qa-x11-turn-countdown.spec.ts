@@ -1,0 +1,59 @@
+import { test, expect, chromium } from '@playwright/test';
+import { execSync } from 'child_process';
+import { acceptCookieBanner as accept, skipIfDemoMode } from './qa-city-helpers';
+
+const BASE = 'http://127.0.0.1:4000';
+const sql = (q: string) =>
+  execSync(`docker exec supabase_db_Spintra-1 psql -U postgres -d postgres -t -A -c "${q.replace(/"/g, '\\"')}"`).toString().trim();
+
+// BUG-006: a visible, ticking countdown now exists for the running turn
+// clock, matching city_claim_timeout's own deadline exactly.
+test('city: a live turn countdown is visible and actually ticks down', async () => {
+  test.setTimeout(120_000);
+  const browser = await chromium.launch();
+  const host = await (await browser.newContext()).newPage();
+  const guest = await (await browser.newContext()).newPage();
+
+  await host.goto(`${BASE}/create?type=city`);
+  await accept(host);
+  await host.locator('[data-testid="create-room-button-client"]').click();
+  await host.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 40000 });
+  await skipIfDemoMode(host);
+  const code = host.url().split('/room/')[1];
+  await host.getByRole('button', { name: /open a match/i }).click({ timeout: 40000 });
+  await host.getByRole('button', { name: /take a seat/i }).click({ timeout: 30000 });
+  await guest.goto(`${BASE}/room/${code}`);
+  await accept(guest);
+  await guest.getByRole('button', { name: /take a seat/i }).click({ timeout: 40000 });
+  for (const p of [host, guest]) await p.getByRole('button', { name: /ready/i }).first().click({ timeout: 20000 }).catch(() => {});
+  await host.getByRole('button', { name: /start match/i }).click({ timeout: 25000 });
+  await host.waitForTimeout(2000);
+
+  const mid = sql(`select id from city_matches where room_code='${code}' and status='active'`);
+  // Backdate the clock so the countdown starts at a known, small value.
+  sql(`update city_matches set turn_started_at = now() - interval '35 seconds', pace_seconds = 40 where id='${mid}'`);
+  // No repeat accept(host) here -- consent is localStorage-gated (line 18
+  // already accepted it in this same context) and can't reappear on
+  // reload, so it would only cost time against this test's deliberately
+  // tight ~5s countdown margin for no effect.
+  await host.reload();
+  await host.waitForTimeout(1000);
+
+  const timer = host.getByRole('timer');
+  await expect(timer).toBeVisible({ timeout: 10000 });
+  const first = await timer.textContent();
+  console.log('BUG-006 countdown reading (expect ~0:05):', first);
+  expect(first).toMatch(/^0:0[0-9]$/);
+
+  const toSeconds = (t: string | null) => {
+    const [m, s] = (t ?? '0:00').split(':').map(Number);
+    return m * 60 + s;
+  };
+
+  await host.waitForTimeout(2200);
+  const second = await timer.textContent();
+  console.log('BUG-006 countdown reading ~2s later (must be lower):', second);
+  expect(toSeconds(second)).toBeLessThan(toSeconds(first));
+
+  await browser.close();
+});

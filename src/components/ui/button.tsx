@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center gap-2 rounded-pill font-body font-semibold whitespace-nowrap transition-[transform,filter] duration-fast ease-standard outline-none select-none active:not-aria-[haspopup]:translate-y-px active:not-aria-[haspopup]:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:ring-3 aria-invalid:ring-destructive/30 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center gap-2 rounded-pill font-body font-semibold whitespace-nowrap transition-[transform,filter] duration-fast ease-standard outline-none select-none active:not-aria-[haspopup]:translate-y-px active:not-aria-[haspopup]:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 disabled:grayscale-[60%] focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:ring-3 aria-invalid:ring-destructive/30 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -14,8 +14,20 @@ const buttonVariants = cva(
           "border-2 border-(--border-strong) bg-(image:--gradient-brand) text-primary-foreground shadow-glow-primary-sm hover:brightness-95",
         contrast:
           "border-2 border-(--border-strong) bg-(--surface-contrast) text-(--text-on-contrast) hover:brightness-95 dark:hover:brightness-110",
+        // border-current (not --border-strong, unlike every filled variant
+        // above): --border-strong is deliberately pinned to pure black in
+        // BOTH themes, giving a filled button's bright fill a crisp
+        // sticker-style ink outline in either theme -- but a transparent
+        // outline button has no fill for that black stroke to contrast
+        // against, so in dark mode it was a black border on a near-black
+        // page: functionally invisible (confirmed live -- "End turn" reads
+        // as unstyled floating text in dark mode, a normal bordered pill in
+        // light mode, for the exact same button). border-current tracks the
+        // button's own already theme-aware text colour instead, so the
+        // border is always visible against whatever it's actually sitting
+        // on.
         outline:
-          "border-2 border-(--border-strong) bg-transparent text-foreground hover:bg-muted aria-expanded:bg-muted",
+          "border-2 border-current bg-transparent text-foreground hover:bg-muted aria-expanded:bg-muted",
         secondary:
           "border border-transparent bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_8%)]",
         ghost:

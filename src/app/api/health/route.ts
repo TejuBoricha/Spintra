@@ -40,13 +40,24 @@ async function checkAuth(supabaseUrl: string, supabaseAnonKey: string): Promise<
 
 async function checkRealtime(supabaseUrl: string, supabaseAnonKey: string): Promise<CheckStatus> {
   try {
-    const rtUrl = supabaseUrl.replace(/\/+$/, "") + "/realtime/v1/ws";
+    // supabase-js connects to /realtime/v1/websocket. This probe previously
+    // asked for /realtime/v1/ws, which does not exist and 404s, so the check
+    // reported "error" permanently and /api/health returned 503 forever while
+    // realtime was in fact perfectly healthy — which also meant a real outage
+    // was indistinguishable from the standing false alarm.
+    //
+    // A plain GET can never complete a websocket handshake, so we are not
+    // asserting that it does. We assert only that the endpoint is there and the
+    // service is answering: it returns 400 ("upgrade required") to a GET, and
+    // 404 if the path is wrong. Anything 5xx means realtime itself is unwell.
+    const rtUrl = supabaseUrl.replace(/\/+$/, "") + "/realtime/v1/websocket";
     const rtRes = await fetch(rtUrl, {
       method: "GET",
       headers: { apikey: supabaseAnonKey },
       signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
     });
-    return rtRes.status !== 404 ? "reachable" : "error";
+    if (rtRes.status >= 500) return "error";
+    return rtRes.status === 404 ? "error" : "reachable";
   } catch {
     return "unreachable";
   }
