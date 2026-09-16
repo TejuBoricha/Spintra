@@ -329,42 +329,70 @@ const REFETCH_COALESCE_MS = 80;
 // a plain factory (not a hook) so it can be constructed inside the
 // subscription effect below, where reading matchIdRef.current is safe (an
 // effect runs after render, not during it — see the react-hooks/refs
-// comment above `refetch`). Returns `trigger` (called once per realtime
-// ping; bursts of the same ping, e.g. rapid auction bids, coalesce into one
-// fetch) and `cancel`, mirroring refetchTimerRef's own cleanup-on-unmount so
-// a pending timer can't fire a setState after the effect that created it has
-// torn down.
+// comment above `refetch`).
+//
+// Two failure modes a code-review pass caught in the first version of this
+// function, both fixed the same way `fetchNewEvents` above already handles
+// its own overlapping-fetch problem (the `isFetchingEventsRef`/
+// `queuedEventsFetchRef` do/while loop):
+//   1. A trigger() call that arrived while a fetch was already in flight
+//      used to be silently absorbed into that fetch's own promise with no
+//      further fetch scheduled — a second auction bid landing mid-request
+//      could go unobserved until an unrelated later ping happened to fire.
+//      `queued` now records that a newer ping arrived and immediately
+//      re-runs the query once the in-flight one finishes, so the latest
+//      state is never left unread.
+//   2. cancel() used to only clear the pending setTimeout — a query already
+//      in flight when the owning effect tore down (a room/match switch)
+//      would still resolve later and call apply() with data read for a
+//      match that's no longer current. `cancelled` is now checked before
+//      every apply() call, including one for a request that was already
+//      in flight at cancel() time.
 function makeNarrowRefetch<T>(
   table: string,
   apply: (rows: T[] | null) => void,
   query: () => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
-): { trigger: () => Promise<void>; cancel: () => void } {
+): { trigger: () => void; cancel: () => void } {
   let timer: ReturnType<typeof setTimeout> | null = null;
-  let inFlight: Promise<void> | null = null;
+  let isFetching = false;
+  let queued = false;
+  let cancelled = false;
+
+  const runOnce = () => {
+    isFetching = true;
+    void Promise.resolve(query())
+      .then(({ data, error: fetchError }) => {
+        if (cancelled) return;
+        if (fetchError) {
+          console.error(`Failed to refresh ${table}:`, fetchError);
+          return;
+        }
+        apply(data);
+      })
+      .finally(() => {
+        isFetching = false;
+        if (queued && !cancelled) {
+          queued = false;
+          runOnce();
+        }
+      });
+  };
+
   return {
     trigger: () => {
-      if (inFlight) return inFlight;
-      const p = new Promise<void>((resolve) => {
-        timer = setTimeout(() => {
-          timer = null;
-          void Promise.resolve(query())
-            .then(({ data, error: fetchError }) => {
-              if (fetchError) {
-                console.error(`Failed to refresh ${table}:`, fetchError);
-                return;
-              }
-              apply(data);
-            })
-            .finally(() => {
-              inFlight = null;
-              resolve();
-            });
-        }, REFETCH_COALESCE_MS);
-      });
-      inFlight = p;
-      return p;
+      if (cancelled) return;
+      if (isFetching) {
+        queued = true;
+        return;
+      }
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        runOnce();
+      }, REFETCH_COALESCE_MS);
     },
     cancel: () => {
+      cancelled = true;
       if (timer) clearTimeout(timer);
       timer = null;
     },
@@ -462,8 +490,16 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     const nextMatch = matchRow as unknown as CityMatch;
     setMatch(nextMatch);
 
-    const [{ data: seatRows }, { data: assetRows }, { data: offerRows }, { data: auctionRow }] =
-      await Promise.all([
+    // city_trade_offers/city_auctions are deliberately NOT part of this
+    // bundle — see the dedicated match-id-keyed load effect and the narrow
+    // refetchers below for why. A code-review pass found that reading them
+    // here too, alongside the narrow per-table refetch this file also
+    // added, created two independently-timed pipelines both writing
+    // auction/offers state: whichever happened to resolve last won, even if
+    // it read stale data started before the other's fresher read. Splitting
+    // ownership so exactly one pipeline ever writes each table removes the
+    // race by construction instead of trying to out-sequence it.
+    const [{ data: seatRows }, { data: assetRows }] = await Promise.all([
       supabase
         .from("city_match_players")
         .select(SEAT_COLUMNS)
@@ -473,23 +509,10 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
         .from("city_assets")
         .select("space_idx, owner_seat, buildings, is_mortgaged")
         .eq("match_id", nextMatch.id),
-      supabase
-        .from("city_trade_offers")
-        .select("id, from_seat, to_seat, give_spaces, get_spaces, give_cash, get_cash, status, expires_at, queued")
-        .eq("match_id", nextMatch.id)
-        .eq("status", "pending"),
-      supabase
-        .from("city_auctions")
-        .select("id, space_idx, high_bid, high_seat, passed_seats, ends_at, hard_ends_at")
-        .eq("match_id", nextMatch.id)
-        .eq("status", "running")
-        .maybeSingle(),
     ]);
 
     setSeats((seatRows ?? []) as unknown as CitySeat[]);
     setAssets((assetRows ?? []) as unknown as CityAsset[]);
-    setOffers((offerRows ?? []) as unknown as CityTradeOffer[]);
-    setAuction((auctionRow ?? null) as unknown as CityAuction | null);
     setIsLoading(false);
   }, [supabase, roomCode]);
 
@@ -607,6 +630,41 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     };
   }, [supabase, match?.id]);
 
+  // The one-time load of city_trade_offers/city_auctions for a newly-current
+  // match — doRefetch above deliberately excludes both (see its own
+  // comment); this is the other half of that split. Keyed on match?.id
+  // (not the subscription effect below, which intentionally excludes match
+  // from its own deps) so this fires again whenever a fresh match starts in
+  // the same room without a page reload, not just on first mount.
+  useEffect(() => {
+    if (!supabase || !match?.id) return;
+    const loadingFor = match.id;
+    let cancelled = false;
+    void (async () => {
+      const [{ data: offerRows }, { data: auctionRow }] = await Promise.all([
+        supabase
+          .from("city_trade_offers")
+          .select(
+            "id, from_seat, to_seat, give_spaces, get_spaces, give_cash, get_cash, status, expires_at, queued"
+          )
+          .eq("match_id", loadingFor)
+          .eq("status", "pending"),
+        supabase
+          .from("city_auctions")
+          .select("id, space_idx, high_bid, high_seat, passed_seats, ends_at, hard_ends_at")
+          .eq("match_id", loadingFor)
+          .eq("status", "running")
+          .maybeSingle(),
+      ]);
+      if (cancelled) return;
+      setOffers((offerRows ?? []) as unknown as CityTradeOffer[]);
+      setAuction((auctionRow ?? null) as unknown as CityAuction | null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, match?.id]);
+
   // The activity feed's realtime top-up — fetches only rows past what's
   // already loaded (id > lastEventIdRef), unlike every other table here,
   // which refetches its whole current-state snapshot. Events are append-only
@@ -704,18 +762,6 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   useEffect(() => {
     if (!supabase) return;
 
-    const refetchIfCurrentMatch = (payload: {
-      new: object;
-      old: object;
-    }) => {
-      const changedMatchId =
-        (payload.new as { match_id?: string })?.match_id ??
-        (payload.old as { match_id?: string })?.match_id;
-      if (!matchIdRef.current || changedMatchId === matchIdRef.current) {
-        void refetch();
-      }
-    };
-
     const narrowIfCurrentMatch =
       (narrow: () => void) =>
       (payload: { new: object; old: object }) => {
@@ -731,7 +777,10 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     // safe to read inside the query closures below.
     const auctionRefetcher = makeNarrowRefetch<CityAuction>(
       "city_auctions",
-      (rows) => setAuction((rows?.[0] as CityAuction | undefined) ?? null),
+      (rows) => {
+        setError(null);
+        setAuction((rows?.[0] as CityAuction | undefined) ?? null);
+      },
       () => {
         const id = matchIdRef.current;
         if (!id) return Promise.resolve({ data: null, error: null });
@@ -749,7 +798,10 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
 
     const offersRefetcher = makeNarrowRefetch<CityTradeOffer>(
       "city_trade_offers",
-      (rows) => setOffers(rows ?? []),
+      (rows) => {
+        setError(null);
+        setOffers(rows ?? []);
+      },
       () => {
         const id = matchIdRef.current;
         if (!id) return Promise.resolve({ data: null, error: null });
@@ -766,12 +818,45 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
       }
     );
 
+    // city_matches/city_match_players changes go through refetch()'s own
+    // bundle (match/seats/assets) AND both narrow auction/offers
+    // refetchers — never just refetch() alone. Auction/offer state has
+    // exactly one owner now (this pair of refetchers, everywhere), which is
+    // what actually closes a race a code-review pass found: two
+    // independently-timed pipelines both able to write `auction`/`offers`
+    // meant whichever happened to resolve last won, even reading data
+    // started before the other's fresher read. The specific transactions
+    // that need this (settle-auction clearing the auction via a
+    // city_matches phase change, accept-trade via a city_match_players cash
+    // change, decline-purchase starting one) don't self-identify in the
+    // realtime payload, so every ping on these two tables re-triggers both
+    // narrow refetchers rather than trying to detect which ones need it —
+    // cheap, since each is a small single-table query the shared
+    // in-flight/coalesce logic above already collapses bursts of.
+    const refetchIfCurrentMatch = (payload: {
+      new: object;
+      old: object;
+    }) => {
+      const changedMatchId =
+        (payload.new as { match_id?: string })?.match_id ??
+        (payload.old as { match_id?: string })?.match_id;
+      if (!matchIdRef.current || changedMatchId === matchIdRef.current) {
+        void refetch();
+        auctionRefetcher.trigger();
+        offersRefetcher.trigger();
+      }
+    };
+
     const channel = supabase
       .channel(`city:${roomCode}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "city_matches", filter: `room_code=eq.${roomCode}` },
-        () => void refetch()
+        () => {
+          void refetch();
+          auctionRefetcher.trigger();
+          offersRefetcher.trigger();
+        }
       )
       .on(
         "postgres_changes",

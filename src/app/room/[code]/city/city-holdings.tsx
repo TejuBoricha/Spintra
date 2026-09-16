@@ -101,7 +101,14 @@ export function CityHoldings({
             const s = board[a.space_idx];
             if (!s) return null;
             const buildCost = s.build_cost ?? 0;
-            const liftCost = Math.ceil(((s.price ?? 0) / 2) * 1.1);
+            // ceil(price * 11 / 20), not ceil((price / 2) * 1.1): the 1.1
+            // literal isn't exactly representable in IEEE-754 binary, and
+            // for Abu Dhabi (360) and Dubai (420) that error pushes the
+            // result 1 Spin above city_unmortgage's exact `numeric` value
+            // (180 * 1.1 === 198.00000000000002842 in JS, not 198) — this
+            // reformulation is pure integer arithmetic (price*11 is always
+            // an exact integer) and matches the server for all 22 prices.
+            const liftCost = Math.ceil((s.price ?? 0) * 11 / 20);
             const canDevelop = s.kind === "property";
             return (
               <li

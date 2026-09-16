@@ -2442,9 +2442,15 @@ begin
   -- rent is a 6-tier array (unbuilt through hotel); rent[1] is the flat,
   -- unbuilt-property rent the real client charges here, since seat 0 never
   -- builds on it.
+  -- rent[1] desc, idx asc: Abu Dhabi (37) and Dubai (39) tie at rent[1]=35,
+  -- so a deterministic tiebreak is needed or the exact property (and
+  -- therefore the exact code path) this exercises could vary between runs.
   select idx, rent into v_idx, v_rent from public.city_board_spaces
    where kind = 'property' and rent[1] > 0 and idx >= 12
-   order by rent[1] desc limit 1;
+   order by rent[1] desc, idx asc limit 1;
+  if v_idx is null then
+    raise exception 'no property with idx>=12 and rent[1]>0 found on the board -- board seed data changed';
+  end if;
 
   insert into public.city_assets (match_id, space_idx, owner_seat, is_mortgaged, buildings)
   values (m, v_idx, 0, false, 0)
@@ -2498,6 +2504,66 @@ begin
     'a mid-roll bankruptcy that finishes the match is not resurrected by city_roll_dice_core''s own trailing UPDATE',
     'status=finished, phase=null, current_seat=null after the fatal roll',
     case when ok then 'seat 1 bankrupted, match stayed finished/null/null' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-MATCHES-FREEZE-FINISHED — a follow-up review pass on 0096 found two
+-- more live, unguarded finished-match-resurrection writes (city_grant_reroll,
+-- city_charge's debt_started_at) that 0096's own single hand-copied guard
+-- didn't cover, on top of the two more this repo's history already fixed
+-- (0092). 0097 closes the whole bug class structurally instead of one more
+-- per-function guard: a BEFORE UPDATE trigger that freezes a city_matches
+-- row entirely — every column — the instant it's already status='finished'.
+-- This asserts the mechanism itself, directly, with a raw UPDATE — not one
+-- more scenario built through a specific RPC's call chain, which is exactly
+-- the kind of narrow, whack-a-mole coverage that let 3 prior instances of
+-- this bug class ship unnoticed. Any future function that writes
+-- city_matches without its own guard is covered by this same trigger,
+-- without needing its own dedicated regression scenario.
+-- ===========================================================================
+do $blk$
+declare
+  m uuid; ok boolean := true; act text := '';
+  beforeRow record; afterRow record;
+begin
+  m := pg_temp.rg_match('CITYRGFRZ', 5097);
+
+  update public.city_matches
+     set status = 'finished', finished_at = now(), phase = null, current_seat = null,
+         doubles_count = 2, turn_number = 7, debt_started_at = now() - interval '1 hour'
+   where id = m;
+
+  select phase, current_seat, turn_number, doubles_count, debt_started_at, status
+    into beforeRow from public.city_matches where id = m;
+
+  -- A raw attempt at exactly the shape every resurrection-class bug writes:
+  -- a live-looking phase/turn state on a row that's already finished.
+  update public.city_matches
+     set phase = 'awaiting_roll', current_seat = 2, turn_number = 99,
+         doubles_count = 0, debt_started_at = now()
+   where id = m;
+
+  select phase, current_seat, turn_number, doubles_count, debt_started_at, status
+    into afterRow from public.city_matches where id = m;
+
+  if afterRow.phase is distinct from beforeRow.phase
+     or afterRow.current_seat is distinct from beforeRow.current_seat
+     or afterRow.turn_number is distinct from beforeRow.turn_number
+     or afterRow.doubles_count is distinct from beforeRow.doubles_count
+     or afterRow.debt_started_at is distinct from beforeRow.debt_started_at
+     or afterRow.status is distinct from beforeRow.status
+  then
+    ok := false;
+    act := format('row changed after the freeze: phase %s->%s, current_seat %s->%s, turn_number %s->%s',
+      beforeRow.phase, afterRow.phase, beforeRow.current_seat, afterRow.current_seat,
+      beforeRow.turn_number, afterRow.turn_number);
+  end if;
+
+  insert into rg values (default,'BUG-MATCHES-FREEZE-FINISHED',
+    'a raw UPDATE attempting to write a live-looking phase/turn state onto an already-finished city_matches row is silently discarded',
+    'every column unchanged after the attempted UPDATE',
+    case when ok then 'row unchanged, as expected' else act end,
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 

@@ -121,9 +121,11 @@ function runSql() {
 
 // A block that errors out inserts no row, which would otherwise show up as a
 // smaller total rather than a failure — the quietest way for a suite to lie.
-// 57 = 56 + BUG-ROLL-FINISH-GUARD (migration 0096, a second instance of the
-// finished-match-resurrection bug class 0092 already fixed once).
-const EXPECTED_SQL_ASSERTIONS = 57;
+// 58 = 57 + BUG-MATCHES-FREEZE-FINISHED (migration 0097, the structural fix
+// closing the finished-match-resurrection bug class for every writer at
+// once, after 0096's single hand-copied guard turned out to miss two more
+// live instances).
+const EXPECTED_SQL_ASSERTIONS = 58;
 
 const sqlRows = runSql();
 if (sqlRows.length !== EXPECTED_SQL_ASSERTIONS) {
