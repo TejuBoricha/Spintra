@@ -56,3 +56,6 @@ dev-server.log
 
 # ai tool scratch state (idle timers, session markers — not source)
 .superpowers/
+
+# graphify knowledge-graph output (local trial, regenerable — see DECISIONS.md ADR-012)
+graphify-out/
