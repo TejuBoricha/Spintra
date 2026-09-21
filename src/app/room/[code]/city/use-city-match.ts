@@ -1182,7 +1182,12 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     () =>
       runRaceableCommand(
         "city_claim_timeout",
-        /CITY_TURN_CLOCK_STILL_RUNNING|CITY_TURN_CLOCK_PAUSED/,
+        // CITY_MATCH_NOT_ACTIVE / CITY_NO_ACTIVE_TURN: a losing race can find
+        // the match already advanced past the state this call assumed (e.g.
+        // another client's call already ended the match/turn) — an ordinary
+        // outcome of the "any client may attempt this" design above, not a
+        // real error.
+        /CITY_TURN_CLOCK_STILL_RUNNING|CITY_TURN_CLOCK_PAUSED|CITY_MATCH_NOT_ACTIVE|CITY_NO_ACTIVE_TURN/,
         "City claim-timeout"
       ),
     [runRaceableCommand]

@@ -2567,6 +2567,127 @@ begin
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 
+-- ===========================================================================
+-- BUG-BANKRUPT-POST-FINISH — a fresh review round (2026-09-18) found a second
+-- class of finished-match resurrection 0097's freeze trigger doesn't cover:
+-- city_bankrupt_seat writes city_match_players/city_assets, not city_matches,
+-- so the trigger never applies to it, and it had no guard of its own (never
+-- touched by 0092/0096/0097's leaf-by-leaf fixes to sibling functions). A
+-- seat bankrupting after the match already finished mid-transaction (e.g.
+-- city_apply_card's collect_from_each charging several seats, one of which
+-- finishes the match before a later seat in the same loop also bankrupts)
+-- would overwrite final_net_worth to 0 after city_finish_match already
+-- snapshotted and paid it out -- violating this migration chain's own stated
+-- invariant ("snapshot first: awarding must not change what the recap
+-- reports", 0070). 0098 adds a status='active' guard at entry, matching the
+-- freeze trigger's own silently-refuse-the-late-write philosophy.
+-- ===========================================================================
+do $blk$
+declare
+  m uuid; ok boolean := true; act text := '';
+  beforeWorth int; afterWorth int; beforeStatus text; afterStatus text;
+begin
+  m := pg_temp.rg_match('CITYRGBKF', 5098);
+
+  update public.city_match_players set final_net_worth = 1234, status = 'active'
+   where match_id = m and seat = 1;
+
+  update public.city_matches
+     set status = 'finished', finished_at = now(), phase = null, current_seat = null
+   where id = m;
+
+  select final_net_worth, status into beforeWorth, beforeStatus
+    from public.city_match_players where match_id = m and seat = 1;
+
+  -- The exact call collect_from_each's cascade makes on an unguarded seat:
+  -- no raise, no exception -- just a call that must now be a complete no-op.
+  perform public.city_bankrupt_seat(m, 1, 0);
+
+  select final_net_worth, status into afterWorth, afterStatus
+    from public.city_match_players where match_id = m and seat = 1;
+
+  if afterWorth is distinct from beforeWorth or afterStatus is distinct from beforeStatus then
+    ok := false;
+    act := format('seat 1 changed after a post-finish bankrupt call: final_net_worth %s->%s, status %s->%s',
+      beforeWorth, afterWorth, beforeStatus, afterStatus);
+  end if;
+
+  insert into rg values (default,'BUG-BANKRUPT-POST-FINISH',
+    'city_bankrupt_seat called on an already-finished match does not overwrite the snapshotted final_net_worth/status',
+    'final_net_worth and status unchanged (1234/active)',
+    case when ok then 'seat 1 unchanged, as expected' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-PAUSE-RESUME-DEBT-CLOCK — a fresh review round (2026-09-18) found that
+-- city_track_disconnect's durable-pause resume branch (0087, predates
+-- debt_started_at, added later in 0090, and never revisited) reset
+-- turn_started_at on resume but left debt_started_at and
+-- trade_pause_started_at/trade_pause_ms_used untouched. A player reconnecting
+-- mid required_decision after a durable pause got force-liquidated instantly
+-- by every client's watchdog computing debt_started_at + 90s against a
+-- deadline already in the past -- defeating the entire point of the fixed
+-- 90s window 0090 built. 0098 gives debt_started_at the same fresh-clock
+-- treatment turn_started_at already gets here, and credits any stale trade
+-- pause the same way city_grant_reroll (0097) already does for its own
+-- resume path.
+-- ===========================================================================
+do $blk$
+declare
+  m uuid; st text; debt_after timestamptz; trade_started_after timestamptz;
+  trade_ms_before int; trade_ms_after int; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGD3', 5099);
+
+  update public.city_matches set
+    status='paused', paused_at = now() - interval '5 minutes',
+    started_at = now() - interval '20 minutes',
+    current_seat=0, turn_started_at = now() - interval '20 minutes',
+    debt_started_at = now() - interval '20 minutes',
+    turn_clock_paused_at = now() - interval '20 minutes',
+    trade_pause_started_at = now() - interval '20 minutes',
+    trade_pause_ms_used = 1000
+   where id=m;
+  update public.city_match_players set disconnected_at = now() - interval '5 minutes',
+    pending_debt = 500, pending_creditor_seat = 1
+   where match_id=m and seat=0;
+  select trade_pause_ms_used into trade_ms_before from public.city_matches where id=m;
+
+  -- Genuinely flip false -> true, not true -> true (BUG-007-D-resume's own
+  -- note above applies identically here).
+  update public.room_participants set is_online = false
+   where room_id = 'CITYRGD3' and user_id = (
+     select user_id from public.city_match_players where match_id=m and seat=0);
+
+  update public.room_participants set is_online = true
+   where room_id = 'CITYRGD3' and user_id = (
+     select user_id from public.city_match_players where match_id=m and seat=0);
+
+  select status, debt_started_at, trade_pause_started_at, trade_pause_ms_used
+    into st, debt_after, trade_started_after, trade_ms_after
+    from public.city_matches where id=m;
+
+  if st <> 'active' then
+    ok := false; act := act || format('status is %L after reconnect, expected active; ', st);
+  end if;
+  if debt_after is null or extract(epoch from (now() - debt_after)) > 5 then
+    ok := false; act := act || 'debt_started_at was not reset to a fresh value on resume (a stale deadline here force-liquidates the reconnecting player instantly, before they can act); ';
+  end if;
+  if trade_started_after is not null then
+    ok := false; act := act || 'trade_pause_started_at was left stamped after resume instead of credited and cleared; ';
+  end if;
+  if trade_ms_after <= trade_ms_before then
+    ok := false; act := act || format('trade_pause_ms_used was not credited for the stale pause (%s -> %s); ', trade_ms_before, trade_ms_after);
+  end if;
+
+  insert into rg values (default,'BUG-PAUSE-RESUME-DEBT-CLOCK',
+    'resuming a paused match with a pending debt claim gives debt_started_at a fresh clock instead of a stale deadline that force-liquidates the reconnecting player instantly, and credits/clears any stale trade pause the same way city_grant_reroll already does',
+    'debt_started_at reset fresh, trade_pause_started_at cleared, trade_pause_ms_used credited',
+    case when ok then 'debt_started_at fresh, trade pause credited and cleared' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
 -- ---------------------------------------------------------------------------
 -- teardown + report
 -- ---------------------------------------------------------------------------
