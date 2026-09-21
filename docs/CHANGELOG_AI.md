@@ -2663,3 +2663,33 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 **Rollback Plan:** `git revert`, or a follow-up migration restoring the pre-`0099` function bodies — this migration only redefines existing functions.
 
 **Related Decisions:** Same recurring root cause noted in the `0098` entry above and in `[[project-spintra-city-pr43-review]]` — the review process keeps finding one more path that missed a shared invariant (there, `status = 'active'`; here, the advisory lock) rather than the invariant being centrally enforced. **Second consecutive session where the review orchestrator's background verification pass failed to complete on its own** (first: a multi-day session gap; this time: apparent stall with no gap) — worth flagging as a pattern if it recurs a third time, though the underlying findings were not lost either time since the raw finder reports are delivered as full messages, not just references.
+
+---
+
+## [2026-09-21] — Migration 0100: three more findings from the same review round (trade debt symmetry, auction presence, real collection total)
+
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** User asked directly to fix the three remaining findings from the same review round that produced `0099`, after the review's own orchestrator had already been abandoned as stalled.
+
+**What happened, all three verified by reading the current live code directly:**
+1. **`city_accept_trade` only checked the accepting seat's debt, not the proposer's.** `BUG-011`'s existing invariant ("a debtor cannot strip assets via a non-clearing trade") only covered `v_to`. A proposer who goes into debt after proposing but before the other side accepts could still have the trade go through, undermining their own creditor.
+2. **Autopilot treated opening an auction as proof someone's present**, even when the seat that opened it (via an autopilot decline) is itself disconnected, along with everyone else. Since auctions only settle via a connected client's own timer, this could leave a match `status='active'` forever with an unreachable auction.
+3. **`collect_from_each`'s reported total summed the nominal charge amount, not what was actually collected.** A payer who went through `city_charge`'s deferred `must_raise_funds` path (pays $0 immediately) or a partial-bankruptcy salvage still counted as the full nominal amount.
+
+**A self-caught mistake along the way, worth logging honestly:** while redefining `city_accept_trade`, an initial draft only had read part of the function (through the debt/asset-validation checks) and reconstructed the rest — the cash transfer, offer-invalidation query, event payload, and return shape — from memory/inference rather than reading the actual source. Caught this before applying anything (the reconstructed offer-invalidation logic used seat-matching instead of the real space-overlap matching, and fabricated a debt-auto-clear step that doesn't exist in the real function), re-read the true source, and rewrote the migration correctly. No incorrect version was ever applied to the database or committed — caught during drafting, not after.
+
+**Fix:** `city_accept_trade` gains the symmetric `v_from.pending_debt` check. `city_run_autopilot_from_current`'s `auction_pending` branch now checks whether any non-bankrupt/non-retired seat is genuinely online before treating it as "found present." `city_apply_card`'s `collect_from_each` measures the drawer's own cash before/after the charge loop instead of summing the nominal amount — exact regardless of which of `city_charge`'s three internal paths each payer took, with no change needed to `city_charge`/`city_bankrupt_seat`'s return shape.
+
+**Verification:** Added `BUG-TRADE-PROPOSER-DEBT` (modeled on the proven `BUG-011` pattern, restructured mid-draft after discovering `city_propose_trade` itself refuses to let an indebted seat propose anything — a separate, pre-existing guard at a different moment, not a conflict with this fix), `BUG-AUCTION-PRESENCE-PAUSE` (modeled on `BUG-009`'s decline-into-auction setup), and `BUG-COLLECT-FROM-EACH-REAL-TOTAL` (using the real seeded `boarding_pass` card, id 9). All three passed on the first correct attempt (66/66). Adversarially verified as a batch: reverted all three functions to their pre-`0100` bodies in one pass, confirmed exactly these three tests failed with zero collateral damage to the other 63, restored the fix, confirmed 66/66 again.
+
+**Files Modified:** `supabase/migrations/0100_spintra_city_trade_debt_auction_presence_total.sql` (new), `scripts/city-regression.sql` (3 new assertions), `scripts/city-regression.mjs` (`EXPECTED_SQL_ASSERTIONS` 61→64), `docs/ARCHITECTURE.md` (new 0100 table row + status line).
+
+**Verification:** `npm run verify` clean. `npm run test:city-regression` 66/66. All three new assertions confirmed discriminating.
+
+**Testing Performed:** Applied directly to the already-running local Postgres container (incremental, no full reset needed this time).
+
+**Risk:** Applies to a migration already local-only, not yet pushed to production (same status as `0096`–`0099`). No schema change, no data migration. `city_accept_trade`'s new check is strictly more restrictive (blocks a case that previously succeeded) — the existing `BUG-011`/`BUG-044` tests confirm the legitimate accept paths are unaffected.
+
+**Rollback Plan:** `git revert`, or a follow-up migration restoring the pre-`0100` function bodies.
+
+**Related Decisions:** Closes out the four bugs found by this review round's finder streams that were confirmed severe enough to act on (the fifth, a latent double-quote-escaping bug in 5 `qa-x15`–`x19` test files, and the DRY/architecture findings, remain open — logged in `[[project-spintra-city-pr43-review]]` for a future pass).

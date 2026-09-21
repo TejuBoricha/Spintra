@@ -2728,6 +2728,146 @@ begin
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 
+-- ===========================================================================
+-- BUG-TRADE-PROPOSER-DEBT — symmetric to BUG-011: the PROPOSING seat going
+-- into debt after proposing, but before the other side accepts, must also
+-- block the trade if it would leave them unable to cover it -- not just the
+-- accepting seat, which BUG-011 already covers.
+-- ===========================================================================
+do $blk$
+declare m uuid; ok boolean := true; act text := '';
+  offer uuid; owner int;
+begin
+  m := pg_temp.rg_match('CITYRG50', 5100);
+  delete from public.city_assets where match_id=m;
+  insert into public.city_assets(match_id,space_idx,owner_seat,buildings,is_mortgaged)
+  values (m,1,1,0,false);
+  update public.city_match_players set cash=100, pending_debt=0, pending_creditor_seat=null
+   where match_id=m and seat=1;
+  update public.city_matches set current_seat=1, phase='optional_actions' where id=m;
+
+  -- seat 1 (solvent at propose time -- city_propose_trade itself refuses to
+  -- let an already-indebted seat propose anything, a separate pre-existing
+  -- guard at a different moment than the one this test targets) offers
+  -- seat 0 their property for 60 cash.
+  perform pg_temp.rg_as(1);
+  offer := public.city_propose_trade(m, 0, array[1], '{}', 60, 0);
+
+  -- seat 1 goes into debt AFTER proposing, before seat 0 accepts -- too much
+  -- debt for the post-trade cash (100-60=40) to cover.
+  update public.city_match_players set pending_debt=50, pending_creditor_seat=2
+   where match_id=m and seat=1;
+
+  perform pg_temp.rg_as(0);
+  begin
+    perform public.city_accept_trade(offer);
+    ok := false; act := act || 'proposer''s trade was accepted despite leaving their own debt uncovered; ';
+  exception when others then
+    if SQLERRM not like '%SETTLE_DEBT_FIRST%' then
+      ok := false; act := act || 'wrong refusal reason: '||SQLERRM||'; ';
+    end if;
+  end;
+  select owner_seat into owner from public.city_assets where match_id=m and space_idx=1;
+  if owner <> 1 then
+    ok := false; act := act || 'property moved despite the accept being refused; ';
+  end if;
+
+  -- the same still-pending offer must succeed once the proposer's debt is
+  -- small enough for the post-trade cash (40) to cover.
+  update public.city_match_players set pending_debt=30 where match_id=m and seat=1;
+  begin
+    perform public.city_accept_trade(offer);
+  exception when others then
+    ok := false; act := act || 'a debt-safe trade was wrongly refused: '||SQLERRM||'; ';
+  end;
+  select owner_seat into owner from public.city_assets where match_id=m and space_idx=1;
+  if owner <> 0 then
+    ok := false; act := act || 'debt-safe trade did not transfer the property; ';
+  end if;
+
+  insert into rg values (default,'BUG-TRADE-PROPOSER-DEBT',
+    'a proposing seat that has gone into debt after proposing but before acceptance has their trade refused, symmetric to BUG-011''s accepting-seat check',
+    'a debt-unsafe trade is refused (property stays with the proposer); a debt-safe trade succeeds',
+    case when ok then 'unsafe trade refused, safe trade succeeded' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-AUCTION-PRESENCE-PAUSE — city_run_autopilot_from_current must not
+-- treat an autopilot-opened auction as proof anyone is present when every
+-- seat, including the one that just opened it, is actually disconnected.
+-- ===========================================================================
+do $blk$
+declare m uuid; st text; ph text; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRG51', 5101);
+  delete from public.city_assets where match_id=m;
+  update public.city_match_players set status='retired' where match_id=m and seat=2;
+  update public.city_match_players set position=39, disconnected_at = now() - interval '90 seconds'
+   where match_id=m and seat in (0,1);
+  update public.city_matches set current_seat=0, phase='required_decision' where id=m;
+
+  perform public.city_run_autopilot_from_current(m);
+
+  select status, phase into st, ph from public.city_matches where id=m;
+  if ph <> 'auction' then
+    ok := false; act := act || format('phase is %L after autopilot decline, expected auction -- scenario did not actually open one; ', ph);
+  end if;
+  if st <> 'paused' then
+    ok := false; act := act || format('match status is %L with an auction open and every seat away -- expected paused; ', st);
+  end if;
+
+  insert into rg values (default,'BUG-AUCTION-PRESENCE-PAUSE',
+    'an autopilot-opened auction is not treated as proof someone is present -- the match still reaches status=paused when every seat, including the one that opened it, is actually disconnected',
+    'phase=auction and status=paused after autopilot resolves a decline into an auction with nobody online',
+    case when ok then format('phase=%s, status=%s', ph, st) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-COLLECT-FROM-EACH-REAL-TOTAL — city_apply_card's collect_from_each
+-- must report what was actually collected, not the nominal charge amount
+-- multiplied by opponent count.
+-- ===========================================================================
+do $blk$
+declare m uuid; v_card public.city_cards; res jsonb;
+  cash_before int; cash_after int; reported_total int; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRG52', 5102);
+  delete from public.city_assets where match_id=m;
+
+  update public.city_match_players set cash=500 where match_id=m and seat=0;
+  update public.city_match_players set cash=300 where match_id=m and seat=1;
+  update public.city_match_players set cash=20 where match_id=m and seat=2;
+
+  select * into v_card from public.city_cards where id=9; -- boarding_pass, collect_from_each, amount=100
+
+  select cash into cash_before from public.city_match_players where match_id=m and seat=0;
+  res := public.city_apply_card(m, 0, v_card, 7);
+  select cash into cash_after from public.city_match_players where match_id=m and seat=0;
+
+  reported_total := (res->>'total')::integer;
+  if reported_total <> (cash_after - cash_before) then
+    ok := false;
+    act := act || format('reported total %s does not match the drawer''s real cash gain %s; ',
+      reported_total, cash_after - cash_before);
+  end if;
+  if reported_total >= 200 then
+    ok := false;
+    act := act || format('reported total %s still looks like the nominal 2x100 amount, not the real partial collection; ', reported_total);
+  end if;
+  if (cash_after - cash_before) <> 120 then
+    ok := false;
+    act := act || format('scenario did not produce the expected 100 (seat 1, full) + 20 (seat 2, bankruptcy salvage) = 120 real collection, got %s; ', cash_after - cash_before);
+  end if;
+
+  insert into rg values (default,'BUG-COLLECT-FROM-EACH-REAL-TOTAL',
+    'collect_from_each reports the real amount collected (100 from a solvent opponent + 20 salvaged from a bankrupted one = 120), not the nominal 200 (2 x 100)',
+    'total = 120, matching the drawer''s actual cash gain',
+    case when ok then format('total=%s, real cash gain=%s', reported_total, cash_after-cash_before) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
 -- ---------------------------------------------------------------------------
 -- teardown + report
 -- ---------------------------------------------------------------------------

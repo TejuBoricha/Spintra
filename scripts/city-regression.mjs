@@ -121,11 +121,13 @@ function runSql() {
 
 // A block that errors out inserts no row, which would otherwise show up as a
 // smaller total rather than a failure — the quietest way for a suite to lie.
-// 61 = 60 + BUG-RETIRE-SEAT-LOCK (migration 0099 — city_retire_seat and
-// city_track_disconnect's resume branch were the only match-mutating paths
-// that never took the per-match advisory lock every other one does, opening
-// a concurrent-departure deadlock).
-const EXPECTED_SQL_ASSERTIONS = 61;
+// 64 = 61 + BUG-TRADE-PROPOSER-DEBT + BUG-AUCTION-PRESENCE-PAUSE +
+// BUG-COLLECT-FROM-EACH-REAL-TOTAL (migration 0100 — city_accept_trade only
+// checked the accepting seat's debt, not the proposer's; autopilot treated
+// opening an auction as proof someone's present even with nobody online;
+// collect_from_each summed the nominal charge instead of what was actually
+// collected).
+const EXPECTED_SQL_ASSERTIONS = 64;
 
 const sqlRows = runSql();
 if (sqlRows.length !== EXPECTED_SQL_ASSERTIONS) {
