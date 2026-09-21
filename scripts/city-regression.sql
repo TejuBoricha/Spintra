@@ -2688,6 +2688,46 @@ begin
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 
+-- ===========================================================================
+-- BUG-RETIRE-SEAT-LOCK — a fresh review round (2026-09-21) found that
+-- city_retire_seat (called from the kick/ban/leave-room trigger
+-- city_retire_seat_on_departure, 0090) and city_track_disconnect's
+-- durable-pause resume branch (0098) never took the per-match
+-- pg_advisory_xact_lock every other match-mutating RPC takes
+-- (city_roll_dice, city_claim_timeout, city_retire_self all take it as
+-- their first DB operation). Two players leaving in the same instant could
+-- each read a stale seat count under READ COMMITTED, each miss that the
+-- other also just retired, and neither call city_finish_match -- a
+-- permanent deadlock. True two-connection concurrency isn't practical to
+-- simulate deterministically in this single-session suite (no other test
+-- here does), so this asserts the structural invariant directly, the same
+-- way BUG-027 checks city_create_match's seed source: the lock must be
+-- present in both function bodies. 0099 adds it.
+-- ===========================================================================
+do $blk$
+declare src_retire text; src_disconnect text; ok boolean := true; act text := '';
+begin
+  select pg_get_functiondef(p.oid) into src_retire
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and p.proname = 'city_retire_seat';
+  if src_retire not like '%pg_advisory_xact_lock%' then
+    ok := false; act := act || 'city_retire_seat no longer takes the per-match advisory lock; ';
+  end if;
+
+  select pg_get_functiondef(p.oid) into src_disconnect
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and p.proname = 'city_track_disconnect';
+  if src_disconnect not like '%pg_advisory_xact_lock%' then
+    ok := false; act := act || 'city_track_disconnect no longer takes the per-match advisory lock on its resume path; ';
+  end if;
+
+  insert into rg values (default,'BUG-RETIRE-SEAT-LOCK',
+    'city_retire_seat and city_track_disconnect''s resume branch both take the same per-match advisory lock every other match-mutating RPC takes, closing a concurrent-departure/concurrent-resume race',
+    'pg_advisory_xact_lock present in both function bodies',
+    case when ok then 'lock present in both' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
 -- ---------------------------------------------------------------------------
 -- teardown + report
 -- ---------------------------------------------------------------------------

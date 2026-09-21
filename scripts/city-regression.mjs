@@ -121,13 +121,11 @@ function runSql() {
 
 // A block that errors out inserts no row, which would otherwise show up as a
 // smaller total rather than a failure — the quietest way for a suite to lie.
-// 60 = 58 + BUG-BANKRUPT-POST-FINISH + BUG-PAUSE-RESUME-DEBT-CLOCK (migration
-// 0098 — city_bankrupt_seat had no finished-match guard of its own, since it
-// writes city_match_players/city_assets rather than city_matches and so
-// 0097's freeze trigger never covered it; and city_track_disconnect's
-// durable-pause resume branch predates debt_started_at and never re-armed it,
-// so a reconnecting player with pending debt got force-liquidated instantly).
-const EXPECTED_SQL_ASSERTIONS = 60;
+// 61 = 60 + BUG-RETIRE-SEAT-LOCK (migration 0099 — city_retire_seat and
+// city_track_disconnect's resume branch were the only match-mutating paths
+// that never took the per-match advisory lock every other one does, opening
+// a concurrent-departure deadlock).
+const EXPECTED_SQL_ASSERTIONS = 61;
 
 const sqlRows = runSql();
 if (sqlRows.length !== EXPECTED_SQL_ASSERTIONS) {
