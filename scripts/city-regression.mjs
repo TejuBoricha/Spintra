@@ -121,13 +121,12 @@ function runSql() {
 
 // A block that errors out inserts no row, which would otherwise show up as a
 // smaller total rather than a failure — the quietest way for a suite to lie.
-// 64 = 61 + BUG-TRADE-PROPOSER-DEBT + BUG-AUCTION-PRESENCE-PAUSE +
-// BUG-COLLECT-FROM-EACH-REAL-TOTAL (migration 0100 — city_accept_trade only
-// checked the accepting seat's debt, not the proposer's; autopilot treated
-// opening an auction as proof someone's present even with nobody online;
-// collect_from_each summed the nominal charge instead of what was actually
-// collected).
-const EXPECTED_SQL_ASSERTIONS = 64;
+// 65 = 64 + BUG-CHARGE-POST-FINISH (migration 0101 — city_charge's full-pay
+// and pending_debt branches wrote to city_match_players with no
+// finished-match guard, the same bug class 0098 already fixed one function
+// away in city_bankrupt_seat, never re-audited in the function that calls
+// it).
+const EXPECTED_SQL_ASSERTIONS = 65;
 
 const sqlRows = runSql();
 if (sqlRows.length !== EXPECTED_SQL_ASSERTIONS) {

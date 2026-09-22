@@ -2868,6 +2868,64 @@ begin
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 
+-- ===========================================================================
+-- BUG-CHARGE-POST-FINISH — a third review round (2026-09-22, same PR diff
+-- now including 0099/0100) found the same finished-match-resurrection bug
+-- class one function deeper: city_charge itself writes to
+-- city_match_players (cash, pending_debt) in two branches, neither guarded
+-- -- and neither table write is covered by 0097's freeze trigger (that
+-- trigger is on city_matches only). city_bankrupt_seat got exactly this
+-- guard in 0098 after the identical failure mode was found there --
+-- city_charge, the function that CALLS city_bankrupt_seat in its own third
+-- branch, was never re-audited for the same gap one level up. 0101 adds it.
+-- ===========================================================================
+do $blk$
+declare
+  m uuid; res jsonb; ok boolean := true; act text := '';
+  payerCashBefore int; payerCashAfter int; creditorCashBefore int; creditorCashAfter int;
+  payerDebtBefore int; payerDebtAfter int;
+begin
+  m := pg_temp.rg_match('CITYRGCPF', 5101);
+
+  update public.city_match_players set cash=500, pending_debt=0 where match_id=m and seat=0;
+  update public.city_match_players set cash=500, pending_debt=0 where match_id=m and seat=1;
+
+  update public.city_matches
+     set status = 'finished', finished_at = now(), phase = null, current_seat = null
+   where id = m;
+
+  select cash, pending_debt into payerCashBefore, payerDebtBefore
+    from public.city_match_players where match_id=m and seat=0;
+  select cash into creditorCashBefore from public.city_match_players where match_id=m and seat=1;
+
+  -- The exact call collect_from_each/city_resolve_landing makes on an
+  -- unguarded post-finish seat: a full-pay charge (payer can easily cover
+  -- 100 from 500 cash) that must now be a complete no-op.
+  res := public.city_charge(m, 0, 100, 1, 'rent_paid');
+
+  select cash, pending_debt into payerCashAfter, payerDebtAfter
+    from public.city_match_players where match_id=m and seat=0;
+  select cash into creditorCashAfter from public.city_match_players where match_id=m and seat=1;
+
+  if res->>'action' <> 'none' then
+    ok := false; act := act || format('city_charge returned action=%s on a finished match, expected none; ', res->>'action');
+  end if;
+  if payerCashAfter <> payerCashBefore or creditorCashAfter <> creditorCashBefore then
+    ok := false;
+    act := act || format('cash moved on a finished match: payer %s->%s, creditor %s->%s; ',
+      payerCashBefore, payerCashAfter, creditorCashBefore, creditorCashAfter);
+  end if;
+  if payerDebtAfter <> payerDebtBefore then
+    ok := false; act := act || format('pending_debt changed on a finished match: %s->%s; ', payerDebtBefore, payerDebtAfter);
+  end if;
+
+  insert into rg values (default,'BUG-CHARGE-POST-FINISH',
+    'city_charge called on an already-finished match is a complete no-op (action=none, no cash or pending_debt change) instead of silently moving cash between already-snapshotted, already-scored seats',
+    'action=none, cash and pending_debt unchanged for both payer and creditor',
+    case when ok then 'no-op, as expected' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
 -- ---------------------------------------------------------------------------
 -- teardown + report
 -- ---------------------------------------------------------------------------

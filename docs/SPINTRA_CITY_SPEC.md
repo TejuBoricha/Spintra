@@ -4,19 +4,21 @@
 > integration with the existing system → implementation → verification, with a traceability matrix
 > so every requirement can be followed to the thing that implements it and the thing that proves it.
 >
-> **Status (updated 2026-09-21): implemented, QA-hardened, multiple code-review rounds applied, and its
+> **Status (updated 2026-09-22): implemented, QA-hardened, multiple code-review rounds applied, and its
 > database is live on production through `0095` — not yet merged/deployed to the app itself.** All 7
-> slices (§7) are built; a 298-case QA audit found 44 bugs, all closed across 8+ fix rounds; several
-> `/code-review high` rounds against PR #43 (2026-09-03, then resumed 2026-09-15/16, then again
-> 2026-09-18/21) have together found and fixed the finished-match-resurrection bug class three times
-> over (migrations `0092`, `0096`/`0097`, `0098` — see `ARCHITECTURE.md` §4 for each) plus a durable-
-> pause resume bug and a false-error-banner bug; the regression harness (`npm run test:city-regression`)
-> now covers 62 cases and passes. **Migrations `0063`–`0095` are applied to the production Supabase
-> project** (`supabase db push --linked`, independently confirmed via `verify:migration` and
-> `supabase migration list` — zero drift, local=remote through `0095`). **`0096`–`0098` are local-only,
-> not yet applied to production** — see `ARCHITECTURE.md` §4's "Current status" line for the exact cut.
+> slices (§7) are built; a 298-case QA audit found 44 bugs, all closed across 8+ fix rounds; four
+> `/code-review high` rounds against PR #43 (2026-09-03, then resumed 2026-09-15/16, then 2026-09-18,
+> then 2026-09-21/22) have together found and fixed the finished-match-resurrection bug class five times
+> over (migrations `0092`, `0096`/`0097`, `0098`, `0101` — see `ARCHITECTURE.md` §4 for each), a
+> concurrent-departure deadlock (`0099`), a durable-pause resume bug, a trade-debt symmetry gap, an
+> auction-presence gap, a mis-reported collection total, and a false-error-banner bug; the regression
+> harness (`npm run test:city-regression`) now covers 67 cases and passes. **Migrations `0063`–`0095` are
+> applied to the production Supabase project** (`supabase db push --linked`, independently confirmed via
+> `verify:migration` and `supabase migration list` — zero drift, local=remote through `0095`).
+> **`0096`–`0101` are local-only, not yet applied to production** — see `ARCHITECTURE.md` §4's "Current
+> status" line for the exact cut.
 > **What's still outstanding before launch:** PR #43 (open, pushed, not yet merged) needs a human
-> review; migrations `0096`–`0098` need to be applied to production alongside/before the merge; the
+> review; migrations `0096`–`0101` need to be applied to production alongside/before the merge; the
 > app itself hasn't been deployed with this feature (merging to `main` triggers that); the economy has
 > never been playtested by real users. §12 is the authoritative current checklist.
 >

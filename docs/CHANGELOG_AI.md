@@ -2693,3 +2693,32 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 **Rollback Plan:** `git revert`, or a follow-up migration restoring the pre-`0100` function bodies.
 
 **Related Decisions:** Closes out the four bugs found by this review round's finder streams that were confirmed severe enough to act on (the fifth, a latent double-quote-escaping bug in 5 `qa-x15`–`x19` test files, and the DRY/architecture findings, remain open — logged in `[[project-spintra-city-pr43-review]]` for a future pass).
+
+---
+
+## [2026-09-22] — Migration 0101: city_charge itself had the same finished-match gap, found by a third review round that partly hit a usage limit
+
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** Ran `/code-review high 43` a third time on the PR #43 diff, now including `0099`/`0100`.
+
+**A new failure mode for the review pipeline, third round in a row it didn't complete cleanly:** 3 of the 8 finder agents (line-by-line, removed-behavior, cross-file tracer) failed outright with zero findings — the account's own session/usage limit was hit mid-run (`resets 10:10pm Asia/Kolkata`), not the orchestrator stalling or dying like the first two rounds. The other 5 streams (reuse, simplification, efficiency, altitude, conventions) completed normally and delivered full reports.
+
+**What happened:** the altitude-angle finder claimed `city_charge` writes to `city_match_players` (cash, `pending_debt`) in two branches with no finished-match guard, the same bug class already fixed once in `city_bankrupt_seat` (`0098`) — and never re-audited in `city_charge`, the function that calls `city_bankrupt_seat` in its own third branch. Verified directly rather than taken on the finder's word: the exact function body had already been read in full earlier in this same session while verifying `0098`'s fix, and re-reading it fresh confirmed the claim exactly — the full-pay branch's cash debit/credit and the deferred-debt branch's `pending_debt` write are both unconditional, and neither table write is covered by `0097`'s freeze trigger (`city_matches` only).
+
+**Fix:** the same guard pattern used in `city_bankrupt_seat`/`city_retire_seat` — read the match, return the `{action:'none'}` sentinel the function's own `p_amount<=0` branch already uses, before any of the three branches can write.
+
+**Verification:** added `BUG-CHARGE-POST-FINISH` (modeled on `BUG-BANKRUPT-POST-FINISH`'s pattern — finish the match, call the RPC directly, assert no state change), confirmed discriminating (reverted to the pre-`0101` body, watched it fail, restored, confirmed 67/67).
+
+**Also fixed the doc-sync gaps a separate finder in this same round flagged:** `SPINTRA_CITY_SPEC.md`'s status banner hadn't been updated for `0099`/`0100` (still said "62 cases," omitted both migrations) despite self-labeling itself current as of today: updated to the real 67-case count and the full `0096`–`0101` range. `HANDOFF.md`'s "Last Completed Task" — never touched this session before now — still pointed at the 2026-09-14/15 CI fix with zero mention of any of `0096`–`0101`: replaced with a summary of all three review rounds, moved the old entry into "Prior state," and updated "Current Blockers"/"Next Steps" to match.
+
+**Files Modified:** `supabase/migrations/0101_spintra_city_charge_finished_guard.sql` (new), `scripts/city-regression.sql` (1 new assertion), `scripts/city-regression.mjs` (`EXPECTED_SQL_ASSERTIONS` 64→65), `docs/ARCHITECTURE.md` (new 0101 row + status line), `docs/SPINTRA_CITY_SPEC.md` (status banner), `docs/HANDOFF.md` (Last Completed Task, Current Blockers, Next Steps).
+
+**Verification:** `npm run verify` clean. `npm run test:city-regression` 67/67. New assertion confirmed discriminating.
+
+**Testing Performed:** Applied directly to the already-running local Postgres container (incremental).
+
+**Risk:** Applies to a migration already local-only, not yet pushed to production (same status as `0096`–`0100`). No schema change, no data migration. Strictly more restrictive than before (blocks a write that previously silently succeeded post-finish) — existing charge-path regression tests (`BUG-004`, `BUG-005`, `BUG-014`, `BUG-044`, etc.) confirm the legitimate active-match paths are unaffected.
+
+**Rollback Plan:** `git revert`, or a follow-up migration restoring the pre-`0101` function body.
+
+**Related Decisions:** Third instance of the same recurring pattern noted in the `0098`/`0099` entries and `[[project-spintra-city-pr43-review]]` — the review process keeps finding one more function that missed the shared invariant. Given this is now the fifth migration in the same bug class (`0092`, `0096`, `0097`, `0098`, `0101`), the structural fix suggested by an earlier round's finder (a table-level freeze trigger or shared `city_assert_match_active()` helper covering `city_match_players` the way `0097`'s trigger covers `city_matches`) is worth genuinely prioritizing next time this feature gets touched, rather than continuing to chase individual functions one review round at a time.
