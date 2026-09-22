@@ -8,17 +8,18 @@
 > database is live on production through `0095` — not yet merged/deployed to the app itself.** All 7
 > slices (§7) are built; a 298-case QA audit found 44 bugs, all closed across 8+ fix rounds; four
 > `/code-review high` rounds against PR #43 (2026-09-03, then resumed 2026-09-15/16, then 2026-09-18,
-> then 2026-09-21/22) have together found and fixed the finished-match-resurrection bug class five times
-> over (migrations `0092`, `0096`/`0097`, `0098`, `0101` — see `ARCHITECTURE.md` §4 for each), a
-> concurrent-departure deadlock (`0099`), a durable-pause resume bug, a trade-debt symmetry gap, an
-> auction-presence gap, a mis-reported collection total, and a false-error-banner bug; the regression
-> harness (`npm run test:city-regression`) now covers 67 cases and passes. **Migrations `0063`–`0095` are
+> then 2026-09-21/22 x2) have together found and fixed the finished-match-resurrection bug class seven
+> times over (migrations `0092`, `0096`/`0097`, `0098`, `0101`, `0102` x2 — see `ARCHITECTURE.md` §4 for
+> each), a concurrent-departure deadlock (`0099`), a durable-pause resume bug, a trade-debt symmetry gap,
+> an auction-presence gap, a mis-reported collection total, a false-error-banner bug, an autopilot
+> turn-skip bug, and an auction pass-check invariant broken by an earlier fix (`0102`); the regression
+> harness (`npm run test:city-regression`) now covers 71 cases and passes. **Migrations `0063`–`0095` are
 > applied to the production Supabase project** (`supabase db push --linked`, independently confirmed via
 > `verify:migration` and `supabase migration list` — zero drift, local=remote through `0095`).
-> **`0096`–`0101` are local-only, not yet applied to production** — see `ARCHITECTURE.md` §4's "Current
+> **`0096`–`0102` are local-only, not yet applied to production** — see `ARCHITECTURE.md` §4's "Current
 > status" line for the exact cut.
 > **What's still outstanding before launch:** PR #43 (open, pushed, not yet merged) needs a human
-> review; migrations `0096`–`0101` need to be applied to production alongside/before the merge; the
+> review; migrations `0096`–`0102` need to be applied to production alongside/before the merge; the
 > app itself hasn't been deployed with this feature (merging to `main` triggers that); the economy has
 > never been playtested by real users. §12 is the authoritative current checklist.
 >

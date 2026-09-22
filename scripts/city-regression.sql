@@ -2926,6 +2926,188 @@ begin
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 
+-- ===========================================================================
+-- BUG-SETTLE-AUCTION-POST-FINISH — a fourth review round (2026-09-22) found
+-- city_settle_auction was the one other function in this codebase that moves
+-- cash and grants property ownership, and it never got the finished-match
+-- guard the 0096-0101 sweep gave its siblings. 0102 adds it.
+-- ===========================================================================
+do $blk$
+declare
+  m uuid; res jsonb; ok boolean := true; act text := '';
+  winnerCashBefore int; winnerCashAfter int; ownerAfter int; spaceIdx int;
+begin
+  m := pg_temp.rg_match('CITYRGSAF', 5106);
+
+  select min(idx) into spaceIdx from public.city_board_spaces where price is not null;
+  update public.city_match_players set cash=500 where match_id=m and seat=1;
+
+  insert into public.city_auctions (match_id, space_idx, ends_at, hard_ends_at, status, high_seat, high_bid)
+  values (m, spaceIdx, now() - interval '1 seconds', now() - interval '1 seconds', 'running', 1, 100);
+
+  update public.city_matches
+     set status = 'finished', finished_at = now(), phase = null, current_seat = null
+   where id = m;
+
+  select cash into winnerCashBefore from public.city_match_players where match_id=m and seat=1;
+
+  res := public.city_settle_auction(m, true);
+
+  select cash into winnerCashAfter from public.city_match_players where match_id=m and seat=1;
+  select owner_seat into ownerAfter from public.city_assets where match_id=m and space_idx=spaceIdx;
+
+  if res->>'settled' <> 'false' then
+    ok := false; act := act || format('city_settle_auction returned settled=%s on a finished match, expected false; ', res->>'settled');
+  end if;
+  if winnerCashAfter <> winnerCashBefore then
+    ok := false; act := act || format('winner cash changed on a finished match: %s->%s; ', winnerCashBefore, winnerCashAfter);
+  end if;
+  if ownerAfter is not null then
+    ok := false; act := act || 'property was granted despite the match being finished; ';
+  end if;
+
+  insert into rg values (default,'BUG-SETTLE-AUCTION-POST-FINISH',
+    'city_settle_auction called on an already-finished match is a complete no-op (settled=false, no cash or asset change)',
+    'settled=false, winner cash unchanged, no property granted',
+    case when ok then 'no-op, as expected' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-TRY-SETTLE-DEBT-POST-FINISH — same round: city_try_settle_debt had no
+-- guard at all, and is reachable on any city_match_players cash write via
+-- the city_settle_debt_on_cash AFTER UPDATE trigger, not just its direct
+-- callers (which are already protected upstream via city_assert_can_manage).
+-- 0102 adds the guard; every caller already discards the boolean return via
+-- `perform`, so this is a pure safety no-op with no observable signature change.
+-- ===========================================================================
+do $blk$
+declare
+  m uuid; result boolean;
+  debtorCashBefore int; debtorCashAfter int; debtBefore int; debtAfter int;
+  creditorCashBefore int; creditorCashAfter int;
+  ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGTSD', 5107);
+
+  update public.city_match_players set cash=500, pending_debt=100, pending_creditor_seat=1
+   where match_id=m and seat=0;
+  update public.city_match_players set cash=200 where match_id=m and seat=1;
+
+  update public.city_matches
+     set status = 'finished', finished_at = now(), phase = null, current_seat = null
+   where id = m;
+
+  select cash, pending_debt into debtorCashBefore, debtBefore from public.city_match_players where match_id=m and seat=0;
+  select cash into creditorCashBefore from public.city_match_players where match_id=m and seat=1;
+
+  result := public.city_try_settle_debt(m, 0);
+
+  select cash, pending_debt into debtorCashAfter, debtAfter from public.city_match_players where match_id=m and seat=0;
+  select cash into creditorCashAfter from public.city_match_players where match_id=m and seat=1;
+
+  if result <> false then
+    ok := false; act := act || format('city_try_settle_debt returned %s on a finished match, expected false; ', result);
+  end if;
+  if debtorCashAfter <> debtorCashBefore or debtAfter <> debtBefore or creditorCashAfter <> creditorCashBefore then
+    ok := false;
+    act := act || format('state changed on a finished match: debtor cash %s->%s, debt %s->%s, creditor cash %s->%s; ',
+      debtorCashBefore, debtorCashAfter, debtBefore, debtAfter, creditorCashBefore, creditorCashAfter);
+  end if;
+
+  insert into rg values (default,'BUG-TRY-SETTLE-DEBT-POST-FINISH',
+    'city_try_settle_debt called on an already-finished match is a complete no-op, even though the debtor could otherwise now cover their debt',
+    'returns false, no cash or pending_debt change for either seat',
+    case when ok then 'no-op, as expected' else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-AUTOPILOT-NO-DOUBLE-ADVANCE — same round: city_run_autopilot_from_
+-- current's 'bankrupt' branch called city_advance_turn even though
+-- city_bankrupt_seat (0092) already self-advances the turn when it
+-- bankrupts the current seat -- doubling the advance and silently skipping
+-- the next player's entire turn. 0102 removes the redundant call.
+-- ===========================================================================
+do $blk$
+declare m uuid; cs int; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGDBL', 5108);
+
+  delete from public.city_assets where match_id=m;
+  update public.city_match_players set cash=1, pending_debt=0, pending_creditor_seat=null
+   where match_id=m and seat=0;
+  update public.city_match_players set disconnected_at = now() - interval '90 seconds'
+   where match_id=m and seat=0;
+  update public.city_match_players set disconnected_at = null where match_id=m and seat in (1,2);
+
+  update public.city_matches set current_seat=0, phase='optional_actions' where id=m;
+
+  -- an uncoverable debt (no assets, cash=1) so city_liquidate_for_debt
+  -- exhausts its sell/mortgage loop and falls through to city_bankrupt_seat.
+  update public.city_match_players set pending_debt=999999, pending_creditor_seat=1
+   where match_id=m and seat=0;
+
+  perform public.city_run_autopilot_from_current(m);
+
+  select current_seat into cs from public.city_matches where id=m;
+  if cs <> 1 then
+    ok := false; act := act || format('current_seat is %s after autopilot bankrupted seat 0, expected 1 -- a double-advance would land on 2, silently skipping seat 1''s entire turn; ', cs);
+  end if;
+
+  insert into rg values (default,'BUG-AUTOPILOT-NO-DOUBLE-ADVANCE',
+    'autopilot bankrupting the current seat via debt-liquidation advances the turn exactly once (to seat 1), not twice',
+    'current_seat = 1',
+    case when ok then format('current_seat=%s', cs) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-AUCTION-PASS-AWAY-MISMATCH — same round: city_pass_auction's
+-- "everyone eligible passed" check compared v_eligible (excludes away seats,
+-- since 0089) against v_passed (raw passed_seats count, no away filter) --
+-- two different populations. A seat that passed while present and then went
+-- away stayed counted in v_passed while excluded from v_eligible's
+-- denominator, letting the auction settle early while a present, genuinely
+-- eligible, never-passed seat was still waiting to act. 0102 makes v_passed
+-- count the same population v_eligible does.
+-- ===========================================================================
+do $blk$
+declare m uuid; res jsonb; auctionStatus text; spaceIdx int; ok boolean := true; act text := '';
+begin
+  m := pg_temp.rg_match('CITYRGPAM', 5109);
+
+  select min(idx) into spaceIdx from public.city_board_spaces where price is not null;
+  insert into public.city_auctions (match_id, space_idx, ends_at, hard_ends_at, status, high_seat, high_bid, passed_seats)
+  values (m, spaceIdx, now() + interval '60 seconds', now() + interval '90 seconds', 'running', 0, 100, array[1]);
+
+  -- seat 1 already passed while present, then went away. seat 2 is present,
+  -- active, and has never passed -- still genuinely eligible and waiting.
+  update public.city_match_players set disconnected_at = now() - interval '90 seconds'
+   where match_id=m and seat=1;
+  update public.city_match_players set disconnected_at = null where match_id=m and seat=2;
+
+  -- Re-evaluating the check (the exact recompute every city_pass_auction
+  -- call performs) must not wrongly settle while seat 2 is still eligible.
+  perform pg_temp.rg_as(1);
+  res := public.city_pass_auction(m);
+
+  select status into auctionStatus from public.city_auctions where match_id=m;
+
+  if auctionStatus <> 'running' then
+    ok := false; act := act || format('auction status is %L, expected still running -- settled early while seat 2 (present, never passed) was still eligible; ', auctionStatus);
+  end if;
+  if res ? 'settled' then
+    ok := false; act := act || 'city_pass_auction returned a settled response instead of a waiting_on response; ';
+  end if;
+
+  insert into rg values (default,'BUG-AUCTION-PASS-AWAY-MISMATCH',
+    'an away seat''s earlier pass does not wrongly settle the auction while a present, never-passed seat is still eligible -- v_passed and v_eligible must measure the same population',
+    'auction stays running, city_pass_auction returns waiting_on, not settled',
+    case when ok then format('auction status=%s', auctionStatus) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
 -- ---------------------------------------------------------------------------
 -- teardown + report
 -- ---------------------------------------------------------------------------

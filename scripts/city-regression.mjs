@@ -121,12 +121,15 @@ function runSql() {
 
 // A block that errors out inserts no row, which would otherwise show up as a
 // smaller total rather than a failure — the quietest way for a suite to lie.
-// 65 = 64 + BUG-CHARGE-POST-FINISH (migration 0101 — city_charge's full-pay
-// and pending_debt branches wrote to city_match_players with no
-// finished-match guard, the same bug class 0098 already fixed one function
-// away in city_bankrupt_seat, never re-audited in the function that calls
-// it).
-const EXPECTED_SQL_ASSERTIONS = 65;
+// 69 = 65 + BUG-SETTLE-AUCTION-POST-FINISH + BUG-TRY-SETTLE-DEBT-POST-FINISH
+// + BUG-AUTOPILOT-NO-DOUBLE-ADVANCE + BUG-AUCTION-PASS-AWAY-MISMATCH
+// (migration 0102 — city_settle_auction and city_try_settle_debt were the
+// last two money-moving functions with no finished-match guard; autopilot
+// double-advanced the turn on a debt-liquidation bankruptcy; and
+// city_pass_auction compared two different seat populations, letting an
+// auction settle early while a present, never-passed seat was still
+// eligible).
+const EXPECTED_SQL_ASSERTIONS = 69;
 
 const sqlRows = runSql();
 if (sqlRows.length !== EXPECTED_SQL_ASSERTIONS) {

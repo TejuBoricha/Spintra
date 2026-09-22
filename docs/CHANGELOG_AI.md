@@ -2722,3 +2722,36 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 **Rollback Plan:** `git revert`, or a follow-up migration restoring the pre-`0101` function body.
 
 **Related Decisions:** Third instance of the same recurring pattern noted in the `0098`/`0099` entries and `[[project-spintra-city-pr43-review]]` — the review process keeps finding one more function that missed the shared invariant. Given this is now the fifth migration in the same bug class (`0092`, `0096`, `0097`, `0098`, `0101`), the structural fix suggested by an earlier round's finder (a table-level freeze trigger or shared `city_assert_match_active()` helper covering `city_match_players` the way `0097`'s trigger covers `city_matches`) is worth genuinely prioritizing next time this feature gets touched, rather than continuing to chase individual functions one review round at a time.
+
+---
+
+## [2026-09-22] — Migration 0102: the last two unguarded money-movers, a turn-skip bug, and an auction pass-check invariant broken by an earlier fix
+
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** Ran `/code-review high 43` a fourth time on the PR #43 diff, now including `0101`. All 8 finder agents completed this round (no orchestrator stall, no usage-limit cutoff, unlike the three rounds before it) and delivered 10 distinct finding reports across the 8 angles.
+
+**Headline validation first:** the removed-behavior-audit finder independently confirmed the finished-match-resurrection bug class **is fully closed** as of `0101`, both structurally (`0097`'s freeze trigger) and per-function — real evidence the last four rounds of fixes actually worked, not just more unverified claims.
+
+**Four more real bugs found beyond that, all verified by reading the current live code directly, not taken on any finder's word:**
+1. **`city_settle_auction`** — the other function that moves cash and grants property ownership — never got the finished-match guard its siblings got across `0096`–`0101`. Confirmed by reading its exact current body: the cash debit and `city_assets` insert are both unconditional, and neither is protected by `0097`'s freeze trigger (`city_matches` only).
+2. **`city_try_settle_debt`** had no guard at all — confirmed by two independent finders (cross-file tracer and reuse angle) and verified directly: no `v_match` select, no status check anywhere in the function. Its direct callers are protected upstream, but it's also reachable via `city_settle_debt_on_cash`, an `AFTER UPDATE OF cash` trigger firing on any cash write — including (1)'s unguarded one, compounding the corruption invisibly (a trigger, not a call site).
+3. **Autopilot double-advances the turn** when it bankrupts the current seat via debt-liquidation, skipping a player entirely. Traced the exact call chain: `city_liquidate_for_debt`'s only path to bankruptcy is through `city_bankrupt_seat`, which already self-advances the turn (added `0092`) — but `city_run_autopilot_from_current`'s own `'bankrupt'`-result branch, unchanged since `0086`, still calls `city_advance_turn` too. Nobody revisited that branch when `0092` shipped elsewhere.
+4. **`city_pass_auction`'s "everyone passed" check compared two different seat populations.** `v_eligible` excludes away seats (added `0089`); `v_passed` counted raw `passed_seats` entries with no away filter at all — confirmed by reading the exact function body. A seat that passed while present, then went away, stayed counted toward "passed" while excluded from the eligible denominator, letting an auction settle early while a genuinely present, never-passed seat was still waiting to act.
+
+**A near-miss caught before anything was applied:** an early draft of the migration mechanically copied a trailing `revoke all on function ... from public, anon, authenticated` onto the new `city_pass_auction` definition, pattern-matching against the other (internal-only) functions this migration touches. `city_pass_auction` is a genuine client-facing RPC — the "Pass" button — granted `execute` to `anon, authenticated` since `0069`. Since `CREATE OR REPLACE FUNCTION` on an unchanged signature preserves existing grants, that extra revoke would have silently broken the Pass button for every real player the moment this migration applied. Caught by checking the actual grant history (`grep -n "city_pass_auction" *.sql`) before running anything against the database, not after.
+
+**Fix:** guard added to `city_settle_auction` and `city_try_settle_debt` (same pattern as `0098`/`0101` — read the match, no-op if not active; every `city_try_settle_debt` caller already discards its return via `perform`, so this has zero observable signature change). The redundant `city_advance_turn` call removed from `city_run_autopilot_from_current`'s `'bankrupt'` branch. `city_pass_auction`'s `v_passed` query rewritten to count the same population `v_eligible` does, instead of an unfiltered `unnest(passed_seats)`.
+
+**Verification:** added `BUG-SETTLE-AUCTION-POST-FINISH`, `BUG-TRY-SETTLE-DEBT-POST-FINISH`, `BUG-AUTOPILOT-NO-DOUBLE-ADVANCE`, and `BUG-AUCTION-PASS-AWAY-MISMATCH` — all four passed on the first attempt (71/71). Adversarially confirmed as a batch: reverted all four functions to their pre-`0102` bodies in one pass, watched exactly these four tests fail with zero collateral damage to the other 67, restored the fix, confirmed 71/71 again.
+
+**Files Modified:** `supabase/migrations/0102_spintra_city_settle_debt_guards_and_turn_skip.sql` (new), `scripts/city-regression.sql` (4 new assertions), `scripts/city-regression.mjs` (`EXPECTED_SQL_ASSERTIONS` 65→69), `docs/ARCHITECTURE.md` (new 0102 row + status line).
+
+**Verification:** `npm run verify` clean. `npm run test:city-regression` 71/71. All four new assertions confirmed discriminating.
+
+**Testing Performed:** Applied directly to the already-running local Postgres container (incremental).
+
+**Risk:** Applies to a migration already local-only, not yet pushed to production (same status as `0096`–`0101`). No schema change, no data migration. All four fixes are either strictly more restrictive (blocking a write/settle that previously silently succeeded) or remove dead/harmful work (the redundant turn-advance) — existing regression coverage (`BUG-SETTLE-OVERLOAD`, `BUG-007-H-auction-allaway-pause`, `BUG-011`, `BUG-044`, etc.) confirms the legitimate paths are unaffected.
+
+**Rollback Plan:** `git revert`, or a follow-up migration restoring the four pre-`0102` function bodies.
+
+**Related Decisions:** This is now the **sixth and seventh** instances of the finished-match-resurrection bug class (`0092`, `0096`, `0097`, `0098`, `0101`, `0102` x2) across four separate review rounds — the structural fix flagged repeatedly in memory and in this changelog (a table-level freeze trigger on `city_match_players`/`city_assets`, or a shared `city_assert_match_active()` helper) is no longer a nice-to-have suggestion; it's the load-bearing fix this feature actually needs before its next review round finds instance eight. Also logged, not acted on this round: a meta-suggestion from one finder to squash the unshipped `0063`–`0102` migration chain (or at minimum the ~7 fix-on-fix migrations) before this PR merges, to shrink the diff and remove the incentive that's been producing "one more guard" for four rounds running.
