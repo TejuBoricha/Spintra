@@ -121,15 +121,13 @@ function runSql() {
 
 // A block that errors out inserts no row, which would otherwise show up as a
 // smaller total rather than a failure — the quietest way for a suite to lie.
-// 69 = 65 + BUG-SETTLE-AUCTION-POST-FINISH + BUG-TRY-SETTLE-DEBT-POST-FINISH
-// + BUG-AUTOPILOT-NO-DOUBLE-ADVANCE + BUG-AUCTION-PASS-AWAY-MISMATCH
-// (migration 0102 — city_settle_auction and city_try_settle_debt were the
-// last two money-moving functions with no finished-match guard; autopilot
-// double-advanced the turn on a debt-liquidation bankruptcy; and
-// city_pass_auction compared two different seat populations, letting an
-// auction settle early while a present, never-passed seat was still
-// eligible).
-const EXPECTED_SQL_ASSERTIONS = 69;
+// 70 = 69 + BUG-ROOM-LOCK-KEY-MISMATCH (migration 0103 — city_create_match
+// locked a room via a different hash function than elect_room_host, so the
+// two never actually excluded each other; also gave the proposer-side trade
+// debt check its own distinct error code instead of reusing the accepting
+// seat's — no new assertion for that, BUG-TRADE-PROPOSER-DEBT's existing
+// check was tightened in place to the exact new code).
+const EXPECTED_SQL_ASSERTIONS = 70;
 
 const sqlRows = runSql();
 if (sqlRows.length !== EXPECTED_SQL_ASSERTIONS) {

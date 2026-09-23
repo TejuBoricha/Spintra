@@ -1265,6 +1265,7 @@ const COMMAND_ERROR_COPY: Record<string, string> = {
   CITY_NOTHING_TO_BUY: "There's nothing to buy here.",
   CITY_SEAT_OUT: "You're out of this match.",
   CITY_SETTLE_DEBT_FIRST: "Settle what you owe first.",
+  CITY_PROPOSER_SETTLE_DEBT_FIRST: "The other player needs to settle their debt before this trade can go through.",
   CITY_SET_INCOMPLETE: "You need the whole country before building.",
   CITY_EVEN_BUILD: "Build and sell evenly across a country.",
   CITY_SELL_BUILDINGS_FIRST: "Sell its buildings before mortgaging.",

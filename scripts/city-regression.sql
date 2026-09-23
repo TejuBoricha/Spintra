@@ -2763,7 +2763,13 @@ begin
     perform public.city_accept_trade(offer);
     ok := false; act := act || 'proposer''s trade was accepted despite leaving their own debt uncovered; ';
   exception when others then
-    if SQLERRM not like '%SETTLE_DEBT_FIRST%' then
+    -- Exact code, not a loose substring match: 0103 gave this its own
+    -- CITY_PROPOSER_SETTLE_DEBT_FIRST distinct from CITY_SETTLE_DEBT_FIRST
+    -- (BUG-011's own code, for the accepting seat's own debt) -- the
+    -- accepting seat calling this function has no debt themselves here, so
+    -- the generic acceptor-facing message would be both false and
+    -- unactionable if this ever regressed back to the shared code.
+    if SQLERRM not like '%CITY_PROPOSER_SETTLE_DEBT_FIRST%' then
       ok := false; act := act || 'wrong refusal reason: '||SQLERRM||'; ';
     end if;
   end;
@@ -3105,6 +3111,38 @@ begin
     'an away seat''s earlier pass does not wrongly settle the auction while a present, never-passed seat is still eligible -- v_passed and v_eligible must measure the same population',
     'auction stays running, city_pass_auction returns waiting_on, not settled',
     case when ok then format('auction status=%s', auctionStatus) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- BUG-ROOM-LOCK-KEY-MISMATCH — city_create_match locked a room via
+-- hashtextextended(p_room_code, 0) (64-bit) while elect_room_host (0061,
+-- pre-existing) locks the SAME room via hashtext(p_room_code) (32-bit) --
+-- two different lock IDs for what's meant to be one mutual exclusion, so
+-- they never actually excluded each other. 0103 fixes city_create_match to
+-- use the same hashtext(p_room_code) every other room-code lock in this
+-- codebase already uses. Structural check, matching BUG-027/BUG-RETIRE-
+-- SEAT-LOCK's pattern: true concurrency across two functions isn't
+-- practical to simulate deterministically in this single-session suite.
+-- ===========================================================================
+do $blk$
+declare src text; ok boolean := true; act text := '';
+begin
+  select pg_get_functiondef(p.oid) into src
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and p.proname = 'city_create_match';
+
+  if src not like '%hashtext(p_room_code)%' then
+    ok := false; act := act || 'city_create_match no longer locks the room via hashtext(p_room_code); ';
+  end if;
+  if src like '%hashtextextended(p_room_code%' then
+    ok := false; act := act || 'city_create_match still locks the room via the mismatched hashtextextended(p_room_code, ...); ';
+  end if;
+
+  insert into rg values (default,'BUG-ROOM-LOCK-KEY-MISMATCH',
+    'city_create_match locks a room with the same hashtext(p_room_code) key elect_room_host already uses, so the two functions actually exclude each other',
+    'hashtext(p_room_code) present, hashtextextended(p_room_code, ...) absent',
+    case when ok then 'lock key matches elect_room_host' else act end,
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 

@@ -2755,3 +2755,32 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 **Rollback Plan:** `git revert`, or a follow-up migration restoring the four pre-`0102` function bodies.
 
 **Related Decisions:** This is now the **sixth and seventh** instances of the finished-match-resurrection bug class (`0092`, `0096`, `0097`, `0098`, `0101`, `0102` x2) across four separate review rounds — the structural fix flagged repeatedly in memory and in this changelog (a table-level freeze trigger on `city_match_players`/`city_assets`, or a shared `city_assert_match_active()` helper) is no longer a nice-to-have suggestion; it's the load-bearing fix this feature actually needs before its next review round finds instance eight. Also logged, not acted on this round: a meta-suggestion from one finder to squash the unshipped `0063`–`0102` migration chain (or at minimum the ~7 fix-on-fix migrations) before this PR merges, to shrink the diff and remove the incentive that's been producing "one more guard" for four rounds running.
+
+---
+
+## [2026-09-23] — Migration 0103: the two lower-severity findings from the 2026-09-22 rounds, fixed on request
+
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** User asked directly to fix the two items explicitly deferred in the last status report — a lock-key mismatch and a misleading trade-debt error message.
+
+**What happened, both verified by reading the current live code directly:**
+1. **`city_create_match` locked a room with a different hash function than `elect_room_host` uses for the same room.** `city_create_match` used `hashtextextended(p_room_code, 0)` (64-bit); the pre-existing `elect_room_host` (`0061`) uses `hashtext(p_room_code)` (32-bit) — confirmed by grepping every room-code-keyed lock in the codebase and finding `city_create_match` was the one outlier. Different lock IDs for the same string mean the two functions never actually excluded each other, undermining the "serialize on this room" intent `0063`'s own header attributes to `0029`'s convention.
+2. **`city_accept_trade`'s proposer-side debt check (`0100`) reused the accepting seat's own error code.** Confirmed only the accepting seat (`v_to`) can ever call this function, so the client's "Settle what you owe first" text — correct for the pre-existing `v_to` check — is false and unactionable when the *proposer* (`v_from`) is the one in debt.
+
+**Fix:** `city_create_match` now locks with the same `hashtext(p_room_code)` every other room-code lock already uses. `city_accept_trade`'s `v_from` branch now raises a distinct `CITY_PROPOSER_SETTLE_DEBT_FIRST`, with its own client-side message in `use-city-match.ts`'s error map naming whose debt is actually blocking the trade.
+
+**A second near-miss caught, same class as `0102`'s:** while drafting, nearly added a trailing `revoke all` to `city_create_match` too, out of habit from the other (internal-only) functions touched in recent migrations. `city_create_match` is genuinely client-facing (`grant execute to anon, authenticated`) — checked its actual grant history first this time (`grep -n "city_create_match" *.sql`) before writing anything, and omitted the revoke. The lesson from `0102`'s near-miss held.
+
+**Verification:** added `BUG-ROOM-LOCK-KEY-MISMATCH` (structural — checks `pg_get_functiondef` for the correct lock call, matching `BUG-027`/`BUG-RETIRE-SEAT-LOCK`'s pattern, since true two-function lock-contention isn't practical to simulate in this single-session suite) and tightened the existing `BUG-TRADE-PROPOSER-DEBT` assertion from a loose `%SETTLE_DEBT_FIRST%` substring match to the exact `CITY_PROPOSER_SETTLE_DEBT_FIRST` code. Both confirmed discriminating: reverted both functions to their pre-`0103` bodies, watched the right tests fail (the lock test alone, then both together once `city_accept_trade` was also reverted), restored, confirmed 72/72 again.
+
+**Files Modified:** `supabase/migrations/0103_spintra_city_lock_key_and_debt_error_fixes.sql` (new), `src/app/room/[code]/city/use-city-match.ts` (new error-map entry), `scripts/city-regression.sql` (1 new assertion, 1 tightened), `scripts/city-regression.mjs` (`EXPECTED_SQL_ASSERTIONS` 69→70), `docs/ARCHITECTURE.md` (new 0103 row + status line).
+
+**Verification:** `npm run verify` clean (typecheck/lint pass on the client-side error-map change). `npm run test:city-regression` 72/72. Both changes confirmed discriminating.
+
+**Testing Performed:** Applied directly to the already-running local Postgres container (incremental). Confirmed `city_create_match`'s client grant survived the redefinition via `has_function_privilege('anon', ...)` before considering the near-miss closed.
+
+**Risk:** Applies to a migration already local-only, not yet pushed to production (same status as `0096`–`0102`). No schema change, no data migration. The lock-key fix only strengthens an existing serialization intent (no new blocking behavior beyond what `elect_room_host` callers already experience). The error-code split is additive from the client's perspective — one new map entry, no existing entry removed or renamed.
+
+**Rollback Plan:** `git revert`, or a follow-up migration restoring the two pre-`0103` function bodies plus removing the new client error-map entry.
+
+**Related Decisions:** Both items were explicitly deferred in the prior status report specifically because they were lower severity than the correctness bugs fixed in `0098`–`0102` — this entry closes that deferred list out completely for the current review cycle. No new instances of the resurrection bug class in this migration; a genuinely different pair of findings.
