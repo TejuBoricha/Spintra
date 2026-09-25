@@ -173,7 +173,7 @@ export function ScoreboardPanel({ roomCode, isHost }: { roomCode: string; isHost
           <div className="space-y-2 max-h-80 overflow-y-auto">
             {standings.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-6">
-                No scores yet — play a round of Trivia, RPS, or Bingo to get on the board.
+                No scores yet. Play a round of Trivia, Rock Paper Scissors, or Bingo to get on the board.
               </p>
             )}
             {standings.map((row) => (

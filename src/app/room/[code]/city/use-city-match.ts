@@ -729,7 +729,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
           // reconnect) resumes right where this cursor lands, same
           // self-healing property the ascending order already relies on.
           console.warn(
-            `City activity feed hit its ${FETCH_LIMIT}-row fetch cap — more events may remain.`
+            `City activity feed hit its ${FETCH_LIMIT}-row fetch cap; more events may remain.`
           );
         }
         setEvents((prev) => {
@@ -1259,7 +1259,7 @@ const COMMAND_ERROR_COPY: Record<string, string> = {
   CITY_MATCH_NOT_ACTIVE: "This match isn't running.",
   CITY_NOT_SEATED: "You're spectating this match.",
   CITY_DECISION_PENDING: "Decide on this space before ending your turn.",
-  CITY_TURN_CLOCK_PAUSED: "A trade is in progress — wait for it to resolve.",
+  CITY_TURN_CLOCK_PAUSED: "A trade is in progress. Wait for it to finish.",
   CITY_INSUFFICIENT_FUNDS: "You can't afford that.",
   CITY_ALREADY_OWNED: "Someone already owns that.",
   CITY_NOTHING_TO_BUY: "There's nothing to buy here.",
@@ -1274,7 +1274,7 @@ const COMMAND_ERROR_COPY: Record<string, string> = {
   CITY_ALREADY_MORTGAGED: "That's already mortgaged.",
   CITY_NOT_MORTGAGED: "That isn't mortgaged.",
   CITY_NOT_YOURS: "You don't own that.",
-  CITY_CAN_PAY: "You can still cover this — sell or mortgage instead.",
+  CITY_CAN_PAY: "You can still cover this by selling or mortgaging.",
   CITY_OFFER_STALE: "The terms changed since this was offered, so it wasn't applied.",
   CITY_OFFER_EXPIRED: "That offer has expired.",
   CITY_OFFER_CLOSED: "That offer is no longer open.",
@@ -1282,7 +1282,7 @@ const COMMAND_ERROR_COPY: Record<string, string> = {
   CITY_DEVELOPED_CANNOT_TRADE: "Sell the buildings in that country before trading it.",
   CITY_THEY_CANT_AFFORD: "They don't have that much cash.",
   CITY_NOT_THEIRS: "They don't own that.",
-  CITY_IN_DETENTION: "You're in Customs — get out first.",
+  CITY_IN_DETENTION: "You're in Customs. Get out first.",
   CITY_NOT_DETAINED: "You're not in Customs.",
   CITY_NO_VISA: "You don't have a Transit Visa.",
   CITY_AUCTION_RUNNING: "Finish the auction first.",

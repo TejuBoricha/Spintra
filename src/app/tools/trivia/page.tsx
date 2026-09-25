@@ -86,11 +86,11 @@ export default function TriviaPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-yellow-400" />
-            <span className="text-sm text-muted-foreground">Test your knowledge</span>
+            <span className="text-sm text-muted-foreground">Multiple choice</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Trivia</h1>
           <div className="flex items-center justify-center gap-3 mb-8">
-            <p className="text-muted-foreground">Play free online trivia — how much do you really know?</p>
+            <p className="text-muted-foreground">Multiple-choice questions, one at a time.</p>
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
               title={soundEnabled ? "Sound On" : "Sound Off"}
@@ -151,7 +151,7 @@ export default function TriviaPage() {
                   {selected === question.correct ? (
                     <><Emoji name="hundred_points" size={28} pop /> Correct!</>
                   ) : (
-                    <><Emoji name="disappointed_face" size={28} pop /> Not quite — it was &quot;{question.options[question.correct]}&quot;</>
+                    <><Emoji name="disappointed_face" size={28} pop /> Not quite. It was &quot;{question.options[question.correct]}&quot;</>
                   )}
                 </p>
                 <Button
@@ -168,7 +168,7 @@ export default function TriviaPage() {
             <CelebrationBanner
               icon={<Emoji name={score >= Math.ceil(total * 0.7) ? "trophy" : "books"} size={48} pop />}
               title={`${score} / ${total}`}
-              subtitle={score >= Math.ceil(total * 0.7) ? "Trivia Champion!" : "Nice try — go again?"}
+              subtitle={score >= Math.ceil(total * 0.7) ? "Trivia Champion!" : "Nice try. Go again?"}
             />
             <Button onClick={reset} variant="outline" className="mt-6">
               <RotateCcw className="w-4 h-4 mr-2" /> Play Again

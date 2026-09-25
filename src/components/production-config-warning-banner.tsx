@@ -20,7 +20,7 @@ export function ProductionConfigWarningBanner() {
     >
       <AlertTriangle className="w-4 h-4 flex-shrink-0" />
       <span>
-        Multiplayer is running in local-only mode — Supabase environment variables are missing
+        Multiplayer is running in local-only mode because the Supabase environment variables are missing
         from this production build. This should not happen; check the hosting provider&apos;s
         environment configuration.
       </span>

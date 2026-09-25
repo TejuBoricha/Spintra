@@ -69,7 +69,7 @@ export function DiceActivity() {
           grid below stays exactly as it was. */}
       <div className="sr-only" role="status" aria-live="polite">
         {!diceRolling && diceResults.length > 0
-          ? `Rolled: ${diceResults.join(", ")}${diceResults.length > 1 ? ` — total ${diceResults.reduce((a, b) => a + b, 0)}` : ""}`
+          ? `Rolled: ${diceResults.join(", ")}${diceResults.length > 1 ? ` (total ${diceResults.reduce((a, b) => a + b, 0)})` : ""}`
           : null}
       </div>
 

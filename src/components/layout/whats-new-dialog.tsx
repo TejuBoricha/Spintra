@@ -41,12 +41,12 @@ const UPDATES: Announcement[] = [
   {
     icon: Building2,
     title: "Spintra City",
-    body: "A Monopoly-style property-trading board game for 2-8 players — roll, buy, develop, and negotiate. The server referees every move, so nobody can cheat. Live now.",
+    body: "A Monopoly-style board game for 2 to 8 players. Buy cities, build on them, and trade with each other. You can play it now.",
   },
   {
     icon: GraduationCap,
     title: "Classroom Mode",
-    body: "A teacher-friendly room preset — only classroom-safe activities, none of the party/social games.",
+    body: "A room for teachers that only shows the classroom-safe games. Party games stay hidden.",
   },
   {
     icon: PartyPopper,

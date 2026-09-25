@@ -30,16 +30,16 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://spintra.io"),
-  title: "Spintra — Decisions. Games. Teams. Together.",
+  title: "Spintra | Free wheel spinner, team maker, and party games",
   description:
-    "Create rooms, invite friends, spin wheels, draw names, build teams, run tournaments, and play together in real time.",
+    "Spin a wheel, draw names, split into teams, or run a bracket. Open a room and everyone sees the same result on their own screen. Free, in your browser.",
   keywords: [
     "team generator", "wheel spinner", "tournament bracket", "random name picker",
     "multiplayer games", "party games", "classroom activities", "lucky wheel",
   ],
   openGraph: {
-    title: "Spintra — Decisions. Games. Teams. Together.",
-    description: "Turn every decision into an experience.",
+    title: "Spintra | Free wheel spinner, team maker, and party games",
+    description: "Can't decide? Spin for it. Free games and group tools you play together in one room.",
     url: "https://spintra.io",
     siteName: "Spintra",
     images: [{ url: "/og-image.png" }],
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Spintra",
-    description: "Turn every decision into an experience.",
+    description: "Can't decide? Spin for it. Free games and group tools you play together in one room.",
     images: ["/og-image.png"],
   },
   manifest: "/manifest.json",
@@ -69,7 +69,7 @@ const structuredData = {
   name: "Spintra",
   url: "https://spintra.io",
   description:
-    "Create rooms, invite friends, spin wheels, draw names, build teams, run tournaments, and play together in real time.",
+    "Spin a wheel, draw names, split into teams, or run a bracket. Open a room and everyone sees the same result on their own screen. Free, in your browser.",
   applicationCategory: "GameApplication",
   operatingSystem: "Any (web browser)",
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },

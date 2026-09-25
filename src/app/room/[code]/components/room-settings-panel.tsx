@@ -216,8 +216,8 @@ export function RoomSettingsPanel({
           <DialogHeader>
             <DialogTitle>Room Settings</DialogTitle>
             <DialogDescription>
-              Change your room&apos;s name, size, and visibility. Everyone in the room sees updates
-              instantly.
+              Change your room&apos;s name, size, and visibility. Everyone in the room sees the
+              change right away.
             </DialogDescription>
           </DialogHeader>
 
@@ -242,7 +242,7 @@ export function RoomSettingsPanel({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 maxLength={60}
-                placeholder="My Awesome Room"
+                placeholder="Friday game night"
                 disabled={fieldsDisabled}
               />
             </div>
@@ -264,7 +264,7 @@ export function RoomSettingsPanel({
               />
               {onlineCount > ROOM_MIN_CAPACITY && (
                 <p className="text-[11px] text-muted-foreground">
-                  Can&apos;t go below {onlineCount} — that&apos;s how many people are here now.
+                  Can&apos;t go below {onlineCount}, since that&apos;s how many people are here now.
                 </p>
               )}
             </div>

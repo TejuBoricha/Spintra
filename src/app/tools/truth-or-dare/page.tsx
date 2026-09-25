@@ -29,7 +29,7 @@ export default function TruthOrDarePage() {
     const pool = type === "truth" ? category.truths : category.dares;
     const available = pool.filter((q) => !used.has(q));
     if (available.length === 0) {
-      toast("You've seen them all — shuffling for another round", {
+      toast("That's every prompt. Shuffling for another round.", {
         icon: <Emoji name="party_popper" size={18} />,
       });
       const newPick = pool[Math.floor(Math.random() * pool.length)];
@@ -48,10 +48,10 @@ export default function TruthOrDarePage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-pink-400" />
-            <span className="text-sm text-muted-foreground">Spicy questions</span>
+            <span className="text-sm text-muted-foreground">For parties</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Truth or Dare</h1>
-          <p className="text-muted-foreground mb-8">Play Truth or Dare online — draw truths and dares to spice up any gathering.</p>
+          <p className="text-muted-foreground mb-8">Pick truth or dare, and draw a prompt.</p>
         </motion.div>
 
         {/* Category Selection */}

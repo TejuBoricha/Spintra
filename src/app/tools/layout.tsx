@@ -9,9 +9,9 @@ import type { Metadata } from "next";
 // child-wins metadata merging. Previously missing entirely: /tools inherited
 // the root layout's homepage title/description verbatim.
 export const metadata: Metadata = {
-  title: "All Games & Tools — Spintra",
+  title: "All Games & Tools | Spintra",
   description:
-    "Browse all 14 Spintra tools — spinners, brackets, team makers, dice, trivia, and more. Play solo or turn any of them into a synced multiplayer room.",
+    "All 14 Spintra tools, including the wheel spinner, bracket maker, team maker, dice, and trivia. Use one on your own, or open a room and play it with a group.",
   alternates: { canonical: "/tools" },
 };
 

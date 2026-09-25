@@ -12,59 +12,59 @@ import { Button } from "@/components/ui/button";
 import { GAMES } from "@/lib/games";
 
 export const metadata: Metadata = {
-  title: "Free Classroom Tools for Teachers — Spintra",
+  title: "Free Classroom Tools for Teachers | Spintra",
   description:
-    "A free random name picker, team generator, trivia, and more for the classroom. No sign-up for you or your students, works on any Chromebook or browser, free forever.",
+    "A free random name picker, team generator, trivia, and more for the classroom. Nobody signs up, not you and not your students, and it works on Chromebooks and any browser.",
   alternates: { canonical: "/for-teachers" },
   openGraph: {
-    title: "Free Classroom Tools for Teachers — Spintra",
+    title: "Free Classroom Tools for Teachers | Spintra",
     description:
-      "Random name pickers, team makers, and review games built for the classroom — free, no sign-up required.",
+      "Name pickers, team makers, and review games for the classroom. Free, and your students don't need accounts.",
     url: "/for-teachers",
     type: "website",
   },
 };
 
 const TRUST_POINTS = [
-  { icon: Sparkles, label: "100% free, no catch" },
-  { icon: Lock, label: "No student sign-ups, ever" },
-  { icon: MonitorSmartphone, label: "Works on Chromebooks & any browser" },
-  { icon: Users, label: "Rooms hold up to 50 students" },
+  { icon: Sparkles, label: "Free to use" },
+  { icon: Lock, label: "Students don't sign up" },
+  { icon: MonitorSmartphone, label: "Works on Chromebooks and any browser" },
+  { icon: Users, label: "Rooms for up to 50 people" },
 ];
 
 const CLASSROOM_IDEAS: { href: string; angle: string }[] = [
   { href: "/tools/name-draw", angle: "Cold-call fairly, or draw a random student for a task." },
-  { href: "/tools/team-maker", angle: "Split the class into balanced groups in one click." },
-  { href: "/tools/trivia", angle: "Turn test review into a live, class-wide quiz." },
+  { href: "/tools/team-maker", angle: "Split the class into even groups." },
+  { href: "/tools/trivia", angle: "Review for a test with a quiz the whole class answers at once." },
   { href: "/tools/lucky-wheel", angle: "Spin for rewards, prizes, or which topic to cover next." },
   { href: "/tools/tournament", angle: "Run a bracket for a class competition or spelling bee." },
-  { href: "/tools/word-scramble", angle: "Warm up the class with a quick vocabulary challenge." },
+  { href: "/tools/word-scramble", angle: "Start the lesson with a quick vocabulary round." },
 ];
 
 const FAQS = [
   {
     q: "Is Spintra free for teachers?",
-    a: "Yes. Every tool on this page is free to use, with no account, subscription, or credit card required.",
+    a: "Yes. Every tool on this page is free, and there's no account, subscription, or card details to hand over.",
   },
   {
     q: "Do my students need to sign up or create an account?",
-    a: "No. Spintra never asks for an email, password, or real name from you or your students. Anyone who joins a room gets an anonymous guest name automatically.",
+    a: "No. Spintra never asks you or your students for an email, a password, or a real name. Anyone who joins a room is given a guest name.",
   },
   {
     q: "Can I run these on a Chromebook or classroom projector?",
-    a: "Yes. Everything runs in the browser with no downloads or extensions, and works on Chromebooks, interactive whiteboards, tablets, and any modern browser.",
+    a: "Yes. Everything runs in the browser with nothing to install, so it works on Chromebooks, interactive whiteboards, tablets, and ordinary laptops.",
   },
   {
     q: "Do my students need to join a room, or can I just run it myself?",
-    a: "Both work. Open any tool directly on your own screen and run it for the whole class, or create a Classroom room and share the 6-character code if you want students following along on their own devices.",
+    a: "Either works. Open a tool on your own screen and run it at the front of the class, or create a Classroom room and share the 6-character code so students can follow along on their own devices.",
   },
   {
     q: "Which tools are appropriate for the classroom?",
-    a: "The tools on this page are curated to be classroom-appropriate — party-oriented games elsewhere on Spintra, like Truth or Dare, are deliberately left off this list.",
+    a: "Everything on this page. Party games like Truth or Dare are left off this list on purpose, and a Classroom room hides them too.",
   },
   {
     q: "Can I keep the room private to just my class?",
-    a: "Yes. Rooms use a private 6-character code and can be locked once everyone has joined, so only people you share the code with can enter.",
+    a: "Yes. Only people with the 6-character code can join, and you can lock the room once your class is in.",
   },
 ];
 
@@ -98,8 +98,8 @@ export default function ForTeachersPage() {
               Free Classroom Tools for <span className="gradient-text">Teachers</span>
             </h1>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Random name pickers, team makers, trivia, and more — built for the classroom.
-              Nothing for you or your students to sign up for, and it&apos;s free forever.
+              Name pickers, team makers, trivia, and more, for use in class.
+              It&apos;s free, and neither you nor your students need an account.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
@@ -137,7 +137,7 @@ export default function ForTeachersPage() {
               Ideas for your classroom
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              A few ways other teachers put these tools to use.
+              A few ways to use these in a lesson.
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -226,10 +226,10 @@ export default function ForTeachersPage() {
         {/* Bottom CTA */}
         <div className="max-w-3xl mx-auto w-full text-center rounded-[2rem] border border-(--border-hairline) bg-(--surface-panel) p-10 space-y-4">
           <h2 className="font-display text-2xl sm:text-3xl font-black">
-            Ready to try it with your class?
+            Try it with your class
           </h2>
           <p className="text-muted-foreground">
-            No sign-up, no install — just open a room and go.
+            Open a room, put the code on the board, and your students can join.
           </p>
           <Link href="/create?type=classroom" className="inline-block">
             <Button variant="brand" size="lg" className="rounded-full font-bold">

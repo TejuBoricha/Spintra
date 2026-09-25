@@ -76,11 +76,11 @@ export default function BingoPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-teal-400" />
-            <span className="text-sm text-muted-foreground">Classic number bingo</span>
+            <span className="text-sm text-muted-foreground">75-ball bingo</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Bingo</h1>
           <div className="flex items-center justify-center gap-3 mb-8">
-            <p className="text-muted-foreground">Play free online bingo — call numbers, mark your card, and shout bingo first.</p>
+            <p className="text-muted-foreground">Call numbers until someone completes a line.</p>
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
               title={soundEnabled ? "Sound On" : "Sound Off"}

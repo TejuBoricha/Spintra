@@ -13,11 +13,11 @@ interface RankTier {
 }
 
 export const RANK_TIERS: RankTier[] = [
-  { rank: "rookie", label: "Rookie", icon: null, color: "var(--fog-500)", floor: 0, desc: "Everyone starts here — no XP earned yet." },
-  { rank: "explorer", label: "Explorer", icon: Compass, color: "var(--cyan-500)", floor: 100, desc: "First 100 XP — you've started earning points." },
-  { rank: "challenger", label: "Challenger", icon: Flame, color: "var(--coral-500)", floor: 300, desc: "300+ XP — a regular winner." },
-  { rank: "master", label: "Master", icon: Star, color: "var(--violet-500)", floor: 700, desc: "700+ XP — one of the room's strongest players." },
-  { rank: "legend", label: "Legend", icon: Crown, color: "var(--lime-400)", floor: 1500, desc: "1500+ XP — the top tier. Rare and hard-earned." },
+  { rank: "rookie", label: "Rookie", icon: null, color: "var(--fog-500)", floor: 0, desc: "Where everyone starts." },
+  { rank: "explorer", label: "Explorer", icon: Compass, color: "var(--cyan-500)", floor: 100, desc: "You've earned your first 100 XP." },
+  { rank: "challenger", label: "Challenger", icon: Flame, color: "var(--coral-500)", floor: 300, desc: "Wins regularly." },
+  { rank: "master", label: "Master", icon: Star, color: "var(--violet-500)", floor: 700, desc: "One of the strongest players around." },
+  { rank: "legend", label: "Legend", icon: Crown, color: "var(--lime-400)", floor: 1500, desc: "The top rank. Not many people get here." },
 ]
 const TIER_BY_RANK = Object.fromEntries(RANK_TIERS.map((t) => [t.rank, t])) as Record<UserRank, RankTier>
 
@@ -50,7 +50,7 @@ export function RankBadge({ xp, rank }: { xp?: number; rank?: UserRank }) {
         {tier.label}
       </TooltipTrigger>
       <TooltipContent>
-        {tier.label} — {tier.desc}
+        {tier.label}: {tier.desc}
       </TooltipContent>
     </Tooltip>
   )
@@ -61,7 +61,7 @@ export function RankLegend() {
   return (
     <div className="flex flex-col gap-2.5">
       <p className="font-body text-sm text-(--text-secondary)">
-        Rank is earned from XP — points from Trivia, Rock Paper Scissors, and Bingo. Other games don&apos;t award XP.
+        Your rank goes up as you earn XP, which you get from Trivia, Rock Paper Scissors, and Bingo. Other games don&apos;t give XP.
       </p>
       {RANK_TIERS.map((t) => {
         const Icon = t.icon ?? Circle
@@ -80,7 +80,7 @@ export function RankLegend() {
             <div className="flex-1">
               <div className="font-body text-[13px] font-bold text-foreground">
                 {t.label}{" "}
-                <span className="font-semibold text-(--text-secondary)">— {t.floor} XP</span>
+                <span className="font-semibold text-(--text-secondary)">{t.floor === 0 ? "0 XP" : `${t.floor}+ XP`}</span>
               </div>
               <div className="font-body text-xs text-(--text-secondary)">{t.desc}</div>
             </div>

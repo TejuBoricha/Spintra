@@ -60,7 +60,7 @@ export default function WordScramblePage() {
       fireConfetti();
     } else {
       playPop(soundEnabled);
-      toast.error("Not quite — try again!");
+      toast.error("Not quite. Try again.");
     }
   };
 
@@ -85,7 +85,7 @@ export default function WordScramblePage() {
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Word Scramble</h1>
           <div className="flex items-center justify-center gap-3 mb-8">
-            <p className="text-muted-foreground">Play word scramble online — unscramble the letters as fast as you can.</p>
+            <p className="text-muted-foreground">Work out the word from its jumbled letters.</p>
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
               title={soundEnabled ? "Sound On" : "Sound Off"}

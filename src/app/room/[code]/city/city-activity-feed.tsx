@@ -66,7 +66,7 @@ function describe(
   switch (e.kind) {
     case "rolled": {
       const dice = Array.isArray(p.dice) ? (p.dice as number[]) : [];
-      return `${actor} rolled ${dice.join("-")}${p.doubles ? " — doubles!" : ""}`;
+      return `${actor} rolled ${dice.join("-")}${p.doubles ? " (doubles)" : ""}`;
     }
     case "bought":
       return `${actor} bought ${space(p.space)} for ${money(p.price)}`;
@@ -103,7 +103,7 @@ function describe(
     case "card_charged":
       return `${actor} paid ${money(p.amount)} to ${who(p.to_seat)} from a card`;
     default:
-      return `${actor} — ${e.kind}`;
+      return `${actor}: ${e.kind}`;
   }
 }
 

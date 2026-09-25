@@ -588,7 +588,7 @@ export default function LuckyWheelPage() {
             <span className="gradient-text">Lucky Wheel</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            A free online spinner wheel — spin to decide, with custom entries, weights, and colors.
+            Add your options, set the odds if you want, and spin.
           </p>
         </motion.div>
 
@@ -870,8 +870,8 @@ export default function LuckyWheelPage() {
           </div>
           <h2 className="text-xl font-bold">Spin together with friends?</h2>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Create a room and let everyone watch the wheel spin live.
-            Perfect for giveaways, game nights, and decision-making.
+            Create a room and everyone watches the same spin on their own screen.
+            Useful for giveaways, where people want to see the draw for themselves.
           </p>
           <Link href="/create?type=lucky-wheel">
             <Button className="gap-2 bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">

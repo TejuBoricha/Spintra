@@ -147,7 +147,7 @@ export function GuessNumberActivity() {
           </p>
           {guessHistory.length === 0 && (
             <p className="text-xs text-muted-foreground mb-2">
-              Share the range 1–100, then wait for guesses to come in
+              Tell everyone the range is 1 to 100, then wait for guesses
             </p>
           )}
           <div className="flex gap-4 items-center">
@@ -223,7 +223,7 @@ export function GuessNumberActivity() {
             type="number"
             min={1}
             max={100}
-            placeholder="1 – 100"
+            placeholder="1-100"
             aria-label="Enter your guess from 1 to 100"
             disabled={isSubmitting}
             className="flex-1 rounded-full px-4 h-11"

@@ -40,7 +40,7 @@ export default function ToolsPage() {
               Quick <span className="gradient-text">Tools</span>
             </h1>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              Quickly use any of our built-in tools without creating a full multiplayer room. Perfect for local play or fast decisions.
+              Use any tool on your own, without making a room. Good for when everyone is looking at one screen.
             </p>
           </div>
         </motion.div>

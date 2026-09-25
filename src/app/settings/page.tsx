@@ -110,7 +110,7 @@ export default function SettingsPage() {
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            No account required — this name is remembered on this device only.
+            No account needed. This name is only remembered on this device.
           </p>
         </section>
 

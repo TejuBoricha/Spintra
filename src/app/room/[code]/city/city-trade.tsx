@@ -154,15 +154,15 @@ export function CityTrade({
               <p className="text-sm text-muted-foreground flex-1">
                 {o.queued ? (
                   <>
-                    Queued for <b>{nameOf(o.to_seat)}</b> — it&apos;s their turn, so this waits
+                    Queued for <b>{nameOf(o.to_seat)}</b>. It&apos;s their turn, so this waits
                     until it ends.
                   </>
                 ) : (
                   <>
-                    Waiting on <b>{nameOf(o.to_seat)}</b>
+                    Waiting on <b>{nameOf(o.to_seat)}</b>.
                   </>
                 )}{" "}
-                — {describeSide(o.give_spaces, o.give_cash, spaceName)} for{" "}
+                You offered {describeSide(o.give_spaces, o.give_cash, spaceName)} for{" "}
                 {describeSide(o.get_spaces, o.get_cash, spaceName)}.
               </p>
               <Button size="sm" variant="outline" onClick={() => onWithdraw(o.id)}>
@@ -270,7 +270,7 @@ export function CityTrade({
 
           <p className="text-xs text-muted-foreground mt-2">
             Offers lapse at the end of your next turn, or after 3 minutes. Terms are re-checked when
-            they accept — if anything has moved, the trade fails rather than going through on terms
+            they accept. If anything has changed, the trade fails instead of going through on terms
             that no longer hold.
           </p>
         </div>

@@ -4,9 +4,9 @@ import { Loader2 } from "lucide-react";
 import CreateRoomClient from "./create-client";
 
 export const metadata: Metadata = {
-  title: "Create a Room — Spintra",
+  title: "Create a Room | Spintra",
   description:
-    "Pick a game type, set up your multiplayer room, and invite friends with a 6-character code in seconds.",
+    "Pick a game, set up your room, and invite people with a 6-character code.",
   alternates: { canonical: "/create" },
 };
 
@@ -17,7 +17,7 @@ export default function Page() {
       <div className="min-h-screen pb-16 px-4">
         <div className="max-w-4xl mx-auto">
           <h1 className="font-display text-4xl sm:text-5xl font-black mb-4">Create a <span className="gradient-text">Room</span></h1>
-          <p className="text-muted-foreground text-lg mb-8">Pick a game type, set up your room, and invite people in seconds.</p>
+          <p className="text-muted-foreground text-lg mb-8">Pick a game, set up your room, and invite people with the code.</p>
 
           {/* Server-rendered button so production builds expose it for E2E tests.
               The click-bridge script that catches pre-hydration clicks on this

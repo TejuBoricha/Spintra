@@ -45,7 +45,7 @@ export function renderOgImage({
   title,
   desc,
   gradient,
-  tagline = "Free · No sign-up · Play instantly",
+  tagline = "Free, in your browser",
 }: {
   title: string;
   desc: string;

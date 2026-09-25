@@ -27,16 +27,16 @@ const heroFeatures = GAMES.map((game) => ({
   icon: game.icon,
   href: game.href,
   gradient: game.color,
-  stats: game.stats,
+  tagline: game.tagline,
 }));
 
 const socialProofGames = GAMES.filter((g) => !g.createOnly).slice(0, 4);
 
 const perks = [
-  { icon: Zap, label: "Instant Rooms", desc: "Create in seconds, join in milliseconds" },
-  { icon: Globe, label: "Global Multiplayer", desc: "Real-time sync across the world" },
-  { icon: MessageCircle, label: "Built-in Chat", desc: "Emoji-rich real-time chat in every room" },
-  { icon: Star, label: "Viral Sharing", desc: "Share rooms via link or QR code" },
+  { icon: Zap, label: "One-click rooms", desc: "Share a 6-character code and people are in" },
+  { icon: Globe, label: "Everyone sees the same thing", desc: "Spins and scores update for the whole room at once" },
+  { icon: MessageCircle, label: "Chat in every room", desc: "Talk while you play" },
+  { icon: Star, label: "Invite by link or QR", desc: "Handy when everyone is in the same place" },
 ];
 
 export default function HomePage() {
@@ -159,8 +159,8 @@ export default function HomePage() {
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm mb-8"
           >
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-muted-foreground">Multiplayer platform for</span>
-            <span className="text-foreground font-medium">Decisions. Games. Teams.</span>
+            <span className="text-muted-foreground">Free games and group tools,</span>
+            <span className="text-foreground font-medium">played in one shared room</span>
           </motion.div>
 
           {/* Main Headline */}
@@ -170,10 +170,9 @@ export default function HomePage() {
             transition={{ delay: 0.2, duration: 0.8 }}
             className="font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[1.05] mb-6"
           >
-            Turn Every{" "}
-            <span className="gradient-text">Decision</span>
+            Can&apos;t decide?
             <br />
-            Into an Experience.
+            <span className="gradient-text">Spin</span> for it.
           </motion.h1>
 
           {/* Subheadline */}
@@ -183,8 +182,8 @@ export default function HomePage() {
             transition={{ delay: 0.4, duration: 0.6 }}
             className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed"
           >
-            Create rooms, invite friends, spin wheels, draw names, build teams,
-            run tournaments, and play together in real time.
+            Make a room, share the code, and everyone watches the same wheel,
+            bracket, or game play out on their own screen.
           </motion.p>
 
           {/* CTAs */}
@@ -362,7 +361,7 @@ export default function HomePage() {
             <div className="hidden sm:block w-px h-4 bg-border" />
             <span className="hidden sm:flex items-center gap-1.5">
               <Gift className="w-4 h-4 text-(--brand-primary-strong)" />
-              Free to start
+              Free to play
             </span>
           </motion.div>
 
@@ -416,11 +415,11 @@ export default function HomePage() {
             className="text-center mb-16"
           >
             <h2 className="font-display text-3xl sm:text-5xl font-black mb-4">
-              Everything you need to{" "}
-              <span className="gradient-text">play together</span>
+              Pick something to{" "}
+              <span className="gradient-text">play</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              {GAMES.length} games and room modes. All multiplayer-ready.
+              {GAMES.length} games and room modes. Use any of them on your own, or open a room and play with everyone.
             </p>
           </motion.div>
 
@@ -448,15 +447,15 @@ export default function HomePage() {
 
             <div className="relative z-10">
               <h2 className="font-display text-3xl sm:text-5xl font-black mb-4">
-                Ready to <span className="gradient-text">Spin</span>?
+                Start a <span className="gradient-text">room</span>
               </h2>
               <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
-                Create your first room in seconds. No account needed. Just click and play.
+                It&apos;s free, and nobody needs an account, including the people you invite.
               </p>
               <Link href="/create">
                 <Button variant="brand" size="lg" className="text-lg">
                   <Sparkles className="w-5 h-5" />
-                  Create Your First Room
+                  Create a room
                   <ArrowRight className="w-5 h-5" />
                 </Button>
               </Link>

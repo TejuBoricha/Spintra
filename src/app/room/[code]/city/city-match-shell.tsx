@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConnectionBanner } from "@/components/ui/connection-banner";
+import { pluralize } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -102,7 +103,7 @@ const SeatBadge = memo(function SeatBadge({
       {reconnecting && (
         <span
           className="flex items-center text-muted-foreground"
-          title="Connection dropped — still their seat and their turn clock, for now"
+          title="Connection dropped. Their seat and turn clock are still theirs for now."
         >
           <WifiOff className="w-3 h-3" aria-hidden="true" />
         </span>
@@ -110,7 +111,7 @@ const SeatBadge = memo(function SeatBadge({
       {away && (
         <span
           className="flex items-center text-amber-300"
-          title="Disconnected — the server plays this seat's turns automatically until they return"
+          title="Disconnected. The server plays this seat's turns until they come back."
         >
           <WifiOff className="w-3 h-3" aria-hidden="true" />
         </span>
@@ -118,7 +119,7 @@ const SeatBadge = memo(function SeatBadge({
       {!terminal && s.consecutive_autopilot_turns > 0 && (
         <span
           className="font-mono text-[10px] text-amber-300"
-          title={`${s.consecutive_autopilot_turns} turn(s) auto-played in a row — retired automatically at 2`}
+          title={`${pluralize(s.consecutive_autopilot_turns, "turn")} auto-played in a row. Two in a row retires the seat.`}
         >
           auto×{s.consecutive_autopilot_turns}
         </span>
@@ -271,7 +272,7 @@ export function CityMatchShell() {
       );
       announcedPurchaseSpacesRef.current.add(last.space_idx);
     } else {
-      toast(`Nobody bid on ${name} — it stays with the bank.`);
+      toast(`Nobody bid on ${name}, so it stays with the bank.`);
     }
   }, [auction, seats, board]);
 
@@ -341,7 +342,7 @@ export function CityMatchShell() {
           {winner ? `${winner.username} wins` : "Match over"}
         </h2>
         <p className="text-sm text-muted-foreground mb-5">
-          Final standings by net worth — cash, cities and everything built on them.
+          Final standings by net worth: cash, cities, and everything built on them.
         </p>
 
         <ol className="grid gap-1.5 text-left mb-6">
@@ -388,7 +389,7 @@ export function CityMatchShell() {
         <IconBadge />
         <p className="text-lg font-semibold">Spintra City</p>
         <p className="text-sm text-muted-foreground max-w-md">
-          Buy, build, and trade your way to the top. {MIN_PLAYERS}–{MAX_SEATS} players.
+          Buy cities, build on them, and trade with each other. {MIN_PLAYERS} to {MAX_SEATS} players.
         </p>
         {error && <ErrorNote message={error} />}
         {isHost ? (
@@ -504,7 +505,7 @@ export function CityMatchShell() {
           >
             <Clock className="w-4 h-4 text-amber-300 shrink-0" aria-hidden="true" />
             <p className="text-sm text-amber-200">
-              Match paused — everyone left. It picks back up the moment someone returns.
+              Match paused because everyone left. It carries on as soon as someone comes back.
             </p>
           </div>
         )}
@@ -684,11 +685,11 @@ export function CityMatchShell() {
               : mustDecide && onSale && !inDebt
                 ? `${onSale.name} is unclaimed. Buy it for ${onSale.price}, or pass.`
                 : isMyTurn && inDebt
-                  ? "You're short on cash — sell, mortgage, or trade to raise funds, or declare bankruptcy."
+                  ? "You're short on cash. Sell, mortgage, or trade to raise it, or declare bankruptcy."
                   : isMyTurn && match.phase === "awaiting_roll"
-                    ? "Your turn — roll the dice."
+                    ? "Your turn. Roll the dice."
                     : isMyTurn
-                      ? "You've rolled — build, trade, or end your turn when you're ready."
+                      ? "You've rolled. Build, trade, or end your turn when you're ready."
                       : `Waiting for ${active?.username ?? "the next player"}.`}
         </p>
 
@@ -836,7 +837,7 @@ export function CityMatchShell() {
           : readyCount < seats.length
             ? "Waiting for everyone to be ready."
             : isHost
-              ? "Everyone's ready — start when you are."
+              ? "Everyone's ready. Start when you are."
               : "Everyone's ready. Waiting for the host to start."}
       </p>
 
@@ -857,12 +858,12 @@ export function CityMatchShell() {
  */
 function exitText(seat: CitySeat | null): string {
   if (!seat) return "You're spectating this match.";
-  if (seat.status === "bankrupt") return "You went bankrupt — watching from here.";
+  if (seat.status === "bankrupt") return "You went bankrupt. You can keep watching.";
   if (seat.exit_reason === "autopilot_forced") {
-    return "You were retired after missing too many turns in a row — watching from here.";
+    return "You were retired after missing too many turns in a row. You can keep watching.";
   }
-  if (seat.exit_reason === "departed") return "You were removed from this match — watching from here.";
-  return "You retired from this match — watching from here.";
+  if (seat.exit_reason === "departed") return "You were removed from this match. You can keep watching.";
+  return "You retired from this match. You can keep watching.";
 }
 
 /**
@@ -876,7 +877,7 @@ function narrate(roll: CityRollResult, board: CityBoardSpace[], seats: CitySeat[
     seats.find((s) => s.seat === seat)?.username ?? "another player";
 
   const head = roll.detained
-    ? `Rolled ${roll.dice[0]} and ${roll.dice[1]} — three doubles, off to Customs.`
+    ? `Rolled ${roll.dice[0]} and ${roll.dice[1]}. Three doubles in a row, so it's off to Customs.`
     : `Rolled ${roll.dice[0]} and ${roll.dice[1]}, moved to ${where}.` +
       (roll.salary ? ` Collected ${roll.salary} for passing Departure.` : "");
 
@@ -887,11 +888,11 @@ function narrate(roll: CityRollResult, board: CityBoardSpace[], seats: CitySeat[
     case "paid_tax":
       return `${head} Paid ${l.amount} in tax.`;
     case "may_buy":
-      return `${head} It's unclaimed — buy it for ${l.price}, or pass.`;
+      return `${head} Nobody owns it. Buy it for ${l.price}, or pass.`;
     case "must_raise_funds":
-      return `${head} Rent is ${l.owed} and you're ${l.short_by} short — sell or mortgage to cover it.`;
+      return `${head} Rent is ${l.owed} and you're ${l.short_by} short. Sell or mortgage something to cover it.`;
     case "bankrupt":
-      return `${head} Couldn't cover ${l.owed} — bankrupt.`;
+      return `${head} Couldn't cover ${l.owed}, so that's bankruptcy.`;
     case "mortgaged_no_rent":
       return `${head} It's mortgaged, so no rent is due.`;
     case "own_space":
@@ -910,9 +911,9 @@ function narrate(roll: CityRollResult, board: CityBoardSpace[], seats: CitySeat[
           : inner === "paid_tax" && r?.kind !== "pay" && r?.kind !== "per_building"
             ? ` Paid ${r?.landing?.amount ?? r?.amount} on arrival.`
             : inner === "may_buy"
-              ? " It's unclaimed — buy it, or pass."
+              ? " Nobody owns it. Buy it, or pass."
               : inner === "must_raise_funds"
-                ? ` You're ${r?.landing?.short_by ?? r?.short_by} short — sell or mortgage.`
+                ? ` You're ${r?.landing?.short_by ?? r?.short_by} short. Sell or mortgage something.`
                 : "";
       return `${head} ${l.text ?? "Drew a card."}${tail}`;
     }

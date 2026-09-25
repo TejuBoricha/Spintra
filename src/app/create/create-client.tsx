@@ -263,7 +263,7 @@ export default function CreateRoomClient() {
           {isClassroom && (
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-sky-400">
               <GraduationCap className="w-3.5 h-3.5" />
-              Classroom mode — party/social games are hidden
+              Classroom mode: party games are hidden
             </span>
           )}
         </div>
@@ -302,7 +302,7 @@ export default function CreateRoomClient() {
               <Label htmlFor="room-name">Room Name (optional)</Label>
               <Input
                 id="room-name"
-                placeholder="My Awesome Room"
+                placeholder="Friday game night"
                 value={roomName}
                 onChange={(e) => setRoomName(e.target.value)}
                 maxLength={60}

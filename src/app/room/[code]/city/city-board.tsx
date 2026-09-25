@@ -262,7 +262,7 @@ if (process.env.NODE_ENV !== "production") {
   if (missing.length > 0) {
     console.error(
       `city-board.tsx: COUNTRY has ${missing.join(", ")} with no matching ` +
-        `<symbol id="flag-..."> in FlagDefs — add one, or that country's flag chip renders empty.`
+        `<symbol id="flag-..."> in FlagDefs. Add one, or that country's flag chip renders empty.`
     );
   }
 }

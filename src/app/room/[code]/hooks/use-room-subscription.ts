@@ -7,6 +7,7 @@ import { fireConfetti } from "@/components/celebration";
 import { banUserFromRoom } from "@/lib/room-bans";
 import { moderationKickBan } from "@/lib/moderation";
 import { getDeviceFingerprint } from "@/lib/utils";
+import { getGameByType } from "@/lib/games";
 import { getRoomByCode } from "@/lib/room-lookup";
 import { trackEvent } from "@/lib/analytics";
 import type { User, ChatMessage, RoomParticipant, RoomType, ActivityEvent } from "@/lib/types";
@@ -1543,7 +1544,7 @@ export function useRoomSubscription({
           if (updated.name) setRoomName(updated.name);
           if (updated.type) {
             if (updated.type !== roomTypeRef.current) {
-              setRoomAnnouncement(`Game changed to ${updated.type.replace(/-/g, " ")}.`);
+              setRoomAnnouncement(`Game changed to ${getGameByType(updated.type as RoomType)?.label ?? updated.type}.`);
             }
             setRoomType(updated.type);
           }

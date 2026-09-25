@@ -19,7 +19,7 @@ const CONFIG = {
     icon: Loader2,
     spin: true,
     text: "Reconnecting…",
-    sub: "Your seat is held — this usually takes a few seconds.",
+    sub: "Your seat is being held. This usually takes a few seconds.",
   },
   offline: {
     bg: "bg-destructive/12",
@@ -27,7 +27,7 @@ const CONFIG = {
     icon: WifiOff,
     spin: false,
     text: "You're offline",
-    sub: "Check your connection — we'll reconnect automatically.",
+    sub: "Check your connection. We'll reconnect on our own.",
   },
   "host-left": {
     bg: "bg-destructive/12",

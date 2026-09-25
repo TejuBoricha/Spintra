@@ -145,10 +145,10 @@ export function RpsActivity() {
               </span>
             </p>
           ) : roundResult.outcome === "tie" ? (
-            <p className="text-lg font-bold text-amber-400">Everyone picked the same — tie!</p>
+            <p className="text-lg font-bold text-amber-400">Everyone picked the same. It&apos;s a tie.</p>
           ) : (
             <p className="text-lg font-bold text-amber-400">
-              Rock, Paper, and Scissors were all picked — no winner this round!
+              Rock, paper, and scissors all got picked, so nobody wins this round.
             </p>
           )}
         </motion.div>
@@ -156,7 +156,7 @@ export function RpsActivity() {
 
       {isHost && !rpsChoices[currentUser.id] && !roundResult && (
         <p className="text-xs text-muted-foreground text-center">
-          Pick Rock, Paper, or Scissors below — as host, you can start a new round anytime
+          Pick rock, paper, or scissors below. As the host, you can start a new round at any time.
         </p>
       )}
 

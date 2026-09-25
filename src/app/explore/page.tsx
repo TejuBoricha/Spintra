@@ -56,7 +56,7 @@ const featuredTemplates = GAMES.map((game) => ({
   type: game.type,
   icon: game.icon,
   href: game.href,
-  users: game.stats,
+  tagline: game.tagline,
   gradient: game.color,
 }));
 
@@ -146,6 +146,9 @@ export default function ExplorePage() {
         `)
         .eq("room_participants.role", "host")
         .eq("is_public", true)
+        // participant_count only counts people online right now (0044), so an
+        // empty room isn't live and shouldn't be advertised as joinable.
+        .gt("participant_count", 0)
         .order("created_at", { ascending: false })
         .limit(60);
 
@@ -199,7 +202,7 @@ export default function ExplorePage() {
           const emoji = emojiMap[r.type] || "thinking_face";
           return {
             user: r.host,
-            action: "created the",
+            action: "opened",
             item: `${r.name} (${gameLabel})`,
             time: getRelativeTimeString(r.createdAt),
             emoji,
@@ -354,7 +357,7 @@ export default function ExplorePage() {
               Explore <span className="gradient-text">Spintra</span>
             </h1>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              Discover live public rooms, join custom games, or build your own activities.
+              Join a public room that&apos;s open right now, or pick a game and start your own.
             </p>
           </div>
 
@@ -458,7 +461,7 @@ export default function ExplorePage() {
               <div className="space-y-2">
                 <h3 className="text-lg font-bold text-foreground">No Public Rooms Active</h3>
                 <p className="text-sm text-muted-foreground max-w-sm">
-                  There are no live public rooms matching this filter. Be the first to create one and invite the community!
+                  No public rooms match this filter right now. Make one public and it will show up here for others to join.
                 </p>
               </div>
               <Link href="/create">
@@ -493,8 +496,8 @@ export default function ExplorePage() {
                           </p>
                         </div>
                         <div className="flex flex-col items-end gap-1 shrink-0">
-                          <Badge variant="secondary" className="capitalize text-[10px] tracking-wider font-semibold">
-                            {room.type.replace(/-/g, " ")}
+                          <Badge variant="secondary" className="text-[10px] tracking-wider font-semibold">
+                            {GAMES.find((g) => g.type === room.type)?.label ?? room.type}
                           </Badge>
                           {room.isLocked && (
                             <Badge variant="warn" className="text-[10px] flex items-center gap-0.5">
@@ -553,7 +556,7 @@ export default function ExplorePage() {
                       <h3 className="font-bold text-foreground text-sm group-hover:text-(--brand-primary-strong) transition-colors">
                         {t.label}
                       </h3>
-                      <p className="text-xs text-muted-foreground mt-1">{t.users} active uses</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t.tagline}</p>
                     </motion.div>
                   </Link>
                 );

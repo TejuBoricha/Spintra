@@ -147,7 +147,7 @@ const RoomGameArea = memo(function RoomGameArea({
                   <div className="bg-(--surface-panel) p-8 rounded-2xl text-center border border-red-500/20 max-w-md mx-auto mt-8">
                     <p className="text-xl font-bold text-red-400 mb-2">Something went wrong</p>
                     <p className="text-sm text-muted-foreground">
-                      The match failed to load. Try refreshing the page — your seat is saved.
+                      The match failed to load. Try refreshing the page. Your seat is saved.
                     </p>
                   </div>
                 }
@@ -438,7 +438,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       },
       error: {
         title: "Couldn't Connect",
-        desc: "We couldn't check this room right now — this doesn't mean it's gone. Check your connection and try again.",
+        desc: "We couldn't check this room right now. That doesn't mean it's gone. Check your connection and try again.",
         emoji: "disappointed_face" as EmojiName,
       },
     }[accessError];
@@ -745,7 +745,7 @@ function RoomUIInner({
       await navigator.clipboard.writeText(`${window.location.origin}/room/${roomCode}`);
       setCopied(true);
       if (isLocalOnlyMode) {
-        toast.warning("Link copied — but this room only works on this device, so it won't work for anyone else.");
+        toast.warning("Link copied, but this room only works on this device, so it won't open for anyone else.");
       } else {
         toast.success("Room link copied!");
       }

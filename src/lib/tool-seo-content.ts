@@ -5,12 +5,14 @@
  * almost no crawlable body text, so the pages can't rank for the high-volume,
  * evergreen queries they're built for ("wheel spinner", "random name picker",
  * "team generator", "dice roller", ...). This registry supplies real on-page
- * content — an intro, a how-to, use cases, and an FAQ — that is rendered
+ * content (an intro, a how-to, use cases, and an FAQ) that is rendered
  * server-side by <ToolSeoSection> (src/components/tool-seo-section.tsx) below
  * each widget, and also emitted as FAQPage structured data.
  *
- * Content is deliberately grounded in each tool's real, shipped feature set
- * (see src/lib/games.ts featureDescription) — no invented features.
+ * Every claim here must match the tool's shipped code. Check the tool before
+ * adding a feature to its copy: earlier versions described a team-size option,
+ * a list import, a win streak, a trivia timer, and automatic bingo calling,
+ * none of which existed.
  */
 
 export interface ToolFaq {
@@ -26,7 +28,7 @@ export interface ToolUseCase {
 export interface ToolSeoContent {
   /** Visible, keyword-rich section H2 (the widget still owns the page H1). */
   heading: string;
-  /** 2–3 sentence intro paragraph using the tool's real search terms. */
+  /** 2-3 sentence intro paragraph using the tool's real search terms. */
   intro: string;
   howTo: {
     title: string;
@@ -42,28 +44,28 @@ export const TOOL_SEO_CONTENT: Record<string, ToolSeoContent> = {
   "/tools/lucky-wheel": {
     heading: "A free online spinner wheel for any decision",
     intro:
-      "Lucky Wheel is a free, no-signup random wheel spinner you can customize in seconds. Add your own entries, weight the odds, pick colors, and spin a physics-based wheel to pick a winner at random — perfect for giveaways, raffles, classroom picks, or settling what's for dinner.",
+      "Type in your options, spin, and the wheel picks one at random. You can give some entries more weight than others, change the colors, or start from a template like giveaway prizes or dinner ideas. People use it for raffles, for picking who goes next in class, and for ending the argument about what to eat.",
     howTo: {
       title: "How to use the wheel spinner",
       steps: [
-        "Type your options into the entry list, or load a ready-made template (giveaway prizes, dinner picks, movie night, chores).",
-        "Adjust each entry's weight to make some outcomes more or less likely, and change colors to taste.",
-        "Press Spin and watch the wheel decide — the winner is announced with a celebration.",
-        "Want everyone watching the same spin? Create a room and the wheel spins live and in sync for every guest.",
+        "Type your options into the entry list, or load a template (giveaway prizes, dinner picks, movie night, chores).",
+        "Raise or lower an entry's weight to make it more or less likely to come up. Change the colors if you like.",
+        "Press Spin. The winner is announced when the wheel stops.",
+        "If you want everyone to watch the same spin, create a room. Guests see the wheel turn and land on their own screens.",
       ],
     },
     useCases: [
-      { title: "Giveaways & raffles", body: "Draw a fair winner from your entrants with weighted odds and a spin everyone can watch." },
-      { title: "Classroom picks", body: "Randomly choose a student to answer, present, or go next without anyone feeling singled out." },
-      { title: "Decisions", body: "Can't agree on dinner, a movie, or who does the dishes? Let the wheel settle it." },
-      { title: "Prizes & rewards", body: "Run a prize wheel at events, streams, or parties with your own custom segments." },
+      { title: "Giveaways and raffles", body: "Put your entrants on the wheel and spin where everyone can see it, so nobody can say the draw was rigged." },
+      { title: "Classroom picks", body: "Pick who answers next without it looking like you chose them." },
+      { title: "Everyday decisions", body: "Dinner, a movie, whose turn it is to do the dishes. Spin and move on." },
+      { title: "Prize wheels", body: "Set up your own segments for an event, a stream, or a party." },
     ],
     faqs: [
-      { q: "Is the Lucky Wheel free?", a: "Yes. Spintra's Lucky Wheel is completely free to use, with no account or sign-up required." },
-      { q: "Can I make some options more likely to win?", a: "Yes. Each entry has an adjustable weight, so you can make outcomes more or less likely instead of a strictly equal chance." },
-      { q: "Is the spin random and fair?", a: "Yes. The winning segment is chosen at random each spin, respecting the weights you set." },
-      { q: "Can everyone spin the same wheel together?", a: "Yes. Create a room and invite friends by link or QR code — the wheel spins live and in sync for everyone in the room." },
-      { q: "Are my entries saved?", a: "Your wheel is saved in your browser automatically, so your entries are still there next time you visit on the same device." },
+      { q: "Is the Lucky Wheel free?", a: "Yes. It's free, and you don't need an account." },
+      { q: "Can I make some options more likely to win?", a: "Yes. Every entry has a weight. Double an entry's weight and it's twice as likely to come up." },
+      { q: "Is the spin random?", a: "Yes. Each spin picks a segment at random, taking the weights you set into account." },
+      { q: "Can everyone spin the same wheel together?", a: "Yes. Create a room and send the link or QR code. Everyone in the room watches the same spin." },
+      { q: "Are my entries saved?", a: "Your wheel is saved in your browser, so your entries are still there next time you open it on the same device." },
     ],
     related: ["/tools/name-draw", "/tools/coin-flip", "/tools/dice"],
   },
@@ -71,28 +73,28 @@ export const TOOL_SEO_CONTENT: Record<string, ToolSeoContent> = {
   "/tools/name-draw": {
     heading: "A free random name picker for fair draws",
     intro:
-      "Name Draw is a free random name picker and winner generator. Paste or import a list of names, then pull a random winner — with an elimination mode for drawing multiple names in order and a spotlight animation so every draw feels fair and exciting.",
+      "Add a list of names and draw one at random. Elimination mode draws several names in order without repeats, which is handy for a raffle with more than one prize. You can type names in, or import them from a CSV if you already have a list.",
     howTo: {
       title: "How to pick a random name",
       steps: [
-        "Add names one at a time or import a whole list at once (CSV supported).",
-        "Choose a single draw for one winner, or turn on elimination mode to draw several names in order.",
-        "Draw — the winner is revealed with a spotlight animation everyone can see.",
-        "Create a room to run the draw live so your whole group watches the same result.",
+        "Add names one at a time, or import a CSV.",
+        "Leave it on a single draw for one winner, or switch on elimination mode to draw several in order.",
+        "Press Draw and the winner is revealed on screen.",
+        "Create a room if you want the whole group to watch the same draw.",
       ],
     },
     useCases: [
-      { title: "Giveaway winners", body: "Pick a fair winner from your list of entrants with a draw nobody can dispute." },
-      { title: "Classroom", body: "Cold-call students at random or choose today's helper without bias." },
-      { title: "Secret Santa & order", body: "Draw names for gift exchanges or decide turn order for games." },
-      { title: "Raffles & prizes", body: "Run raffles at events and reveal winners one at a time in elimination mode." },
+      { title: "Giveaway winners", body: "Draw from your list of entrants in front of everyone, so the result can't be disputed." },
+      { title: "Classroom", body: "Cold-call at random, or pick today's helper without favoring anyone." },
+      { title: "Secret Santa and turn order", body: "Draw names for a gift exchange, or decide who goes first in a game." },
+      { title: "Raffles with several prizes", body: "Use elimination mode to reveal winners one at a time." },
     ],
     faqs: [
-      { q: "Is the random name picker free?", a: "Yes. Name Draw is free to use with no sign-up required." },
-      { q: "Can I import a list of names?", a: "Yes. You can add names individually or import a full list, including from CSV, instead of typing each one." },
-      { q: "Can I draw more than one winner?", a: "Yes. Elimination mode lets you draw multiple names in order without repeating anyone." },
-      { q: "Is the draw truly random?", a: "Yes. Each draw selects a name at random, so every remaining name has a fair chance." },
-      { q: "Can my group watch the draw live?", a: "Yes. Create a room and share the link or QR code so everyone sees the same winner revealed in real time." },
+      { q: "Is the random name picker free?", a: "Yes. It's free and there's nothing to sign up for." },
+      { q: "Can I import a list of names?", a: "Yes. You can import names from a CSV instead of typing each one." },
+      { q: "Can I draw more than one winner?", a: "Yes. Elimination mode draws names in order and never picks the same person twice." },
+      { q: "Is the draw random?", a: "Yes. Every name still in the list has the same chance of being picked." },
+      { q: "Can my group watch the draw live?", a: "Yes. Create a room and share the link or QR code. Everyone sees the winner at the same moment." },
     ],
     related: ["/tools/lucky-wheel", "/tools/team-maker", "/tools/tournament"],
   },
@@ -100,28 +102,28 @@ export const TOOL_SEO_CONTENT: Record<string, ToolSeoContent> = {
   "/tools/team-maker": {
     heading: "A free random team generator",
     intro:
-      "Team Maker is a free team generator that splits any list of people into balanced, random groups in one click. Add names, choose how many teams or how big each team should be, and get fair, shuffled teams — ideal for PE class, sports, group projects, and game nights.",
+      "Add everyone's names, choose how many teams you want, and Team Maker shuffles people into groups whose sizes differ by one at most. Shuffle again if you don't like the result. Teachers use it for PE and group projects, and friends use it to pick sides at game night.",
     howTo: {
       title: "How to generate teams",
       steps: [
-        "Add everyone's names, or import your list all at once.",
-        "Pick the number of teams you want (or the size of each team).",
-        "Generate — everyone is shuffled into balanced groups instantly.",
-        "Create a room so the whole group sees their team assignments update live.",
+        "Add everyone's names.",
+        "Choose how many teams you want.",
+        "Press Generate. Names are shuffled and dealt out as evenly as possible.",
+        "Create a room if you want each person to see their team on their own phone.",
       ],
     },
     useCases: [
-      { title: "PE & sports", body: "Split a class or group into even sides for games and matches in seconds." },
-      { title: "Group projects", body: "Randomly assign students to project groups without playground politics." },
-      { title: "Game nights", body: "Divide friends into teams for trivia, charades, or party games." },
-      { title: "Workshops & events", body: "Break attendees into breakout groups or tables quickly and fairly." },
+      { title: "PE and sports", body: "Split a class into even sides before a match, without captains picking." },
+      { title: "Group projects", body: "Assign project groups at random so nobody can complain about who they got." },
+      { title: "Game nights", body: "Sort friends into teams for trivia, charades, or anything else." },
+      { title: "Workshops and events", body: "Break a room into tables or breakout groups quickly." },
     ],
     faqs: [
-      { q: "Is the team generator free?", a: "Yes. Team Maker is free to use and needs no account." },
-      { q: "Can I set the number of teams or the team size?", a: "Yes. You can choose how many teams to create, and the tool balances people evenly across them." },
-      { q: "Are the teams random?", a: "Yes. Names are shuffled randomly each time you generate, so teams are fair and different every round." },
-      { q: "Can I reuse the same list of people?", a: "Yes. Your list stays available so you can re-shuffle into new teams as often as you like." },
-      { q: "Can everyone see their team at the same time?", a: "Yes. Create a room and share it so each person sees the team assignments live on their own device." },
+      { q: "Is the team generator free?", a: "Yes. It's free and needs no account." },
+      { q: "Can I choose how many teams there are?", a: "Yes. Pick the number of teams and people are spread across them as evenly as possible." },
+      { q: "Are the teams random?", a: "Yes. Names are shuffled every time you generate, so you get a different split each round." },
+      { q: "Can I shuffle the same list again?", a: "Yes. Keep your list and generate as many times as you like." },
+      { q: "Can everyone see their team at the same time?", a: "Yes. Create a room and share it. Everyone sees the team list on their own device." },
     ],
     related: ["/tools/name-draw", "/tools/tournament", "/tools/lucky-wheel"],
   },
@@ -129,28 +131,28 @@ export const TOOL_SEO_CONTENT: Record<string, ToolSeoContent> = {
   "/tools/tournament": {
     heading: "A free tournament bracket generator",
     intro:
-      "Tournament is a free bracket generator for single elimination, double elimination, round robin, and Swiss formats. Enter your players or teams and get a clean, shareable bracket that updates live as you record results — great for esports, sports days, office competitions, and game nights.",
+      "Enter your players or teams and pick a format: single elimination, double elimination, round robin, or Swiss. Record each result and winners move on to their next match. Open it in a room and everyone following along sees the same bracket as it fills in.",
     howTo: {
       title: "How to make a tournament bracket",
       steps: [
-        "Add your players or teams — the bracket seeds automatically.",
-        "Choose a format: single elimination, double elimination, round robin, or Swiss.",
-        "Record each match result and watch winners advance through the bracket in real time.",
-        "Create a room to share a live bracket everyone can follow as the tournament plays out.",
+        "Add your players or teams. The bracket is seeded for you.",
+        "Choose single elimination, double elimination, round robin, or Swiss.",
+        "Record each match result. Winners advance to their next match.",
+        "Create a room so players can follow the bracket from their own phones.",
       ],
     },
     useCases: [
-      { title: "Esports & gaming", body: "Run a clean competitive bracket for any game with automatic seeding and advancement." },
-      { title: "Sports days", body: "Organize knockout or round-robin competitions for teams and players." },
-      { title: "Office & school", body: "Host ping-pong, chess, or quiz tournaments with a bracket everyone can follow." },
-      { title: "Game nights", body: "Turn any party game into a proper competition with a shareable bracket." },
+      { title: "Esports and gaming", body: "Run a bracket for any game, with seeding and advancement handled for you." },
+      { title: "Sports days", body: "Set up a knockout or a round robin for teams or individual players." },
+      { title: "Office and school", body: "Ping-pong, chess, or a quiz league, with a bracket everyone can check." },
+      { title: "Game nights", body: "Turn a casual party game into a proper competition." },
     ],
     faqs: [
-      { q: "Is the bracket generator free?", a: "Yes. The Tournament bracket tool is free with no sign-up required." },
-      { q: "Which tournament formats are supported?", a: "Single elimination, double elimination, round robin, and Swiss formats are all supported." },
-      { q: "Does the bracket update as I enter results?", a: "Yes. Winners advance automatically as you record each match, and the bracket updates live." },
-      { q: "Can I share the bracket with others?", a: "Yes. Create a room and share the link so everyone can follow the bracket as it plays out." },
-      { q: "How many players or teams can I add?", a: "The bracket seeds any number of entrants and generates the matchups for you." },
+      { q: "Is the bracket generator free?", a: "Yes. It's free, with nothing to sign up for." },
+      { q: "Which formats are supported?", a: "Single elimination, double elimination, round robin, and Swiss." },
+      { q: "Does the bracket update as I enter results?", a: "Yes. Record a result and the winner moves on straight away." },
+      { q: "Can I share the bracket?", a: "Yes. Create a room and share the link, and everyone can follow along." },
+      { q: "How many players can I add?", a: "As many as you need. The matchups are generated for you." },
     ],
     related: ["/tools/team-maker", "/tools/name-draw", "/tools/rps"],
   },
@@ -158,27 +160,27 @@ export const TOOL_SEO_CONTENT: Record<string, ToolSeoContent> = {
   "/tools/coin-flip": {
     heading: "A free online coin flip",
     intro:
-      "Coin Flip is a free virtual coin toss — flip heads or tails online in one tap to settle any debate. No coin needed, no sign-up, and you can flip together with friends in a live room so everyone sees the same result.",
+      "Tap once and the coin lands on heads or tails, 50/50. Use it when you don't have a coin on you, or open a room so a whole group sees the same flip and nobody can claim it landed the other way.",
     howTo: {
       title: "How to flip a coin online",
       steps: [
-        "Open the tool and tap to flip.",
-        "Watch the coin toss animation land on heads or tails.",
+        "Tap to flip.",
+        "The coin lands on heads or tails.",
         "Flip again as many times as you need.",
-        "Create a room so a whole group sees the same flip at the same time.",
+        "Create a room so everyone sees the same flip at the same time.",
       ],
     },
     useCases: [
-      { title: "Settle debates", body: "Decide who goes first, who pays, or who wins with a fair 50/50 toss." },
-      { title: "Sports & games", body: "Do the kickoff or coin toss when you don't have a physical coin handy." },
-      { title: "Quick yes/no", body: "Turn any either-or decision into a fast, impartial call." },
-      { title: "Classroom", body: "Make a fair pick between two options in front of the whole class." },
+      { title: "Settling arguments", body: "Who goes first, who pays, who gets the last slice." },
+      { title: "Sports", body: "The kickoff toss, when nobody has a coin." },
+      { title: "Yes or no", body: "Any decision with two options." },
+      { title: "Classroom", body: "Pick between two options with the whole class watching." },
     ],
     faqs: [
-      { q: "Is the coin flip free?", a: "Yes. The online coin flip is free and needs no account." },
-      { q: "Is it a fair 50/50 flip?", a: "Yes. Each flip lands on heads or tails at random with equal odds." },
-      { q: "Can we flip together in a group?", a: "Yes. Create a room and share it so everyone sees the same coin toss result live." },
-      { q: "Do I need to install anything?", a: "No. It runs in your browser on any device — no download or sign-up required." },
+      { q: "Is the coin flip free?", a: "Yes, and there's no account needed." },
+      { q: "Is it really 50/50?", a: "Yes. Each flip is heads or tails at random with equal odds." },
+      { q: "Can we flip together as a group?", a: "Yes. Create a room and share it, and everyone sees the same result." },
+      { q: "Do I need to install anything?", a: "No. It works in any browser, on a phone or a computer." },
     ],
     related: ["/tools/dice", "/tools/lucky-wheel", "/tools/rps"],
   },
@@ -186,27 +188,27 @@ export const TOOL_SEO_CONTENT: Record<string, ToolSeoContent> = {
   "/tools/dice": {
     heading: "A free online dice roller",
     intro:
-      "Dice Roller is a free virtual dice roller for tabletop and party games. Roll one die or a whole custom set, get instant random results, and roll together in a live room — no physical dice required.",
+      "Roll anything from a D4 to a D100, one die at a time or a handful at once, and the total is added up for you. It covers board games when a die has gone missing, and tabletop RPG sessions where everyone wants to see the roll.",
     howTo: {
       title: "How to roll dice online",
       steps: [
-        "Choose how many dice to roll and set your dice type.",
-        "Tap roll to get an instant, random result.",
-        "Re-roll as often as you like — totals are tallied for you.",
-        "Create a room so everyone at the table sees the same roll live.",
+        "Choose a die type (D4, D6, D8, D10, D12, D20, or D100) and how many to roll.",
+        "Tap Roll.",
+        "Roll again whenever you like. The total is shown each time.",
+        "Create a room so everyone at the table sees the same roll.",
       ],
     },
     useCases: [
-      { title: "Tabletop games", body: "Roll for board games, D&D, and RPGs when you're missing physical dice." },
-      { title: "Party games", body: "Add a random dice roll to any group game or drinking game." },
-      { title: "Teaching probability", body: "Demonstrate odds and randomness in class with visible, repeatable rolls." },
-      { title: "Quick decisions", body: "Assign turns or pick numbers at random with a single roll." },
+      { title: "Tabletop RPGs", body: "D20s for D&D, or whatever mix your system uses." },
+      { title: "Board games", body: "A stand-in when the dice have gone missing from the box." },
+      { title: "Teaching probability", body: "Roll a few hundred times in front of a class and look at the results." },
+      { title: "Picking a number", body: "Decide turn order or pick a number at random." },
     ],
     faqs: [
-      { q: "Is the dice roller free?", a: "Yes. The online dice roller is free with no sign-up." },
-      { q: "Can I roll multiple dice at once?", a: "Yes. You can roll a custom set of dice together and the tool tallies the total." },
-      { q: "Are the rolls random?", a: "Yes. Every roll produces a fair, random result." },
-      { q: "Can we all roll the same dice together?", a: "Yes. Create a room and share it so everyone at the table sees the same roll in real time." },
+      { q: "Is the dice roller free?", a: "Yes, with no sign-up." },
+      { q: "Can I roll several dice at once?", a: "Yes. Roll a set together and the total is added up for you." },
+      { q: "Which dice are available?", a: "D4, D6, D8, D10, D12, D20, and D100." },
+      { q: "Can we all see the same roll?", a: "Yes. Create a room and share it, and everyone at the table sees the same result." },
     ],
     related: ["/tools/coin-flip", "/tools/lucky-wheel", "/tools/guess-number"],
   },
@@ -214,27 +216,27 @@ export const TOOL_SEO_CONTENT: Record<string, ToolSeoContent> = {
   "/tools/guess-number": {
     heading: "A free number guessing game",
     intro:
-      "Guess the Number is a free group number guessing game. One secret number is chosen, and players take turns guessing with higher/lower hints until someone nails it — a simple, fast classic that works solo or with the whole room.",
+      "A secret number is picked and you guess. After each guess you're told whether to go higher or lower, and the aim is to get there in as few tries as possible. Play on your own, or open a room and see who in the group finds it first.",
     howTo: {
       title: "How to play the guessing game",
       steps: [
-        "Start a game to set a secret number within the range.",
-        "Take turns entering guesses.",
-        "Use the higher/lower hints and reactions to close in on the answer.",
-        "Create a room to play with friends, each guessing on their own device.",
+        "Start a game and a secret number is set within the range.",
+        "Enter a guess.",
+        "Follow the higher or lower hint and guess again.",
+        "Create a room to play with friends, each guessing from their own device.",
       ],
     },
     useCases: [
-      { title: "Icebreakers", body: "Warm up a group or class with a quick, low-stakes guessing round." },
-      { title: "Classroom", body: "Practice number sense and estimation with live hints." },
-      { title: "Party filler", body: "Keep everyone engaged between bigger activities." },
-      { title: "Family fun", body: "Play a screen-friendly classic that works for all ages." },
+      { title: "Warm-ups", body: "A quick round to get a group or a class going." },
+      { title: "Classroom", body: "Practice estimation and number sense." },
+      { title: "Between games", body: "Something short to play while you decide what's next." },
+      { title: "Kids", body: "Easy to explain and quick to play." },
     ],
     faqs: [
-      { q: "Is the number guessing game free?", a: "Yes. It's free to play with no account required." },
-      { q: "Can I play with friends?", a: "Yes. Create a room and share it so everyone guesses together in real time." },
-      { q: "Are there hints?", a: "Yes. After each guess you get higher/lower hints to help you close in on the secret number." },
-      { q: "Can I play by myself?", a: "Yes. The game works solo as well as with a group." },
+      { q: "Is the number guessing game free?", a: "Yes, and you don't need an account." },
+      { q: "Can I play with friends?", a: "Yes. Create a room and share it, and everyone guesses from their own device." },
+      { q: "Are there hints?", a: "Yes. Every guess tells you whether the number is higher or lower." },
+      { q: "Can I play on my own?", a: "Yes. It works solo or with a group." },
     ],
     related: ["/tools/dice", "/tools/word-scramble", "/tools/trivia"],
   },
@@ -242,27 +244,27 @@ export const TOOL_SEO_CONTENT: Record<string, ToolSeoContent> = {
   "/tools/rps": {
     heading: "Play Rock Paper Scissors online",
     intro:
-      "Rock Paper Scissors is a free online version of the classic hand game. Play instantly against the computer, or create a room and challenge a friend to a synchronized reveal — no app and no sign-up.",
+      "Pick rock, paper, or scissors and play a round against the computer. To play a real person, open a room and invite them. Both picks stay hidden until you've each chosen, then they're shown at the same time.",
     howTo: {
       title: "How to play Rock Paper Scissors online",
       steps: [
-        "Pick rock, paper, or scissors to play a round against the computer.",
-        "See the result instantly — rock beats scissors, scissors beats paper, paper beats rock.",
-        "Keep playing to build a win streak.",
-        "Want a real opponent? Create a room and invite a friend for a synchronized reveal.",
+        "Pick rock, paper, or scissors.",
+        "The computer picks too, and you see who won.",
+        "Play as many rounds as you like.",
+        "For a real opponent, create a room and invite a friend. Both picks are revealed together.",
       ],
     },
     useCases: [
-      { title: "Quick solo rounds", body: "Play a fast round against the computer any time you need a random call." },
-      { title: "Settle a tie", body: "Decide who goes first or break a tie with a best-of series." },
-      { title: "Play a friend remotely", body: "Create a room so you and a friend can play from different devices." },
-      { title: "Warm-ups", body: "Kick off a game night or class with a fast head-to-head." },
+      { title: "A quick round", body: "Play the computer whenever you have a minute." },
+      { title: "Breaking a tie", body: "Settle who goes first, or play best of three." },
+      { title: "Playing a friend remotely", body: "Create a room and play from different devices." },
+      { title: "Warm-ups", body: "Start a game night or a lesson with something quick." },
     ],
     faqs: [
-      { q: "Is Rock Paper Scissors free to play?", a: "Yes. It's free online with no sign-up needed." },
-      { q: "Can I play against the computer?", a: "Yes. The standalone game plays instantly against a random computer opponent, so you don't need a second player." },
-      { q: "Can I play with a friend remotely?", a: "Yes. Create a room and share the link or QR code so you and a friend play from different devices, with both choices revealed at once." },
-      { q: "Who wins in Rock Paper Scissors?", a: "Rock beats scissors, scissors beats paper, and paper beats rock. Matching choices are a draw." },
+      { q: "Is Rock Paper Scissors free to play?", a: "Yes, with nothing to sign up for." },
+      { q: "Can I play against the computer?", a: "Yes. The computer picks at random, so you don't need a second player." },
+      { q: "Can I play with a friend remotely?", a: "Yes. Create a room and share the link or QR code. Both of your picks are revealed at the same moment." },
+      { q: "What beats what?", a: "Rock beats scissors, scissors beats paper, and paper beats rock. The same pick is a draw." },
     ],
     related: ["/tools/coin-flip", "/tools/tournament", "/tools/dice"],
   },
@@ -270,27 +272,27 @@ export const TOOL_SEO_CONTENT: Record<string, ToolSeoContent> = {
   "/tools/truth-or-dare": {
     heading: "Play Truth or Dare online",
     intro:
-      "Truth or Dare is a free online version of the classic party game. Draw truths and dares for your group with ready-made prompts, and play together in a live room so everyone gets a turn — great for parties, sleepovers, and friend groups.",
+      "Choose truth or dare and draw a prompt from the deck, so nobody has to think them up on the spot. In a room, everyone sees the same prompt on their own phone, which helps when the group is spread out.",
     howTo: {
       title: "How to play Truth or Dare",
       steps: [
-        "Open the tool and choose Truth or Dare.",
-        "Draw a prompt from the deck for the current player.",
-        "Complete the truth or dare, then pass to the next person.",
-        "Create a room so the whole group plays together with the same prompts.",
+        "Choose truth or dare.",
+        "Draw a prompt for whoever's turn it is.",
+        "They answer or do the dare, then it's the next person's turn.",
+        "Create a room so the whole group sees the same prompts.",
       ],
     },
     useCases: [
-      { title: "Parties", body: "Get a party going with prompts that spark laughs and stories." },
-      { title: "Sleepovers", body: "A go-to classic for friend groups and hangouts." },
-      { title: "Icebreakers", body: "Help a new group loosen up and get to know each other." },
-      { title: "Game nights", body: "Add a round of truth or dare to your regular game night lineup." },
+      { title: "Parties", body: "Get people talking once the party has settled in." },
+      { title: "Sleepovers", body: "The usual late-night game, with a deck ready to go." },
+      { title: "New groups", body: "A way for people who've just met to learn a bit about each other." },
+      { title: "Game nights", body: "Something different to slot between other games." },
     ],
     faqs: [
-      { q: "Is Truth or Dare free?", a: "Yes. It's free to play online with no sign-up." },
-      { q: "Do I need to think up prompts?", a: "No. The game comes with ready-made truths and dares, so you can start straight away." },
-      { q: "Can the whole group play together?", a: "Yes. Create a room and share it so everyone plays with the same prompts in real time." },
-      { q: "Is it suitable for all ages?", a: "Truth or Dare is a party game aimed at friends and social groups rather than classrooms; pick prompts appropriate for your group." },
+      { q: "Is Truth or Dare free?", a: "Yes, with no sign-up." },
+      { q: "Do I need to come up with prompts?", a: "No. The deck is already written, so you can start right away." },
+      { q: "Can the whole group play together?", a: "Yes. Create a room and share it, and everyone gets the same prompts." },
+      { q: "Is it suitable for all ages?", a: "It's a party game for friends rather than a classroom game. Use your judgment about who's playing." },
     ],
     related: ["/tools/would-you-rather", "/tools/never-have-i-ever", "/tools/trivia"],
   },
@@ -298,27 +300,27 @@ export const TOOL_SEO_CONTENT: Record<string, ToolSeoContent> = {
   "/tools/would-you-rather": {
     heading: "Play Would You Rather online",
     intro:
-      "Would You Rather is a free online version of the classic choice game. Vote on impossible either-or questions and instantly see what your group picked — a fun icebreaker and debate-starter for parties, classrooms, and road trips.",
+      "You get two options and have to pick one. Everyone votes, then you see how the group split. The questions are already written, and the arguing afterwards is usually the best part.",
     howTo: {
       title: "How to play Would You Rather",
       steps: [
-        "Open the tool to see a would-you-rather question.",
-        "Everyone votes for their choice.",
-        "See the live split of who picked what, then argue about it.",
-        "Create a room so the whole group votes on the same questions together.",
+        "Open the game to see a question.",
+        "Everyone votes for one side.",
+        "See who picked what, then argue about it.",
+        "Create a room so the whole group votes on the same question.",
       ],
     },
     useCases: [
-      { title: "Icebreakers", body: "Break the ice with a group or class using fun, revealing choices." },
-      { title: "Parties", body: "Spark debates and laughs with impossible either-or questions." },
-      { title: "Road trips", body: "Pass the time with a screen-friendly game everyone can join." },
-      { title: "Team building", body: "Get coworkers talking with low-stakes, opinion-based prompts." },
+      { title: "Icebreakers", body: "You learn a lot about someone from what they'd rather do." },
+      { title: "Parties", body: "Good for starting a friendly argument." },
+      { title: "Road trips", body: "Pass the phone around, or have everyone vote from their own." },
+      { title: "Team meetings", body: "A low-stakes opener before the real agenda." },
     ],
     faqs: [
-      { q: "Is Would You Rather free?", a: "Yes. It's free to play with no account required." },
-      { q: "Can everyone vote at once?", a: "Yes. Create a room and share it so the whole group votes on the same question and sees the live results." },
-      { q: "Do I need my own questions?", a: "No. The game includes ready-made questions so you can start immediately." },
-      { q: "Can I play in a classroom?", a: "Yes. It works well as a classroom icebreaker with group-friendly prompts." },
+      { q: "Is Would You Rather free?", a: "Yes, and you don't need an account." },
+      { q: "Can everyone vote at once?", a: "Yes. Create a room and share it. Everyone votes on the same question and sees the split." },
+      { q: "Do I need my own questions?", a: "No. The questions are already written." },
+      { q: "Can I use it in a classroom?", a: "Yes. It works as a class warm-up." },
     ],
     related: ["/tools/truth-or-dare", "/tools/never-have-i-ever", "/tools/trivia"],
   },
@@ -326,27 +328,27 @@ export const TOOL_SEO_CONTENT: Record<string, ToolSeoContent> = {
   "/tools/never-have-i-ever": {
     heading: "Play Never Have I Ever online",
     intro:
-      "Never Have I Ever is a free online version of the classic confession game. Read out prompts and see who's done what — play together in a live room with ready-made statements that keep the whole group laughing.",
+      "Read out a \"Never have I ever...\" prompt and find out who has done it. The prompts are already written, so you can start right away, and in a room the whole group sees the same one at the same time.",
     howTo: {
       title: "How to play Never Have I Ever",
       steps: [
-        "Open the tool to draw a 'Never have I ever…' prompt.",
-        "Each player reacts to whether they've done it.",
-        "Move to the next prompt and keep the round going.",
-        "Create a room so everyone plays with the same prompts together.",
+        "Draw a \"Never have I ever...\" prompt.",
+        "Anyone who has done it owns up.",
+        "Move on to the next prompt.",
+        "Create a room so everyone sees the same prompts.",
       ],
     },
     useCases: [
-      { title: "Parties", body: "A classic confession game that gets everyone talking and laughing." },
-      { title: "Sleepovers & hangouts", body: "Perfect for friend groups looking for an easy, no-setup game." },
-      { title: "Icebreakers", body: "Help a new group get to know each other fast." },
-      { title: "Game nights", body: "Add a round to your regular lineup without any prep." },
+      { title: "Parties", body: "Usually ends with someone telling a story they didn't plan to tell." },
+      { title: "Sleepovers and hangouts", body: "Nothing to set up and no cards to lose." },
+      { title: "New groups", body: "A quick way to find out what people have in common." },
+      { title: "Game nights", body: "An easy round to add between other games." },
     ],
     faqs: [
-      { q: "Is Never Have I Ever free?", a: "Yes. It's free to play online with no sign-up." },
-      { q: "Do I need to come up with prompts?", a: "No. The game includes ready-made statements so you can start right away." },
-      { q: "Can the whole group play together?", a: "Yes. Create a room and share it so everyone sees the same prompts in real time." },
-      { q: "Is it a party game or classroom game?", a: "It's designed as a party game for friends and social groups rather than the classroom." },
+      { q: "Is Never Have I Ever free?", a: "Yes, with no sign-up." },
+      { q: "Do I need to come up with prompts?", a: "No. The prompts are already written." },
+      { q: "Can the whole group play together?", a: "Yes. Create a room and share it, and everyone sees the same prompt." },
+      { q: "Is it a party game or a classroom game?", a: "It's a party game for friends, not something for the classroom." },
     ],
     related: ["/tools/truth-or-dare", "/tools/would-you-rather", "/tools/trivia"],
   },
@@ -354,27 +356,27 @@ export const TOOL_SEO_CONTENT: Record<string, ToolSeoContent> = {
   "/tools/trivia": {
     heading: "Play free online trivia",
     intro:
-      "Trivia is a free online multiplayer quiz game. Answer multiple-choice questions, race to score, and see who comes out on top — play solo to test yourself or host a live quiz for your whole group, classroom, or team.",
+      "Answer multiple-choice questions and score points for each one you get right. Play on your own to see how you do, or host a quiz in a room where everyone answers the same questions and the scoreboard shows who's ahead.",
     howTo: {
       title: "How to play trivia",
       steps: [
-        "Start a trivia game to get your first multiple-choice question.",
-        "Pick your answer before the round ends.",
-        "Earn points for correct answers and climb the scoreboard.",
-        "Create a room to host a live quiz where everyone answers together.",
+        "Start a game to get your first question.",
+        "Pick one of the answers.",
+        "Get it right and you score points.",
+        "Create a room to host a quiz where everyone answers together.",
       ],
     },
     useCases: [
-      { title: "Quiz nights", body: "Host a pub-style quiz for friends, family, or coworkers." },
-      { title: "Classroom review", body: "Turn revision into a competitive, engaging quiz." },
-      { title: "Team building", body: "Run a friendly trivia contest to break up the workday." },
-      { title: "Parties", body: "Add a fast-paced quiz round to any get-together." },
+      { title: "Quiz nights", body: "A pub-style quiz for friends, family, or coworkers." },
+      { title: "Classroom review", body: "A bit of competition makes revision go faster." },
+      { title: "At work", body: "A short quiz to break up the afternoon." },
+      { title: "Parties", body: "A quiz round in the middle of the evening." },
     ],
     faqs: [
-      { q: "Is the trivia game free?", a: "Yes. Trivia is free to play with no sign-up required." },
-      { q: "Can I host a quiz for a group?", a: "Yes. Create a room and share the link or QR code so everyone answers the same questions live." },
-      { q: "How is the score decided?", a: "You earn points for correct multiple-choice answers, and the scoreboard ranks players." },
-      { q: "Can I play trivia solo?", a: "Yes. You can play on your own to test your knowledge, or with a group." },
+      { q: "Is the trivia game free?", a: "Yes, with no sign-up." },
+      { q: "Can I host a quiz for a group?", a: "Yes. Create a room and share the link or QR code, and everyone answers the same questions." },
+      { q: "How does scoring work?", a: "You get points for correct answers, and the scoreboard ranks everyone in the room." },
+      { q: "Can I play on my own?", a: "Yes. Play solo, or with a group." },
     ],
     related: ["/tools/word-scramble", "/tools/would-you-rather", "/tools/guess-number"],
   },
@@ -382,27 +384,27 @@ export const TOOL_SEO_CONTENT: Record<string, ToolSeoContent> = {
   "/tools/bingo": {
     heading: "Play free online bingo",
     intro:
-      "Bingo is a free online number bingo game. Numbers are called one by one, players mark their cards, and the first to complete a line shouts bingo — host a live game for a class, party, or family with cards that stay put even if a page reloads.",
+      "Everyone gets a card, numbers are called one at a time, and the first person to complete a line wins. Press Call and the next number is drawn at random, with no repeats. In a room, your card stays the same even if your page reloads.",
     howTo: {
       title: "How to play bingo online",
       steps: [
-        "Start a game and each player gets a bingo card.",
-        "Numbers are called out one at a time.",
-        "Mark the called numbers on your card.",
-        "Create a room to host a live game where everyone plays on the same calls.",
+        "Start a game and every player gets a card.",
+        "Press Call to draw the next number.",
+        "Called numbers are marked on your card.",
+        "Create a room to host a game where everyone plays the same calls.",
       ],
     },
     useCases: [
-      { title: "Classroom", body: "Run number bingo as a fun, low-prep class activity." },
-      { title: "Family game night", body: "A screen-friendly classic that works for all ages." },
-      { title: "Parties & events", body: "Host bingo for a group with automatic number calling." },
-      { title: "Fundraisers", body: "Play a quick round of bingo at community events." },
+      { title: "Classroom", body: "Number bingo with no printing and no counters to hand out." },
+      { title: "Family game night", body: "Grandparents and kids can play the same game." },
+      { title: "Parties and events", body: "Host a round for a big group without a caller's cage." },
+      { title: "Fundraisers", body: "A quick bingo round at a community event." },
     ],
     faqs: [
-      { q: "Is online bingo free?", a: "Yes. Bingo is free to play with no account needed." },
-      { q: "Can I host bingo for a group?", a: "Yes. Create a room and share it so everyone plays on the same called numbers in real time." },
-      { q: "Are the numbers called automatically?", a: "Yes. Numbers are called one at a time so you can focus on marking your card." },
-      { q: "What happens if my page reloads?", a: "Your bingo card is preserved so a reload or reconnect won't lose your progress in the room." },
+      { q: "Is online bingo free?", a: "Yes, and you don't need an account." },
+      { q: "Can I host bingo for a group?", a: "Yes. Create a room and share it, and everyone plays on the same called numbers." },
+      { q: "How are numbers called?", a: "Press Call and the next number is drawn at random from the ones not called yet." },
+      { q: "What happens if my page reloads?", a: "In a room, your card is kept, so a reload or a dropped connection won't lose your progress." },
     ],
     related: ["/tools/trivia", "/tools/lucky-wheel", "/tools/name-draw"],
   },
@@ -410,27 +412,27 @@ export const TOOL_SEO_CONTENT: Record<string, ToolSeoContent> = {
   "/tools/word-scramble": {
     heading: "Play free online word scramble",
     intro:
-      "Word Scramble is a free online word game. Unscramble the jumbled letters to find the hidden word before anyone else, with hints to help when you're stuck — a fast, brain-teasing game for classrooms, parties, and solo play.",
+      "The letters of a word are jumbled up, and you have to work out what it was. Ask for a hint if you're stuck. Play on your own, or in a room where everyone gets the same word and the first correct answer wins.",
     howTo: {
       title: "How to play word scramble",
       steps: [
-        "Start a round to see a scrambled word.",
-        "Rearrange the letters and enter your guess.",
-        "Use a hint if you get stuck.",
-        "Create a room to race friends to unscramble the same word first.",
+        "Start a round to get a scrambled word.",
+        "Work out the word and type your guess.",
+        "Ask for a hint if you're stuck.",
+        "Create a room to race friends on the same word.",
       ],
     },
     useCases: [
-      { title: "Classroom", body: "Build vocabulary and spelling skills with a quick word puzzle." },
-      { title: "Parties", body: "Add a fast word-race round to your game night." },
-      { title: "Brain warm-up", body: "A quick mental workout you can play solo any time." },
-      { title: "Family fun", body: "A screen-friendly word game that works for all ages." },
+      { title: "Classroom", body: "Spelling and vocabulary practice that feels like a game." },
+      { title: "Parties", body: "A quick word race for a game night." },
+      { title: "Solo", body: "A few rounds while you wait for something." },
+      { title: "With kids", body: "Good spelling practice that doesn't feel like homework." },
     ],
     faqs: [
-      { q: "Is the word scramble game free?", a: "Yes. Word Scramble is free to play with no sign-up." },
-      { q: "Are there hints?", a: "Yes. You can use hints when you're stuck on a scrambled word." },
-      { q: "Can I race my friends?", a: "Yes. Create a room and share it so everyone tries to unscramble the same word first." },
-      { q: "Can I play by myself?", a: "Yes. Word Scramble works solo as well as with a group." },
+      { q: "Is the word scramble game free?", a: "Yes, with no sign-up." },
+      { q: "Are there hints?", a: "Yes. Ask for one when you're stuck." },
+      { q: "Can I race my friends?", a: "Yes. Create a room and share it. Everyone gets the same word, and the first right answer wins." },
+      { q: "Can I play on my own?", a: "Yes. It works solo or with a group." },
     ],
     related: ["/tools/trivia", "/tools/guess-number", "/tools/would-you-rather"],
   },

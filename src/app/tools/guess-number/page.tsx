@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowUp, ArrowDown, RotateCcw, Target, Volume2, VolumeX } from "lucide-react";
 import { getGameByType } from "@/lib/games";
+import { pluralize } from "@/lib/utils";
 
 const GameIcon = getGameByType("guess-number")!.icon;
 import { Button } from "@/components/ui/button";
@@ -77,7 +78,7 @@ export default function GuessNumberPage() {
             <span className="text-sm text-muted-foreground">Pick a mode to start</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Guess The Number</h1>
-          <p className="text-muted-foreground mb-8">Play the number guessing game — can you find the secret number in the fewest guesses?</p>
+          <p className="text-muted-foreground mb-8">Find the secret number in as few guesses as you can.</p>
         </motion.div>
 
         {/* Mode Selection */}
@@ -95,7 +96,7 @@ export default function GuessNumberPage() {
               }`}
             >
               {m.name}
-              <span className="ml-1.5 text-xs opacity-70">1–{m.range}</span>
+              <span className="ml-1.5 text-xs opacity-70">1-{m.range}</span>
             </button>
           ))}
         </div>
@@ -108,7 +109,7 @@ export default function GuessNumberPage() {
           </div>
           <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl px-4 py-2">
             <span className="text-muted-foreground">Range: </span>
-            <span className="font-bold text-foreground">1–{mode.range}</span>
+            <span className="font-bold text-foreground">1-{mode.range}</span>
           </div>
         </div>
 
@@ -164,7 +165,7 @@ export default function GuessNumberPage() {
             </div>
             <p className="text-muted-foreground mb-4">
               {won
-                ? `The number was ${target}. Found in ${guesses.length} tries!`
+                ? `The number was ${target}. Found in ${pluralize(guesses.length, "try", "tries")}.`
                 : `The number was ${target}.`}
             </p>
             <div className="flex justify-center gap-3">

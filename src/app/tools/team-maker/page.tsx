@@ -213,7 +213,7 @@ export default function TeamMakerPage() {
             <span className="gradient-text">Team Maker</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            A free random team generator — build balanced teams in seconds, then shuffle, customize, and export.
+            Add names, pick how many teams, and shuffle. Copy the result when you&apos;re happy with it.
           </p>
         </motion.div>
 
@@ -320,7 +320,7 @@ export default function TeamMakerPage() {
                     <div className="text-xs text-muted-foreground">
                       {tpl.label === "Office"
                         ? "Custom count"
-                        : `${tpl.teams} teams × ${tpl.perTeam} players`}
+                        : `${tpl.teams} teams`}
                     </div>
                   </div>
                   <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-(--brand-primary-strong) group-hover:translate-x-0.5 transition-all" />
@@ -517,10 +517,10 @@ export default function TeamMakerPage() {
                   <Sparkles className="w-3.5 h-3.5" />
                   Multiplayer
                 </div>
-                <h2 className="text-xl font-bold">Want to collaborate live?</h2>
+                <h2 className="text-xl font-bold">Want everyone to see their team?</h2>
                 <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  Create a room and build teams together with friends in real time.
-                  Everyone sees changes instantly.
+                  Create a room and share the code. Each person sees the teams on their own
+                  phone, and any reshuffle shows up for everyone.
                 </p>
                 <Link href="/create?type=team-maker">
                   <Button className="gap-2 bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">

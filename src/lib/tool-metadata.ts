@@ -10,7 +10,7 @@ import { GAMES } from "@/lib/games";
 export function toolMetadata(href: string): Metadata {
   const game = GAMES.find((g) => g.href === href);
   if (!game) throw new Error(`toolMetadata: no GAMES entry with href ${href}`);
-  const title = `${game.label} — Spintra`;
+  const title = `${game.label} | Spintra`;
   return {
     title,
     description: game.featureDescription,

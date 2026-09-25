@@ -8,7 +8,7 @@ import { getGameByType } from "@/lib/games";
 const GameIcon = getGameByType("would-you-rather")!.icon;
 import { Button } from "@/components/ui/button";
 import { playPop, playSwipe } from "@/lib/audio";
-import { shuffleArray } from "@/lib/utils";
+import { pluralize, shuffleArray } from "@/lib/utils";
 
 const questions = [
   { optionA: "Be able to fly", optionB: "Be able to read minds" },
@@ -69,11 +69,11 @@ export default function WouldYouRatherPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-(--brand-primary-strong)" />
-            <span className="text-sm text-muted-foreground">Tough choices ahead</span>
+            <span className="text-sm text-muted-foreground">Pick a side</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Would You Rather</h1>
           <div className="flex items-center justify-center gap-3 mb-8">
-            <p className="text-muted-foreground">Play Would You Rather online — pick your side, no middle ground.</p>
+            <p className="text-muted-foreground">Two options. You have to pick one.</p>
             <Button
               variant="ghost"
               size="icon-sm"
@@ -170,7 +170,7 @@ export default function WouldYouRatherPage() {
         {/* Counter */}
         <div className="mt-6 text-sm text-muted-foreground">
           <ThumbsUp className="w-4 h-4 inline mr-1 text-(--brand-primary-strong)" />
-          {total} votes across {Object.keys(votes).length} questions
+          {pluralize(total, "vote")} across {pluralize(Object.keys(votes).length, "question")}
         </div>
       </div>
     </div>

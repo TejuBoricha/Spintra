@@ -11,7 +11,7 @@ export default function Image() {
   return new ImageResponse(
     renderOgImage({
       title: "For Teachers",
-      desc: "Free classroom tools — no sign-up, works anywhere",
+      desc: "Free classroom tools. Students don't need accounts.",
       gradient: ["#00bba7", "#0092b8"],
     }),
     size

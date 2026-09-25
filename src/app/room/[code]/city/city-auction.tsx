@@ -75,15 +75,15 @@ export function CityAuction({
       <div className="flex flex-wrap items-center gap-3 mb-3">
         <Gavel className="w-5 h-5 text-(--brand-primary)" aria-hidden="true" />
         <div className="flex-1 min-w-0">
-          <p className="font-semibold">{space?.name ?? "This space"} — up for auction</p>
+          <p className="font-semibold">{space?.name ?? "This space"} is up for auction</p>
           <p className="text-xs text-muted-foreground">
-            Nobody bought it, so everyone bids. List price {space?.price ?? "—"}.
+            Nobody bought it, so everyone gets to bid.{space ? ` List price ${space.price}.` : ""}
           </p>
         </div>
         <div className="text-right">
           <p className="font-mono text-[10px] text-(--text-secondary) tracking-wider">HIGH BID</p>
           <p className="font-mono text-2xl text-(--brand-primary) tabular-nums leading-tight">
-            {auction.high_seat === null ? "—" : auction.high_bid.toLocaleString()}
+            {auction.high_seat === null ? "None" : auction.high_bid.toLocaleString()}
           </p>
           <p className="text-xs text-muted-foreground">
             {auction.high_seat === null
@@ -98,7 +98,7 @@ export function CityAuction({
         role="status"
         aria-live="off"
       >
-        {seconds > 0 ? `closing in ${seconds}s` : "closing…"} — every bid resets it to 10s
+        {seconds > 0 ? `Closes in ${seconds}s.` : "Closing…"} Each new bid resets it to 10s.
       </p>
 
       <ul className="mb-3">
@@ -128,7 +128,7 @@ export function CityAuction({
                     : passed
                       ? "passed"
                       : away
-                        ? "away — skipped"
+                        ? "away, skipped"
                         : `${s.cash.toLocaleString()} available`}
                 </span>
               </li>
@@ -146,7 +146,7 @@ export function CityAuction({
               disabled={!canBid(amount) || seconds <= 0}
               title={
                 mySeat && amount > mySeat.cash
-                  ? `You only have ${mySeat.cash.toLocaleString()} — no bidding on credit`
+                  ? `You only have ${mySeat.cash.toLocaleString()}, and you can't bid on credit`
                   : undefined
               }
               onClick={() => onBid(amount)}
@@ -161,7 +161,7 @@ export function CityAuction({
       </div>
 
       <p className="text-xs text-muted-foreground mt-2">
-        Passing isn&apos;t binding — you can come back in while the clock runs. The auction ends
+        Passing isn&apos;t final. You can jump back in while the clock is running. The auction ends
         when everyone else has passed, or after 2 minutes.
       </p>
     </div>

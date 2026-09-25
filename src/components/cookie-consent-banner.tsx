@@ -86,13 +86,13 @@ export function CookieConsentBanner() {
               <p className="text-foreground/90 leading-relaxed">
                 {analyticsEnabled ? (
                   <>
-                    Spintra uses local storage to remember your session and preferences, and —
-                    with your consent — Google Analytics to understand overall site usage. No
+                    Spintra uses local storage to remember your session and preferences. If you
+                    agree, we also use Google Analytics to see how the site is used overall. No
                     advertising.
                   </>
                 ) : (
                   <>
-                    Spintra uses local storage to remember your session and preferences — no
+                    Spintra uses local storage to remember your session and preferences. No
                     advertising or third-party tracking.
                   </>
                 )}{" "}

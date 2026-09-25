@@ -174,18 +174,19 @@ mortgaging; selling a development tier back to the bank returns half its build c
 The dramatic deck — movement, windfalls, sudden reversals. Drawn at positions 2, 22, 36.
 
 1. The gate opens early. Advance to Departure and collect 200 Spins.
-2. Every room in Dubai is booked but yours. Advance there — buy it if it's unclaimed, or pay the
+2. Every room in Dubai is booked but yours. Advance there. Buy it if nobody owns it, or pay the
    owner double the usual rent.
 3. Standby seat comes through. Advance to the nearest Airport and pay its owner twice the standard
    fare; if nobody owns it, you may claim it.
 4. The festival starts the day you land. Advance to Cape Town; collect 200 Spins if you pass Departure on the way.
-5. Your passport is flagged at the desk. Go directly to Customs — no salary, no detour.
+5. Your passport is flagged at the desk. Go directly to Customs, and don't collect your salary on the way.
 6. You misread the platform number. Roll back three spaces.
 7. Peak season pricing works in your favour. Collect 150 Spins.
 8. Emergency baggage fees. Pay 75 Spins.
 9. Your grand reopening draws travellers from everywhere. Collect 100 Spins from every other player.
-10. A city-wide surge hits the grid. Advance to the Power Grid — claim it if unowned, otherwise
-    roll and pay the owner ten times the total.
+10. A city-wide surge hits the grid. Advance to the Power Grid. Buy it if nobody owns it, or pay
+    the owner double the usual rent. (Reworded in migration `0104`: the old "ten times the total"
+    was only true when the owner holds one utility. See that migration's header.)
 11. Every property you own is due a safety inspection. Pay 40 Spins per Hostel or Inn, 150 per
     Hotel or Resort, and 300 per Landmark.
 12. **Transit Visa.** Keep this card until you use it; it clears you through Customs once.
@@ -210,7 +211,7 @@ positions 7, 17, 33.
 5. The tourist levy comes due. Pay 60 Spins.
 6. A guesthouse you once stayed in is left to you. Collect 250 Spins.
 7. **Transit Visa.** Keep this card until you use it; it clears you through Customs once.
-8. Caught letting rooms without a licence. Go directly to Customs — no salary, no detour.
+8. Caught letting rooms without a licence. Go directly to Customs, and don't collect your salary on the way.
 9. Everyone chips in for the group photo. Take 25 Spins from each of the other players.
 10. You sell a year of accumulated air miles. Collect 70 Spins.
 11. Staff training and language courses. Pay 80 Spins.

@@ -16,7 +16,7 @@ export default function Image() {
   return new ImageResponse(
     renderOgImage({
       title: "Spintra City",
-      desc: "A free Monopoly-style board game — no download, no sign-up",
+      desc: "A free Monopoly-style board game for 2 to 8 players",
       gradient: ["#fe9a00", "#f0b100"],
     }),
     size

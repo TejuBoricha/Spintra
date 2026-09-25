@@ -64,11 +64,11 @@ export default function RPSPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-orange-400" />
-            <span className="text-sm text-muted-foreground">Classic showdown</span>
+            <span className="text-sm text-muted-foreground">You against the computer</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Rock Paper Scissors</h1>
           <div className="flex items-center justify-center gap-3 mb-8">
-            <p className="text-muted-foreground">Play Rock Paper Scissors online — challenge the AI to a classic showdown.</p>
+            <p className="text-muted-foreground">Play a round against the computer.</p>
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
               title={soundEnabled ? "Sound On" : "Sound Off"}

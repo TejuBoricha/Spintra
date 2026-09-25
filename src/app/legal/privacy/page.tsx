@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Spintra",
+  title: "Privacy Policy | Spintra",
   description: "What data Spintra collects, how it's used, and your rights over it.",
 };
 
@@ -26,29 +26,29 @@ export default function PrivacyPolicyPage() {
             <h2 className="text-2xl font-semibold mb-3">1. Information We Collect</h2>
             <ul className="list-disc pl-6 space-y-1">
               <li>
-                <strong>Anonymous session identifier</strong> — a randomly generated ID
+                <strong>Anonymous session identifier:</strong> a randomly generated ID
                 (Supabase anonymous auth, or a local ID stored in your browser if Supabase is
                 unavailable). We do not require an email, password, or real name.
               </li>
               <li>
-                <strong>Room and profile data</strong> — the room code, room name, and the
+                <strong>Room and profile data:</strong> the room code, room name, and the
                 display name, avatar, and in-room stats (e.g. XP, rank) you set for yourself.
               </li>
               <li>
-                <strong>Chat messages</strong> — content you send inside a room&apos;s chat.
+                <strong>Chat messages:</strong> what you send in a room&apos;s chat.
               </li>
               <li>
-                <strong>Standard technical logs</strong> — IP address, browser/device
+                <strong>Standard technical logs:</strong> IP address, browser/device
                 information, and timestamps, collected automatically by our hosting and
                 database providers for security and abuse prevention.
               </li>
               <li>
-                <strong>Local storage / functional cookies</strong> — used to remember your
+                <strong>Local storage and functional cookies:</strong> used to remember your
                 session ID, theme preference, and whether you&apos;ve dismissed the cookie
                 notice. We do not use advertising cookies.
               </li>
               <li>
-                <strong>Analytics cookies</strong> — <strong>only with your consent</strong>,
+                <strong>Analytics cookies</strong>, <strong>only with your consent</strong>:
                 Google Analytics sets cookies (e.g. <code>_ga</code>, <code>{"_ga_<id>"}</code>)
                 to measure aggregate site traffic and usage (pages visited, approximate location,
                 device/browser type). These are off by default: no analytics cookies are set and

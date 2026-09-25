@@ -491,7 +491,7 @@ export function recordMatchResult(
 
   if (bracketKey === "grandFinal") {
     if (!winner) {
-      return { kind: "invalid", message: "The Grand Final needs a decisive winner — scores must not be tied." };
+      return { kind: "invalid", message: "The Grand Final needs a winner, so the scores can't be tied." };
     }
     return {
       kind: "champion",
@@ -512,7 +512,7 @@ export function recordMatchResult(
   ) {
     return {
       kind: "invalid",
-      message: "Elimination brackets require a decisive winner — scores must not be tied.",
+      message: "Elimination matches need a winner, so the scores can't be tied.",
     };
   }
 

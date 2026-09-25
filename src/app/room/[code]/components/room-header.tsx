@@ -29,6 +29,7 @@ import { ModerationDashboard } from "./moderation-dashboard";
 import { RoomSettingsPanel } from "./room-settings-panel";
 import { ScoreboardPanel } from "./scoreboard-panel";
 import type { RoomType } from "@/lib/types";
+import { GAMES } from "@/lib/games";
 
 interface RoomHeaderProps {
   roomName: string;
@@ -150,8 +151,8 @@ export const RoomHeader = memo(function RoomHeader({
             {activeActivityType && (
               <>
                 <span>·</span>
-                <span className="text-(--brand-primary-strong) capitalize">
-                  {activeActivityType.replace(/-/g, " ")}
+                <span className="text-(--brand-primary-strong)">
+                  {GAMES.find((g) => g.type === activeActivityType)?.label ?? activeActivityType}
                 </span>
               </>
             )}
@@ -350,7 +351,7 @@ export const RoomHeader = memo(function RoomHeader({
 
           {isLocalOnlyMode && (
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200 text-left">
-              This room only works on this device — whoever scans this code needs to be using this
+              This room only works on this device. Whoever scans this code has to be using this
               same browser. It won&apos;t connect anyone joining from a different phone or computer.
             </div>
           )}
@@ -393,7 +394,7 @@ export const RoomHeader = memo(function RoomHeader({
           <DialogHeader>
             <DialogTitle>Reset the current activity?</DialogTitle>
             <DialogDescription>
-              This wipes the in-progress game state for everyone in the room right now — scores,
+              This clears the current game for everyone in the room. Scores,
               answers, and votes so far will be lost. Everyone will see it reset immediately.
             </DialogDescription>
           </DialogHeader>

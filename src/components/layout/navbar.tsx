@@ -374,7 +374,7 @@ export function Navbar() {
                   Join Room
                 </h2>
                 <p className="text-xs font-mono text-muted-foreground uppercase tracking-[0.3em] mt-3">
-                  Initialize Connection
+                  Enter the 6-character code
                 </p>
               </div>
 

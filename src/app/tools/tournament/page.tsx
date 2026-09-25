@@ -27,6 +27,7 @@ import type { TournamentType } from "@/lib/types";
 import { Emoji } from "@/components/emoji";
 import { fireConfetti, CelebrationBanner } from "@/components/celebration";
 import { getGameByType } from "@/lib/games";
+import { pluralize } from "@/lib/utils";
 import {
   type BracketMatch,
   type Tournament,
@@ -345,7 +346,7 @@ export default function TournamentPage() {
     }
 
     lines.push("");
-    lines.push("Powered by Spintra — spintra.io");
+    lines.push("Made with Spintra (spintra.io)");
 
     try {
       await navigator.clipboard.writeText(lines.join("\n"));
@@ -546,8 +547,8 @@ export default function TournamentPage() {
             <span className="gradient-text">Generator</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-lg mx-auto">
-            A free tournament bracket generator — build professional brackets for any
-            format: single elim, double elim, round robin, or Swiss.
+            Make a bracket in any of four formats: single elimination, double
+            elimination, round robin, or Swiss.
           </p>
         </motion.div>
 
@@ -727,7 +728,7 @@ export default function TournamentPage() {
                         {tournament.type.replace(/-/g, " ")}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {tournament.participants.length} players · {tournament.rounds.length} rounds
+                        {pluralize(tournament.participants.length, "player")} · {pluralize(tournament.rounds.length, "round")}
                       </p>
                     </div>
                   </div>

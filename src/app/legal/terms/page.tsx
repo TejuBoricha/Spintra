@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — Spintra",
+  title: "Terms of Service | Spintra",
   description: "The terms that govern your use of Spintra's rooms, games, and chat features.",
 };
 
@@ -29,7 +29,7 @@ export default function TermsOfServicePage() {
             <p>
               Spintra lets people create shareable rooms to play real-time games, run
               tournaments, chat, and make group decisions together. Most rooms do not require
-              a registered account — you participate as an anonymous session identified only
+              a registered account. You take part as an anonymous session identified only
               by a randomly generated ID.
             </p>
           </section>
@@ -53,7 +53,7 @@ export default function TermsOfServicePage() {
             <p>
               Chat messages, room names, and profile fields (display name, avatar) you submit
               are your own content and your responsibility. We do not pre-screen content, but
-              we may remove content, kick a participant, or close a room at our discretion —
+              we may remove content, kick a participant, or close a room at our discretion,
               particularly in response to a violation of Section 2. Room hosts also have
               limited moderation tools (e.g. removing a participant from their own room).
             </p>
@@ -73,7 +73,7 @@ export default function TermsOfServicePage() {
             <h2 className="text-2xl font-semibold mb-3">5. Termination</h2>
             <p>
               We may suspend or terminate your access to the Service, or close any room, at
-              any time — with or without notice — if we believe these Terms have been
+              any time, with or without notice, if we believe these Terms have been
               violated or the Service is being misused.
             </p>
           </section>

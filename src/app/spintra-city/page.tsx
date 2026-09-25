@@ -12,57 +12,57 @@ import { Button } from "@/components/ui/button";
 import { buildFaqSchema, FaqAccordion } from "@/components/faq-accordion";
 
 export const metadata: Metadata = {
-  title: "Free Online Monopoly-Style Game — Spintra City",
+  title: "Free Online Monopoly-Style Game | Spintra City",
   description:
-    "Play a free Monopoly-style board game online with friends — no download, no sign-up. Roll, buy, build, and trade your way to the top in Spintra City, refereed automatically so nobody can cheat.",
+    "Play a free Monopoly-style board game online with 2 to 8 friends. Buy cities, build on them, and trade until one of you owns the board. It runs in your browser and nobody needs an account.",
   alternates: { canonical: "/spintra-city" },
   openGraph: {
-    title: "Free Online Monopoly-Style Game — Spintra City",
+    title: "Free Online Monopoly-Style Game | Spintra City",
     description:
-      "Roll, buy, build, and trade with 2-8 players. A free, browser-based Monopoly-style game — no download, no sign-up.",
+      "A free Monopoly-style board game for 2 to 8 players. Open a room, send your friends the code, and play in the browser.",
     url: "/spintra-city",
     type: "website",
   },
 };
 
 const TRUST_POINTS = [
-  { icon: Sparkles, label: "100% free, no catch" },
-  { icon: ShieldCheck, label: "Server-refereed — nobody can cheat" },
-  { icon: Users, label: "2-8 players in one room" },
-  { icon: Globe2, label: "Real cities & flags, no downloads" },
+  { icon: Sparkles, label: "Free to play" },
+  { icon: ShieldCheck, label: "The server checks every move" },
+  { icon: Users, label: "2 to 8 players" },
+  { icon: Globe2, label: "Real cities and flags" },
 ];
 
 const HOW_IT_WORKS = [
   {
     step: "1. Open a room",
-    body: "Create a Spintra City room and share the 6-character code — no account needed for you or anyone joining.",
+    body: "Create a Spintra City room and send the 6-character code to your friends. Nobody needs an account.",
   },
   {
     step: "2. Take a seat",
-    body: "Up to 8 players seat themselves and ready up. The host starts the match once everyone's in.",
+    body: "Up to 8 players take a seat and mark themselves ready. The host starts the match once everyone's in.",
   },
   {
     step: "3. Roll, buy, build, trade",
-    body: "Classic property-trading rules — roll dice, buy or auction unclaimed properties, complete sets to build, negotiate trades with other players.",
+    body: "Roll the dice and move around the board. Buy the cities you land on, or let them go to auction. Own a full set and you can build on it. Trade with the other players whenever it helps.",
   },
   {
     step: "4. Last player standing wins",
-    body: "Bankrupt everyone else, or come out ahead when time runs out in timed mode. Every move is validated server-side, so there's no house-ruling or disputing a result.",
+    body: "Bankrupt everyone else, or be the richest player when the clock runs out in timed mode. The server checks every move, so there are no house rules to argue about.",
   },
 ];
 
 const FAQS = [
   {
     q: "Is Spintra City the official Monopoly game?",
-    a: "No. Spintra City is an original, Monopoly-style property-trading board game inspired by the classic genre — it's not affiliated with, sponsored by, or endorsed by Hasbro or the Monopoly brand. The rules structure (buy, build, trade, bankrupt your opponents) will feel familiar; the board, art, and content are Spintra's own.",
+    a: "No. Spintra City is our own property-trading game in the same style. It isn't affiliated with, sponsored by, or endorsed by Hasbro or the Monopoly brand. The rules (buy, build, trade, bankrupt your opponents) will feel familiar, but the board, art, and cards are Spintra's own.",
   },
   {
     q: "Is it free to play?",
-    a: "Yes. Spintra City is free, with no account, subscription, or credit card required for you or anyone you play with.",
+    a: "Yes. There's no account, subscription, or card details, for you or anyone you play with.",
   },
   {
     q: "Do I need to download anything?",
-    a: "No. It runs entirely in your browser — desktop or mobile — with nothing to install.",
+    a: "No. It runs in your browser on a phone or a computer.",
   },
   {
     q: "How many players can join a match?",
@@ -70,11 +70,11 @@ const FAQS = [
   },
   {
     q: "Can someone cheat or fudge the rules?",
-    a: "No — every roll, purchase, and trade is validated by the server, not the players' browsers. There's no way to grant yourself extra cash or skip a rule, and nobody has to referee.",
+    a: "No. Every roll, purchase, and trade is checked by the server rather than by anyone's browser, so there's no way to give yourself extra cash or skip a rule. Nobody has to referee.",
   },
   {
     q: "What happens if someone disconnects mid-game?",
-    a: "Their seat is auto-piloted for a short grace period so the match keeps moving, and they can rejoin and pick back up right where they left off.",
+    a: "Their seat is held for 60 seconds. After that, the server plays their turns with safe default moves so the game keeps going, and they pick up where they left off when they come back. If two of their turns in a row get played for them, they're retired from the match.",
   },
 ];
 
@@ -109,8 +109,8 @@ export default function SpintraCityPage() {
               A free online <span className="gradient-text">Monopoly-style</span> board game
             </h1>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Spintra City: roll, buy, build, and trade your way to the top with 2-8 players —
-              refereed automatically, so nobody can cheat and nobody has to keep score by hand.
+              Spintra City is a board game for 2 to 8 players. Buy cities, build on them, and trade
+              until one of you owns the board. The server keeps score, so nobody has to.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
@@ -141,7 +141,7 @@ export default function SpintraCityPage() {
           <div className="text-center space-y-2">
             <h2 className="font-display text-2xl sm:text-3xl font-black">How it works</h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              The classic property-trading loop, playable in one browser tab.
+              The rules you already know, in a browser tab.
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -167,9 +167,9 @@ export default function SpintraCityPage() {
 
         {/* Bottom CTA */}
         <div className="max-w-3xl mx-auto w-full text-center rounded-[2rem] border border-(--border-hairline) bg-(--surface-panel) p-10 space-y-4">
-          <h2 className="font-display text-2xl sm:text-3xl font-black">Ready to play?</h2>
+          <h2 className="font-display text-2xl sm:text-3xl font-black">Start a match</h2>
           <p className="text-muted-foreground">
-            No sign-up, no install — open a room and share the code.
+            Open a room, send the code to your friends, and take a seat.
           </p>
           <StartMatchButton className="inline-block" />
         </div>

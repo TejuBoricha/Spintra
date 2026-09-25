@@ -78,7 +78,7 @@ export function CityHoldings({
             You owe {mySeat.pending_debt.toLocaleString()} and are {shortBy.toLocaleString()} short.
           </p>
           <p className="text-xs text-red-200/80 mt-0.5">
-            Sell buildings and mortgage cities below — the debt settles itself the moment you can
+            Sell buildings or mortgage cities below. The debt is paid off automatically as soon as you can
             cover it. Selling everything would raise {canRaise.toLocaleString()}.
           </p>
           {mySeat.cash + canRaise < mySeat.pending_debt && (

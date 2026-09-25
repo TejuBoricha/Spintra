@@ -42,7 +42,7 @@ export function ActivityPickerDialog({
           {isClassroom && (
             <DialogDescription className="flex items-center gap-1.5">
               <GraduationCap className="w-3.5 h-3.5 text-sky-400" />
-              Classroom mode — party/social games are hidden
+              Classroom mode: party games are hidden
             </DialogDescription>
           )}
         </DialogHeader>

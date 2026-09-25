@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { shuffleArray } from "@/lib/utils";
+import { pluralize, shuffleArray } from "@/lib/utils";
 import { getGameByType } from "@/lib/games";
 import { Emoji } from "@/components/emoji";
 
@@ -111,7 +111,7 @@ export default function NameDrawPage() {
       }
 
       if (count > availableNamesList.length) {
-        toast.warning(`Only ${availableNamesList.length} names available`);
+        toast.warning(`Only ${pluralize(availableNamesList.length, "name")} left to draw`);
         count = availableNamesList.length;
       }
 
@@ -200,7 +200,7 @@ export default function NameDrawPage() {
     setDrawnIndices([]);
     setCurrentWinner(null);
     setMultiWinners([]);
-    toast.success(`Added ${samples.length} names!`);
+    toast.success(`Added ${pluralize(samples.length, "name")}`);
   }, []);
 
   const handleCsvImport = useCallback(() => {
@@ -230,7 +230,7 @@ export default function NameDrawPage() {
         setDrawnIndices([]);
         setCurrentWinner(null);
         setMultiWinners([]);
-        toast.success(`Imported ${parsed.length} names!`);
+        toast.success(`Imported ${pluralize(parsed.length, "name")}`);
       };
       reader.readAsText(file);
     };
@@ -260,7 +260,7 @@ export default function NameDrawPage() {
       `Draw mode: ${eliminationMode ? "Elimination" : "Repeatable"}`,
       `Total entries: ${names.length}`,
       "",
-      "Powered by Spintra — spintra.io",
+      "Made with Spintra (spintra.io)",
     ].join("\n");
 
     try {
@@ -295,8 +295,8 @@ export default function NameDrawPage() {
             Name <span className="gradient-text">Draw</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-lg mx-auto">
-            A free random name picker — pick a random winner for giveaways, raffles,
-            and fair draws.
+            Add names and draw a winner at random. Good for giveaways
+            and raffles.
           </p>
         </motion.div>
 
@@ -315,7 +315,7 @@ export default function NameDrawPage() {
                   Entries
                 </h2>
                 <Badge variant="secondary" className="text-xs">
-                  {names.length} names
+                  {pluralize(names.length, "name")}
                 </Badge>
               </div>
 
@@ -568,7 +568,7 @@ export default function NameDrawPage() {
                     </p>
                     <p className="text-sm text-muted-foreground/60">
                       {names.length > 0
-                        ? `${names.length} names loaded — hit Draw!`
+                        ? `${pluralize(names.length, "name")} loaded. Press Draw.`
                         : "Add some names to get started"}
                     </p>
                   </motion.div>

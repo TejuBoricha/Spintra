@@ -95,7 +95,7 @@ export function WordScrambleActivity() {
       sendActivityEvent({ kind: "scramble_correct", username: currentUser.username, answer: cleanGuess });
     } else {
       playFailure(soundEnabled);
-      toast.error("Not quite — try again!");
+      toast.error("Not quite. Try again.");
     }
     setGuess("");
   };
@@ -144,7 +144,7 @@ export function WordScrambleActivity() {
               aria-live="polite"
               className="text-xl font-bold text-emerald-400 flex items-center gap-2 bg-emerald-500/10 px-6 py-2 rounded-full border border-emerald-500/20"
             >
-              <Emoji name="party_popper" size={24} pop /> {scrambleWinner} got it — {scrambleWord.answer}!
+              <Emoji name="party_popper" size={24} pop /> {scrambleWinner} got it: {scrambleWord.answer}
             </motion.p>
           ) : (
             <div className="flex gap-3 w-full max-w-sm">

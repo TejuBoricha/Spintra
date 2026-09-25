@@ -10,11 +10,11 @@ interface FeatureCardProps {
   icon: LucideIcon;
   href: string;
   gradient: string;
-  stats: string;
+  tagline: string;
   index: number;
 }
 
-export function FeatureCard({ title, description, icon: Icon, href, gradient, stats, index }: FeatureCardProps) {
+export function FeatureCard({ title, description, icon: Icon, href, gradient, tagline, index }: FeatureCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 40 }}
@@ -42,9 +42,9 @@ export function FeatureCard({ title, description, icon: Icon, href, gradient, st
               {description}
             </p>
 
-            {/* Stats + CTA */}
+            {/* Tagline + CTA */}
             <div className="flex items-center justify-between pt-4 border-t border-(--border-hairline)">
-              <span className="text-sm text-muted-foreground">{stats}</span>
+              <span className="text-sm text-muted-foreground">{tagline}</span>
               <span className="flex items-center gap-1 text-sm font-medium text-(--brand-primary-strong) group-hover:text-primary transition-colors">
                 Try it <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </span>
