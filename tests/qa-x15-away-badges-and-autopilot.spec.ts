@@ -72,13 +72,13 @@ test('city: away badge, autopilot counter, forced retire, and terminal-seat hygi
   // effect yet" is a real, distinct state, not the same badge early.
   await host.waitForTimeout(6000);
   await expect(host.getByTitle(/connection dropped/i)).toBeVisible({ timeout: 10000 });
-  await expect(host.getByTitle(/the server plays this seat's turns automatically/i)).toHaveCount(0);
+  await expect(host.getByTitle(/the server plays this seat's turns/i)).toHaveCount(0);
 
   // Past 60s: the real away/autopilot-eligible badge.
   psql(`update city_match_players set disconnected_at = now() - interval '65 seconds' where match_id='${matchId}' and seat=2;`);
   psql(`update city_matches set turn_started_at=now() where id='${matchId}';`);
   await host.waitForTimeout(6000);
-  await expect(host.getByTitle(/the server plays this seat's turns automatically/i)).toBeVisible({ timeout: 10000 });
+  await expect(host.getByTitle(/the server plays this seat's turns/i)).toBeVisible({ timeout: 10000 });
 
   // Force two full autopiloted turns for seat 2 so it gets force-retired.
   // Important subtlety confirmed while writing this test: the streak/forced
@@ -114,8 +114,8 @@ test('city: away badge, autopilot counter, forced retire, and terminal-seat hygi
   // Terminal-seat hygiene: the badge row must no longer show Away/auto for
   // the now-retired seat (BUG-007 round H finding 4), confirmed on host's
   // still-live view.
-  await expect(host.getByTitle(/the server plays this seat's turns automatically/i)).toHaveCount(0, { timeout: 10000 });
-  await expect(host.getByTitle(/turn\(s\) auto-played in a row/i)).toHaveCount(0);
+  await expect(host.getByTitle(/the server plays this seat's turns/i)).toHaveCount(0, { timeout: 10000 });
+  await expect(host.getByTitle(/auto-played in a row/i)).toHaveCount(0);
 
   // g2's own tab (still fully live -- only the DB row said they were
   // offline) should show the autopilot_forced spectator text.

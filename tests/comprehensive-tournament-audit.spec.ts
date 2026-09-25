@@ -112,7 +112,7 @@ test.describe('Tournament Engine — Direct Unit & Matrix Tests', () => {
     const outcome = recordMatchResult(tournament, editMatch, 2, 2);
     expect(outcome.kind).toBe('invalid');
     if (outcome.kind === 'invalid') {
-      expect(outcome.message).toContain('require a decisive winner');
+      expect(outcome.message).toContain('need a winner');
     } else {
       throw new Error('Expected invalid outcome');
     }

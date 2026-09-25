@@ -7,7 +7,7 @@ test('comprehensive smoke test of all tools and room activities', async ({ page 
 
   // 1. Test homepage elements and navigation links
   await page.goto('/');
-  await expect(page.locator('h1').first()).toContainText('Turn Every');
+  await expect(page.locator('h1').first()).toContainText("Can't decide?");
   await expect(page.getByRole('button', { name: 'Create Room' }).first()).toBeVisible();
 
   // 2. Go to /explore and check room feed
