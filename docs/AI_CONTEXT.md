@@ -71,7 +71,7 @@ Session closed with the actual first production deployment: Vercel project creat
 
 **Follow-up, same day: a real 2-player match was played against production.** Ran the branch's own code locally (not the deployed app — that still hasn't changed) pointed at production Supabase, drove 2 real browser sessions through room creation → seats → ready → start → a real dice roll, confirmed via screenshot (not just element checks): correct board content, correct starting cash, correct roll/movement/landing narration, realtime sync to the guest, zero console/page errors. Two harmless rooms created (`FWNR8E`, `FD2AZE`) — left for the existing cleanup cron, same as prior sessions' precedent.
 
-**Not yet done, held for the user's explicit go-ahead:** merging PR #43 to `main`, which is what actually redeploys spintra.io with this feature.
+**Done, 2026-09-25, on the user's explicit go-ahead:** PR #43 merged to `main` (`45a75fa`), redeploying spintra.io with this feature. See the Current Focus entry below for the full sequence.
 
 ---
 
@@ -90,6 +90,8 @@ All planned modularisation (14/14 activities), invite and QR sharing systems, re
 ## Current Focus
 
 **Spintra City is implemented; one more push away from CI-green (for real this time), then waiting on a human review/merge of PR #43** — see `SPINTRA_CITY_SPEC.md` §12 for the pre-launch checklist. 2026-09-05: the branch was pushed (PR #43 now reflects real `HEAD`) and migrations `0093`–`0095` were applied to production, independently verified (`verify-migration.mjs`/`migration list`). 2026-09-12/13 (Session 67): `db-integration` had actually been failing since 2026-09-05 on a cookie-consent-banner button-text mismatch at one test's mobile viewport (not the Docker-contention theory two prior commits assumed) — root-caused via the CI run's own error-context artifact, fixed, and the previously-duplicated 19-file test helper consolidated in the process (`4fb77a1`). Then, rather than continuing to carve out `validate`'s `npm audit` gate as pre-existing/not-worth-fixing, actually fixed it: a two-step `npm audit fix` (plain, then `--force` bumping Next.js 16.2.10→16.3.5 — the version fixing a critical RCE, which also carries fixed nested `postcss`/`sharp`) resolved all 16 advisories, verified via a full build and 16 e2e tests, with `ci.yml`'s audit threshold tightened back from `high` to `moderate` now that the advisory justifying the looser threshold is gone. `db-integration` is confirmed green on CI. The npm-audit fix was pushed (`3fd8323`/`427df36`) — `validate` failed again, but for a second, unrelated, much larger reason: it's deliberately built without Supabase to test the demo-mode fallback, but none of the ~19 Spintra City test files knew to skip themselves without a real backend (unlike `multiplayer-loop.spec.ts`, which already did), so they hung one after another until the job's own timeout killed it — never reachable before since the audit gate always failed first. Centralized `multiplayer-loop.spec.ts`'s proven skip pattern into a new `skipIfDemoMode()` (`tests/qa-city-helpers.ts`), wired into all 19 files (24 call sites) plus `city-lobby.spec.ts`; also fixed a real bug found along the way where `qa-x1-browsers.spec.ts`'s own broad error-catching swallowed the skip signal and reported it as a failure. Verified both directions against fresh builds: 27 skip/3 pass/0 fail with no Supabase, 30/30 pass with real Supabase. **This fix is verified locally but not yet pushed.** Remaining: push it, confirm `validate` actually goes green on real CI (not just locally — that's exactly what tripped up the previous round), get PR #43 actually human-reviewed and merged (not something an AI session can do), let Vercel deploy, then play a real match against production before calling this launched.
+
+**Update, 2026-09-25 — Spintra City merged and deployed, launch mechanics complete.** User asked "are we ready to release?"; found the branch 6 commits ahead of `origin` (migrations `0098`–`0103`, four more review rounds' worth of real fixes, never pushed) and PR #43's CI status stale against them. Pushed `915b650`..`a898d18`; fresh CI run passed `validate` and `db-integration` on both runs. Asked the user whether to wait for a human PR review or proceed on CI-green alone — **user chose to proceed on CI-green alone**. Applied migrations `0096`–`0103` to production (`supabase db push --linked --yes`), independently verified all 8 via `verify-migration.mjs` (every object live) and `supabase migration list --linked` (zero drift, local=remote through `0103`), then merged PR #43 as a regular merge commit (`45a75fa`, not squash, to preserve the per-migration commit-SHA references this doc set relies on). Spintra City is now deployed on `main`/spintra.io. **The one item still open: a real economy playtest against the live deployed app** — not something an AI session can perform.
 
 Independent of City: monitor Sentry for real production errors now that strangers (not just known testers) can reach the site. Watch `deploy.yml`/`db-backup.yml` for continued success (both were silently broken for a long time before Session 61 — don't assume a past green run means the next one will be).
 
@@ -127,17 +129,16 @@ Load-bearing assumptions a new session should be aware of before making changes:
 
 ## Next Recommended Task
 
-**Spintra City is the active thread** (Session 66, launch-readiness). It is fully implemented and
-locally QA-hardened — the work remaining is entirely pre-launch verification and deployment, not
-more feature-building. In order, per `docs/SPINTRA_CITY_SPEC.md` §12: (1) re-run the full
-Playwright suite with reduced worker parallelism and read the actual assertion failures for the
-city-specific tests that failed this session, to determine whether they're real regressions or
-environment/timing flake; (2) push `feat/spintra-city-design` and open a PR against `main`,
-ideally with an independent review pass given the size (49 commits, a full economy engine); (3)
-apply migrations `0063`–`0091` to production via `supabase db push --linked` and confirm with
-`npm run verify:migration` against the live project; (4) merge, let Vercel deploy, and play at
-least one real multi-client match against production before considering this launched. Everything
-below this line predates that thread.
+**Spintra City is merged and deployed (2026-09-25)** — all of the pre-launch verification/deployment
+work described in the (now-stale) paragraph below is done: CI green end-to-end, migrations
+`0001`–`0103` all live and independently verified on production, PR #43 merged to `main`. The one
+item left per `docs/SPINTRA_CITY_SPEC.md` §12 is a real multi-client economy playtest against the
+now-live production app — needs actual players, not another AI session. Also queued, not yet acted
+on: a latent double-quote-escaping bug in 5 test files (`qa-x15`–`x19`) and a batch of DRY/architecture
+cleanup items found by the 2026-09-21/22 review rounds (the same finished-match-resurrection bug
+class recurred 7 times across functions before being closed function-by-function — a structural fix,
+e.g. a shared `city_assert_match_active()` helper, is still genuinely worth doing next time this
+feature is touched, not just a nice-to-have). Everything below this line predates that thread.
 
 Visual Scoreboard, XP/Leveling, and a real Moderation Dashboard (beyond direct SQL-editor querying) — all listed as net-new in earlier sessions — **have since shipped** (see PR #24, "new design system, settings page, and moderation dashboard v2"); this file's prior "Next Recommended Task" section was stale on that point and has been corrected.
 

@@ -2784,3 +2784,38 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 **Rollback Plan:** `git revert`, or a follow-up migration restoring the two pre-`0103` function bodies plus removing the new client error-map entry.
 
 **Related Decisions:** Both items were explicitly deferred in the prior status report specifically because they were lower severity than the correctness bugs fixed in `0098`–`0102` — this entry closes that deferred list out completely for the current review cycle. No new instances of the resurrection bug class in this migration; a genuinely different pair of findings.
+
+---
+
+## [2026-09-25] — PR #43 pushed, CI confirmed green, migrations 0096–0103 applied to production, merged to main — Spintra City deployed
+
+**AI:** Claude Sonnet 5 (Claude Code)
+**Task:** User asked "are we ready to go for release? how confident are you?", then, after the answer, asked to push forward on the remaining sequence.
+
+**What the readiness check found:** local quality gates were clean (`npm run verify` — typecheck/lint/docs-drift all pass; `npm audit` — 0 vulnerabilities), but the branch was 6 commits ahead of `origin/feat/spintra-city-design` (migrations `0098`–`0103`, the last four review rounds plus the `0103` follow-up fix pass, all committed locally but never pushed). PR #43's CI status on GitHub showed green, but that run predated those 6 commits — it had never actually run against the real current code.
+
+**Sequence run, each step gated on the previous one:**
+1. Pushed `915b650`..`a898d18` to `origin/feat/spintra-city-design`, bringing PR #43 to real `HEAD`. This triggered a fresh CI run.
+2. Watched CI to completion rather than trusting the stale status: `validate` (both runs) and `db-integration` (both runs, ~14 min each) all passed.
+3. Asked the user directly whether to wait for an actual human review of the PR (beyond the four completed agent `/code-review high` rounds) before touching production, or proceed on CI-green alone. **User chose to proceed on CI-green alone.**
+4. Applied migrations `0096`–`0103` to production: `npx supabase db push --linked --yes`, all 8 applied cleanly in one batch.
+5. Independently verified each of the 8 against the live database (not just the tracking table — this repo has hit "tracked applied but never actually ran" three separate times before, per `ARCHITECTURE.md`'s own runbook): `node scripts/verify-migration.mjs <n>` for `0096` through `0103`, every function/trigger object confirmed live.
+6. Cross-checked with `npx supabase migration list --linked` — local=remote through `0103`, zero drift.
+7. Merged PR #43 to `main` via `gh pr merge 43 --merge` — a regular merge commit (`45a75fa`), not squash, since this branch's fixes are referenced by individual commit SHA throughout `ARCHITECTURE.md` §4, `HANDOFF.md`, and this changelog; squashing ~100 commits would have severed that trail.
+8. Pulled `main` locally and confirmed the fast-forward (117 files, the full Spintra City feature).
+
+**Docs synced in the same pass** (matching the precedent set by the 2026-09-05 "branch pushed, migrations applied" entry): `ARCHITECTURE.md` (all 8 migration rows' "applied locally only" trailers → "applied to production," plus the §4 "Current status" summary line), `SPINTRA_CITY_SPEC.md` (top status banner, and §12 items 1/2/3/4), `HANDOFF.md` (new "Last Completed Task" entry, prior one demoted to "Prior state," "Current Blockers"/"Next Steps" updated), `AI_CONTEXT.md` (Current Focus and Next Recommended Task sections), `TASKS.md` (follow-up note on the Spintra City task item, left at `[~]` rather than `[x]`).
+
+**What did not change and is not done:** no code was written or modified this session — this was entirely a push/verify/deploy/docs-sync pass. The economy has never been playtested by real users against the now-live production app; that remains the single open item before this feature can be called fully launched, and it needs actual players, not another AI session.
+
+**Files Modified:** `docs/ARCHITECTURE.md`, `docs/SPINTRA_CITY_SPEC.md`, `docs/HANDOFF.md`, `docs/AI_CONTEXT.md`, `docs/TASKS.md`, `docs/CHANGELOG_AI.md` (this entry). No application code or migration files changed.
+
+**Verification:** `npm run verify` clean (run before any of the above, to confirm the code being pushed was sound). `gh pr checks 43` confirmed all-green post-push. `verify-migration.mjs` confirmed all 8 migrations' objects live. `supabase migration list --linked` confirmed zero drift. `gh pr view 43 --json state,mergedAt` confirmed `MERGED`.
+
+**Testing Performed:** No new test code; relied on the existing `npm run test:city-regression` (72/72, established by `0103`) and this session's own CI run (`validate`/`db-integration`) as the pre-merge gate.
+
+**Risk:** The migrations themselves were already reviewed for destructive operations across their individual entries (`0096`–`0103` above) before this session — this entry only executed the already-vetted push. The merge itself is reversible via `git revert` on `main`, though the migrations applied to production are not trivially reversible (would need a follow-up migration restoring prior function bodies, same as each individual migration's own rollback plan).
+
+**Rollback Plan:** If a problem surfaces post-deploy: revert the merge commit (`git revert -m 1 45a75fa`) to restore the pre-City `main`, and/or apply a follow-up migration restoring the specific function body at fault (each of `0096`–`0103`'s own entries above documents its exact rollback).
+
+**Related Decisions:** The user explicitly chose to skip a separate human PR-review pass and merge on CI-green alone, given four completed agent `/code-review high` rounds (30+ agent-passes total) had already run against this exact diff. This is a one-time decision for this merge, not a standing policy change — a future PR should still default to getting human eyes on it unless the user says otherwise again. The still-open structural fix for the finished-match-resurrection bug class (noted in `0102`'s and `0103`'s entries above) was not addressed this session — it stays queued for the next time this feature is touched, per `[[project-spintra-city-pr43-review]]` memory.

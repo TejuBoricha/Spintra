@@ -377,6 +377,20 @@ Pre-launch hardening — required before publishing the site publicly on the ope
   30/30 pass with real Supabase restored. Committed and pushed (`ce14565`). Still needs: confirm
   `validate` goes green on real CI, then an actual human review and merge before any of it reaches
   spintra.io — not something an AI session can do.
+  **Follow-up 2026-09-18 through 2026-09-23:** four more `/code-review high` rounds plus one
+  follow-up fix pass found and fixed 7 total instances of the finished-match-resurrection bug class,
+  a concurrent-departure deadlock, a trade-debt symmetry gap, an auction-presence gap, a
+  mis-reported collection total, a false-error-banner bug, an autopilot turn-skip bug, an auction
+  pass-check invariant, a room-lock key mismatch, and a misleading trade-debt error message
+  (migrations `0096`–`0103`) — all local-only until the next follow-up. **Follow-up 2026-09-25:
+  launched.** Pushed the 6 remaining commits, CI ran green end-to-end (`validate` + `db-integration`,
+  both runs) on the actual final diff, applied migrations `0096`–`0103` to production
+  (`supabase db push --linked --yes`, independently verified via `verify-migration.mjs` and
+  `supabase migration list --linked` — zero drift, local=remote through `0103`), then merged PR #43
+  to `main` (`45a75fa`) — by the user's explicit choice, on CI-green alone rather than waiting for a
+  separate human review beyond the completed agent review rounds. Spintra City is now deployed on
+  spintra.io. **The one item keeping this at `[~]` instead of `[x]`: a real economy playtest against
+  the live deployed app has still never happened** — needs actual players, not an AI session.
 
 - `[ ]` **Activity feed v2 — event kinds deliberately left out of migration `0093`'s v1.** Logged
   as a real scope decision, not an oversight, so it isn't silently forgotten: turn-change (would

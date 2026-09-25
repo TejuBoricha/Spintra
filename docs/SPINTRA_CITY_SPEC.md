@@ -4,25 +4,26 @@
 > integration with the existing system → implementation → verification, with a traceability matrix
 > so every requirement can be followed to the thing that implements it and the thing that proves it.
 >
-> **Status (updated 2026-09-23): implemented, QA-hardened, multiple code-review rounds applied, and its
-> database is live on production through `0095` — not yet merged/deployed to the app itself.** All 7
-> slices (§7) are built; a 298-case QA audit found 44 bugs, all closed across 8+ fix rounds; four
-> `/code-review high` rounds against PR #43 (2026-09-03, then resumed 2026-09-15/16, then 2026-09-18,
-> then 2026-09-21/22 x2) have together found and fixed the finished-match-resurrection bug class seven
-> times over (migrations `0092`, `0096`/`0097`, `0098`, `0101`, `0102` x2 — see `ARCHITECTURE.md` §4 for
-> each), a concurrent-departure deadlock (`0099`), a durable-pause resume bug, a trade-debt symmetry gap,
-> an auction-presence gap, a mis-reported collection total, a false-error-banner bug, an autopilot
-> turn-skip bug, an auction pass-check invariant broken by an earlier fix (`0102`), a room-lock key
-> mismatch, and a misleading trade-debt error message (`0103`); the regression harness
-> (`npm run test:city-regression`) now covers 72 cases and passes. **Migrations `0063`–`0095` are
-> applied to the production Supabase project** (`supabase db push --linked`, independently confirmed via
-> `verify:migration` and `supabase migration list` — zero drift, local=remote through `0095`).
-> **`0096`–`0103` are local-only, not yet applied to production** — see `ARCHITECTURE.md` §4's "Current
-> status" line for the exact cut.
-> **What's still outstanding before launch:** PR #43 (open, pushed, not yet merged) needs a human
-> review; migrations `0096`–`0103` need to be applied to production alongside/before the merge; the
-> app itself hasn't been deployed with this feature (merging to `main` triggers that); the economy has
-> never been playtested by real users. §12 is the authoritative current checklist.
+> **Status (updated 2026-09-25): implemented, QA-hardened, multiple code-review rounds applied, fully
+> merged and deployed.** All 7 slices (§7) are built; a 298-case QA audit found 44 bugs, all closed
+> across 8+ fix rounds; four `/code-review high` rounds against PR #43 (2026-09-03, then resumed
+> 2026-09-15/16, then 2026-09-18, then 2026-09-21/22 x2) have together found and fixed the
+> finished-match-resurrection bug class seven times over (migrations `0092`, `0096`/`0097`, `0098`,
+> `0101`, `0102` x2 — see `ARCHITECTURE.md` §4 for each), a concurrent-departure deadlock (`0099`), a
+> durable-pause resume bug, a trade-debt symmetry gap, an auction-presence gap, a mis-reported
+> collection total, a false-error-banner bug, an autopilot turn-skip bug, an auction pass-check
+> invariant broken by an earlier fix (`0102`), a room-lock key mismatch, and a misleading trade-debt
+> error message (`0103`); the regression harness (`npm run test:city-regression`) now covers 72 cases
+> and passes. **All migrations `0063`–`0103` are applied to the production Supabase project**
+> (`supabase db push --linked`, independently confirmed via `verify:migration` and
+> `supabase migration list` — zero drift, local=remote through `0103`). **PR #43 was merged to `main`
+> on 2026-09-25 (merge commit `45a75fa`)** after CI ran green end-to-end on the actual final diff
+> (`validate` + `db-integration`, both runs) — by explicit user decision, without a separate human
+> review pass beyond the four agent `/code-review high` rounds already run against it. The app is now
+> deployed with this feature.
+> **What's still outstanding before calling this launched:** the economy has never been playtested by
+> real users against the live deployed app — see item 4 in §12, still open. §12 is the authoritative
+> current checklist.
 >
 > **The other two documents remain the source of truth for their own areas** and are not duplicated
 > here: `SPINTRA_CITY_DESIGN.md` = decisions and their rationale/provenance;
@@ -512,12 +513,15 @@ Needing the user, not blocking Phase 1:
 Phase 1's blockers above are all closed and schema/implementation work is done. What's actually
 left, in order:
 
-1. ~~Branch never pushed~~ → **Done, 2026-09-05.** PR #43 (https://github.com/TejuBoricha/Spintra/pull/43)
-   now reflects the branch's real `HEAD` (`992cd2e`) — the 14-commit gap a 2026-09-04
-   launch-readiness audit found (persistent activity feed, board redesign, What's Next feature, the
-   animated dice roll, a real site-wide room-join race fix, the `/spintra-city` SEO page, and 2 full
-   review-fix rounds) has been pushed. CI is re-running against the actual current code; still
-   needs a human review and merge.
+1. ~~Branch never pushed~~ → ~~needs human review and merge~~ → **Done, 2026-09-25.** The final 6
+   commits (migrations `0098`–`0103`, four review rounds plus one follow-up fix pass) were pushed,
+   bringing PR #43 to real `HEAD` (`a898d18`); CI ran green end-to-end on that actual diff
+   (`validate` + `db-integration`, both runs); migrations `0096`–`0103` were applied to production
+   (see item 2); the user then explicitly chose to proceed to merge on CI-green alone, treating the
+   four completed agent `/code-review high` rounds as sufficient rather than waiting on a separate
+   human review pass. Merged to `main` as merge commit `45a75fa` (regular merge, not squash — this
+   branch's fixes are referenced by individual commit SHA throughout `ARCHITECTURE.md` §4 and
+   `CHANGELOG_AI.md`, which a squash would have severed). The app is now deployed with this feature.
 1b. **PR #43's own code review — done, fixed, live-verified (as of 2026-09-03; superseded by more
    local work since, now on the PR per item 1 above).** A 2-round, 20-agent `/code-review
    high` pass found 2 critical bugs (bankruptcy permanently deadlocking the match; a finished match
@@ -526,12 +530,13 @@ left, in order:
    unit-tested) plus 10 more findings. 11 of 12 fixed in migration `0092` and 4 client-side changes;
    one (a 16-file test-helper duplication) deliberately deferred as not worth the regression risk.
    Full detail: `CHANGELOG_AI.md`'s "Session 66 (continued)" entry.
-2. ~~Migrations not live~~ → **Done, 2026-09-03 (`0063`–`0092`) and 2026-09-05 (`0093`–`0095`).**
-   `supabase db push --linked` applied all three cleanly; `node scripts/verify-migration.mjs`
-   independently confirmed all 15 objects from `0093` and all 6 from `0094` exist live (not just
-   tracked as applied — `0095` is a pure `CHECK` constraint, nothing that script checks for), and
-   `supabase migration list` confirmed local=remote for every migration `0001`–`0095`, zero drift.
-   The database side of Spintra City is fully live now, ahead of the app code that will use it.
+2. ~~Migrations not live~~ → **Done, 2026-09-03 (`0063`–`0092`), 2026-09-05 (`0093`–`0095`), and
+   2026-09-25 (`0096`–`0103`).** `supabase db push --linked --yes` applied the final 8 cleanly;
+   `node scripts/verify-migration.mjs` independently confirmed every object across all 8 migrations
+   exists live (not just tracked as applied), and `supabase migration list --linked` confirmed
+   local=remote for every migration `0001`–`0103`, zero drift. The database side of Spintra City has
+   been fully live since before this final push; this batch closed the remaining gap between the
+   database and the app code that now uses it (merged the same day — see item 1).
 3. **Full CI gate not yet green end-to-end.** Three separate, real causes found so far, each
    root-caused rather than budgeted around: (a) `db-integration` had been failing since 2026-09-05
    on `qa-x19-visual-review-fixes.spec.ts` — not CI Docker contention as first assumed, but the
@@ -554,7 +559,10 @@ left, in order:
    against fresh builds: 27 skip/3 pass/0 fail with no Supabase, 30/30 pass with real Supabase.
    **Fix (c) is committed and pushed (`ce14565`).** Full run-by-run diagnosis for the earlier, still-unresolved test-flake investigation
    remains in `CHANGELOG_AI.md`'s 2026-09-03 entry; the 2026-09-12 and 2026-09-14/15 "Session 67"
-   entries there cover fixes (b) and (c).
+   entries there cover fixes (b) and (c). **Fully closed, 2026-09-25:** the final PR diff, including
+   the four review rounds' worth of fixes (`0098`–`0103`) that had never been pushed before, ran
+   `validate` and `db-integration` both green on real CI (both runs) — the actual current code, not a
+   stale prior push.
 4. ~~Never played against production~~ → **Done, 2026-09-03.** Ran the local dev server against
    the branch's own code (not merged/deployed — this was `feat/spintra-city-design` running locally,
    pointed at production Supabase via `.env.local`) and drove 2 real, independent anonymous
@@ -564,8 +572,11 @@ left, in order:
    landing-on-unclaimed-property flow worked and synced to both clients via realtime, zero console
    or page errors on either side. Two harmless rooms created (`FWNR8E`, `FD2AZE`) — private,
    unlisted, will be swept by the existing `cleanup_inactive_rooms()` cron same as any abandoned
-   room. **Full balance/economy playtesting with real concurrent multi-day play is still open** —
-   this was a functional smoke test, not a balance pass.
+   room. **Full balance/economy playtesting with real concurrent multi-day play is still open, and
+   is now the single remaining item before this feature can be called launched** (as of 2026-09-25
+   the app itself is merged and deployed with this feature, unlike at the time this smoke test was
+   run against a local dev server pointed at production data) — this was a functional smoke test,
+   not a balance pass, and still isn't one.
 5. **Docs were stale until this pass.** This file, `DESIGN.md`, and the top-level session docs said
    "design phase, zero code" through 47 implementation commits — fixed 2026-09-03.
 6. Board art, and trademark clearance on "Spintra City"/"The Wheelworks" (item 4/5 above) — still
