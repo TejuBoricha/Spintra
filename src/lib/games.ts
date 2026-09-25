@@ -16,6 +16,7 @@ import {
   Lightbulb,
   Grid3x3,
   Shuffle,
+  Building2,
 } from "lucide-react";
 import type { RoomType } from "@/lib/types";
 
@@ -213,6 +214,26 @@ export const GAMES: GameDefinition[] = [
     stats: "Built for educators",
     href: "/create?type=classroom",
     createOnly: true,
+  },
+  {
+    type: "city",
+    label: "Spintra City",
+    icon: Building2,
+    color: "from-amber-500 to-yellow-500",
+    desc: "A Monopoly-style board game — buy, build, and trade your way to the top",
+    featureDescription:
+      "A Monopoly-style property-trading board game for 2-8 players. Roll, buy, develop, and negotiate — the board is refereed by the server, so nobody can cheat.",
+    stats: "2-8 players, one winner",
+    // No standalone tool page: Spintra City needs at least 2 real people (no
+    // bots by design), so there is nothing to play solo. Uses the same
+    // createOnly + /create?type= shape as Party Mode and Classroom.
+    href: "/create?type=city",
+    createOnly: true,
+    // Deliberately explicit, NOT left undefined. create-client.tsx's classroom
+    // filter tests `classroomSafe !== false`, so an unset flag would silently
+    // opt this into Classroom mode — see docs/SPINTRA_CITY_SPEC.md §5.5.
+    // A full match runs far longer than a class period, so it's excluded.
+    classroomSafe: false,
   },
 ];
 

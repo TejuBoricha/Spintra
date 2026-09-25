@@ -10,12 +10,14 @@
     "build": "next build",
     "start": "next start",
     "test:smoke": "npx playwright test",
+    "test:city-regression": "node scripts/city-regression.mjs",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "docs:check": "node scripts/check-docs-drift.mjs",
     "verify": "npm run typecheck && npm run lint && npm run docs:check",
     "verify:migration": "node scripts/verify-migration.mjs",
-    "ci": "npm run verify && npm audit --audit-level=high && npm run build && npm run test:smoke"
+    "audit": "npm audit --audit-level=moderate",
+    "ci": "npm run verify && npm run audit && npm run build && npm run test:smoke"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -28,7 +30,7 @@
     "clsx": "^2.1.1",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.23.0",
-    "next": "16.2.10",
+    "next": "16.3.5",
     "next-themes": "^0.4.6",
     "qrcode": "^1.5.4",
     "react": "19.2.7",
@@ -50,7 +52,7 @@
     "@types/react-dom": "^19",
     "@types/three": "^0.185.0",
     "eslint": "^9",
-    "eslint-config-next": "16.2.10",
+    "eslint-config-next": "16.3.5",
     "shadcn": "^4.13.0",
     "tailwindcss": "^4",
     "typescript": "^6"

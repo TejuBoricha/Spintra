@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useSyncExternalStore, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/components/theme-provider";
 import Link from "next/link";
@@ -11,6 +11,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { checkCanJoinRoom, ROOM_JOIN_ERROR_MESSAGES } from "@/lib/room-join-check";
 import { getOrCreateRoomUser } from "@/lib/room-user";
 import { fireConfetti } from "@/components/celebration";
+import { useHasMounted } from "@/lib/use-has-mounted";
 import {
   Sun,
   Moon,
@@ -24,16 +25,14 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useWhatsNew, WhatsNewTrigger, WhatsNewDialog } from "@/components/layout/whats-new-dialog";
 import { cn } from "@/lib/utils";
-
-const subscribeToClient = () => () => {};
-const getClientSnapshot = () => true;
-const getServerSnapshot = () => false;
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
+  const whatsNew = useWhatsNew(() => setMobileOpen(false));
   const [codeDigits, setCodeDigits] = useState<string[]>(() => Array(6).fill(""));
   const [joining, setJoining] = useState(false);
   const [currentUser] = useState(getOrCreateRoomUser);
@@ -41,11 +40,7 @@ export function Navbar() {
   const joinCode = codeDigits.join("");
 
   const router = useRouter();
-  const mounted = useSyncExternalStore(
-    subscribeToClient,
-    getClientSnapshot,
-    getServerSnapshot
-  );
+  const mounted = useHasMounted();
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
@@ -139,7 +134,14 @@ export function Navbar() {
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      className="fixed top-4 inset-x-4 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 z-50 md:min-w-[600px] md:max-w-4xl w-[calc(100%-2rem)] transition-all duration-500"
+      // The desktop pill nav (logo + 4 center items + right icons) clipped
+      // itself against this panel's own overflow-hidden at exactly 768px —
+      // md:'s breakpoint — with no page-level scroll to reveal it (BUG-041).
+      // Raised every toggle in this file from md: to lg: so the mobile
+      // hamburger (already correct at every width) covers the range where
+      // the desktop row doesn't actually fit, instead of redesigning the
+      // pill row's spacing to squeeze into 768px.
+      className="fixed top-4 inset-x-4 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 z-50 lg:min-w-[600px] lg:max-w-4xl w-[calc(100%-2rem)] transition-all duration-500"
     >
       <div
         className={cn(
@@ -175,7 +177,7 @@ export function Navbar() {
           </Link>
 
           {/* Center: Main Navigation (Desktop Only) */}
-          <div className="hidden md:flex items-center p-1 rounded-[1.5rem] bg-gradient-to-b from-(--surface-sunken)/80 to-transparent border border-(--border-hairline) shadow-inner gap-1 backdrop-blur-md">
+          <div className="hidden lg:flex items-center p-1 rounded-[1.5rem] bg-gradient-to-b from-(--surface-sunken)/80 to-transparent border border-(--border-hairline) shadow-inner gap-1 backdrop-blur-md">
             <Link href="/explore">
               <Button
                 variant="ghost"
@@ -222,7 +224,9 @@ export function Navbar() {
 
           {/* Right: Icons & Menus */}
           <div className="flex items-center gap-1.5 shrink-0">
-
+            <div className="hidden sm:block">
+              <WhatsNewTrigger variant="icon" whatsNew={whatsNew} />
+            </div>
 
             <Link href="/settings" className="hidden sm:block">
               <Button
@@ -250,7 +254,7 @@ export function Navbar() {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden rounded-full text-foreground hover:bg-(--surface-sunken) h-10 w-10"
+              className="lg:hidden rounded-full text-foreground hover:bg-(--surface-sunken) h-10 w-10"
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
             >
@@ -266,7 +270,7 @@ export function Navbar() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden border-t border-(--border-hairline) bg-transparent"
+              className="lg:hidden border-t border-(--border-hairline) bg-transparent"
             >
               <div className="px-4 py-4 flex flex-col gap-2">
                 <Button
@@ -307,12 +311,32 @@ export function Navbar() {
                       Quick Tools
                     </Button>
                   </Link>
-                  <Link href="/settings" onClick={() => setMobileOpen(false)} className="col-span-2">
+                </div>
+
+                {/* Settings and What's Next are already reachable via the
+                    top-bar icons from 640px up (both `hidden sm:block`) — a
+                    review pass caught that dropping this sm:hidden wrapper
+                    (to fix an unrelated orphaned-grid-cell bug) left both
+                    duplicated here too for the whole 640-1024px band. The
+                    real fix is symmetric: hide both from this panel at that
+                    width, not just one, so the grid above stays a clean
+                    2-item row instead of trading one layout bug for a
+                    duplicate-affordance one.
+                    No mt-2 here (unlike the grid above it): this div and its
+                    sibling are both direct children of the parent's own
+                    `flex flex-col gap-2`, so that gap alone already spaces
+                    the two rows apart. A later review caught that an mt-2
+                    here stacks on top of the parent's gap instead of
+                    replacing it, doubling the row-to-row gap versus the
+                    single combined grid this replaced. */}
+                <div className="sm:hidden grid grid-cols-2 gap-2">
+                  <Link href="/settings" onClick={() => setMobileOpen(false)}>
                     <Button variant="ghost" className="w-full rounded-2xl h-12 bg-(--surface-sunken)/50">
                       <Settings className="w-4 h-4 mr-2" />
                       Settings
                     </Button>
                   </Link>
+                  <WhatsNewTrigger variant="full" whatsNew={whatsNew} />
                 </div>
               </div>
             </motion.div>
@@ -401,6 +425,14 @@ export function Navbar() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Rendered once here, not inside either trigger — both the desktop
+          icon and the mobile-menu button above just call whatsNew.show().
+          A prior version gave each trigger its own Dialog; nesting one of
+          them inside the hamburger's conditionally-unmounted panel meant
+          opening it also tore it down moments later. See
+          whats-new-dialog.tsx's own comment for the full story. */}
+      <WhatsNewDialog whatsNew={whatsNew} />
     </motion.nav>
   );
 }

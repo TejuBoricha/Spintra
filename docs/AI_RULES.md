@@ -51,6 +51,30 @@ When multiple technical solutions exist, engineers must prioritize choices in th
 - **SOLID:** Maintain single-responsibility classes/components and clean interfaces.
 - **Defensive Programming:** Always check for undefined states, empty lists, or null values.
 
+### Minimal-Code Decision Ladder
+
+*(Adapted from the [Ponytail](https://github.com/dietrichgebert/ponytail) ruleset — operationalizes YAGNI/KISS/DRY above into a concrete order of operations.)*
+
+Before writing any code, stop at the first rung that holds:
+1. Does this need to be built at all?
+2. Does it already exist in this codebase? Reuse the existing helper, util, or pattern rather than re-writing it.
+3. Does the standard library already do this?
+4. Does a native platform feature cover it?
+5. Does an already-installed dependency solve it?
+6. Can this be one line?
+7. Only then: write the minimum code that works.
+
+The ladder runs after the problem is understood, not instead of it — read the task and the code it touches, trace the real flow end to end, then climb. A bug fix means the root cause, not the symptom: grep every caller of the function being touched and fix the shared function once, rather than patching only the path the ticket named.
+
+Additional rules:
+- No abstractions that weren't explicitly requested. No new dependency if it can be avoided. No boilerplate nobody asked for.
+- Deletion over addition. Boring over clever. Fewest files possible.
+- Shortest working diff wins, but only once the problem is understood — the smallest change in the wrong place is a second bug, not a fix.
+- When two stdlib/library approaches are the same size, pick the edge-case-correct one — lazy means less code, not a flimsier algorithm.
+- A deliberate simplification that cuts a real corner with a known ceiling (a global lock, an O(n²) scan, a naive heuristic) gets a comment naming the ceiling and the upgrade path.
+
+Not subject to minimization: understanding the problem itself, input validation at trust boundaries, error handling that prevents data loss, security, accessibility, and anything explicitly requested. Non-trivial logic leaves one runnable check behind (an assert-based check or a small test) — trivial one-liners don't need one.
+
 ---
 
 ## 3. Review Gates & Quality Standards

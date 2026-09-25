@@ -1,6 +1,6 @@
 import type { Tournament } from "@/lib/tournament-engine";
 
-export type RoomType = "team-maker" | "lucky-wheel" | "name-draw" | "tournament" | "coin-flip" | "dice" | "guess-number" | "rps" | "truth-or-dare" | "would-you-rather" | "never-have-i-ever" | "trivia" | "bingo" | "word-scramble" | "party" | "classroom";
+export type RoomType = "team-maker" | "lucky-wheel" | "name-draw" | "tournament" | "coin-flip" | "dice" | "guess-number" | "rps" | "truth-or-dare" | "would-you-rather" | "never-have-i-ever" | "trivia" | "bingo" | "word-scramble" | "party" | "classroom" | "city";
 
 export type TournamentType = "single-elimination" | "double-elimination" | "round-robin" | "swiss";
 
