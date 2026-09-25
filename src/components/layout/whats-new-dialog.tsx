@@ -201,7 +201,7 @@ export function WhatsNewTrigger({
 export function WhatsNewDialog({ whatsNew }: { whatsNew: WhatsNewState }) {
   return (
     <Dialog open={whatsNew.open} onOpenChange={whatsNew.onOpenChange}>
-      <DialogContent className="max-w-md sm:max-w-[440px] p-0 border-0 bg-transparent shadow-none overflow-visible">
+      <DialogContent className="sm:max-w-[440px] p-0 border-0 bg-transparent shadow-none overflow-visible">
         <div className="relative p-[2px] rounded-[2rem] overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-(--brand-primary-strong)/40 via-transparent to-transparent" />
           <div className="relative bg-(--surface-glass-strong)/95 backdrop-blur-3xl rounded-[calc(2rem-2px)] p-6 sm:p-7 max-h-[85vh] overflow-y-auto">
@@ -213,7 +213,7 @@ export function WhatsNewDialog({ whatsNew }: { whatsNew: WhatsNewState }) {
                 <h2 className="text-lg font-display font-black tracking-tight text-foreground">
                   What&apos;s next
                 </h2>
-                <p className="text-xs text-muted-foreground">Coming up, and what you might have missed</p>
+                <p className="text-xs text-muted-foreground">What&apos;s new, and what you might have missed</p>
               </div>
             </div>
 

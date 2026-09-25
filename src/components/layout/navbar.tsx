@@ -351,7 +351,7 @@ export function Navbar() {
           if (!open) setCodeDigits(Array(6).fill(""));
         }}
       >
-        <DialogContent className="max-w-md sm:max-w-[420px] p-0 border-0 bg-transparent shadow-none overflow-visible">
+        <DialogContent className="sm:max-w-[420px] p-0 border-0 bg-transparent shadow-none overflow-visible">
           {/* Animated gradient border wrapper */}
           <div className="relative p-[2px] rounded-[2.5rem] overflow-hidden group">
             {/* Rotating gradient background using brand colors */}

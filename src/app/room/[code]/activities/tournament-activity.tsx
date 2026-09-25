@@ -99,7 +99,7 @@ function ScoreEditor({
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-sm">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle className="text-center">Update Score</DialogTitle>
         </DialogHeader>
