@@ -185,8 +185,9 @@ The dramatic deck — movement, windfalls, sudden reversals. Drawn at positions 
 8. Emergency baggage fees. Pay 75 Spins.
 9. Your grand reopening draws travellers from everywhere. Collect 100 Spins from every other player.
 10. A city-wide surge hits the grid. Advance to the Power Grid. Buy it if nobody owns it, or pay
-    the owner double the usual rent. (Reworded in migration `0104`: the old "ten times the total"
-    was only true when the owner holds one utility. See that migration's header.)
+    the owner ten times your roll. (Effect since `0079`: `flat_rent_multiplier: 10`, a flat roll x 10
+    whatever the owner holds. `0104` briefly changed this text to "double the usual rent" by
+    mistake; `0105` restored the accurate wording.)
 11. Every property you own is due a safety inspection. Pay 40 Spins per Hostel or Inn, 150 per
     Hotel or Resort, and 300 per Landmark.
 12. **Transit Visa.** Keep this card until you use it; it clears you through Customs once.

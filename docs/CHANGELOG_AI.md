@@ -2840,3 +2840,16 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 **Not covered:** in-room game screens were reviewed from source only; a full multi-client audit of every game, screen, and table is the next task.
 
 **Correction to earlier notes this session:** `.env.local` points the dev server at the local Supabase stack (`127.0.0.1:54321`), not production.
+
+---
+
+## [2026-09-26] — Migration 0105: correcting card 10, which 0104 got wrong
+
+**AI:** Claude Opus 5.5 (Claude Code)
+**Task:** The round-2 content audit (K-7) flagged that 0104's rewording of Spintra City card 10 didn't match the card's effect.
+
+**What happened:** 0104 changed card 10 from "pay the owner ten times your roll" to "pay the owner double the usual rent", on the reasoning that its effect was `rent_multiplier: 2` (roll x5 or x12, doubled). That effect is only what 0068 originally seeded. 0079 (line 444) had already replaced it with `{"flat_rent_multiplier": 10}`, a flat roll x 10 whatever the owner holds. So the original text was accurate and 0104 made it inaccurate. Confirmed against the effect in both the local and production databases before fixing. Root cause: reading the seed migration instead of the latest definition of the row, which is exactly the "latest definition wins" rule this repo applies to functions.
+
+**Fix:** 0105 restores "ten times your roll" (without the em dash), guarded on the effect still being `flat_rent_multiplier = 10`. 0104 itself is left unedited because it has already run on production; its row in `ARCHITECTURE.md` §4 now carries a correction note, as does `SPINTRA_CITY_CONTENT.md` §6.
+
+**Verification:** applied locally; `npm run test:city-regression` and `npm run verify` re-run (see commit). Production text confirmed after the deploy workflow applied it.
