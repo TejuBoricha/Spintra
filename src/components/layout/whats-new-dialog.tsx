@@ -21,7 +21,7 @@ import { useHasMounted } from "@/lib/use-has-mounted";
 // version re-surfaces the badge dot for everyone the next time this list
 // actually changes — it isn't tied to a specific item, so editing COMING/
 // UPDATES below without bumping it means returning users won't notice.
-const SEEN_KEY = "spintra-whats-new-seen-v1";
+const SEEN_KEY = "spintra-whats-new-seen-v2";
 
 interface Announcement {
   icon: typeof Lightbulb;
@@ -29,18 +29,20 @@ interface Announcement {
   body: string;
 }
 
-// Spintra City: real, in-progress, not yet launched — see docs/SPINTRA_CITY_SPEC.md.
+// Nothing queued right now — see docs/SPINTRA_CITY_SPEC.md §12 for what's
+// actually still open (a real-user economy playtest, not a launch blocker
+// for this dialog's purposes).
+const COMING: Announcement[] = [];
+
+// Spintra City: merged and deployed 2026-09-25 — see docs/SPINTRA_CITY_SPEC.md.
 // Classroom Mode / Party Mode: real, already live, just easy to miss since
 // neither is the default path through /create.
-const COMING: Announcement[] = [
+const UPDATES: Announcement[] = [
   {
     icon: Building2,
     title: "Spintra City",
-    body: "A Monopoly-style property-trading board game for 2-8 players — roll, buy, develop, and negotiate. The server referees every move, so nobody can cheat. In final review now.",
+    body: "A Monopoly-style property-trading board game for 2-8 players — roll, buy, develop, and negotiate. The server referees every move, so nobody can cheat. Live now.",
   },
-];
-
-const UPDATES: Announcement[] = [
   {
     icon: GraduationCap,
     title: "Classroom Mode",
@@ -215,19 +217,23 @@ export function WhatsNewDialog({ whatsNew }: { whatsNew: WhatsNewState }) {
               </div>
             </div>
 
-            <div className="mb-6">
-              <p className="text-[11px] font-mono font-bold uppercase tracking-[0.2em] text-(--brand-primary-strong) mb-3 flex items-center gap-1.5">
-                <Sparkle className="w-3 h-3" aria-hidden="true" />
-                Coming soon
-              </p>
-              <div className="flex flex-col gap-4">
-                {COMING.map((a) => (
-                  <AnnouncementRow key={a.title} {...a} />
-                ))}
-              </div>
-            </div>
+            {COMING.length > 0 && (
+              <>
+                <div className="mb-6">
+                  <p className="text-[11px] font-mono font-bold uppercase tracking-[0.2em] text-(--brand-primary-strong) mb-3 flex items-center gap-1.5">
+                    <Sparkle className="w-3 h-3" aria-hidden="true" />
+                    Coming soon
+                  </p>
+                  <div className="flex flex-col gap-4">
+                    {COMING.map((a) => (
+                      <AnnouncementRow key={a.title} {...a} />
+                    ))}
+                  </div>
+                </div>
 
-            <div className="w-full h-px bg-(--border-glass) mb-6" />
+                <div className="w-full h-px bg-(--border-glass) mb-6" />
+              </>
+            )}
 
             <div>
               <p className="text-[11px] font-mono font-bold uppercase tracking-[0.2em] text-muted-foreground mb-3">
