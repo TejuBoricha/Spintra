@@ -2936,3 +2936,14 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 **Not legal advice.** The Children and Schools wording is a good-faith draft following COPPA, the UK Children's Code, GDPR and India's DPDP Act at a high level; the user was told it needs review by a lawyer, especially for DPDP (under-18s) before marketing to schools.
 
 **Needs the user:** turn off "Page changes based on browser history events" in the GA property's Enhanced measurement settings; set the R2 lifecycle rule to 30 days (the policy says backups are kept up to 30 days).
+
+---
+
+## [2026-09-26] — Audit wave 1: release gate (P-2, P-6)
+
+**AI:** Claude Opus 5.5 (Claude Code)
+**Task:** Nothing stopped a failing commit reaching production: `main` had required checks, but admins could push directly and skip them (my own copy commit `626cbf7` went live with CI failing), and `deploy.yml` could be run by hand from any branch.
+
+**What changed:** branch protection on `main` (applied with the user's go-ahead through the GitHub API): pull requests required for everyone including admins, zero approvals, required checks `validate` and `db-integration` on an up-to-date branch, no force-pushes or deletion. `deploy.yml` now only runs from `main` and pins the Supabase CLI to `2.109.0`, the version `ci.yml`'s `db-integration` job applies migrations with, instead of fetching the newest at deploy time. A `/code-review` pass caught that the first version pinned a different CLI than CI tests with, and that an older ARCHITECTURE.md paragraph still described admins as able to push directly.
+
+**Files Modified:** `.github/workflows/deploy.yml`, `docs/ARCHITECTURE.md`. Branch protection is a repository setting, not a file.
