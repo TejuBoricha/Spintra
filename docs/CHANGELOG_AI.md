@@ -2853,3 +2853,14 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 **Fix:** 0105 restores "ten times your roll" (without the em dash), guarded on the effect still being `flat_rent_multiplier = 10`. 0104 itself is left unedited because it has already run on production; its row in `ARCHITECTURE.md` §4 now carries a correction note, as does `SPINTRA_CITY_CONTENT.md` §6.
 
 **Verification:** applied locally; `npm run test:city-regression` and `npm run verify` re-run (see commit). Production text confirmed after the deploy workflow applied it.
+
+---
+
+## [2026-09-26] — Audit wave 1: release gate (P-2, P-6)
+
+**AI:** Claude Opus 5.5 (Claude Code)
+**Task:** Nothing stopped a failing commit reaching production: `main` had required checks, but admins could push directly and skip them (my own copy commit `626cbf7` went live with CI failing), and `deploy.yml` could be run by hand from any branch.
+
+**What changed:** branch protection on `main` (applied with the user's go-ahead through the GitHub API): pull requests required for everyone including admins, zero approvals, required checks `validate` and `db-integration` on an up-to-date branch, no force-pushes or deletion. `deploy.yml` now only runs from `main` and pins the Supabase CLI (`supabase@2.118.0`, the version the backup rework was tested with) instead of fetching the newest at deploy time.
+
+**Files Modified:** `.github/workflows/deploy.yml`, `docs/ARCHITECTURE.md`. Branch protection is a repository setting, not a file.

@@ -1,5 +1,11 @@
 name: Deploy Supabase Migrations
 
+# Applies supabase/migrations/ to production. Runs only from main, which
+# since 2026-09-26 (audit P-2) only accepts pull requests whose required
+# checks (validate, db-integration) passed on an up-to-date branch, for
+# admins too. So a migration reaches production only after it has been
+# applied and tested against a fresh local stack in CI.
+
 on:
   push:
     branches:
@@ -8,11 +14,19 @@ on:
       - 'supabase/migrations/**'
   workflow_dispatch: {}
 
+concurrency:
+  group: deploy-migrations
+  cancel-in-progress: false
+
 jobs:
   deploy:
     name: Push DB Migrations
     runs-on: ubuntu-latest
-    
+    # A manual run is allowed (to retry a failed deploy), but only of main:
+    # started from any other branch it would push that branch's unmerged,
+    # unreviewed migrations straight to production (audit P-6).
+    if: github.ref == 'refs/heads/main'
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -27,6 +41,11 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+          # Pinned: `npx supabase` with no version fetches whatever is newest
+          # at deploy time, so a CLI release could change what `db push`
+          # does to production with no change in this repo (audit P-6).
+          SUPABASE_CLI: supabase@2.118.0
         run: |
-          npx supabase link --project-ref $SUPABASE_PROJECT_ID --password $SUPABASE_DB_PASSWORD
-          npx supabase db push
+          set -euo pipefail
+          npx --yes "$SUPABASE_CLI" link --project-ref "$SUPABASE_PROJECT_ID" --password "$SUPABASE_DB_PASSWORD"
+          npx --yes "$SUPABASE_CLI" db push
