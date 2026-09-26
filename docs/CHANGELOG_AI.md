@@ -2854,6 +2854,22 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 
 **Verification:** applied locally; `npm run test:city-regression` and `npm run verify` re-run (see commit). Production text confirmed after the deploy workflow applied it.
 
+
+---
+
+## [2026-09-26] — Audit wave 1: backups that actually restore (P-1, P-5, P-7)
+
+**AI:** Claude Opus 5.5 (Claude Code)
+**Task:** The round-2 audit found the daily backup couldn't be restored: restored as hosted Supabase's non-superuser `postgres` role, a dump made with the old flags exits 0 and leaves every public table empty. It had never been restore-tested, and it stored auth sessions and refresh tokens unencrypted.
+
+**Files Modified:** `.github/workflows/db-backup.yml` (rewritten), `scripts/backup/extras.sql` (new), `docs/ARCHITECTURE.md` (§10 Backup & Disaster Recovery, with a restore runbook), `docs/AI_CONTEXT.md` (corrected the "backups succeed" claim).
+
+**What changed:** Supabase's documented roles/schema/data split, verified by actually restoring into an empty local stack. Doing that exposed three gaps in the documented method, all handled: `roles.sql` carries settings only Supabase's own role may apply (applied best-effort); a full data dump includes Supabase-managed storage tables `postgres` can't write (data limited to `public` and `auth`, which is all the app uses); and `db dump` omits the `realtime.messages` RLS policies and the `pg_cron` cleanup job, without which every private room channel refuses everyone after a restore (now saved by `scripts/backup/extras.sql`, generated from the live database each run). Login state is excluded (sessions, refresh tokens, one-time tokens, OAuth flow state, MFA challenges and claims). Every run now restores its own backup into an empty Supabase stack and checks row counts, policies, the cron job and RLS before uploading; a failed check still uploads but fails the job. Files are encrypted with GPG AES-256 using a new `BACKUP_ENCRYPTION_PASSPHRASE` secret (until the user adds it, the job still uploads but fails, so it can't pass unnoticed). A `/code-review high` pass before commit also fixed the order of the source row count, cron jobs losing their on/off state, the archive being named after packaging instead of the dump, and a runbook option that couldn't have worked; the restore stack uses the latest CLI so its auth schema keeps up with production's.
+
+**Verification:** locally, dumped the dev database (493 rooms, 1,204 users) and restored it into a second empty stack using the workflow's own check script: every count matched, 33 public policies, 2 realtime policies, the cron job, RLS on.
+
+**Still open (needs the user, who has R2 access):** the backups already in R2 were made the old way. They can't be restored as they are (that would need a superuser restore, which hosted Supabase doesn't allow), and they contain plaintext auth sessions and refresh tokens, so they should be deleted once the new job has produced a verified backup, with a lifecycle rule for retention going forward. Whether to also revoke all current sessions is a separate call: every anonymous visitor would get a new identity, and hosts would lose their rooms. The first run of the new job produces the first restorable backup. The migration history table isn't in the dump; the runbook covers it.
+
 ---
 
 ## [2026-09-26] — Audit wave 1: room security hardening (migration 0106)
