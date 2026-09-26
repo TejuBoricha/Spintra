@@ -294,6 +294,9 @@ export function useRoomSubscription({
       currentParticipants: RoomParticipant[]
     ) => {
       if (!supabase) return;
+      // Only a Classroom room's creator (the teacher) can host it, and the
+      // server refuses anyone else (migration 0108), so students don't ask.
+      if (roomTypeRef.current === "classroom") return;
 
       const hasOnlineHost = currentParticipants.some(
         (participant) => participant.role === "host" && participant.is_online
@@ -874,6 +877,8 @@ export function useRoomSubscription({
 
         // Only a genuinely new guest join, not the host's own creation (that
         // already fires room_created) or a reconnect/refresh (existingParticipant).
+        // Classroom rooms are covered by the analytics suppression room-client
+        // sets before this component mounts (src/lib/consent.ts).
         if (!existingParticipant && !isRoomHost) {
           trackEvent("room_joined", currentUser.id);
         }

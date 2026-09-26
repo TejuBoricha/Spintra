@@ -5,6 +5,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/layout/navbar";
 import { Toaster } from "@/components/ui/toaster";
+import { AnalyticsScripts } from "@/components/analytics-scripts";
 
 const archivo = Archivo({
   variable: "--font-archivo",
@@ -87,50 +88,11 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
-        {/* Google Analytics (GA4) with Google Consent Mode v2 — no-ops
-            entirely without NEXT_PUBLIC_GA_MEASUREMENT_ID set, same
-            optional-integration pattern as Sentry (src/instrumentation-client.ts).
-            The googletagmanager.com script-src allowlist in next.config.ts is
-            itself gated on this same env var.
-
-            Consent defaults to DENIED for all storage before config runs, so
-            no analytics cookies are set and no identifiable data is sent until
-            the visitor clicks Accept in the cookie banner
-            (src/components/cookie-consent-banner.tsx), which calls
-            gtag('consent','update',...). A previously stored grant is
-            re-applied here on load so returning visitors are tracked from the
-            first pageview. gtag() queues onto dataLayer, so ordering across
-            these two afterInteractive scripts doesn't matter — gtag.js
-            processes the queue (consent default first) when it loads. The
-            'spintra-cookie-consent' key must match CONSENT_STORAGE_KEY in the
-            banner. */}
-        {gaMeasurementId && (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId}`}
-              strategy="afterInteractive"
-            />
-            <Script id="google-analytics" strategy="afterInteractive">
-              {`
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                gtag('consent', 'default', {
-                  ad_storage: 'denied',
-                  ad_user_data: 'denied',
-                  ad_personalization: 'denied',
-                  analytics_storage: 'denied',
-                });
-                try {
-                  if (window.localStorage.getItem('spintra-cookie-consent') === 'granted') {
-                    gtag('consent', 'update', { analytics_storage: 'granted' });
-                  }
-                } catch (e) {}
-                gtag('js', new Date());
-                gtag('config', '${gaMeasurementId}');
-              `}
-            </Script>
-          </>
-        )}
+        {/* Google Analytics loads only after the visitor accepts (see
+            AnalyticsScripts and src/lib/consent.ts). Nothing without
+            NEXT_PUBLIC_GA_MEASUREMENT_ID set; next.config.ts's
+            googletagmanager.com script-src entry is gated on the same var. */}
+        {gaMeasurementId && <AnalyticsScripts measurementId={gaMeasurementId} />}
         <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[60] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-pill focus:outline-none">
           Skip to content
         </a>
