@@ -23,6 +23,7 @@ import { Emoji, type EmojiName } from "@/components/emoji";
 
 // Custom Hooks
 import { useRoomSubscription } from "./hooks/use-room-subscription";
+import { setAnalyticsSuppressed } from "@/lib/consent";
 import { useRoomChat } from "./hooks/use-room-chat";
 
 // Components
@@ -188,6 +189,16 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   const [prefetchedExistingParticipant, setPrefetchedExistingParticipant] = useState<
     { id: string; role: string } | null | undefined
   >(undefined);
+
+  // Classroom rooms: no analytics for anyone in them, whatever they chose,
+  // and no consent banner for students (src/lib/consent.ts); their users are
+  // often children. Both stay off on a room page until the room is known
+  // not to be a Classroom room, so a student never sees the banner flash
+  // up while the room loads.
+  useEffect(() => {
+    setAnalyticsSuppressed(prefetchedRoom ? prefetchedRoom.type === "classroom" : checkingAccess);
+  }, [prefetchedRoom, checkingAccess]);
+  useEffect(() => () => setAnalyticsSuppressed(false), []);
 
   // Prevent accidental leave on reload/tab close
   useEffect(() => {
@@ -850,6 +861,15 @@ function RoomUIInner({
       chatScrollContainerRef={chatScrollContainerRef}
       messagesEndRef={messagesEndRef}
       onUpdateUsername={handleUpdateUsername}
+      chatReadOnlyReason={
+        isHost
+          ? null
+          : roomType === "classroom"
+          ? "In Classroom rooms only the teacher can post in chat."
+          : isLocked
+          ? "The host has locked the room, so only the host can post in chat."
+          : null
+      }
     />
   );
 

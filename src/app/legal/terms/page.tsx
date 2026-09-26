@@ -13,7 +13,7 @@ export default function TermsOfServicePage() {
         <h1 className="text-4xl sm:text-5xl font-bold mb-2">
           Terms of <span className="gradient-text">Service</span>
         </h1>
-        <p className="text-muted-foreground mb-10">Effective date: July 4, 2026</p>
+        <p className="text-muted-foreground mb-10">Effective date: September 26, 2026</p>
 
         <div className="space-y-8 text-foreground/90 leading-relaxed">
           <p>
@@ -35,7 +35,20 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-3">2. Acceptable Use</h2>
+            <h2 className="text-2xl font-semibold mb-3">2. Age and Schools</h2>
+            <p>
+              You must be at least 13 years old, or the age of digital consent where you live if
+              that is higher (in some countries, including India, it is 18), to use Spintra on
+              your own. Younger people may use it with a parent or guardian&apos;s permission, or
+              in a Classroom room run by a teacher. Teachers and schools that use Spintra with
+              students are responsible for supervising that use and for any permission their
+              school or local law requires. How Classroom rooms protect students is described in
+              our <Link href="/legal/privacy" className="underline hover:text-foreground">Privacy Policy</Link>.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold mb-3">3. Acceptable Use</h2>
             <p>You agree not to use the Service to:</p>
             <ul className="list-disc pl-6 space-y-1 mt-2">
               <li>Harass, threaten, defame, or abuse other participants;</li>
@@ -49,18 +62,18 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-3">3. User-Generated Content</h2>
+            <h2 className="text-2xl font-semibold mb-3">4. User-Generated Content</h2>
             <p>
               Chat messages, room names, and profile fields (display name, avatar) you submit
               are your own content and your responsibility. We do not pre-screen content, but
               we may remove content, kick a participant, or close a room at our discretion,
-              particularly in response to a violation of Section 2. Room hosts also have
+              particularly in response to a violation of Section 3. Room hosts also have
               limited moderation tools (e.g. removing a participant from their own room).
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-3">4. No Verified Identity</h2>
+            <h2 className="text-2xl font-semibold mb-3">5. No Verified Identity</h2>
             <p>
               The Service does not verify who you are. Anonymous sessions provide a
               lightweight way to prevent casual abuse but are not a secure identity system.
@@ -70,7 +83,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-3">5. Termination</h2>
+            <h2 className="text-2xl font-semibold mb-3">6. Termination</h2>
             <p>
               We may suspend or terminate your access to the Service, or close any room, at
               any time, with or without notice, if we believe these Terms have been
@@ -79,7 +92,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-3">6. Disclaimer of Warranties</h2>
+            <h2 className="text-2xl font-semibold mb-3">7. Disclaimer of Warranties</h2>
             <p>
               The Service is provided &quot;as is&quot; and &quot;as available&quot;, without warranties
               of any kind, express or implied, including fitness for a particular purpose,
@@ -88,7 +101,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-3">7. Limitation of Liability</h2>
+            <h2 className="text-2xl font-semibold mb-3">8. Limitation of Liability</h2>
             <p>
               To the maximum extent permitted by law, Spintra and its operators are not
               liable for any indirect, incidental, or consequential damages arising from your
@@ -97,7 +110,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-3">8. Changes to These Terms</h2>
+            <h2 className="text-2xl font-semibold mb-3">9. Changes to These Terms</h2>
             <p>
               We may update these Terms from time to time. Continued use of the Service after
               a change takes effect constitutes acceptance of the revised Terms.
@@ -105,7 +118,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-3">9. Governing Law</h2>
+            <h2 className="text-2xl font-semibold mb-3">10. Governing Law</h2>
             <p>
               These Terms are governed by the laws of <strong>India</strong>,
               without regard to its conflict-of-law principles.
@@ -113,7 +126,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-3">10. Contact</h2>
+            <h2 className="text-2xl font-semibold mb-3">11. Contact</h2>
             <p>
               Questions about these Terms can be sent to{" "}
               <strong>tejasboricha225@gmail.com</strong>.

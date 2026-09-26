@@ -29,6 +29,8 @@ import {
 import { useTheme } from "@/components/theme-provider";
 import { getOrCreateRoomUser, updateRoomUsername, clearAllLocalUserData } from "@/lib/room-user";
 import { safeStorageGet, safeStorageSet } from "@/lib/utils";
+import { getAnalyticsConsent, onAnalyticsConsentChange, setAnalyticsConsent } from "@/lib/consent";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const SOUND_STORAGE_KEY = "spintra-room-sound";
 
@@ -38,6 +40,14 @@ export default function SettingsPage() {
   const [displayName, setDisplayName] = useState("");
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  // Analytics consent can be changed here as easily as it was given in the
+  // banner (src/lib/consent.ts).
+  const [analyticsOn, setAnalyticsOn] = useState(false);
+  useEffect(() => {
+    const sync = () => setAnalyticsOn(getAnalyticsConsent() === "granted");
+    sync();
+    return onAnalyticsConsentChange(sync);
+  }, []);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -67,8 +77,15 @@ export default function SettingsPage() {
     toast.info(next ? "Sound effects enabled!" : "Sound effects muted!", { id: "settings-sound" });
   }, []);
 
-  const handleDeleteData = useCallback(() => {
+  const handleDeleteData = useCallback(async () => {
     clearAllLocalUserData();
+    // Also switches analytics off and removes Google Analytics' cookies,
+    // which live outside local storage. It can be turned on again above.
+    setAnalyticsConsent("denied");
+    // And ends the anonymous Supabase session (its own sb-*-auth-token key),
+    // so the next visit gets a new anonymous ID, as the privacy policy says.
+    // Awaited, so the next page can't pick the old session back up.
+    await getSupabaseBrowserClient()?.auth.signOut({ scope: "local" }).catch(() => {});
     setIsDeleteOpen(false);
     toast.success("Your local data has been deleted.", { id: "settings-delete" });
     router.push("/");
@@ -159,6 +176,19 @@ export default function SettingsPage() {
             </Link>{" "}
             for what&apos;s stored and for how long.
           </p>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <Label htmlFor="settings-analytics" className="font-normal">Usage analytics</Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Helps us see how Spintra is used. Never used for advertising.
+              </p>
+            </div>
+            <Switch
+              id="settings-analytics"
+              checked={analyticsOn}
+              onCheckedChange={(checked) => setAnalyticsConsent(checked ? "granted" : "denied")}
+            />
+          </div>
           <Button variant="destructive" size="sm" icon={<Trash2 className="w-4 h-4" />} onClick={() => setIsDeleteOpen(true)}>
             Delete my data
           </Button>
@@ -170,8 +200,9 @@ export default function SettingsPage() {
           <DialogHeader>
             <DialogTitle>Delete my data?</DialogTitle>
             <DialogDescription>
-              This clears your display name, preferences, and room history from this device.
-              It can&apos;t be undone, and you&apos;ll be assigned a new guest name.
+              This clears your display name, preferences, room history, and anonymous ID from
+              this device, and turns analytics off. It can&apos;t be undone, and you&apos;ll be
+              assigned a new guest name.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
