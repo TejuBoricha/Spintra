@@ -14,10 +14,9 @@ export function trackEvent(eventName: AnalyticsEventName, actorId: string, activ
   if (!supabase) return;
 
   // Same fire-and-forget pattern as every other non-critical write in this
-  // codebase (e.g. the fingerprint update in use-room-subscription.ts) — the
-  // Supabase client resolves with an `{ error }` field rather than
-  // rejecting, so this is a true no-op on failure, not a silently-swallowed
-  // throw; never worth surfacing to the user for internal telemetry.
+  // codebase — the Supabase client resolves with an `{ error }` field rather
+  // than rejecting, so this is a true no-op on failure, not a silently-
+  // swallowed throw; never worth surfacing to the user for internal telemetry.
   supabase
     .from("analytics_events")
     .insert({ event_name: eventName, actor_id: actorId, activity_type: activityType ?? null })
