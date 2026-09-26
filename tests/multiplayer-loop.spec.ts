@@ -291,7 +291,9 @@ test('host kicks a participant, and the kicked participant is blocked from rejoi
 // policy breaking every host promotion, Session 41; a stale-column trigger
 // breaking it again, Session 43) with neither caught by a test.
 test('guest is promoted to host after the original host disconnects', async ({ page, baseURL }) => {
-  test.setTimeout(90_000);
+  // A crash sends no leave request, so the server waits out the 30s
+  // heartbeat window, then the 15s host grace (migration 0109).
+  test.setTimeout(150_000);
 
   await page.goto('/create?type=trivia');
   await page.waitForSelector('[data-testid="create-room-button"]', { timeout: 30000 });
@@ -327,13 +329,72 @@ test('guest is promoted to host after the original host disconnects', async ({ p
     // "close room" action, just the connection dropping.
     await page.close();
 
-    // The guest's own presence-reconciliation (migration 0019) should
-    // notice the host is gone and self-promote — confirmed via the
-    // persistent notification banner (not the transient toast, which
-    // auto-dismisses and would make this assertion timing-sensitive).
+    // The server's sweep (migration 0109) marks the silent host offline and
+    // promotes the guest; the guest hears it from rooms.host_id. Confirmed
+    // via the persistent notification banner (not the transient toast,
+    // which auto-dismisses) and the host-only lock control appearing.
+    // The same text also goes to a screen-reader-only live region.
     await expect(
-      guestPage.getByText(/previous host left, and you have been promoted to host/i)
-    ).toBeVisible({ timeout: 45_000 });
+      guestPage.locator('[role="status"]:not(.sr-only)', { hasText: /you're the host of this room/i })
+    ).toBeVisible({ timeout: 90_000 });
+    await expect(guestPage.getByLabel('Toggle room lock state')).toBeVisible();
+  } finally {
+    await guestContext.close();
+    await browser.close();
+  }
+});
+
+// Audit R-14 (City playtest, 2026-09-26): a host who refreshed while their
+// realtime connection was slow to come back was written offline by the
+// guest's tab and lost host for good. The page itself was usable in about a
+// second; only the websocket was late. Since migration 0109 the server
+// decides who is online from heartbeats, which don't use the websocket, so
+// the host must stay online and keep host.
+test('a host refresh with a slow realtime connection keeps host and stays online', async ({ page, baseURL }) => {
+  test.setTimeout(120_000);
+
+  await page.goto('/create?type=trivia');
+  await page.waitForSelector('[data-testid="create-room-button"]', { timeout: 30000 });
+  await page.click('[data-testid="create-room-button"]');
+  await page.waitForURL(/\/room\/[A-Z0-9]+/);
+  const roomCode = page.url().split('/room/')[1];
+
+  await Promise.race([
+    page.getByText(/this device only/i).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+    page.getByText('Live', { exact: true }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+  ]);
+  if (await page.getByText(/this device only/i).isVisible().catch(() => false)) {
+    test.skip(true, 'App is running without Supabase configured — a second browser context can never see this room');
+  }
+
+  const browser = await chromium.launch();
+  const guestContext = await browser.newContext();
+  const guestPage = await guestContext.newPage();
+
+  try {
+    await guestPage.goto(`${baseURL}/room/${roomCode}`);
+    await expect(guestPage.getByText('Live', { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/People \(2\)/)).toBeVisible({ timeout: 30000 });
+
+    // The reloaded host page gets its realtime websocket 6 seconds late.
+    await page.routeWebSocket(/realtime.v1.websocket/, async (ws) => {
+      await new Promise((resolve) => setTimeout(resolve, 6000));
+      ws.connectToServer();
+    });
+    await page.reload();
+    await expect(page.getByLabel('Toggle room lock state')).toBeVisible({ timeout: 30000 });
+
+    // Well past the old 4s offline check and the 15s host grace.
+    await page.waitForTimeout(25_000);
+
+    await expect(guestPage.getByText(/is now the host/i)).not.toBeVisible();
+    await expect(guestPage.getByLabel('Toggle room lock state')).toHaveCount(0);
+    await expect(page.getByLabel('Toggle room lock state')).toBeVisible();
+    // The host still shows online to the guest (the sidebar labels other
+    // players, not your own row).
+    await guestPage.getByRole('button', { name: /people \(2\)/i }).click();
+    await expect(guestPage.getByText(/• Online/)).toHaveCount(1, { timeout: 10000 });
+    await expect(guestPage.getByText(/• Offline/)).toHaveCount(0);
   } finally {
     await guestContext.close();
     await browser.close();
@@ -419,16 +480,11 @@ test('same participant reconnecting sees no duplicate row and recovers in-progre
   }
 });
 
-// Presence reconciliation's normal (non-crash) path had zero e2e coverage —
-// only the crash-detection branch is exercised by the host-election test
-// above. A third participant joining after the first two have already
-// settled is the most direct way to hit the handler's crashed.length === 0
-// branch (nobody previously known-online is missing from the new sync),
-// and that same participant's later clean departure exercises the
-// crashed.length > 0 branch for a NON-host — distinct from the host-crash
-// scenario, since nobody should ever be promoted when the host never left.
+// A third participant joining and then leaving must show up as online, then
+// offline, for everyone, without the host ever changing: the host never left.
+// Since migration 0109 the server decides who is online from heartbeats.
 test('presence reconciliation settles cleanly as a third participant joins and leaves', async ({ page, baseURL }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(150_000);
   page.on('pageerror', (err) => console.log('[browser:pageerror]', err.message));
 
   await page.goto('/create?type=trivia');
@@ -457,16 +513,12 @@ test('presence reconciliation settles cleanly as a third participant joins and l
     await expect(guestPage1.getByText('Live', { exact: true })).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/People \(2\)/)).toBeVisible({ timeout: 30000 });
 
-    // This join's presence sync only ADDS a participant nobody previously
-    // saw as missing — necessarily exercises the reconciliation handler's
-    // crashed.length === 0 branch on both the host's and guestPage1's
-    // channels (no is_online write should fire for this sync).
     await guestPage2.goto(`${baseURL}/room/${roomCode}`);
     await expect(guestPage2.getByText('Live', { exact: true })).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/People \(3\)/)).toBeVisible({ timeout: 30000 });
     await expect(guestPage1.getByText(/People \(3\)/)).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText(/promoted to host/i)).not.toBeVisible();
-    await expect(guestPage1.getByText(/promoted to host/i)).not.toBeVisible();
+    await expect(page.getByText(/is now the host|you're the host/i)).not.toBeVisible();
+    await expect(guestPage1.getByText(/is now the host|you're the host/i)).not.toBeVisible();
 
     // People (N) counts every participant ROW ever created for the room,
     // not just currently-online ones (a disconnected row is marked
@@ -477,23 +529,21 @@ test('presence reconciliation settles cleanly as a third participant joins and l
     await page.getByRole('button', { name: /people \(3\)/i }).click();
     await expect(page.getByText(/• Online/)).toHaveCount(2, { timeout: 15000 });
 
-    // Non-host, clean departure — no page.close() crash simulation, just a
-    // context closing normally.
+    // Non-host departure: the context closes, the heartbeat stops, and the
+    // server marks them offline once the 30s window passes. Their row is
+    // still listed (People (3) never changes) but now shown offline, while
+    // the host and guest1 remain online.
     await guestContext2.close();
 
-    // Proves the crashed.length > 0 reconciliation write correctly fires
-    // for a non-host's stale row: their row is still listed (People (3)
-    // never changes) but now shown offline, while the host and guest1
-    // remain online.
-    await expect(page.getByText(/• Offline/)).toHaveCount(1, { timeout: 30000 });
+    await expect(page.getByText(/• Offline/)).toHaveCount(1, { timeout: 60000 });
     await expect(page.getByText(/• Online/)).toHaveCount(1);
     await expect(page.getByText(/People \(3\)/)).toBeVisible();
 
     // The key assertion distinguishing this from the host-crash test above:
     // the host never left, so no promotion should ever be considered,
     // regardless of how another participant's presence churns.
-    await expect(page.getByText(/promoted to host/i)).not.toBeVisible();
-    await expect(guestPage1.getByText(/promoted to host/i)).not.toBeVisible();
+    await expect(page.getByText(/is now the host|you're the host/i)).not.toBeVisible();
+    await expect(guestPage1.getByText(/is now the host|you're the host/i)).not.toBeVisible();
   } finally {
     await guestContext1.close();
     await browser.close();

@@ -1407,8 +1407,10 @@ export type Database = {
         Args: { p_ban_id: string; p_room_code: string }
         Returns: string
       }
+      room_heartbeat: { Args: { p_room_code: string }; Returns: Json }
       room_host_event_kinds: { Args: never; Returns: string[] }
       room_player_event_kinds: { Args: never; Returns: string[] }
+      room_presence_leave: { Args: { p_room_code: string }; Returns: undefined }
       send_room_event: {
         Args: {
           p_event: string

@@ -58,7 +58,11 @@ test('city: an auction settling with everyone away reaches the durable pause ban
   // whether city_settle_auction can act; only city_auctions.status does).
   psql(`update city_match_players set position=${propIdx} where match_id='${matchId}' and seat=0;`);
   psql(`update city_matches set current_seat=0, phase='awaiting_roll' where id='${matchId}';`);
-  psql(`insert into city_auctions (match_id, space_idx, ends_at, hard_ends_at, status) values ('${matchId}', ${propIdx}, now() - interval '1 seconds', now() - interval '1 seconds', 'running');`);
+  // Deadline in the future on purpose: both players' tabs are open, and an
+  // already-expired auction is closed by their own auto-settle before the
+  // forced settle below runs (it then finds no auction). The forced settle
+  // ignores the deadline, so the test doesn't need an expired one.
+  psql(`insert into city_auctions (match_id, space_idx, ends_at, hard_ends_at, status) values ('${matchId}', ${propIdx}, now() + interval '5 minutes', now() + interval '5 minutes', 'running');`);
 
   // Every seat away -- and, per the design this test exercises, parked in
   // detention so the cascade's path is deterministic (a live dice roll

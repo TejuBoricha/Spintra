@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Archivo, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import Script from "next/script";
 import "./globals.css";
 import { Providers } from "@/components/providers";
@@ -7,24 +7,28 @@ import { Navbar } from "@/components/layout/navbar";
 import { Toaster } from "@/components/ui/toaster";
 import { AnalyticsScripts } from "@/components/analytics-scripts";
 
-const archivo = Archivo({
+// Self-hosted (src/app/fonts, SIL Open Font License, texts alongside), not
+// next/font/google: that downloads the fonts from Google during every build,
+// and a failed download failed the whole build (CI, 2026-09-27). These are
+// the same Latin variable files Google serves for these weight ranges.
+const archivo = localFont({
+  src: "./fonts/archivo-latin-wght.woff2",
   variable: "--font-archivo",
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800", "900"],
+  weight: "500 900",
   display: "swap",
 });
 
-const plusJakartaSans = Plus_Jakarta_Sans({
+const plusJakartaSans = localFont({
+  src: "./fonts/plus-jakarta-sans-latin-wght.woff2",
   variable: "--font-plus-jakarta-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: "400 800",
   display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const jetbrainsMono = localFont({
+  src: "./fonts/jetbrains-mono-latin-wght.woff2",
   variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: "400 700",
   display: "swap",
 });
 
