@@ -83,7 +83,7 @@ All planned modularisation (14/14 activities), invite and QR sharing systems, re
 
 ## Current Objective
 
-**Spintra is live in production** at https://spintra.io (Vercel, custom domain via Cloudflare DNS) as of Session 61 — this is a genuine change from prior sessions' "ready for production launch," which described code readiness without an actual deployment target. Migrations auto-deploy on merge to `main` (`deploy.yml`), daily DB backups actually succeed and land in Cloudflare R2 (`db-backup.yml`), and Sentry error monitoring is live and verified. The multiplayer core has been stress-tested under real concurrent multi-client load, not just single-session manual checks.
+**Spintra is live in production** at https://spintra.io (Vercel, custom domain via Cloudflare DNS) as of Session 61 — this is a genuine change from prior sessions' "ready for production launch," which described code readiness without an actual deployment target. Migrations auto-deploy on merge to `main` (`deploy.yml`), daily DB backups land in Cloudflare R2 (`db-backup.yml`; the pre-2026-09-26 version could not actually be restored, see `ARCHITECTURE.md` §10, and the rebuilt job restore-tests every backup), and Sentry error monitoring is live and verified. The multiplayer core has been stress-tested under real concurrent multi-client load, not just single-session manual checks.
 
 ---
 
