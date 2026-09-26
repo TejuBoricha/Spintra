@@ -23,17 +23,15 @@ export interface RoomActivityContextType {
   // which matters across a host migration. See tournament-activity.tsx.
   hostUserId: string | null;
   currentUser: User;
-  sendActivityEvent: (event: ActivityEvent) => void;
+  // Resolves false if the server refused the event (see use-room-subscription.ts).
+  sendActivityEvent: (event: ActivityEvent) => Promise<boolean>;
   registerEventListener: (fn: (event: ActivityEvent) => void) => () => void;
   soundEnabled: boolean;
-  // Forces the debounced room_activity_state persist (use-room-subscription.ts)
-  // to happen immediately, resolving true/false for whether it actually
-  // succeeded. Required before calling awardScore for RPS/Bingo, whose
-  // server-side verification (ADR-008) reads that persisted state directly
-  // — without this, a win claimed the instant it happens can race the
-  // up-to-2s debounce and be server-rejected as unverifiable. Callers should
-  // skip awarding on `false` rather than proceed against state that may be
-  // stale.
+  // Resolves once this client's queued game events have reached the server
+  // (send_room_event records each one as it arrives, migration 0106), true
+  // if the last was accepted. Required before calling awardScore for
+  // RPS/Bingo, whose server-side verification (ADR-008) reads that recorded
+  // log. Callers should skip awarding on `false`.
   flushActivityState: () => Promise<boolean>;
   // Calls the server-verified award_score RPC (ADR-008/009) and applies its
   // returned totals to local state immediately — never fire-and-forget, see

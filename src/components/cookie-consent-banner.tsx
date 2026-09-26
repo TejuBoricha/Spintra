@@ -5,62 +5,36 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Cookie } from "lucide-react";
+import {
+  getAnalyticsConsent,
+  isAnalyticsSuppressed,
+  onAnalyticsConsentChange,
+  setAnalyticsConsent,
+} from "@/lib/consent";
 
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-    dataLayer?: unknown[];
-  }
-}
-
-// Must stay in sync with the same literal in src/app/layout.tsx's inline
-// Consent Mode snippet (an inline <script> string can't import this const).
-const CONSENT_STORAGE_KEY = "spintra-cookie-consent";
-
-// Is Google Analytics wired up in this deployment? Gated on the same
-// build-time env var as gtag.js itself (layout.tsx / next.config.ts). When
-// false there are no analytics or third-party cookies at all — only
-// functional local storage, which needs no consent — so this is a plain
-// informational notice. When true it's a real analytics-consent choice
-// driving Google Consent Mode v2.
-const analyticsEnabled = Boolean(process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID);
-
-// Reflect the user's choice into Consent Mode v2. gtag() is the global
-// defined by layout.tsx's inline snippet; it queues onto dataLayer, so this
-// is safe even while gtag.js is still loading. We only ever touch
-// analytics_storage — this app runs no ads, so ad_* stay denied.
-function setAnalyticsConsent(granted: boolean) {
-  window.gtag?.("consent", "update", {
-    analytics_storage: granted ? "granted" : "denied",
-  });
-}
+// One choice for all analytics: Google Analytics (when configured) and
+// Spintra's own usage counts. See src/lib/consent.ts. Always a real
+// Accept/Decline, since the usage counts exist even without Google
+// Analytics; Decline is as easy as Accept, and either can be changed later
+// in Settings. Hidden inside Classroom rooms, where analytics is off for
+// everyone and students shouldn't be asked.
+const googleAnalyticsConfigured = Boolean(process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID);
 
 export function CookieConsentBanner() {
-  const [visible, setVisible] = useState(false);
+  const [undecided, setUndecided] = useState(false);
+  const [suppressed, setSuppressed] = useState(false);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(CONSENT_STORAGE_KEY);
-    // In analytics mode a decision only counts once it's an explicit
-    // grant/deny — a legacy "acknowledged" value (from the old
-    // acknowledge-only banner) is not consent, so those users are asked
-    // to choose. In no-analytics mode any stored value means the notice
-    // was already dismissed.
-    const decided = analyticsEnabled
-      ? stored === "granted" || stored === "denied"
-      : Boolean(stored);
-    if (!decided) queueMicrotask(() => setVisible(true));
+    const sync = () => {
+      setUndecided(getAnalyticsConsent() === null);
+      setSuppressed(isAnalyticsSuppressed());
+    };
+    queueMicrotask(sync);
+    return onAnalyticsConsentChange(sync);
   }, []);
 
-  const choose = (granted: boolean) => {
-    window.localStorage.setItem(CONSENT_STORAGE_KEY, granted ? "granted" : "denied");
-    setAnalyticsConsent(granted);
-    setVisible(false);
-  };
-
-  const dismiss = () => {
-    window.localStorage.setItem(CONSENT_STORAGE_KEY, "acknowledged");
-    setVisible(false);
-  };
+  const visible = undecided && !suppressed;
+  const choose = (granted: boolean) => setAnalyticsConsent(granted ? "granted" : "denied");
 
   return (
     <AnimatePresence>
@@ -84,38 +58,27 @@ export function CookieConsentBanner() {
             <Cookie className="w-5 h-5 text-(--brand-secondary) shrink-0 mt-0.5" />
             <div className="space-y-3 font-body text-sm">
               <p className="text-foreground/90 leading-relaxed">
-                {analyticsEnabled ? (
-                  <>
-                    Spintra uses local storage to remember your session and preferences. If you
-                    agree, we also use Google Analytics to see how the site is used overall. No
-                    advertising.
-                  </>
-                ) : (
-                  <>
-                    Spintra uses local storage to remember your session and preferences. No
-                    advertising or third-party tracking.
-                  </>
-                )}{" "}
+                Spintra uses local storage to remember your session and preferences. If you
+                agree, we also measure how the site is used
+                {googleAnalyticsConfigured ? " (with Google Analytics and our own usage counts)" : " (our own usage counts)"}
+                . No advertising, ever.{" "}
                 See our{" "}
                 <Link href="/legal/privacy" className="text-(--text-link) underline hover:text-foreground">
                   Privacy Policy
                 </Link>{" "}
                 for details.
               </p>
-              {analyticsEnabled ? (
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="brand" onClick={() => choose(true)}>
-                    Accept
-                  </Button>
-                  <Button size="sm" variant="secondary" onClick={() => choose(false)}>
-                    Decline
-                  </Button>
-                </div>
-              ) : (
-                <Button size="sm" variant="brand" onClick={dismiss}>
-                  Got it
+              {/* Equal weight on purpose: making Accept more prominent than
+                  Decline is the "nudge" the UK Children's Code and EU
+                  regulators single out. */}
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="secondary" onClick={() => choose(true)}>
+                  Accept
                 </Button>
-              )}
+                <Button size="sm" variant="secondary" onClick={() => choose(false)}>
+                  Decline
+                </Button>
+              </div>
             </div>
           </div>
         </motion.div>

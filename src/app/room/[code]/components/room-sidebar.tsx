@@ -60,6 +60,9 @@ interface RoomSidebarProps {
   chatScrollContainerRef: React.RefObject<HTMLDivElement | null>;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   onUpdateUsername: (newName: string) => Promise<void>;
+  // Set when this person can read chat but not post (the server refuses
+  // their messages): says why, in place of the message box.
+  chatReadOnlyReason?: string | null;
 }
 
 interface ChatMessageItemProps {
@@ -151,6 +154,7 @@ export function RoomSidebar({
   chatScrollContainerRef,
   messagesEndRef,
   onUpdateUsername,
+  chatReadOnlyReason,
 }: RoomSidebarProps) {
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [editValue, setEditValue] = useState("");
@@ -321,47 +325,53 @@ export function RoomSidebar({
 
             {/* Input */}
             <div className="p-4 border-t border-border shrink-0">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Type a message..."
-                  aria-label="Type a message"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                  maxLength={MAX_MESSAGE_LENGTH}
-                  className="flex-1"
-                />
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setShowEmojis(!showEmojis)}
-                        aria-label="Insert emoji"
-                      />
-                    }
-                  >
-                    <Smile className="w-4 h-4" />
-                  </TooltipTrigger>
-                  <TooltipContent>Insert emoji</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        size="icon"
-                        onClick={sendMessage}
-                        className="bg-primary text-primary-foreground hover:brightness-95"
-                        aria-label="Send message"
-                      />
-                    }
-                  >
-                    <Send className="w-4 h-4" />
-                  </TooltipTrigger>
-                  <TooltipContent>Send message</TooltipContent>
-                </Tooltip>
-              </div>
+              {chatReadOnlyReason ? (
+                <p className="text-xs text-muted-foreground text-center" role="status">
+                  {chatReadOnlyReason}
+                </p>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Type a message..."
+                    aria-label="Type a message"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                    maxLength={MAX_MESSAGE_LENGTH}
+                    className="flex-1"
+                  />
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setShowEmojis(!showEmojis)}
+                          aria-label="Insert emoji"
+                        />
+                      }
+                    >
+                      <Smile className="w-4 h-4" />
+                    </TooltipTrigger>
+                    <TooltipContent>Insert emoji</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          size="icon"
+                          onClick={sendMessage}
+                          className="bg-primary text-primary-foreground hover:brightness-95"
+                          aria-label="Send message"
+                        />
+                      }
+                    >
+                      <Send className="w-4 h-4" />
+                    </TooltipTrigger>
+                    <TooltipContent>Send message</TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
             </div>
           </motion.div>
         ) : (

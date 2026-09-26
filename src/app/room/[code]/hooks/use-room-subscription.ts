@@ -6,7 +6,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { fireConfetti } from "@/components/celebration";
 import { banUserFromRoom } from "@/lib/room-bans";
 import { moderationKickBan } from "@/lib/moderation";
-import { getDeviceFingerprint } from "@/lib/utils";
+import { generateUUID } from "@/lib/utils";
 import { getGameByType } from "@/lib/games";
 import { getRoomByCode } from "@/lib/room-lookup";
 import { trackEvent } from "@/lib/analytics";
@@ -136,62 +136,7 @@ export function useRoomSubscription({
   // on activity_reset and on switching activities; (re)populated from
   // `room_activity_state` on initial load if it matches the current type.
   const activityEventLogRef = useRef<ActivityEvent[]>([]);
-  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Forces a flush at least every 2s even under a continuous event burst —
-  // the 600ms debounce alone could be reset indefinitely by a fast-paced
-  // round (e.g. many participants answering/voting within the same 600ms
-  // window), starving the flush entirely and leaving a reconnecting client
-  // to recover a stale snapshot exactly when it matters most. Set once per
-  // burst (cleared whenever a flush actually runs), never reset by
-  // subsequent events the way persistTimerRef is.
-  const persistMaxWaitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ACTIVITY_EVENT_LOG_CAP = 200;
-
-  // Returns the write's success as a boolean (rather than firing purely
-  // fire-and-forget) so a caller that needs the persisted state to be
-  // genuinely current — specifically, an activity about to call
-  // award_score() for Bingo/RPS, whose server-side verification reads
-  // room_activity_state directly, not a client's live in-memory state —
-  // can confirm the flush actually succeeded before proceeding. See
-  // flushActivityState below and ADR-008's design-refinement note.
-  //
-  // Resolves `true`/`false` rather than rejecting on failure — the
-  // debounce-timer call sites below (persistActivityEventLog) fire this via
-  // `setTimeout`, which discards the return value entirely and would
-  // produce an unhandled rejection on failure if this ever rejected. A
-  // resolved boolean lets flushActivityState's callers make an informed
-  // decision (skip awarding against state that might be stale) without
-  // requiring every fire-and-forget caller to also handle rejection.
-  const flushActivityEventLog = useCallback((): Promise<boolean> => {
-    if (persistTimerRef.current) {
-      clearTimeout(persistTimerRef.current);
-      persistTimerRef.current = null;
-    }
-    if (persistMaxWaitTimerRef.current) {
-      clearTimeout(persistMaxWaitTimerRef.current);
-      persistMaxWaitTimerRef.current = null;
-    }
-    const supabase = getSupabaseBrowserClient();
-    if (!supabase) return Promise.resolve(true);
-    const type = activeActivityRef.current?.type ?? null;
-    const payload = type ? { type, events: activityEventLogRef.current } : null;
-    return Promise.resolve(
-      supabase
-        .from("room_activity_state")
-        .upsert({ room_code: roomCode, activity_state: payload as unknown as Json }, { onConflict: "room_code" })
-    ).then(
-      ({ error }) => !error,
-      () => false
-    );
-  }, [roomCode]);
-
-  const persistActivityEventLog = useCallback(() => {
-    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
-    persistTimerRef.current = setTimeout(flushActivityEventLog, 600);
-    if (!persistMaxWaitTimerRef.current) {
-      persistMaxWaitTimerRef.current = setTimeout(flushActivityEventLog, 2000);
-    }
-  }, [flushActivityEventLog]);
 
   // Derived Values
   // We determine isHost from roomHostId (database) or localCreatorId (local fallback)
@@ -219,6 +164,24 @@ export function useRoomSubscription({
   useEffect(() => {
     isHostRef.current = isHost;
   }, [isHost]);
+  // Announce a host change to everyone but the new host (who gets their own
+  // message from electHostIfNeeded), from rooms.host_id itself: see
+  // docs/HOST_MIGRATION_AUDIT.md finding H2. This used to come from a
+  // host_changed broadcast, which any member could send with any name.
+  const previousHostIdRef = useRef<string | null>(null);
+  const participantsRef = useRef(participants);
+  useEffect(() => {
+    participantsRef.current = participants;
+  }, [participants]);
+  useEffect(() => {
+    const previous = previousHostIdRef.current;
+    previousHostIdRef.current = roomHostId;
+    if (!previous || !roomHostId || previous === roomHostId || roomHostId === currentUser.id) return;
+    const name =
+      participantsRef.current.find((p) => p.user_id === roomHostId)?.user?.username ?? "Another player";
+    setNotification(`${name} is now the host.`);
+    setRoomAnnouncement(`${name} is now the host.`);
+  }, [roomHostId, currentUser.id]);
 
   // Lets the participants/reconciliation effect below key off currentUser.id
   // only, instead of the whole currentUser object — editing a display name
@@ -264,20 +227,49 @@ export function useRoomSubscription({
   // Single dispatch point for every activity event regardless of origin
   // (sent locally by this client, or received via realtime broadcast/
   // BroadcastChannel from another client) — so every client's local event
-  // log stays complete and any of them persisting it to the DB writes the
-  // same shared history, not just the subset of events this client happened
-  // to originate itself.
+  // log stays complete. The server keeps its own copy (send_room_event,
+  // migration 0106); this one only feeds listeners and replays.
+  //
+  // lastSeenSeqRef is the highest server sequence number this tab has
+  // applied (0106 numbers every game event per room). A live event whose
+  // number skips ahead means we missed one, and resyncFromServer fills the
+  // gap from the recorded log.
+  const lastSeenSeqRef = useRef(0);
+  // Numbers the server gave this tab's own sends that arrived ahead of an
+  // earlier number we haven't received yet. lastSeenSeqRef only advances
+  // through consecutive numbers, so an event from someone else that the
+  // server numbered just before ours is never mistaken for one we've seen.
+  const ownSeqsRef = useRef<Set<number>>(new Set());
+  // The sequence number of the activity_change that started the current
+  // log (activity_state.session). A catch-up that finds a different session
+  // for the same game knows the host restarted it (A, then B, then A).
+  const sessionRef = useRef(0);
+  const advanceSeq = useCallback((seq: number) => {
+    if (seq === lastSeenSeqRef.current + 1) {
+      lastSeenSeqRef.current = seq;
+    } else if (seq > lastSeenSeqRef.current + 1) {
+      ownSeqsRef.current.add(seq);
+    }
+    while (ownSeqsRef.current.has(lastSeenSeqRef.current + 1)) {
+      ownSeqsRef.current.delete(lastSeenSeqRef.current + 1);
+      lastSeenSeqRef.current += 1;
+    }
+  }, []);
   const handleActivityEvent = useCallback((payload: ActivityEvent) => {
     if (payload.kind === "activity_reset") {
       activityEventLogRef.current = [];
     } else {
-      activityEventLogRef.current = [...activityEventLogRef.current, payload].slice(
-        -ACTIVITY_EVENT_LOG_CAP
-      );
+      // A tournament_update carries the whole bracket and supersedes the
+      // last one; keeping only the newest matches the server's log and
+      // stops a long tournament from crowding everything else out.
+      const kept =
+        payload.kind === "tournament_update"
+          ? activityEventLogRef.current.filter((e) => e.kind !== "tournament_update")
+          : activityEventLogRef.current;
+      activityEventLogRef.current = [...kept, payload].slice(-ACTIVITY_EVENT_LOG_CAP);
     }
-    persistActivityEventLog();
     listenersRef.current.forEach((listener) => listener(payload));
-  }, [persistActivityEventLog]);
+  }, []);
 
   // Post broadcast locally when using BroadcastChannel fallback
   const postLocalMessage = useCallback((type: string, payload: unknown) => {
@@ -290,6 +282,11 @@ export function useRoomSubscription({
     }
   }, [currentUser.id]);
 
+  const electionRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (electionRetryTimerRef.current) clearTimeout(electionRetryTimerRef.current);
+  }, []);
+
   // Host election helper
   const electHostIfNeeded = useCallback(
     async (
@@ -297,6 +294,9 @@ export function useRoomSubscription({
       currentParticipants: RoomParticipant[]
     ) => {
       if (!supabase) return;
+      // Only a Classroom room's creator (the teacher) can host it, and the
+      // server refuses anyone else (migration 0108), so students don't ask.
+      if (roomTypeRef.current === "classroom") return;
 
       const hasOnlineHost = currentParticipants.some(
         (participant) => participant.role === "host" && participant.is_online
@@ -323,8 +323,17 @@ export function useRoomSubscription({
         return;
       }
       if (!success) {
-        // Expected: another client promoted itself first, or the room was
-        // deleted — in either case the local participant state is stale.
+        // Expected: another client promoted itself first, the room was
+        // deleted, or the previous host went offline less than 15 seconds
+        // ago (migration 0106's grace period, so a member can't mark a live
+        // host offline and take over). Look again once that has passed; a
+        // reload re-runs this election with fresh rows.
+        if (!electionRetryTimerRef.current) {
+          electionRetryTimerRef.current = setTimeout(() => {
+            electionRetryTimerRef.current = null;
+            void loadParticipantsRef.current?.();
+          }, 16_000);
+        }
         return;
       }
 
@@ -345,61 +354,188 @@ export function useRoomSubscription({
       setNotification("The previous host left, and you have been promoted to host.");
       fireConfetti();
 
-      // Tell every OTHER connected client — see docs/HOST_MIGRATION_AUDIT.md
-      // finding H2. Best-effort: a missed broadcast (e.g. a peer briefly
-      // disconnected) isn't retried, since every client's participants list
-      // and rooms.host_id already converge to the truth via the normal sync
-      // paths regardless — this is purely the human-readable announcement,
-      // not the source of truth for who the host actually is.
-      supabaseChannelRef.current?.send({
-        type: "broadcast",
-        event: "host_changed",
-        payload: { newHostId: currentUser.id, newHostUsername: currentUser.username },
-      });
+      // Everyone else announces the change from rooms.host_id itself (the
+      // roomHostId effect), not from a broadcast any member could fake.
     },
-    [currentUser.id, currentUser.username, roomCode]
+    [currentUser.id, roomCode]
+  );
+
+  // Every game event goes through send_room_event (migration 0106), which
+  // checks who may send it (host events: the host; answers and votes: any
+  // member, stamped with their real id and name), numbers and records it,
+  // and broadcasts it on room:<CODE>:events, which players can receive on
+  // but not send to. A plain channel.send carries no verified sender, so
+  // anyone in the room could forge game events that way (audit G-1).
+  //
+  // Sends are chained so they reach the server in the order this tab made
+  // them (separate requests can otherwise overtake each other, e.g. a spin
+  // arriving before the wheel's entries). originId identifies this tab, so
+  // the echo of our own event is skipped here but still applied in the same
+  // user's other tabs.
+  //
+  // "refused" means the server said no (not the host, rate limit, ...);
+  // "unknown" means we never heard back (timeout, network), so the event
+  // may or may not have gone out, and the caller resyncs instead of
+  // guessing.
+  type SendStatus = "ok" | "refused" | "unknown";
+  type SendResult = { status: SendStatus; seq: number | null };
+  const [originId] = useState(() => generateUUID());
+  const roomEventQueueRef = useRef<Promise<SendResult>>(Promise.resolve({ status: "ok", seq: null }));
+  // Set by the realtime effect below; lets code outside it ask for a
+  // catch-up. force: compare with the server even if no new number exists
+  // (after a send whose outcome we never learned).
+  const resyncRef = useRef<((force?: boolean) => Promise<void>) | null>(null);
+  const sendRoomEvent = useCallback(
+    (event: "activity_change" | "activity_event", payload: unknown): Promise<SendResult> => {
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) return Promise.resolve<SendResult>({ status: "ok", seq: null });
+      const attempt = async (): Promise<SendResult & { message?: string }> => {
+        // A stalled request would hold up every later send from this tab.
+        // (AbortController rather than AbortSignal.timeout, which older
+        // Safari lacks.)
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 10_000);
+        try {
+          const { data, error } = await supabase
+            .rpc("send_room_event", {
+              p_room_code: roomCode,
+              p_event: event,
+              p_payload: payload as Json,
+              p_origin: originId,
+            })
+            .abortSignal(controller.signal);
+          if (!error) return { status: "ok", seq: typeof data === "number" ? data : null };
+          // PostgREST reports a raised exception with a code; a network
+          // failure or abort has none.
+          return { status: error.code ? "refused" : "unknown", seq: null, message: error.message };
+        } catch (cause) {
+          return { status: "unknown", seq: null, message: String(cause) };
+        } finally {
+          clearTimeout(timer);
+        }
+      };
+      const send = async (): Promise<SendResult> => {
+        // An unknown outcome (timeout, network) is retried with the same
+        // payload: the server ignores an eventId it already recorded, and a
+        // repeated activity_change for the game already running keeps its
+        // log, so a retry can't double anything up.
+        let result = await attempt();
+        for (let retry = 1; result.status === "unknown" && retry <= 2; retry++) {
+          await new Promise((resolve) => setTimeout(resolve, retry * 1000));
+          result = await attempt();
+        }
+        if (result.seq !== null) advanceSeq(result.seq);
+        if (result.status !== "ok") {
+          console.error(`Failed to send ${event}:`, result.message);
+          toast.error(
+            result.message?.includes("Only the room host")
+              ? "Only the host can do that."
+              : result.message?.includes("Slow down")
+              ? "Too many actions at once. Wait a few seconds."
+              : "That didn't reach the other players. Try again."
+          );
+        }
+        return { status: result.status, seq: result.seq };
+      };
+      // Each send runs whatever happened to the one before it.
+      const result = roomEventQueueRef.current.then(send, send);
+      roomEventQueueRef.current = result;
+      return result;
+    },
+    [roomCode, originId, advanceSeq]
+  );
+
+  // Resolves once this tab's queued sends have reached the server (or
+  // given up). The server records each event as it arrives, so after this
+  // award_score (ADR-008) sees everything we sent, and everything we've
+  // received was recorded before it reached us. Always true: award_score
+  // re-verifies against the recorded log itself, so asking is safe, while
+  // judging by whichever send happened to be last in the queue could skip
+  // a real win.
+  const flushActivityEventLog = useCallback(
+    (): Promise<boolean> => roomEventQueueRef.current.then(() => true),
+    []
   );
 
   // Switch Game / Activity Handler
   const changeActivity = useCallback((type: string | null) => {
+    // Picking the game that's already running changes nothing (the server
+    // keeps its log too); Reset is how a game restarts.
+    if (type && type === activeActivityRef.current?.type) return;
     const nextActivity = type ? { type, state: null } : null;
+    const previousActivity = activeActivityRef.current;
+    const previousLog = activityEventLogRef.current;
     setActiveActivity(nextActivity);
     if (type) trackEvent("activity_started", currentUser.id, type);
 
     // Switching games starts a fresh session — the previous activity's
     // recorded history must not leak into the new one.
     activityEventLogRef.current = [];
-    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
-    if (persistMaxWaitTimerRef.current) clearTimeout(persistMaxWaitTimerRef.current);
 
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       postLocalMessage("ACTIVITY_CHANGE", nextActivity);
     } else {
-      if (supabaseChannelRef.current) {
-        supabaseChannelRef.current.send({
-          type: "broadcast",
-          event: "activity_change",
-          payload: nextActivity,
-        });
-      }
-      supabase.from("room_activity_state").upsert({ room_code: roomCode, activity_state: null }, { onConflict: "room_code" }).then(() => {}, () => {});
+      // The server checks we're the host, starts the new game's log, and
+      // broadcasts to everyone else on room:<CODE>:events (migration 0106).
+      void sendRoomEvent("activity_change", nextActivity).then(({ status, seq }) => {
+        if (status === "ok") {
+          // Our own switch starts the new log; its number is the session.
+          if (seq !== null) sessionRef.current = seq;
+        } else if (status === "refused") {
+          // Nobody else switched, so go back rather than leave the host on
+          // a game only they can see.
+          if ((activeActivityRef.current?.type ?? null) === (type ?? null)) {
+            activityEventLogRef.current = previousLog;
+            setActiveActivity(previousActivity);
+          }
+        } else {
+          // Never heard back, even after retries: take whatever the server
+          // has, which puts us back on the room's real game if ours never
+          // arrived.
+          void resyncRef.current?.(true);
+        }
+      });
     }
-  }, [postLocalMessage, roomCode, currentUser.id]);
+  }, [postLocalMessage, currentUser.id, sendRoomEvent]);
 
-  const sendActivityEvent = useCallback((event: ActivityEvent) => {
+  // Resolves false when the server refused the event (the caller can undo
+  // what it showed, e.g. re-enable a trivia answer), true otherwise.
+  const sendActivityEvent = useCallback((event: ActivityEvent): Promise<boolean> => {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       postLocalMessage("ACTIVITY_EVENT", event);
-    } else if (supabaseChannelRef.current) {
-      supabaseChannelRef.current.send({
-        type: "broadcast",
-        event: "activity_event",
-        payload: event,
-      });
+      handleActivityEvent(event);
+      return Promise.resolve(true);
     }
-    handleActivityEvent(event);
-  }, [postLocalMessage, handleActivityEvent]);
+    // eventId lets the server ignore a repeat and lets a catch-up skip
+    // events this tab already applied.
+    const stamped: ActivityEvent = { ...event, eventId: event.eventId ?? generateUUID() };
+    const logBefore = activityEventLogRef.current;
+    handleActivityEvent(stamped);
+    return sendRoomEvent("activity_event", stamped).then(({ status }) => {
+      if (status === "refused") {
+        // Nobody else has it. Most events only added themselves to the log,
+        // so taking this one out is enough. A reset or tournament update
+        // also removed earlier events, so the game goes back to exactly
+        // what it was: reset locally and replay the log from before.
+        if (stamped.kind === "activity_reset" || stamped.kind === "tournament_update") {
+          const laterEvents = activityEventLogRef.current.filter(
+            (e) => e.eventId !== stamped.eventId && !logBefore.includes(e)
+          );
+          handleActivityEvent({ kind: "activity_reset" });
+          for (const e of [...logBefore, ...laterEvents]) handleActivityEvent(e);
+        } else {
+          activityEventLogRef.current = activityEventLogRef.current.filter(
+            (e) => e.eventId !== stamped.eventId
+          );
+        }
+        return false;
+      }
+      if (status === "unknown") void resyncRef.current?.(true);
+      return true;
+    });
+  }, [postLocalMessage, handleActivityEvent, sendRoomEvent]);
 
   // Lock Room Handler
   const toggleLock = useCallback(async () => {
@@ -611,10 +747,6 @@ export function useRoomSubscription({
           return;
         }
 
-        // Compute a stable device fingerprint so the database ban trigger
-        // can block rejoins even after anonymous token rotation.
-        const fingerprint_hash = await getDeviceFingerprint();
-
         let upsertResult;
         if (existingParticipant) {
           // Reconnection: update status without trigger limit validation.
@@ -681,7 +813,13 @@ export function useRoomSubscription({
         }
 
         // Graceful fallback for host promotion conflict
-        if (upsertResult.error && upsertResult.error.message?.includes("already has an online host")) {
+        // "Only the room host can hold the host role" (migration 0106): our
+        // cached room still says we're host, but host has since moved on.
+        if (
+          upsertResult.error &&
+          (upsertResult.error.message?.includes("already has an online host") ||
+            upsertResult.error.message?.includes("Only the room host can hold the host role"))
+        ) {
           console.warn("Host election conflict detected. Retrying registration as regular participant.");
           if (existingParticipant) {
             // Same reasoning as the primary reconnect update above: xp/rank
@@ -736,23 +874,11 @@ export function useRoomSubscription({
         // Realtime channel.
         if (isMounted) setParticipantRowReady(true);
 
-        // Fire-and-forget: persist the device fingerprint after the join
-        // succeeds. This is a best-effort operation — if migration 0047
-        // hasn't been applied yet, the update silently fails without
-        // blocking the user from joining the room.
-        if (fingerprint_hash) {
-          supabaseClient
-            .from("room_participants")
-            .update({ fingerprint_hash })
-            .eq("room_id", roomCode)
-            .eq("user_id", currentUser.id)
-            .then(({ error: fpError }) => {
-              if (fpError) console.debug("Fingerprint update skipped (migration pending):", fpError.message);
-            });
-        }
 
         // Only a genuinely new guest join, not the host's own creation (that
         // already fires room_created) or a reconnect/refresh (existingParticipant).
+        // Classroom rooms are covered by the analytics suppression room-client
+        // sets before this component mounts (src/lib/consent.ts).
         if (!existingParticipant && !isRoomHost) {
           trackEvent("room_joined", currentUser.id);
         }
@@ -933,10 +1059,19 @@ export function useRoomSubscription({
             .eq("room_code", roomCode)
             .maybeSingle();
           if (stateResult.data?.activity_state) {
-            const persisted = stateResult.data.activity_state as { type?: string; events?: ActivityEvent[] } | null;
-            if (persisted?.type && Array.isArray(persisted.events)) {
+            const persisted = stateResult.data.activity_state as { type?: string; seq?: number; session?: number; events?: ActivityEvent[] } | null;
+            // The events channel may already have caught us up (it
+            // subscribes as soon as our participant row exists, and its
+            // catch-up dispatches to listeners); if so it's authoritative
+            // and this snapshot, which dispatches to nobody, must not
+            // replace its log or advance the number past what was applied.
+            const snapshotSeq = typeof persisted?.seq === "number" ? persisted.seq : 0;
+            const isNewer = lastSeenSeqRef.current === 0;
+            if (persisted?.type && Array.isArray(persisted.events) && isNewer) {
               if (persisted.type === roomType || roomType === "party" || roomType === "classroom") {
                 activityEventLogRef.current = persisted.events.slice(-ACTIVITY_EVENT_LOG_CAP);
+                lastSeenSeqRef.current = Math.max(lastSeenSeqRef.current, snapshotSeq);
+                sessionRef.current = typeof persisted.session === "number" ? persisted.session : 0;
               }
               persistedSubActivityType = persisted.type;
             }
@@ -1159,8 +1294,8 @@ export function useRoomSubscription({
                     : p
                 )
               );
-              // Every OTHER tab's own notification (matches the real-mode
-              // host_changed broadcast handler above) — the promoting tab
+              // Every OTHER tab's own notification (in real mode this comes
+              // from the roomHostId effect above) — the promoting tab
               // already showed its own toast/notification directly at the
               // send site below, so skip it here to avoid double-announcing
               // to the one person who doesn't need it.
@@ -1394,6 +1529,27 @@ export function useRoomSubscription({
             xp?: number;
             rank?: string;
           };
+          // Only while our own presence is live: if it isn't, the offline
+          // mark (possibly our own crash check's) is right, and undoing it
+          // would just flip the row back and forth.
+          const ownPresenceLive = Object.values(channel.presenceState())
+            .flat()
+            .some((p) => (p as unknown as { user_id?: string }).user_id === currentUser.id);
+          if (
+            updated.user_id === currentUser.id &&
+            updated.is_online === false &&
+            !leavingRoomRef.current &&
+            isRealtimeReadyRef.current &&
+            ownPresenceLive
+          ) {
+            void supabase
+              .from("room_participants")
+              .update({ is_online: true })
+              .eq("id", updated.id)
+              .then(({ error }) => {
+                if (error) console.error("Failed to mark self back online:", error.message);
+              });
+          }
           setParticipants((prev) => {
             const next = prev.map((participant) =>
               participant.id === updated.id
@@ -1571,33 +1727,190 @@ export function useRoomSubscription({
           router.push("/explore");
         }
       )
-      .on("broadcast", { event: "activity_change" }, ({ payload }) => {
-        if (payload) {
-          setActiveActivity(payload);
-        }
-      })
-      .on("broadcast", { event: "activity_event" }, ({ payload }) => {
-        if (payload) {
-          handleActivityEvent(payload);
-        }
-      })
-      // Every other participant's own notification of a host change — see
-      // docs/HOST_MIGRATION_AUDIT.md finding H2. Broadcast, not persisted:
-      // a transient announcement, not state anyone needs to recover on
-      // reconnect (by the time they reconnect, participants/rooms.host_id
-      // already reflects the current host via the normal sync paths).
-      // Channel.send() doesn't echo back to its own sender by default, so
-      // this never double-fires for the promoted client itself — that
-      // client already set its own notification directly inside
-      // electHostIfNeeded.
-      .on("broadcast", { event: "host_changed" }, ({ payload }) => {
-        if (payload?.newHostUsername) {
-          setNotification(`${payload.newHostUsername} is now the host.`);
-          setRoomAnnouncement(`${payload.newHostUsername} is now the host.`);
-        }
-      });
+      // Game events no longer travel on this channel: they arrive on
+      // room:<CODE>:events from send_room_event (below). Anything sent here
+      // under those event names is ignored.
+      ;
 
     supabaseChannelRef.current = channel;
+
+    // Game events, sent only by send_room_event after it has checked who
+    // may send them (migration 0106). Players can receive on this topic but
+    // the realtime policy stops them sending on it. Our own tab's events
+    // come back too and are skipped: sendActivityEvent/changeActivity
+    // already applied them locally.
+    type RoomEventMessage<T> = { senderId?: string; originId?: string | null; seq?: number; payload?: T | null };
+    type RecordedState = { type?: string | null; seq?: number; session?: number; events?: ActivityEvent[] } | null;
+
+    // Catch up from the server's record. Every event carries the room's
+    // sequence number, so what's missing is exactly what's numbered above
+    // the highest number this tab has applied (lastSeenSeqRef). Runs on
+    // every (re)subscribe, when a backgrounded tab returns, when a live
+    // event's number skips ahead, and when the periodic check below finds
+    // we're behind. It reads the cheap numbers first and only downloads the
+    // log when we're actually behind. If our game changes while the log is
+    // loading (the host switching, or a live change arriving), the result
+    // is stale: it's dropped and the catch-up runs again.
+    let disposed = false;
+    let resyncing = false;
+    let resyncAgain = false;
+    let forceNext = false;
+    const resyncFromServer = async (force = false): Promise<void> => {
+      if (force) forceNext = true;
+      if (resyncing) {
+        resyncAgain = true;
+        return;
+      }
+      const forced = forceNext;
+      forceNext = false;
+      resyncing = true;
+      try {
+        // Our own queued sends first, so they're in what we read back.
+        await roomEventQueueRef.current;
+        const head = await supabase
+          .from("room_activity_state")
+          .select("seq:activity_state->seq")
+          .eq("room_code", roomCode)
+          .maybeSingle();
+        if (head.error || disposed) return;
+        const headSeq = Number((head.data as { seq?: unknown } | null)?.seq ?? 0);
+        if (headSeq <= lastSeenSeqRef.current && !forced) return;
+
+        const typeAtStart = activeActivityRef.current?.type ?? null;
+        const { data, error } = await supabase
+          .from("room_activity_state")
+          .select("activity_state")
+          .eq("room_code", roomCode)
+          .maybeSingle();
+        if (error || disposed) return;
+        if ((activeActivityRef.current?.type ?? null) !== typeAtStart) {
+          resyncAgain = true;
+          return;
+        }
+        const recorded = (data?.activity_state ?? null) as RecordedState;
+        const recordedSeq = typeof recorded?.seq === "number" ? recorded.seq : 0;
+        if (recordedSeq <= lastSeenSeqRef.current && !forced) return;
+        const recordedType = recorded?.type ?? null;
+        const recordedSession = typeof recorded?.session === "number" ? recorded.session : 0;
+        const events = Array.isArray(recorded?.events) ? recorded.events : [];
+        const isMultiGameRoom = roomTypeRef.current === "party" || roomTypeRef.current === "classroom";
+
+        if (recordedType !== typeAtStart) {
+          if (!recordedType && !isMultiGameRoom) return;
+          activityEventLogRef.current = events.slice(-ACTIVITY_EVENT_LOG_CAP);
+          lastSeenSeqRef.current = recordedSeq;
+          sessionRef.current = recordedSession;
+          ownSeqsRef.current.clear();
+          setActiveActivity(recordedType ? { type: recordedType, state: null } : null);
+          return;
+        }
+
+        if (recordedSession && sessionRef.current === 0) {
+          // First time we learn this log's session (a single-game room's
+          // log starts on its first event): adopt it, nothing restarted.
+          sessionRef.current = recordedSession;
+        }
+        if (recordedSession && recordedSession !== sessionRef.current) {
+          // Same game, new log: the host left this game and came back to
+          // it while we were away. Start over from the recorded log.
+          sessionRef.current = recordedSession;
+          handleActivityEvent({ kind: "activity_reset" });
+          for (const event of events) handleActivityEvent(event);
+        } else {
+          const applied = new Set(activityEventLogRef.current.map((e) => e.eventId).filter(Boolean));
+          const from = lastSeenSeqRef.current;
+          for (const event of events) {
+            if (typeof event.seq !== "number" || event.seq <= from) continue;
+            if (event.eventId && applied.has(event.eventId)) continue;
+            handleActivityEvent(event);
+          }
+        }
+        lastSeenSeqRef.current = Math.max(lastSeenSeqRef.current, recordedSeq);
+        for (const own of ownSeqsRef.current) {
+          if (own <= lastSeenSeqRef.current) ownSeqsRef.current.delete(own);
+        }
+      } finally {
+        resyncing = false;
+        if ((resyncAgain || forceNext) && !disposed) {
+          resyncAgain = false;
+          void resyncFromServer();
+        }
+      }
+    };
+    resyncRef.current = resyncFromServer;
+
+    const handleVisible = () => {
+      if (document.visibilityState === "visible") void resyncFromServer();
+    };
+    document.addEventListener("visibilitychange", handleVisible);
+
+    // Delivery is best effort. A gap shows up as soon as a later event
+    // arrives; this cheap check (one number, not the log) catches the last
+    // event of a burst that nothing follows.
+    const seqCheckTimer = setInterval(() => {
+      if (document.visibilityState === "visible") void resyncFromServer();
+    }, 20_000);
+
+    let eventsChannelDropped = false;
+    const eventsChannel = supabase
+      .channel(`room:${roomCode}:events`, { config: { private: true } })
+      .on("broadcast", { event: "activity_change" }, ({ payload }) => {
+        const message = payload as RoomEventMessage<{ type: string; state: unknown }> | undefined;
+        if (!message) return;
+        const seq = typeof message.seq === "number" ? message.seq : 0;
+        if (seq && seq <= lastSeenSeqRef.current) return;
+        if (seq > lastSeenSeqRef.current + 1) {
+          void resyncFromServer();
+          return;
+        }
+        if (seq) advanceSeq(seq);
+        const next = message.payload ?? null;
+        if (seq && (next?.type ?? null) !== (activeActivityRef.current?.type ?? null)) {
+          sessionRef.current = seq;
+        }
+        // originId is chosen by the sender, so it only marks our own echo
+        // when the server-verified sender is us too.
+        if (message.originId === originId && message.senderId === currentUser.id) return;
+        // A different game starts from an empty log, matching the server.
+        // The same game again (a retried send that had landed) keeps it.
+        if ((next?.type ?? null) !== (activeActivityRef.current?.type ?? null)) {
+          activityEventLogRef.current = [];
+        }
+        setActiveActivity(next);
+      })
+      .on("broadcast", { event: "activity_event" }, ({ payload }) => {
+        const message = payload as RoomEventMessage<ActivityEvent> | undefined;
+        if (!message?.payload) return;
+        const seq = typeof message.seq === "number" ? message.seq : 0;
+        if (seq && seq <= lastSeenSeqRef.current) return;
+        if (seq > lastSeenSeqRef.current + 1) {
+          void resyncFromServer();
+          return;
+        }
+        if (message.originId === originId && message.senderId === currentUser.id) {
+          if (seq) advanceSeq(seq);
+          return;
+        }
+        handleActivityEvent(message.payload);
+        if (seq) advanceSeq(seq);
+      })
+      .subscribe((status: string) => {
+        if (status === "SUBSCRIBED") {
+          if (eventsChannelDropped) {
+            eventsChannelDropped = false;
+            setNotification((current) =>
+              current === "Realtime connection lost. Trying to reconnect..." && isRealtimeReadyRef.current
+                ? null
+                : current
+            );
+          }
+          void resyncFromServer();
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          eventsChannelDropped = true;
+          console.error(`Game event channel ${status} for room ${roomCode}`);
+          setNotification("Realtime connection lost. Trying to reconnect...");
+        }
+      });
 
     // One-shot settled reconciliation against DB truth: the sync handler
     // above can only catch peers who crash WHILE we're watching — a peer who
@@ -1667,13 +1980,6 @@ export function useRoomSubscription({
             void reconcileStaleDbRows();
           }, 10_000);
         }
-        if (isHostRef.current && activeActivityRef.current) {
-          channel.send({
-            type: "broadcast",
-            event: "activity_change",
-            payload: activeActivityRef.current,
-          });
-        }
       } else {
         setIsRealtimeReady(false);
         setRealtimeError("Realtime subscription failed.");
@@ -1706,6 +2012,11 @@ export function useRoomSubscription({
       }
       pendingCrashTimers.clear();
       supabase.removeChannel(channel);
+      supabase.removeChannel(eventsChannel);
+      document.removeEventListener("visibilitychange", handleVisible);
+      clearInterval(seqCheckTimer);
+      resyncRef.current = null;
+      disposed = true;
       supabaseChannelRef.current = null;
     };
     // Deliberately currentUser.id/.username only — not the whole currentUser
@@ -1737,17 +2048,6 @@ export function useRoomSubscription({
 
   useEffect(() => {
     return () => {
-      // A pending activity-state persistence debounce shouldn't fire after
-      // this room unmounts — harmless in practice (discarded result), but a
-      // stray timer issuing a write against a room the user just left.
-      if (persistTimerRef.current) {
-        clearTimeout(persistTimerRef.current);
-        persistTimerRef.current = null;
-      }
-      if (persistMaxWaitTimerRef.current) {
-        clearTimeout(persistMaxWaitTimerRef.current);
-        persistMaxWaitTimerRef.current = null;
-      }
       const supabase = getSupabaseBrowserClient();
       if (supabase && currentUser?.id) {
         supabase

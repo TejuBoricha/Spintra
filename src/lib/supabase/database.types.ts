@@ -841,7 +841,6 @@ export type Database = {
         Row: {
           banned_by: string
           created_at: string
-          fingerprint_hash: string | null
           id: string
           room_id: string
           user_id: string
@@ -850,7 +849,6 @@ export type Database = {
         Insert: {
           banned_by: string
           created_at?: string
-          fingerprint_hash?: string | null
           id?: string
           room_id: string
           user_id: string
@@ -859,7 +857,6 @@ export type Database = {
         Update: {
           banned_by?: string
           created_at?: string
-          fingerprint_hash?: string | null
           id?: string
           room_id?: string
           user_id?: string
@@ -879,7 +876,6 @@ export type Database = {
         Row: {
           avatar_url: string | null
           bingo_card: Json | null
-          fingerprint_hash: string | null
           id: string
           is_online: boolean
           joined_at: string
@@ -893,7 +889,6 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           bingo_card?: Json | null
-          fingerprint_hash?: string | null
           id?: string
           is_online?: boolean
           joined_at?: string
@@ -907,7 +902,6 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           bingo_card?: Json | null
-          fingerprint_hash?: string | null
           id?: string
           is_online?: boolean
           joined_at?: string
@@ -1002,6 +996,7 @@ export type Database = {
         Row: {
           code: string
           created_at: string
+          created_by: string | null
           host_id: string
           id: string
           is_locked: boolean
@@ -1014,6 +1009,7 @@ export type Database = {
         Insert: {
           code: string
           created_at?: string
+          created_by?: string | null
           host_id: string
           id?: string
           is_locked?: boolean
@@ -1026,6 +1022,7 @@ export type Database = {
         Update: {
           code?: string
           created_at?: string
+          created_by?: string | null
           host_id?: string
           id?: string
           is_locked?: boolean
@@ -1409,6 +1406,17 @@ export type Database = {
       moderation_unban: {
         Args: { p_ban_id: string; p_room_code: string }
         Returns: string
+      }
+      room_host_event_kinds: { Args: never; Returns: string[] }
+      room_player_event_kinds: { Args: never; Returns: string[] }
+      send_room_event: {
+        Args: {
+          p_event: string
+          p_origin?: string
+          p_payload: Json
+          p_room_code: string
+        }
+        Returns: number | null
       }
       set_guess_number_secret: {
         Args: { p_room_code: string; p_secret: number }

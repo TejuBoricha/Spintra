@@ -51,6 +51,10 @@ const FAQS = [
     a: "No. Spintra never asks you or your students for an email, a password, or a real name. Anyone who joins a room is given a guest name.",
   },
   {
+    q: "What does Spintra keep about my students?",
+    a: "Only what a room needs to work: the guest name each student uses and their moves in the games. In a Classroom room only you can post in chat, no analytics runs for anyone in the room, and the room is deleted when you close it, or 7 days after you created it at the latest (encrypted backups roll off within 30 days). Use first names or nicknames rather than full names. The privacy policy has the details, including what schools are responsible for.",
+  },
+  {
     q: "Can I run these on a Chromebook or classroom projector?",
     a: "Yes. Everything runs in the browser with nothing to install, so it works on Chromebooks, interactive whiteboards, tablets, and ordinary laptops.",
   },

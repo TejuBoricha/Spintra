@@ -377,11 +377,10 @@ test('same participant reconnecting sees no duplicate row and recovers in-progre
   try {
     await startTriviaButton.click();
     await expect(page.getByText(/^Question 1$/)).toBeVisible({ timeout: 10000 });
-    // The activity-state persist debounces 600ms (use-room-subscription.ts)
-    // before the question is actually written to room_activity_state — the
-    // guest below only ever sees it via that persisted-row replay (they
-    // weren't subscribed yet to catch the original broadcast), so joining
-    // before the debounce flushes would race a write that hasn't happened.
+    // The guest below (not yet subscribed) recovers the question from
+    // room_activity_state, which send_room_event writes once the host's
+    // request lands; the host's own screen shows it before that, so give
+    // the request a moment.
     await page.waitForTimeout(1000);
 
     await guestPage.goto(`${baseURL}/room/${roomCode}`);
@@ -777,7 +776,7 @@ test('moderation dashboard: reporting and dismissing a message shows up in histo
     await expect(page.getByRole('dialog').filter({ hasText: 'Moderation' })).toBeVisible({ timeout: 5000 });
 
     // Reports tab is the default; the report should already be visible.
-    await expect(page.getByText('hello from the guest')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('dialog').getByText('hello from the guest')).toBeVisible({ timeout: 10000 });
     await page.getByRole('button', { name: 'Dismiss' }).click();
 
     // History tab shows the dismiss action against the guest's username.
@@ -830,7 +829,7 @@ test('moderation dashboard: kick, ban list, unban, and rejoin all work end to en
 
     await page.getByRole('button', { name: /moderation dashboard/i }).click();
     await expect(page.getByRole('dialog').filter({ hasText: 'Moderation' })).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('please remove me')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('dialog').getByText('please remove me')).toBeVisible({ timeout: 10000 });
 
     // Remove (kick+ban) from the report.
     await page.getByRole('button', { name: 'Kick & Ban' }).click();

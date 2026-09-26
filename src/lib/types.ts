@@ -40,8 +40,8 @@ type TournamentUpdateEvent = {
   // rooms.host_id (never the sender's own claim about itself) before a
   // LIVE (non-replayed) event is trusted — see tournament-activity.tsx.
   // Not a security boundary on its own (a client could lie about this
-  // field); the actual enforcement is the DB trigger on room_activity_state
-  // (migration 0060) checking the real auth.uid() at persist time. This
+  // field); the actual enforcement is send_room_event (migration 0106),
+  // which only accepts this from the host and stamps the real sender. This
   // field exists to dampen the live-broadcast race during a host
   // transition, not to stop a determined forger.
   senderId: string;
@@ -77,7 +77,12 @@ type BingoResetEvent    = { kind: "bingo_reset" };
 type ScrambleWordEvent  = { kind: "scramble_word"; scrambled: string; hash: string; answer?: string };
 type ScrambleCorrectEvent = { kind: "scramble_correct"; username: string; answer?: string };
 
-export type ActivityEvent =
+// eventId is stamped by sendActivityEvent so the server can ignore a
+// repeated send and a catch-up can skip events it already applied; seq is
+// the room-wide number send_room_event gives every event (migration 0106).
+// Every kind here must be listed in
+// room_host_event_kinds() or room_player_event_kinds(); docs:check enforces it.
+export type ActivityEvent = (
   | CoinFlippingEvent | CoinFlipEvent
   | DiceRollingEvent  | DiceRollEvent
   | TodPromptEvent
@@ -92,7 +97,8 @@ export type ActivityEvent =
   | GuessSubmitEvent | GuessResetEvent
   | BingoCallEvent | BingoWinEvent | BingoVerifiedEvent | BingoResetEvent
   | ScrambleWordEvent | ScrambleCorrectEvent
-  | ActivityResetEvent;
+  | ActivityResetEvent
+) & { eventId?: string; seq?: number };
 
 export type UserRank = "rookie" | "explorer" | "challenger" | "master" | "legend";
 

@@ -181,7 +181,9 @@ export default function CreateRoomClient() {
         );
 
         if (error) throw error;
-        trackEvent("room_created", hostId, selectedType);
+        // No usage counts for Classroom rooms, not even the teacher's own
+        // creation of one (src/lib/consent.ts).
+        if (selectedType !== "classroom") trackEvent("room_created", hostId, selectedType);
       } catch (error) {
         console.error("Failed to persist room to Supabase:", error);
         const errMsg = (error as { message?: string })?.message || "";

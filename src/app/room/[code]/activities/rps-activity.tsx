@@ -90,10 +90,9 @@ export function RpsActivity() {
   // Scoreboard/XP (ADR-008/009): once this round resolves, the calling
   // client's own award_score('rps') independently re-derives the winner
   // server-side from the persisted choice events — never trusting a
-  // client-supplied "I won" claim. flushActivityState() is called first
-  // since that server-side check reads room_activity_state directly, which
-  // could otherwise lag behind this client's already-resolved local view by
-  // up to the persist debounce's 2s window.
+  // client-supplied "I won" claim. flushActivityState() is called first so
+  // this client's own choice has reached the server (send_room_event records
+  // it there), since that server-side check reads room_activity_state.
   useEffect(() => {
     if (!roundResult || hasAwardedRoundRef.current) return;
     if (!decidingChoices[currentUser.id]) return;
