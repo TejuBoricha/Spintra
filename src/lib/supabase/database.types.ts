@@ -1411,6 +1411,7 @@ export type Database = {
       room_host_event_kinds: { Args: never; Returns: string[] }
       room_player_event_kinds: { Args: never; Returns: string[] }
       room_presence_leave: { Args: { p_room_code: string }; Returns: undefined }
+      server_now: { Args: never; Returns: string }
       send_room_event: {
         Args: {
           p_event: string

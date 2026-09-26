@@ -14,15 +14,24 @@ set client_min_messages to warning;
 
 create temp table rg(seq serial, bug text, name text, expected text, actual text, status text);
 
+-- The server's background jobs (0109 presence sweep, 0110 City tick) would act
+-- on this suite's deliberately half-built matches between blocks. Paused for
+-- the run and switched back on in the teardown; the blocks that test them
+-- call them directly.
+select cron.alter_job(jobid, active := false) from cron.job where jobname in ('city-tick', 'room-presence-sweep');
+
 -- ---------------------------------------------------------------------------
 -- helpers
 -- ---------------------------------------------------------------------------
-create or replace function pg_temp.rg_match(p_room text, p_seed bigint)
-returns uuid language plpgsql as $fn$
-declare v_m uuid; i int; v_host text; v_u text[] := array[
+-- p_users: the three seated players. Blocks that must not disturb earlier
+-- blocks' matches pass their own (the delete below clears these players out
+-- of every earlier room, which fires the departure trigger there).
+create or replace function pg_temp.rg_match(p_room text, p_seed bigint, p_users text[] default array[
   '11111111-1111-4111-8111-111111111111',
   '22222222-2222-4222-8222-222222222222',
-  '33333333-3333-4333-8333-333333333333'];
+  '33333333-3333-4333-8333-333333333333'])
+returns uuid language plpgsql as $fn$
+declare v_m uuid; i int; v_host text; v_u text[] := p_users;
 begin
   -- `check_room_creation_rate_limit` allows 8 rooms per host per 10 minutes, and
   -- this suite creates eight. Giving each room its own throwaway host keeps the
@@ -3156,11 +3165,184 @@ begin
 end $blk$;
 
 -- ---------------------------------------------------------------------------
+-- C-22 / Q-4 (migration 0110): the server keeps City's clocks. city_tick()
+-- runs from pg_cron with no signed-in user and hands each due match to
+-- city_tick_match(); these call that for their own match only, so the other
+-- blocks' half-built matches are left alone.
+-- ---------------------------------------------------------------------------
+
+
+do $blk$
+declare m uuid; ok boolean; act text; before_rolls int; after_rolls int;
+begin
+  m := pg_temp.rg_match('CITYRGT1', 7101, array['a1111111-1111-4111-8111-111111111111','a2222222-2222-4222-8222-222222222222','a3333333-3333-4333-8333-333333333333']);
+  perform set_config('request.jwt.claims', '', true);
+  update public.city_match_players set in_detention = false, pending_debt = 0 where match_id = m;
+  update public.city_matches
+     set current_seat = 0, phase = 'awaiting_roll', turn_clock_paused_at = null,
+         turn_started_at = now() - interval '5 minutes'
+   where id = m;
+  select count(*) into before_rolls from public.city_match_events where match_id = m and kind = 'rolled';
+  perform public.city_tick_match(m);
+  select count(*) into after_rolls from public.city_match_events where match_id = m and kind = 'rolled';
+  ok := after_rolls = before_rolls + 1;
+  act := format('rolled events %s -> %s', before_rolls, after_rolls);
+  insert into rg values (default,'C-22-TICK-TURN','the server claims an expired turn with nobody asking',
+    'city_tick auto-plays the seat whose turn clock ran out (one new roll)', act,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+do $blk$
+declare m uuid; ok boolean; act text; t_before int; t_after int; rolls int;
+begin
+  m := pg_temp.rg_match('CITYRGT2', 7102, array['a1111111-1111-4111-8111-111111111111','a2222222-2222-4222-8222-222222222222','a3333333-3333-4333-8333-333333333333']);
+  perform set_config('request.jwt.claims', '', true);
+  update public.city_matches
+     set current_seat = 0, phase = 'awaiting_roll', turn_clock_paused_at = null,
+         turn_started_at = now()
+   where id = m;
+  select turn_number into t_before from public.city_matches where id = m;
+  perform public.city_tick_match(m);
+  select turn_number into t_after from public.city_matches where id = m;
+  select count(*) into rolls from public.city_match_events where match_id = m and kind = 'rolled';
+  ok := t_after = t_before and rolls = 0;
+  act := format('turn %s -> %s, rolls %s', t_before, t_after, rolls);
+  insert into rg values (default,'C-22-TICK-NOT-DUE','the tick leaves a turn alone before its deadline',
+    'no roll and no turn change while the clock is still running', act,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+do $blk$
+declare m uuid; ok boolean; act text; prop int; st text;
+begin
+  m := pg_temp.rg_match('CITYRGT3', 7103, array['a1111111-1111-4111-8111-111111111111','a2222222-2222-4222-8222-222222222222','a3333333-3333-4333-8333-333333333333']);
+  perform set_config('request.jwt.claims', '', true);
+  select min(idx) into prop from public.city_board_spaces where price is not null;
+  update public.city_matches set current_seat = 0, phase = 'auction', turn_started_at = now() where id = m;
+  insert into public.city_auctions (match_id, space_idx, ends_at, hard_ends_at, status)
+  values (m, prop, now() - interval '3 seconds', now() + interval '1 minute', 'running');
+  perform public.city_tick_match(m);
+  select status into st from public.city_auctions where match_id = m order by created_at desc limit 1;
+  ok := st = 'settled';
+  act := 'auction status after the tick: ' || coalesce(st, 'none');
+  insert into rg values (default,'C-22-TICK-AUCTION','the server closes an auction past its deadline',
+    'city_tick settles a running auction whose clock ran out, with no browser asking', act,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+do $blk$
+declare m uuid; ok boolean; act text; st text;
+begin
+  m := pg_temp.rg_match('CITYRGT4', 7104, array['a1111111-1111-4111-8111-111111111111','a2222222-2222-4222-8222-222222222222','a3333333-3333-4333-8333-333333333333']);
+  perform set_config('request.jwt.claims', '', true);
+  -- Everyone away for 90s; the others parked in detention so the cascade's
+  -- path is deterministic (as in qa-x17). Seat 0 has rolled and let the clock
+  -- run out, so the tick ends its turn and the cascade finds nobody present.
+  update public.city_match_players
+     set disconnected_at = now() - interval '90 seconds', in_detention = (seat <> 0),
+         detention_turns = 0, pending_debt = 0
+   where match_id = m;
+  update public.city_matches
+     set current_seat = 0, phase = 'optional_actions', doubles_count = 0,
+         turn_clock_paused_at = null, turn_started_at = now() - interval '5 minutes'
+   where id = m;
+  perform public.city_tick_match(m);
+  select status into st from public.city_matches where id = m;
+  ok := st = 'paused';
+  act := 'match status after the tick: ' || st;
+  insert into rg values (default,'Q-4-TICK-EMPTY-MATCH','a match everyone has left is paused, not left active',
+    'city_tick claims the expired turn and the autopilot cascade pauses the match (FR-31)', act,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+do $blk$
+declare m uuid; ok boolean := false; act text;
+begin
+  m := pg_temp.rg_match('CITYRGT5', 7105, array['a1111111-1111-4111-8111-111111111111','a2222222-2222-4222-8222-222222222222','a3333333-3333-4333-8333-333333333333']);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub','44444444-4444-4444-8444-444444444444','role','authenticated')::text, true);
+  begin
+    perform public.city_claim_timeout(m);
+    act := 'an outsider''s claim was accepted';
+  exception when others then
+    ok := sqlerrm like '%CITY_NOT_A_MEMBER%';
+    act := 'refused: ' || sqlerrm;
+  end;
+  insert into rg values (default,'C-22-CLAIM-SHELL','players still go through the same checks',
+    'city_claim_timeout still refuses a caller who is not in the room (CITY_NOT_A_MEMBER, checked first, as in 0090)', act,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+do $blk$
+declare m uuid; ok boolean; act text; seat_after int; errs int;
+begin
+  m := pg_temp.rg_match('CITYRGT6', 7106, array['a1111111-1111-4111-8111-111111111111','a2222222-2222-4222-8222-222222222222','a3333333-3333-4333-8333-333333333333']);
+  perform set_config('request.jwt.claims', '', true);
+  -- Sent to Customs during their own roll: detained, turn still running.
+  update public.city_match_players set in_detention = (seat = 0), detention_turns = 0, pending_debt = 0 where match_id = m;
+  update public.city_matches
+     set current_seat = 0, phase = 'optional_actions', doubles_count = 0,
+         turn_clock_paused_at = null, turn_started_at = now() - interval '5 minutes'
+   where id = m;
+  perform public.city_tick_match(m);
+  select current_seat into seat_after from public.city_matches where id = m;
+  select count(*) into errs from public.city_tick_errors where match_id = m;
+  ok := seat_after <> 0 and errs = 0;
+  act := format('current seat after the tick: %s, recorded failures: %s', seat_after, errs);
+  insert into rg values (default,'C-22-TICK-DETAINED-MIDTURN','an idle player sent to Customs mid-turn has their turn ended',
+    'the turn moves on (0090 tried a detention roll, refused with CITY_WRONG_PHASE, forever)', act,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+do $blk$
+declare m uuid; ok boolean := false; act text; res text;
+begin
+  m := pg_temp.rg_match('CITYRGT7', 7107, array['a1111111-1111-4111-8111-111111111111','a2222222-2222-4222-8222-222222222222','a3333333-3333-4333-8333-333333333333']);
+  perform set_config('request.jwt.claims', '', true);
+  -- The autopilot meets a seat that was sent to Customs during its own roll:
+  -- detained, turn still running. 0090 tried the detention roll here and
+  -- raised CITY_WRONG_PHASE, rolling back the whole cascade.
+  update public.city_match_players set in_detention = (seat = 0), detention_turns = 0, pending_debt = 0 where match_id = m;
+  update public.city_matches set current_seat = 0, phase = 'optional_actions', doubles_count = 0 where id = m;
+  begin
+    res := public.city_resolve_autopilot_turn(m, 0);
+    ok := res = 'concluded';
+    act := 'returned ' || res;
+  exception when others then
+    act := 'raised ' || sqlerrm;
+  end;
+  insert into rg values (default,'C-22-AUTOPILOT-DETAINED','the autopilot resolves a seat detained mid-turn',
+    'city_resolve_autopilot_turn concludes the turn instead of attempting a detention roll outside awaiting_roll', act,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+do $blk$
+declare m uuid; ok boolean; act text; listed_before boolean; listed_after boolean;
+begin
+  m := pg_temp.rg_match('CITYRGT8', 7108, array['a1111111-1111-4111-8111-111111111111','a2222222-2222-4222-8222-222222222222','a3333333-3333-4333-8333-333333333333']);
+  perform set_config('request.jwt.claims', '', true);
+  update public.city_matches
+     set current_seat = 0, phase = 'awaiting_roll', turn_clock_paused_at = null,
+         turn_started_at = now() - interval '5 minutes'
+   where id = m;
+  select m in (select * from public._city_tick_due(100000)) into listed_before;
+  insert into public.city_tick_errors (match_id, last_message) values (m, 'test: stuck');
+  select m in (select * from public._city_tick_due(100000)) into listed_after;
+  delete from public.city_tick_errors where match_id = m;
+  ok := listed_before and not listed_after;
+  act := format('due before a failure: %s; due right after one: %s', listed_before, listed_after);
+  insert into rg values (default,'C-22-TICK-STUCK-WAITS','a match that just failed waits instead of holding a slot every run',
+    'a due match is picked; after a recorded failure it is skipped for a minute, so stuck matches cannot starve the rest', act,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ---------------------------------------------------------------------------
 -- teardown + report
 -- ---------------------------------------------------------------------------
 select set_config('app.force_close_room','true',false);
 delete from public.rooms where code like 'CITYRG%';
 select set_config('app.force_close_room','false',false);
+select cron.alter_job(jobid, active := true) from cron.job where jobname in ('city-tick', 'room-presence-sweep');
 
 \pset format unaligned
 \pset fieldsep '|'

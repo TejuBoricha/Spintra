@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { serverNow } from "@/lib/server-clock";
 import { Gavel } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { CityAuction, CityBoardSpace, CitySeat } from "./use-city-match";
@@ -26,6 +27,7 @@ export function CityAuction({
   onBid,
   onPass,
   onSettle,
+  serverClockSynced,
 }: {
   auction: CityAuction;
   board: CityBoardSpace[];
@@ -34,20 +36,23 @@ export function CityAuction({
   onBid: (amount: number) => void;
   onPass: () => void;
   onSettle: () => void;
+  /** Wait for the clock gap to be measured before acting on the deadline
+   *  (see src/lib/server-clock.ts); the server closes the auction anyway. */
+  serverClockSynced: boolean;
 }) {
   const space = board[auction.space_idx];
   const deadline = Math.min(
     new Date(auction.ends_at).getTime(),
     new Date(auction.hard_ends_at).getTime()
   );
-  const [left, setLeft] = useState(() => Math.max(0, deadline - Date.now()));
+  const [left, setLeft] = useState(() => Math.max(0, deadline - serverNow()));
   // Same tick also drives the away-bidder check below without reading the
-  // impure Date.now() during render.
-  const [now, setNow] = useState(() => Date.now());
+  // impure clock read during render. Server time (src/lib/server-clock.ts).
+  const [now, setNow] = useState(() => serverNow());
 
   useEffect(() => {
     const tick = () => {
-      const n = Date.now();
+      const n = serverNow();
       setNow(n);
       setLeft(Math.max(0, deadline - n));
     };
@@ -59,10 +64,10 @@ export function CityAuction({
   // Whoever notices the clock run out asks the server to settle. Every client
   // will try; the ones that lose the race get a harmless refusal.
   useEffect(() => {
-    if (left > 0) return;
+    if (left > 0 || !serverClockSynced) return;
     const t = setTimeout(onSettle, 200);
     return () => clearTimeout(t);
-  }, [left, onSettle]);
+  }, [left, onSettle, serverClockSynced]);
 
   const seconds = Math.ceil(left / 1000);
   const minBid = auction.high_seat === null ? 10 : auction.high_bid + 10;
