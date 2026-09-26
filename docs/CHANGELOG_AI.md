@@ -2969,4 +2969,6 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 - The audit's reproductions, on a local production build with two browsers: host refresh with a 6s realtime delay (was: guest became host at 15s; now: host keeps host, never offline, City seat never away); guest refresh with a 6s delay (was: offline 80s+ while playing; now: online throughout); host away 20s (keeps host); host away 60s (guest elected after the grace, host takes it back on return).
 - Playwright suite and `npm run verify`: see the PR.
 
+**Build fix in the same PR:** the first CI run failed because `next/font/google` downloads the fonts from Google during every build and that download failed. The three fonts (Archivo, Plus Jakarta Sans, JetBrains Mono) are now self-hosted in `src/app/fonts` (the same Latin variable files Google serves, with their SIL Open Font License texts) via `next/font/local`; the CSS variables and weights are unchanged. Verified: build passes with no request to Google, and all three fonts load and apply on the home page.
+
 **Behaviour change to know:** a player who really leaves is marked offline about 10–15s after closing the tab (pagehide), or 30–35s after a crash or sleep; a new host is elected 15s after that. Tabs running the pre-0109 page must be refreshed after deploy, or they stop being counted as online.
