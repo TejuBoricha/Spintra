@@ -214,9 +214,10 @@ export function TournamentActivity() {
         // Only live events are checked against the current host — see the
         // comment above. Not a full security boundary (senderId is a
         // self-reported claim a determined client could forge to match the
-        // real host's id) — the actual, unforgeable enforcement is the DB
-        // trigger on room_activity_state (migration 0060) checking the
-        // real auth.uid() at persist time. This check exists to stop a
+        // real host's id). The real enforcement is server-side:
+        // tournament_update only arrives through send_room_event (migration
+        // 0106), which accepts it from the host alone and stamps senderId
+        // with the real sender. This check exists to stop a
         // stale/demoted host's broadcast from clobbering the live view
         // during the brief propagation window of a legitimate transition.
         if (hasReplayed && event.senderId !== hostUserIdRef.current) {

@@ -1410,6 +1410,17 @@ export type Database = {
         Args: { p_ban_id: string; p_room_code: string }
         Returns: string
       }
+      room_host_event_kinds: { Args: never; Returns: string[] }
+      room_player_event_kinds: { Args: never; Returns: string[] }
+      send_room_event: {
+        Args: {
+          p_event: string
+          p_origin?: string
+          p_payload: Json
+          p_room_code: string
+        }
+        Returns: number | null
+      }
       set_guess_number_secret: {
         Args: { p_room_code: string; p_secret: number }
         Returns: undefined
