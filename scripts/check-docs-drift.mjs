@@ -505,6 +505,84 @@ if (fs.existsSync(registryPath) && fs.existsSync(activitiesDir) && fs.existsSync
   if (!fs.existsSync(gamesPath)) fail(`Games catalog file not found at ${gamesPath}`);
 }
 
+// --- Check 9: game event kinds and room games, app vs database ---
+//
+// send_room_event (migration 0106 and any later redefinition) refuses any
+// event kind not listed in room_host_event_kinds() or
+// room_player_event_kinds(), and keeps its own copy of which games a party
+// or classroom room may switch to. If ActivityEvent in types.ts or games.ts
+// changes without the SQL, the server would refuse a legitimate event or
+// game (or allow a game Classroom rooms should block).
+
+{
+  const typesSrc = fs.readFileSync(path.join(ROOT, "src", "lib", "types.ts"), "utf8");
+  const gamesSrc = fs.readFileSync(path.join(ROOT, "src", "lib", "games.ts"), "utf8");
+  const latestDefining = (needle) =>
+    realMigrations
+      .filter((f) => fs.readFileSync(path.join(migrationsDir, f), "utf8").includes(needle))
+      .sort()
+      .pop();
+  const readMigration = (f) => fs.readFileSync(path.join(migrationsDir, f), "utf8").replace(/\r\n/g, "\n");
+  const quoted = (text) => Array.from(text.matchAll(/["']([a-z_-]+)["']/g)).map((m) => m[1]).sort();
+  const sameSet = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+  const sqlKindList = (fnName) => {
+    const file = latestDefining(`create or replace function public.${fnName}()`);
+    if (!file) return null;
+    const sql = readMigration(file);
+    const body = sql.slice(sql.lastIndexOf(`create or replace function public.${fnName}()`));
+    const list = body.match(/array\[([\s\S]*?)\]::text\[\]/);
+    return list ? quoted(list[1]) : null;
+  };
+
+  const appKinds = [...new Set(Array.from(typesSrc.matchAll(/kind:\s*"([a-z_]+)"/g)).map((m) => m[1]))].sort();
+  const hostKinds = sqlKindList("room_host_event_kinds");
+  const playerKinds = sqlKindList("room_player_event_kinds");
+  const rpcFile = latestDefining("create or replace function public.send_room_event(");
+  let syncOk = true;
+
+  if (!hostKinds || !playerKinds || !rpcFile || appKinds.length === 0) {
+    fail("Could not find ActivityEvent kinds in types.ts, or room_host_event_kinds / room_player_event_kinds / send_room_event in the migrations");
+    syncOk = false;
+  } else {
+    const overlap = hostKinds.filter((k) => playerKinds.includes(k));
+    if (overlap.length > 0) {
+      fail(`Event kinds listed as both host and player kinds in SQL: ${overlap.join(", ")}`);
+      syncOk = false;
+    }
+    if (!sameSet(appKinds, [...hostKinds, ...playerKinds].sort())) {
+      const missing = appKinds.filter((k) => !hostKinds.includes(k) && !playerKinds.includes(k));
+      const extra = [...hostKinds, ...playerKinds].filter((k) => !appKinds.includes(k));
+      fail(`ActivityEvent kinds in src/lib/types.ts differ from the SQL kind lists (not in SQL: ${missing.join(", ") || "none"}; only in SQL: ${extra.join(", ") || "none"})`);
+      syncOk = false;
+    }
+
+    const rpcSql = readMigration(rpcFile);
+    const rpcBody = rpcSql.slice(rpcSql.lastIndexOf("create or replace function public.send_room_event("));
+    const sqlGames = rpcBody.match(/v_type not in \(([\s\S]*?)\)/);
+    const sqlUnsafe = rpcBody.match(/v_room_type = 'classroom'\s*and v_type in \(([\s\S]*?)\)/);
+    const playable = [];
+    const unsafe = [];
+    for (const block of Array.from(gamesSrc.matchAll(/\{([\s\S]*?)\}/g)).map((m) => m[1])) {
+      const type = block.match(/type\s*:\s*["']([a-z-]+)["']/)?.[1];
+      if (!type || block.includes("createOnly: true")) continue;
+      playable.push(type);
+      if (block.includes("classroomSafe: false")) unsafe.push(type);
+    }
+    if (!sqlGames || !sameSet(quoted(sqlGames[1]), playable.sort())) {
+      fail(`Playable games in src/lib/games.ts differ from send_room_event's allowed games in ${rpcFile}`);
+      syncOk = false;
+    }
+    if (!sqlUnsafe || !sameSet(quoted(sqlUnsafe[1]), unsafe.sort())) {
+      fail(`classroomSafe: false games in src/lib/games.ts differ from send_room_event's Classroom block list in ${rpcFile}`);
+      syncOk = false;
+    }
+  }
+
+  if (syncOk) {
+    ok(`Game event kinds (${appKinds.length}) and room games match between the app and send_room_event`);
+  }
+}
+
 // --- Final Decision ---
 
 if (failed) {

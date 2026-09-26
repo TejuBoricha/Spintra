@@ -73,8 +73,8 @@ export function TriviaActivity() {
   // Mirrors triviaAnswers so the event listener below (a long-lived
   // subscription that intentionally doesn't depend on triviaAnswers, to
   // avoid resubscribing the channel on every answer) can still tell a
-  // genuinely new answer apart from an idempotent resend of one already
-  // known — see the periodic resend effect further down.
+  // genuinely new answer apart from one already known (a replay after a
+  // reconnect, or a player changing their mind).
   const triviaAnswersRef = useRef(triviaAnswers);
   useEffect(() => {
     triviaAnswersRef.current = triviaAnswers;
@@ -102,11 +102,13 @@ export function TriviaActivity() {
         });
         playSwipe(soundEnabled);
       } else if (event.kind === "trivia_answer") {
-        // Answers are resent a few times after the initial broadcast (see
-        // below) so a peer whose channel missed the first delivery still
-        // catches it — that resend is otherwise indistinguishable from a
-        // brand-new answer, so only play the reveal sound the first time
-        // this userId is seen for the current question.
+        // An answer can reach us twice (live, then again in the server's
+        // log after a reconnect), so only play the reveal sound the first
+        // time this userId is seen for the current question. Answers used
+        // to be re-broadcast five times each to cover lost deliveries; with
+        // 30 players that flood closed the room's channels (audit L-1).
+        // send_room_event now records every answer, so a player who missed
+        // one catches up from the server instead.
         const alreadyKnown = !!triviaAnswersRef.current[event.userId];
         setTriviaAnswers((prev) => ({
           ...prev,
@@ -177,38 +179,6 @@ export function TriviaActivity() {
 
   const myAnswer = triviaQuestion ? triviaAnswers[currentUser.id] : undefined;
   const correctCount = Object.values(triviaAnswers).filter((a) => a.correct).length;
-
-  // trivia_answer is a fire-and-forget broadcast (no delivery guarantee) —
-  // if a peer's realtime channel briefly hiccups right as this fires, that
-  // peer never learns this answer happened, with nothing to self-heal it
-  // (unlike postgres_changes-backed state, there's no row to re-fetch).
-  // Resending a few times over the following seconds gives any peer who
-  // missed the first delivery another chance to catch it; the listener
-  // above only reacts to the first delivery it actually receives per userId
-  // (see alreadyKnown), so repeats are inert once every peer has it.
-  useEffect(() => {
-    if (!myAnswer || !triviaQuestion) return;
-    let resends = 0;
-    const interval = setInterval(() => {
-      resends += 1;
-      if (resends > 5) {
-        clearInterval(interval);
-        return;
-      }
-      sendActivityEvent({
-        kind: "trivia_answer",
-        userId: currentUser.id,
-        username: currentUser.username,
-        choiceIndex: myAnswer.choiceIndex,
-        correctIndex: triviaQuestion.correctIndex,
-        correct: myAnswer.correct,
-      });
-    }, 3000);
-    return () => clearInterval(interval);
-    // Re-broadcasts only need to restart when the answer/question identity
-    // actually changes, not on every unrelated re-render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myAnswer?.choiceIndex, triviaQuestion?.num]);
 
   return (
     <motion.div
@@ -333,7 +303,7 @@ export function TriviaActivity() {
                       correct = i === triviaQuestion.correctIndex;
                     }
 
-                    sendActivityEvent({
+                    const accepted = await sendActivityEvent({
                       kind: "trivia_answer",
                       userId: currentUser.id,
                       username: currentUser.username,
@@ -341,6 +311,11 @@ export function TriviaActivity() {
                       correctIndex,
                       correct,
                     });
+                    // Refused by the server (e.g. too many actions at once):
+                    // nobody else saw it, and it isn't scored. The choices
+                    // stay locked, since this player has already seen
+                    // whether their pick was right.
+                    if (!accepted) return;
 
                     // Scoreboard/XP (ADR-008/009): server-verifies independently
                     // via the same trivia_questions lookup above — no flush
