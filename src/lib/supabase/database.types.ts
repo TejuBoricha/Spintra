@@ -841,7 +841,6 @@ export type Database = {
         Row: {
           banned_by: string
           created_at: string
-          fingerprint_hash: string | null
           id: string
           room_id: string
           user_id: string
@@ -850,7 +849,6 @@ export type Database = {
         Insert: {
           banned_by: string
           created_at?: string
-          fingerprint_hash?: string | null
           id?: string
           room_id: string
           user_id: string
@@ -859,7 +857,6 @@ export type Database = {
         Update: {
           banned_by?: string
           created_at?: string
-          fingerprint_hash?: string | null
           id?: string
           room_id?: string
           user_id?: string
@@ -879,7 +876,6 @@ export type Database = {
         Row: {
           avatar_url: string | null
           bingo_card: Json | null
-          fingerprint_hash: string | null
           id: string
           is_online: boolean
           joined_at: string
@@ -893,7 +889,6 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           bingo_card?: Json | null
-          fingerprint_hash?: string | null
           id?: string
           is_online?: boolean
           joined_at?: string
@@ -907,7 +902,6 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           bingo_card?: Json | null
-          fingerprint_hash?: string | null
           id?: string
           is_online?: boolean
           joined_at?: string

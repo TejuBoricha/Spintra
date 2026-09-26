@@ -6,7 +6,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { fireConfetti } from "@/components/celebration";
 import { banUserFromRoom } from "@/lib/room-bans";
 import { moderationKickBan } from "@/lib/moderation";
-import { getDeviceFingerprint, generateUUID } from "@/lib/utils";
+import { generateUUID } from "@/lib/utils";
 import { getGameByType } from "@/lib/games";
 import { getRoomByCode } from "@/lib/room-lookup";
 import { trackEvent } from "@/lib/analytics";
@@ -744,10 +744,6 @@ export function useRoomSubscription({
           return;
         }
 
-        // Compute a stable device fingerprint so the database ban trigger
-        // can block rejoins even after anonymous token rotation.
-        const fingerprint_hash = await getDeviceFingerprint();
-
         let upsertResult;
         if (existingParticipant) {
           // Reconnection: update status without trigger limit validation.
@@ -875,20 +871,6 @@ export function useRoomSubscription({
         // Realtime channel.
         if (isMounted) setParticipantRowReady(true);
 
-        // Fire-and-forget: persist the device fingerprint after the join
-        // succeeds. This is a best-effort operation — if migration 0047
-        // hasn't been applied yet, the update silently fails without
-        // blocking the user from joining the room.
-        if (fingerprint_hash) {
-          supabaseClient
-            .from("room_participants")
-            .update({ fingerprint_hash })
-            .eq("room_id", roomCode)
-            .eq("user_id", currentUser.id)
-            .then(({ error: fpError }) => {
-              if (fpError) console.debug("Fingerprint update skipped (migration pending):", fpError.message);
-            });
-        }
 
         // Only a genuinely new guest join, not the host's own creation (that
         // already fires room_created) or a reconnect/refresh (existingParticipant).
