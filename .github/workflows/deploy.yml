@@ -44,7 +44,9 @@ jobs:
           # Pinned: `npx supabase` with no version fetches whatever is newest
           # at deploy time, so a CLI release could change what `db push`
           # does to production with no change in this repo (audit P-6).
-          SUPABASE_CLI: supabase@2.118.0
+          # Same version as ci.yml's db-integration job, which applies every
+          # migration to a fresh stack first; bump the two together.
+          SUPABASE_CLI: supabase@2.109.0
         run: |
           set -euo pipefail
           npx --yes "$SUPABASE_CLI" link --project-ref "$SUPABASE_PROJECT_ID" --password "$SUPABASE_DB_PASSWORD"
