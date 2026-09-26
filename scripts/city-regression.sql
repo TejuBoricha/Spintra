@@ -1024,6 +1024,9 @@ begin
   m := pg_temp.rg_match('CITYRGA1', 72);
 
   -- Disconnect (seat 1): disconnected_at is stamped.
+  -- Since 0109 only the server writes is_online (its presence sweep, which
+  -- sets this flag); this simulates that server write.
+  perform set_config('app.bypass_participant_restriction', 'true', true);
   update public.room_participants set is_online = false
    where room_id = 'CITYRGA1' and user_id = (
      select user_id from public.city_match_players where match_id=m and seat=1);
@@ -1562,6 +1565,9 @@ begin
   -- Genuinely flip false -> true, not true -> true -- the trigger's own
   -- WHEN clause only fires on a real transition, and rg_match already
   -- leaves every participant at is_online=true from the join.
+  -- Since 0109 only the server writes is_online (its presence sweep, which
+  -- sets this flag); this simulates that server write.
+  perform set_config('app.bypass_participant_restriction', 'true', true);
   update public.room_participants set is_online = false
    where room_id = 'CITYRGD2' and user_id = (
      select user_id from public.city_match_players where match_id=m and seat=0);
@@ -2656,6 +2662,9 @@ begin
 
   -- Genuinely flip false -> true, not true -> true (BUG-007-D-resume's own
   -- note above applies identically here).
+  -- Since 0109 only the server writes is_online (its presence sweep, which
+  -- sets this flag); this simulates that server write.
+  perform set_config('app.bypass_participant_restriction', 'true', true);
   update public.room_participants set is_online = false
    where room_id = 'CITYRGD3' and user_id = (
      select user_id from public.city_match_players where match_id=m and seat=0);

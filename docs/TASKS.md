@@ -4,6 +4,19 @@ This document tracks all active, remaining, and completed tasks for the Spintra 
 
 ---
 
+## Product audit (2026-09-26): wave 2a, presence and time foundation (IN PROGRESS)
+
+The live status of every audit finding is kept in the product audit report (one report, see `HANDOFF.md`); this list tracks the work.
+
+- `[x]` **Wave 1** (security, privacy, backups, release gate): PRs #46–#50 merged and deployed 2026-09-26, migrations 0106–0108 verified live.
+- `[~]` **Part 1, server-owned presence** (R-14, R-1, R-2, R-3, C-23, Q-1, Q-3, D-7 presence): migration 0109 + heartbeat client. In a pull request.
+- `[ ]` **Part 2, City timekeeper** (C-22, Q-4): a pg_cron job closes expired auctions, claims expired turns, debt windows and trade pauses, and pauses empty matches; on-screen clocks use server time.
+- `[ ]` **Part 3, small fixes**: dice replay on End turn (C-20), chat scroll moving the page (R-15), "Roll again" label after doubles (C-7), money record gaps (C-10).
+- `[ ]` Then wave 4 starts with the full-screen City layout (C-19, C-30, C-31, C-18, R-13, C-17).
+- `[ ]` **Found while testing part 1 (new, not yet in the audit report):** on the Postgres image production now runs (17.6.1.141), a fresh database can't apply migration `0036` ("must be owner of table messages": `realtime.messages` is owned by `supabase_realtime_admin` there). CI passes only because its pinned CLI (2.109.0) starts the older 17.6.1.140 image. It will break CI when the CLI is bumped, and a restore into a brand-new project on the current image. Fix: make `0036`'s realtime statements tolerate the new ownership (they're already in `scripts/backup/extras.sql` for restores) and test a fresh reset on the production image.
+
+---
+
 ---
 
 ## Session 60: UI/UX Overhaul & Layout Fixes (COMPLETE)

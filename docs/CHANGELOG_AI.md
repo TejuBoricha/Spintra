@@ -2947,3 +2947,26 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 **What changed:** branch protection on `main` (applied with the user's go-ahead through the GitHub API): pull requests required for everyone including admins, zero approvals, required checks `validate` and `db-integration` on an up-to-date branch, no force-pushes or deletion. `deploy.yml` now only runs from `main` and pins the Supabase CLI to `2.109.0`, the version `ci.yml`'s `db-integration` job applies migrations with, instead of fetching the newest at deploy time. A `/code-review` pass caught that the first version pinned a different CLI than CI tests with, and that an older ARCHITECTURE.md paragraph still described admins as able to push directly.
 
 **Files Modified:** `.github/workflows/deploy.yml`, `docs/ARCHITECTURE.md`. Branch protection is a repository setting, not a file.
+
+---
+
+## [2026-09-26] — Audit wave 2a, part 1: the server decides who is online (migration 0109)
+
+**AI:** Claude Opus 5.5 (Claude Code)
+**Task:** The City playtest audit (addendum to the product audit) traced three of the owner's reports (guest gets host after the host refreshes, a stuck game, dice "rolling by themselves") to one root cause, R-14: browsers wrote each other's `is_online`, so a refresh with a slow realtime connection left a present player offline for good. The owner chose "fix it properly", and that the room's creator gets host back.
+
+**Files Modified:** `supabase/migrations/0109_server_owned_presence.sql` (new), `supabase/tests/0109_server_owned_presence.test.sql` (new), `src/app/room/[code]/hooks/use-room-subscription.ts`, `public/presence-worker.js` (new), `src/lib/supabase/database.types.ts`, `scripts/city-regression.sql`, `tests/multiplayer-loop.spec.ts` (two tests updated for server presence, one new R-14 regression test), `docs/ARCHITECTURE.md`, `docs/TASKS.md`, `docs/HANDOFF.md`.
+
+**What changed:**
+- **Server:** heartbeats (`room_heartbeat`, every 10s) in a private `room_presence` table; `room_presence_leave` on pagehide (10s grace); `room_presence_sweep` on pg_cron every 5s marks 30s-silent players offline and elects hosts (15s grace, creator preferred, Classroom creator only); the creator takes the room back on return; nobody can write another player's row; one host row per room. Details in ARCHITECTURE.md §4 (0109).
+- **Client:** removed Realtime presence tracking, the 4-second "crash confirmation" writes, the stale-row check, the self-heal, and client-side host election (about 320 lines). Added the heartbeat (ticks from a worker so a hidden tab isn't slowed to once a minute; timer fallback), an immediate beat on (re)connect and when the tab becomes visible (R-1), and a keepalive leave request on pagehide (R-3). The new host now gets a notice too.
+
+**Verification:**
+- `supabase/tests/0109_server_owned_presence.test.sql`: 13/13 against the local stack (another player's row refused; only members can beat; election and sweep server-only; expiry; 15s grace; election; creator reclaim; leave grace; own-row updates; a reload's own online write restarts the beat; rapid repeat beats are cheap; anon refused; one host row).
+- `/code-review high` found 9 issues, all fixed before the PR: no backfill at deploy (the first sweep would have marked every live room offline), one room's error could abort the whole sweep, a slow reload could still blip offline, the election wasn't re-checked under the lock, unbounded cron history, a leave that could overtake a later beat, no heartbeat throttle, a token re-read every beat, and the host-election e2e test asserting removed text. A second `/code-review medium` pass found one more (the 2s heartbeat shortcut delayed a returning creator taking the room back by up to 10s), fixed and covered by test 5.
+- Fresh-database check: all migrations 0001–0109 apply cleanly on CI's Postgres image (17.6.1.140); City regression 72/72 and the 0109 tests 13/13 on that fresh database. Full Playwright suite 94/94 (the host-election test and the presence test rewritten for server presence, a new R-14 regression test, and a race fixed in `qa-x17`, which inserted an already-expired auction that the open tabs closed first). `npm run verify` clean.
+- City regression 72/72 (three blocks now simulate a disconnect with the server's bypass flag, since clients can no longer write it).
+- The audit's reproductions, on a local production build with two browsers: host refresh with a 6s realtime delay (was: guest became host at 15s; now: host keeps host, never offline, City seat never away); guest refresh with a 6s delay (was: offline 80s+ while playing; now: online throughout); host away 20s (keeps host); host away 60s (guest elected after the grace, host takes it back on return).
+- Playwright suite and `npm run verify`: see the PR.
+
+**Behaviour change to know:** a player who really leaves is marked offline about 10–15s after closing the tab (pagehide), or 30–35s after a crash or sleep; a new host is elected 15s after that. Tabs running the pre-0109 page must be refreshed after deploy, or they stop being counted as online.
