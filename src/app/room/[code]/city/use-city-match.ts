@@ -138,7 +138,8 @@ export interface CityAuction {
 
 /**
  * One row of the persistent activity feed (migration 0093) — rolled, bought,
- * rent_paid, tax_paid, built, sold_building, mortgaged, unmortgaged,
+ * rent_paid, tax_paid, fee_paid (Customs), debt_paid (a debt settled after
+ * raising funds; migration 0111), built, sold_building, mortgaged, unmortgaged,
  * auction_started, auction_won, auction_unsold, trade_accepted, bankrupt,
  * retired. `payload` carries space indexes and seats, never names — every
  * client already holds the static board and seat list and resolves those

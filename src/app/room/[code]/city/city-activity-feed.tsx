@@ -33,6 +33,10 @@ const ICONS: Record<string, typeof Dices> = {
   auction_unsold: Gavel,
   rent_paid: HandCoins,
   tax_paid: HandCoins,
+  // Migration 0111 (audit C-10): a debt settled after raising funds, and the
+  // Customs fee, which used to be logged as a tax.
+  debt_paid: HandCoins,
+  fee_paid: HandCoins,
   built: Building2,
   sold_building: Building2,
   mortgaged: Banknote,
@@ -80,6 +84,14 @@ function describe(
       return `${actor} paid ${money(p.amount)} rent to ${who(p.to_seat)}`;
     case "tax_paid":
       return `${actor} paid ${money(p.amount)} in tax`;
+    case "fee_paid":
+      return `${actor} paid a ${money(p.amount)} Customs fee`;
+    case "debt_paid":
+      // What the debt was for (rent, a card, a fee) isn't kept once it is
+      // queued, so this says only who it went to. No creditor means the bank.
+      return `${actor} paid off a ${money(p.amount)} debt ${
+        typeof p.to_seat === "number" ? `to ${who(p.to_seat)}` : "to the bank"
+      }`;
     case "built":
       return `${actor} built on ${space(p.space)}`;
     case "sold_building":

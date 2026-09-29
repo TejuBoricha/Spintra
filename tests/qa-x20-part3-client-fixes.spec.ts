@@ -221,3 +221,39 @@ test('R-15: the chat list still follows the newest message (mobile sheet)', asyn
     await browser.close();
   }
 });
+
+// C-10 (migration 0111): the activity feed's money record. The Customs fee
+// used to read "paid 90 in tax", and a debt cleared after raising funds wasn't
+// in the feed at all.
+test('C-10: the feed names the Customs fee, and a debt paid off after raising funds (after the mortgage)', async () => {
+  test.setTimeout(120_000);
+  const { browser, host, matchId } = await startTwoPlayerMatch();
+  try {
+    // Seat 0 is held at Customs and pays the fee.
+    sql(`update city_match_players set in_detention=true, detention_turns=0, cash=500 where match_id='${matchId}' and seat=0`);
+    setTurn(matchId, 'awaiting_roll', 0);
+    await host.getByRole('button', { name: /^pay 90$/i }).click({ timeout: 15000 });
+    await expect(host.getByText(/paid a 90 Customs fee/i)).toBeVisible({ timeout: 15000 });
+    await expect(host.getByText(/in tax/i)).toHaveCount(0);
+
+    // Seat 0 now owes seat 1 what mortgaging their one property raises, and
+    // raises it through the real Mortgage button.
+    sql(`delete from city_assets where match_id='${matchId}'`);
+    sql(`insert into city_assets (match_id, space_idx, owner_seat, buildings, is_mortgaged) values ('${matchId}', 1, 0, 0, false)`);
+    const half = Number(sql(`select round(price / 2.0) from city_board_spaces where idx=1`));
+    sql(`update city_match_players set in_detention=false, cash=0, pending_debt=${half}, pending_creditor_seat=1 where match_id='${matchId}' and seat=0`);
+    setTurn(matchId, 'required_decision', 0);
+    await host.getByRole('button', { name: /^mortgage ·/i }).click({ timeout: 15000 });
+
+    await expect(host.getByText(/paid off a \d+ debt to /i)).toBeVisible({ timeout: 15000 });
+    // The feed lists newest first, so the payment sits above the mortgage.
+    const rows = await host.locator('ul.max-h-64 > li').allInnerTexts();
+    const debtAt = rows.findIndex((t) => /paid off a \d+ debt/i.test(t));
+    const mortgageAt = rows.findIndex((t) => /mortgaged/i.test(t));
+    expect(debtAt, 'a debt row is in the feed').toBeGreaterThanOrEqual(0);
+    expect(mortgageAt, 'a mortgage row is in the feed').toBeGreaterThanOrEqual(0);
+    expect(debtAt, `the debt payment must come after the mortgage (feed: ${JSON.stringify(rows)})`).toBeLessThan(mortgageAt);
+  } finally {
+    await browser.close();
+  }
+});

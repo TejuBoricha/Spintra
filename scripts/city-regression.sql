@@ -3336,6 +3336,200 @@ begin
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 
+-- ===========================================================================
+-- C-10 (audit wave 2a, part 3; migration 0111) -- the feed's money record.
+-- 1) A debt paid off after raising funds wrote no event. It now logs
+--    `debt_paid`, and the raise-funds paths (mortgage, sell a building,
+--    accept a trade) log their own event first so the feed reads in order.
+-- 2) The Customs fee was logged as `tax_paid`; it is now `fee_paid`.
+-- ===========================================================================
+do $blk$
+declare
+  m uuid; ok boolean := true; act text := ''; res jsonb; v_val int;
+  c_before int; c_after int; debt_left int; n_paid int;
+  mort_id bigint; paid_id bigint; paid_actor int; paid_amount int; paid_to int;
+begin
+  m := pg_temp.rg_match('CITYRGC10A', 9101);
+  delete from public.city_assets where match_id = m;
+  insert into public.city_assets (match_id, space_idx, owner_seat, buildings, is_mortgaged)
+  values (m, 1, 0, 0, false);
+  select round(price / 2.0)::int into v_val from public.city_board_spaces where idx = 1;
+  select cash into c_before from public.city_match_players where match_id = m and seat = 1;
+  -- Seat 0 owes seat 1 exactly what mortgaging their one property raises.
+  update public.city_match_players set cash = 0, pending_debt = v_val, pending_creditor_seat = 1
+   where match_id = m and seat = 0;
+  update public.city_matches set current_seat = 0, phase = 'required_decision',
+    turn_clock_paused_at = null where id = m;
+  begin
+    perform pg_temp.rg_as(0);
+    select public.city_mortgage(m, 1) into res;
+  exception when others then ok := false; act := act || 'city_mortgage raised ' || sqlerrm || '; ';
+  end;
+  select count(*) into n_paid from public.city_match_events where match_id = m and kind = 'debt_paid';
+  select id into mort_id from public.city_match_events
+   where match_id = m and kind = 'mortgaged' order by id desc limit 1;
+  select id, actor_seat, (payload->>'amount')::int, (payload->>'to_seat')::int
+    into paid_id, paid_actor, paid_amount, paid_to
+    from public.city_match_events where match_id = m and kind = 'debt_paid' order by id desc limit 1;
+  select cash into c_after from public.city_match_players where match_id = m and seat = 1;
+  select pending_debt into debt_left from public.city_match_players where match_id = m and seat = 0;
+  if n_paid <> 1 then ok := false; act := act || format('expected exactly 1 debt_paid event, got %s; ', n_paid); end if;
+  if paid_actor is distinct from 0 or paid_amount is distinct from v_val or paid_to is distinct from 1 then
+    ok := false; act := act || format('debt_paid was actor %s amount %s to %s, expected 0/%s/1; ', paid_actor, paid_amount, paid_to, v_val);
+  end if;
+  if mort_id is null or paid_id is null or paid_id <= mort_id then
+    ok := false; act := act || format('debt_paid (id %s) must come after the mortgage that raised it (id %s); ', paid_id, mort_id);
+  end if;
+  if c_after - c_before <> v_val or debt_left <> 0 then
+    ok := false; act := act || format('creditor gained %s (expected %s), debt left %s; ', c_after - c_before, v_val, debt_left);
+  end if;
+  insert into rg values (default,'C-10-DEBT-PAID-MORTGAGE','a debt settled by mortgaging is logged, to the creditor, after the mortgage',
+    'one debt_paid row (actor 0, amount = the debt, to seat 1) with a higher id than the mortgaged row; creditor credited; debt cleared',
+    case when ok then format('debt_paid id %s after mortgaged id %s, %s to seat %s', paid_id, mort_id, paid_amount, paid_to) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+do $blk$
+declare
+  m uuid; ok boolean := true; act text := ''; res jsonb; v_val int;
+  n_paid int; paid_amount int; paid_to int; has_to boolean;
+begin
+  m := pg_temp.rg_match('CITYRGC10B', 9102);
+  delete from public.city_assets where match_id = m;
+  insert into public.city_assets (match_id, space_idx, owner_seat, buildings, is_mortgaged)
+  values (m, 1, 0, 0, false);
+  select round(price / 2.0)::int into v_val from public.city_board_spaces where idx = 1;
+  -- No creditor: a tax or fee owed to the bank.
+  update public.city_match_players set cash = 0, pending_debt = v_val, pending_creditor_seat = null
+   where match_id = m and seat = 0;
+  update public.city_matches set current_seat = 0, phase = 'required_decision',
+    turn_clock_paused_at = null where id = m;
+  begin
+    perform pg_temp.rg_as(0);
+    select public.city_mortgage(m, 1) into res;
+  exception when others then ok := false; act := act || 'city_mortgage raised ' || sqlerrm || '; ';
+  end;
+  select count(*) into n_paid from public.city_match_events where match_id = m and kind = 'debt_paid';
+  select (payload->>'amount')::int, (payload->>'to_seat')::int, payload ? 'to_seat'
+    into paid_amount, paid_to, has_to
+    from public.city_match_events where match_id = m and kind = 'debt_paid' order by id desc limit 1;
+  if n_paid <> 1 then ok := false; act := act || format('expected exactly 1 debt_paid event, got %s; ', n_paid); end if;
+  if paid_amount is distinct from v_val or paid_to is not null then
+    ok := false; act := act || format('expected amount %s to nobody (the bank), got %s to %s; ', v_val, paid_amount, paid_to);
+  end if;
+  insert into rg values (default,'C-10-DEBT-PAID-BANK','a debt with no creditor is logged as paid to the bank (no to_seat)',
+    'one debt_paid row, amount = the debt, to_seat null', case when ok then format('debt_paid %s, to_seat null', paid_amount) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+do $blk$
+declare
+  m uuid; ok boolean := true; act text := ''; offer uuid;
+  trade_id bigint; paid_id bigint; paid_amount int; paid_to int; paid_actor int;
+begin
+  m := pg_temp.rg_match('CITYRGC10C', 9103);
+  delete from public.city_assets where match_id = m;
+  insert into public.city_assets (match_id, space_idx, owner_seat, buildings, is_mortgaged)
+  values (m, 1, 0, 0, false);
+  update public.city_match_players set cash = 5, pending_debt = 50, pending_creditor_seat = 2
+   where match_id = m and seat = 0;
+  update public.city_matches set current_seat = 1, phase = 'optional_actions' where id = m;
+  begin
+    -- seat 1 buys seat 0's property for 100: enough to clear the 50 owed.
+    perform pg_temp.rg_as(1);
+    offer := public.city_propose_trade(m, 0, '{}', array[1], 100, 0);
+    perform pg_temp.rg_as(0);
+    perform public.city_accept_trade(offer);
+  exception when others then ok := false; act := act || 'trade raised ' || sqlerrm || '; ';
+  end;
+  select id into trade_id from public.city_match_events
+   where match_id = m and kind = 'trade_accepted' order by id desc limit 1;
+  select id, actor_seat, (payload->>'amount')::int, (payload->>'to_seat')::int
+    into paid_id, paid_actor, paid_amount, paid_to
+    from public.city_match_events where match_id = m and kind = 'debt_paid' order by id desc limit 1;
+  if trade_id is null or paid_id is null then
+    ok := false; act := act || format('missing event(s): trade_accepted %s, debt_paid %s; ', trade_id, paid_id);
+  elsif paid_id <= trade_id then
+    ok := false; act := act || format('debt_paid (id %s) must come after trade_accepted (id %s); ', paid_id, trade_id);
+  end if;
+  if paid_actor is distinct from 0 or paid_amount is distinct from 50 or paid_to is distinct from 2 then
+    ok := false; act := act || format('debt_paid was actor %s amount %s to %s, expected 0/50/2; ', paid_actor, paid_amount, paid_to);
+  end if;
+  insert into rg values (default,'C-10-DEBT-PAID-TRADE-ORDER','a debt cleared by accepting a trade is logged after the trade_accepted row',
+    'trade_accepted, then debt_paid (actor 0, 50 to seat 2)',
+    case when ok then format('trade_accepted id %s, debt_paid id %s', trade_id, paid_id) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+do $blk$
+declare
+  m uuid; ok boolean := true; act text := ''; res jsonb; v_val int;
+  sold_id bigint; paid_id bigint; paid_amount int; paid_to int;
+begin
+  m := pg_temp.rg_match('CITYRGC10D', 9104);
+  delete from public.city_assets where match_id = m;
+  insert into public.city_assets (match_id, space_idx, owner_seat, buildings, is_mortgaged)
+  values (m, 1, 0, 1, false);
+  select round(build_cost / 2.0)::int into v_val from public.city_board_spaces where idx = 1;
+  update public.city_match_players set cash = 0, pending_debt = v_val, pending_creditor_seat = null
+   where match_id = m and seat = 0;
+  update public.city_matches set current_seat = 0, phase = 'required_decision',
+    turn_clock_paused_at = null where id = m;
+  begin
+    perform pg_temp.rg_as(0);
+    select public.city_sell_building(m, 1) into res;
+  exception when others then ok := false; act := act || 'city_sell_building raised ' || sqlerrm || '; ';
+  end;
+  select id into sold_id from public.city_match_events
+   where match_id = m and kind = 'sold_building' order by id desc limit 1;
+  select id, (payload->>'amount')::int, (payload->>'to_seat')::int into paid_id, paid_amount, paid_to
+    from public.city_match_events where match_id = m and kind = 'debt_paid' order by id desc limit 1;
+  if sold_id is null or paid_id is null then
+    ok := false; act := act || format('missing event(s): sold_building %s, debt_paid %s; ', sold_id, paid_id);
+  elsif paid_id <= sold_id then
+    ok := false; act := act || format('debt_paid (id %s) must come after sold_building (id %s); ', paid_id, sold_id);
+  end if;
+  if paid_amount is distinct from v_val or paid_to is not null then
+    ok := false; act := act || format('expected debt_paid %s to the bank, got %s to %s; ', v_val, paid_amount, paid_to);
+  end if;
+  insert into rg values (default,'C-10-DEBT-PAID-SELL-ORDER','a debt cleared by selling a building is logged after the sold_building row',
+    'sold_building, then debt_paid (= the debt, to the bank)',
+    case when ok then format('sold_building id %s, debt_paid id %s', sold_id, paid_id) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+do $blk$
+declare
+  m uuid; ok boolean := true; act text := ''; res jsonb;
+  fee_kind text; fee_amount int; fee_actor int; n_tax int; cash_after int;
+begin
+  m := pg_temp.rg_match('CITYRGC10E', 9105);
+  update public.city_match_players set in_detention = true, detention_turns = 0, cash = 500
+   where match_id = m and seat = 0;
+  update public.city_matches set current_seat = 0, phase = 'awaiting_roll',
+    turn_clock_paused_at = null where id = m;
+  begin
+    perform pg_temp.rg_as(0);
+    select public.city_leave_detention(m, 'pay') into res;
+  exception when others then ok := false; act := act || 'city_leave_detention raised ' || sqlerrm || '; ';
+  end;
+  select kind, (payload->>'amount')::int, actor_seat into fee_kind, fee_amount, fee_actor
+    from public.city_match_events where match_id = m order by id desc limit 1;
+  select count(*) into n_tax from public.city_match_events where match_id = m and kind = 'tax_paid';
+  select cash into cash_after from public.city_match_players where match_id = m and seat = 0;
+  if fee_kind is distinct from 'fee_paid' or fee_amount is distinct from 90 or fee_actor is distinct from 0 then
+    ok := false; act := act || format('expected a fee_paid/90/seat-0 event, got %s/%s/%s; ', fee_kind, fee_amount, fee_actor);
+  end if;
+  if n_tax <> 0 then ok := false; act := act || format('the Customs fee was still logged as tax_paid (%s rows); ', n_tax); end if;
+  if cash_after <> 410 or (res->>'released') is distinct from 'true' then
+    ok := false; act := act || format('cash %s (expected 410), released=%s; ', cash_after, res->>'released');
+  end if;
+  insert into rg values (default,'C-10-FEE-PAID','paying the Customs fee logs fee_paid, not tax_paid',
+    'a fee_paid row (actor 0, 90), no tax_paid rows, cash 500 -> 410, released',
+    case when ok then format('%s %s by seat %s, cash %s', fee_kind, fee_amount, fee_actor, cash_after) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
 -- ---------------------------------------------------------------------------
 -- teardown + report
 -- ---------------------------------------------------------------------------
