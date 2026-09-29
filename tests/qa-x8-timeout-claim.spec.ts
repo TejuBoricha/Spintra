@@ -1,4 +1,4 @@
-import { test, chromium } from '@playwright/test';
+import { test, expect, chromium } from '@playwright/test';
 import { execSync } from 'child_process';
 import { acceptCookieBanner as accept, skipIfDemoMode } from './qa-city-helpers';
 
@@ -10,8 +10,8 @@ const sql = (q: string) =>
 // thoroughly at the SQL layer, but a server-side RPC nobody's client ever
 // calls fixes nothing for a real player. This test never clicks anything on
 // the stalled player's page at all — it just sits there, exactly like a
-// player who has gone quiet — and proves the OTHER player's browser notices
-// and recovers the match on its own, with zero manual action from anyone.
+// player who has gone quiet — and proves the match recovers on its own, with
+// zero manual action from anyone (today that is the server timekeeper, 0110).
 test('BUG-003 UI: match recovers automatically from a genuinely silent opponent', async () => {
   test.setTimeout(180_000);
   const log: string[] = [];
@@ -56,15 +56,28 @@ test('BUG-003 UI: match recovers automatically from a genuinely silent opponent'
   await host.waitForTimeout(1500);
   await guest.waitForTimeout(1500);
 
-  // Give the host's own auto-claim effect time to fire — genuinely nobody
-  // clicks anything on either page for the rest of this test.
-  await host.waitForTimeout(6000);
+  // Nobody clicks anything from here. Two independent recoveries exist: the
+  // players' browsers claim an expired turn, and the server's city-tick
+  // timekeeper (0110, pg_cron every 5s) does too (checked by hand: with the
+  // city-tick job switched off this still passes through the browsers). Either
+  // one plays the expired turn. An expired awaiting_roll is auto-rolled, which
+  // leaves the phase and starts a fresh clock for the seat's after-roll
+  // actions; the seat only changes one full window (25s here) later, so "the
+  // seat changed" cannot be the check within a test's time -- the phase leaving
+  // awaiting_roll is. The server path alone is covered in the SQL regression.
+  await expect
+    .poll(() => sql(`select phase from city_matches where id='${mid}'`), {
+      timeout: 25_000,
+      message: 'nothing played the expired turn',
+    })
+    .not.toBe('awaiting_roll');
 
-  const after = sql(`select current_seat, turn_number from city_matches where id='${mid}'`);
-  note(`state after 6s with nobody clicking anything: ${after}`);
-  const stillStalled = sql(`select (current_seat = ${before}) as still_stalled from city_matches where id='${mid}'`);
+  const after = sql(`select current_seat, phase, turn_number from city_matches where id='${mid}'`);
+  const rolled = sql(`select count(*) from city_match_events where match_id='${mid}' and kind='rolled'`);
+  note(`state after the expired turn was played, with nobody clicking anything: ${after}; rolled events: ${rolled}`);
+  expect(Number(rolled)).toBeGreaterThan(0);
 
-  note(`VERDICT: ${stillStalled === 'f' ? 'PASS — match recovered with zero manual clicks' : 'FAIL — still stalled'}`);
+  note('VERDICT: PASS — the expired turn was auto-rolled with zero manual clicks');
   console.log('\n===R===\n' + log.join('\n') + '\n===END===');
   await br.close();
 });

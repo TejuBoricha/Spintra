@@ -3348,9 +3348,9 @@ end $blk$;
 -- autopilot there; the shared three would do that to earlier blocks' half-built
 -- matches (the same reason the C-22 blocks pass their own).
 create or replace function pg_temp.rg_c10_users(p_k int) returns text[] language sql as $fn$
-  select array[format('c00000%s1-1111-4111-8111-111111111111', p_k),
-               format('c00000%s2-2222-4222-8222-222222222222', p_k),
-               format('c00000%s3-3333-4333-8333-333333333333', p_k)];
+  select array[format('c%s1-1111-4111-8111-111111111111', lpad(p_k::text, 6, '0')),
+               format('c%s2-2222-4222-8222-222222222222', lpad(p_k::text, 6, '0')),
+               format('c%s3-3333-4333-8333-333333333333', lpad(p_k::text, 6, '0'))];
 $fn$;
 create or replace function pg_temp.rg_c10_as(p_k int, p_seat int) returns void language plpgsql as $fn$
 begin
@@ -3651,6 +3651,91 @@ begin
   end if;
   insert into rg values (default,'C-8-AUCTION-LEGACY-FLOOR','an auction opened before 0112 keeps the old floor of 10',
     'opening_bid defaults to 10 and a bid of 10 is accepted', case when ok then format('opening_bid %s, high bid %s', (to_jsonb(a)->>'opening_bid')::int, a.high_bid) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- C-4 (Timed mode, migration 0113) -- the time limit ends the match at the end of
+-- the round on EVERY hand-off, not only when a player presses End turn. Before,
+-- only city_end_turn_core checked it, so a turn ended by the server (an idle
+-- player's timeout, the autopilot, the tick) never did. city_advance_turn is the
+-- single place every hand-off passes through. Each scenario seats its own
+-- players (see rg_c10_users).
+-- ===========================================================================
+do $blk$
+declare
+  m uuid; ok boolean := true; act text := ''; v_status text; v_results int;
+begin
+  -- Limit passed, and the hand-off wraps to a new round (last seat -> first).
+  m := pg_temp.rg_match('CITYRGC4A', 9301, pg_temp.rg_c10_users(8));
+  update public.city_matches
+     set mode = 'timed', time_limit_minutes = 10, started_at = now() - interval '11 minutes',
+         current_seat = 2, phase = 'optional_actions', turn_clock_paused_at = null
+   where id = m;
+  perform public.city_advance_turn(m);
+  select status into v_status from public.city_matches where id = m;
+  select count(*) into v_results from public.city_match_results where match_id = m;
+  if v_status is distinct from 'finished' then
+    ok := false; act := act || format('match is %s after the round-ending hand-off past the limit, expected finished; ', v_status);
+  end if;
+  if v_results = 0 then
+    ok := false; act := act || 'a match ended by the time limit has no results to show; ';
+  end if;
+  insert into rg values (default,'C-4-TIMED-HANDOFF-WRAP','a Timed match past its limit finishes when a hand-off wraps to a new round, on any path',
+    'city_advance_turn from the last seat, limit passed: status finished, results recorded',
+    case when ok then format('status %s, %s result rows', v_status, v_results) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+do $blk$
+declare
+  m uuid; ok boolean := true; act text := ''; v_status text; v_seat int;
+begin
+  -- Limit passed, but mid-round: the round completes first (FR-50).
+  m := pg_temp.rg_match('CITYRGC4B', 9302, pg_temp.rg_c10_users(9));
+  update public.city_matches
+     set mode = 'timed', time_limit_minutes = 10, started_at = now() - interval '11 minutes',
+         current_seat = 0, phase = 'optional_actions', turn_clock_paused_at = null
+   where id = m;
+  perform public.city_advance_turn(m);
+  select status, current_seat into v_status, v_seat from public.city_matches where id = m;
+  if v_status is distinct from 'active' or v_seat is distinct from 1 then
+    ok := false; act := act || format('mid-round past the limit: status %s, seat %s, expected active on seat 1 (the round completes); ', v_status, v_seat);
+  end if;
+  insert into rg values (default,'C-4-TIMED-HANDOFF-MIDROUND','past the limit, a hand-off inside a round does not end the match: the round completes',
+    'status active, turn passes to seat 1', case when ok then format('status %s, seat %s', v_status, v_seat) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+do $blk$
+declare
+  m uuid; ok boolean := true; act text := ''; v_status text; v_seat int;
+  m2 uuid; v_status2 text;
+begin
+  -- Limit not reached: a wrap starts another round. And a Classic match has no limit.
+  m := pg_temp.rg_match('CITYRGC4C', 9303, pg_temp.rg_c10_users(10));
+  update public.city_matches
+     set mode = 'timed', time_limit_minutes = 10, started_at = now() - interval '2 minutes',
+         current_seat = 2, phase = 'optional_actions', turn_clock_paused_at = null
+   where id = m;
+  perform public.city_advance_turn(m);
+  select status, current_seat into v_status, v_seat from public.city_matches where id = m;
+  if v_status is distinct from 'active' or v_seat is distinct from 0 then
+    ok := false; act := act || format('before the limit: status %s, seat %s, expected active on seat 0 (a new round); ', v_status, v_seat);
+  end if;
+  m2 := pg_temp.rg_match('CITYRGC4D', 9304, pg_temp.rg_c10_users(11));
+  update public.city_matches
+     set started_at = now() - interval '5 hours', current_seat = 2, phase = 'optional_actions',
+         turn_clock_paused_at = null
+   where id = m2;
+  perform public.city_advance_turn(m2);
+  select status into v_status2 from public.city_matches where id = m2;
+  if v_status2 is distinct from 'active' then
+    ok := false; act := act || format('a Classic match ended on a hand-off (%s); ', v_status2);
+  end if;
+  insert into rg values (default,'C-4-TIMED-HANDOFF-NOT-DUE','before the limit, or in Classic mode, a wrapping hand-off just starts another round',
+    'Timed before its limit: active on seat 0; Classic 5 hours in: still active',
+    case when ok then format('timed %s/seat %s, classic %s', v_status, v_seat, v_status2) else act end,
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 

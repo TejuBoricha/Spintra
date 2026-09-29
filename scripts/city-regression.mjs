@@ -193,7 +193,11 @@ function runSqlOnce() {
 // auction opens at half the list price with the new windows and refuses a
 // lower bid (the first SQL coverage of city_place_bid), and one opened before
 // the migration keeps the old floor of 10.
-const EXPECTED_SQL_ASSERTIONS = 85;
+// 88 = 85 + three for migration 0113 (audit C-4, the Timed-mode limit on every
+// hand-off): a Timed match past its limit finishes when a hand-off wraps to a
+// new round, it does not finish mid-round (the round completes), and before
+// the limit, or in Classic mode, a wrap just starts another round.
+const EXPECTED_SQL_ASSERTIONS = 88;
 
 const sqlRows = runSql();
 if (sqlRows === null) process.exit(2);

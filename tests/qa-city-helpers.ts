@@ -132,13 +132,20 @@ export interface TwoPlayerCityMatch {
  * both take a seat and ready up, the host starts it. The caller owns closing
  * `browser`. Skips (via skipIfDemoMode) when the app has no Supabase.
  */
-export async function startTwoPlayerCityMatch(): Promise<TwoPlayerCityMatch> {
+export async function startTwoPlayerCityMatch(
+  opts: { timedMinutes?: 15 | 30 | 60 } = {}
+): Promise<TwoPlayerCityMatch> {
   const browser = await chromium.launch();
   const host = await (await browser.newContext()).newPage();
   const guest = await (await browser.newContext()).newPage();
 
   const code = await createCityRoom(host);
   await skipIfDemoMode(host);
+  if (opts.timedMinutes) {
+    // Through the real lobby controls: Timed, then the time limit.
+    await host.getByRole('radio', { name: /^timed$/i }).click({ timeout: 40000 });
+    await host.getByRole('radio', { name: new RegExp(`^${opts.timedMinutes} min$`) }).click();
+  }
   await host.getByRole('button', { name: /open a match/i }).click({ timeout: 40000 });
   await host.getByRole('button', { name: /take a seat/i }).click({ timeout: 30000 });
 
