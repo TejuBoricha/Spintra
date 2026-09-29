@@ -60,7 +60,9 @@ const featuredTemplates = GAMES.map((game) => ({
   gradient: game.color,
 }));
 
-const categories = ["All", "Trending", "New", "Popular", "Teams", "Party", "Classroom"];
+// No "Popular" (1+ online) filter: the query below only lists rooms with at
+// least one person online, so it would show exactly what "All" does.
+const categories = ["All", "2+ players", "New", "Teams", "Party", "Classroom"];
 const categoryOptions = categories.map((cat) => ({ value: cat, label: cat }));
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -289,12 +291,10 @@ export default function ExplorePage() {
 
     // Category check
     if (activeCategory === "All") return true;
-    // Trending: rooms with at least 2 online participants right now
-    if (activeCategory === "Trending") return room.participants >= 2;
+    // 2+ players: rooms with at least 2 online participants right now
+    if (activeCategory === "2+ players") return room.participants >= 2;
     // New: created in the last 24 hours (cutoff set in effect; show all until ready)
     if (activeCategory === "New") return cutoff24h === null || new Date(room.createdAt).getTime() > cutoff24h;
-    // Popular: any room with at least 1 online participant
-    if (activeCategory === "Popular") return room.participants >= 1;
     if (activeCategory === "Teams") return room.type === "team-maker" || room.type === "tournament";
     if (activeCategory === "Party") {
       return ["party", "truth-or-dare", "lucky-wheel", "rps", "would-you-rather", "never-have-i-ever", "coin-flip", "dice", "trivia", "bingo", "word-scramble"].includes(room.type);
@@ -408,11 +408,11 @@ export default function ExplorePage() {
           className="justify-center"
         />
 
-        {/* Live Trending Rooms Section */}
+        {/* Live Rooms Section */}
         <section>
           <div className="flex items-center gap-2 mb-6">
             <TrendingUp className="w-5 h-5 text-(--brand-primary-strong)" />
-            <h2 className="font-display text-2xl font-black text-foreground">Live Trending Rooms</h2>
+            <h2 className="font-display text-2xl font-black text-foreground">Live Rooms</h2>
             {/* Pulse the dot, not the text — animate-pulse on the whole badge drops
                 the label below contrast thresholds mid-animation. */}
             <Badge variant="success" className="ml-2 font-mono uppercase text-[10px] tracking-widest">

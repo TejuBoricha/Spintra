@@ -4,6 +4,18 @@ This document tracks all active, remaining, and completed tasks for the Spintra 
 
 ---
 
+## Product decisions (2026-09-29, decided by delegation)
+
+The owner delegated four open product calls from the audit ("opt for the best and sensible solution"). Decided from the code, the audit's evidence and the PRs; tagged **decided by delegation**, not the owner's own approval, so any of them can be revisited.
+
+- `[x]` **Live Rooms filters** — drop "Popular", rename "Trending" to "2+ players", and the heading "Live Trending Rooms" to "Live Rooms". The page only lists rooms with `participant_count > 0`, so Popular (1+ online) was identical to All. Done (PR: Live Rooms + Actions).
+- `[x]` **GitHub Actions bumps (#22, #35, #36)** — one PR with the same four one-line changes (setup-cli v3, setup-node v7 twice, checkout v7 in `deploy.yml`) instead of three, since `main` requires up-to-date branches. `deploy.yml`'s changes can't be exercised by a PR's CI; after merge, run the deploy workflow once by hand (a no-op `db push` with nothing pending) to prove them.
+- `[~]` **npm Dependabot #45** — not merged as a bundle: it held three majors (eslint 9→10, typescript 6→7, framer-motion 12→13; 41 files import framer-motion) plus react 19.3, Playwright 1.63 and ~18 minor/patch bumps, and its green CI was from 2026-09-25 on an old base. `dependabot.yml` now groups minor and patch only, so majors arrive as one PR each and #45 is regenerated without them. Each major is judged on its own result (eslint 10: `npm run lint`; typescript 7: `npm run typecheck`; framer-motion 13: build plus a visual check). Not yet tried in a scratch copy; a first attempt was cut short by tool errors.
+- `[ ]` **Auctions (audit C-8)** — opening bid = half the list price rounded up to the bid step of 10 (the mortgage value, so the bank never sells below what it would lend), first window 30s (was 15s), each bid resets to 15s (was 10s), and every player is told an auction opened. The decliner may still bid (standard rules); banning them and forcing a purchase were rejected. Reason: the floor was a flat 10 (18% of the cheapest property, 55; 2.4% of the dearest, 420) inside a 15s window on a panel that sits below the fold. Migration 0112, own PR.
+- `[ ]` **Timed mode (audit C-4)** — expose it. It is a MUST in the spec (FR-06) that the lobby never got, the server side is tested (regression BUG-007-B/D, table CHECK 10–240 minutes), and Classic runs long (C-15: about 49 turns with nobody near bankruptcy). Build: Classic/Timed toggle with presets of 15, 30 and 60 minutes (Classic stays the default), a visible match countdown (none exists), and "Play again" reusing the last mode and pace. Server gap to close in the same change: the time limit is only checked in `city_end_turn_core`, so an idle turn ended by the server clock skips it.
+
+---
+
 ## Product audit (2026-09-26): wave 2a, presence and time foundation (IN PROGRESS)
 
 The live status of every audit finding is kept in the product audit report (one report, see `HANDOFF.md`); this list tracks the work.

@@ -5,11 +5,17 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
-    # Group npm updates to reduce PR noise
+    # Group npm minor and patch updates to reduce PR noise. Major versions are
+    # left out of the group on purpose: they arrive as one PR each, so a
+    # breaking change (eslint, typescript, framer-motion...) can be judged and
+    # tested alone instead of hiding inside a 23-package bundle.
     groups:
       dependencies:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
