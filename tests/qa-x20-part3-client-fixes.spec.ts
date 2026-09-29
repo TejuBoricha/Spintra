@@ -1,52 +1,18 @@
-import { test, expect, chromium, type Browser, type Page } from '@playwright/test';
-import { acceptCookieBanner as accept, createCityRoom, skipIfDemoMode, sql, BASE } from './qa-city-helpers';
+import { test, expect, chromium, type Page } from '@playwright/test';
+import {
+  acceptCookieBanner as accept,
+  skipIfDemoMode,
+  sql,
+  BASE,
+  startTwoPlayerCityMatch as startTwoPlayerMatch,
+  setHostTurn as setTurn,
+} from './qa-city-helpers';
 
 // Audit wave 2a, part 3 (client half): C-20 (the dice replayed on End turn),
 // C-7 (no "Roll again" after doubles) and R-15 (an incoming chat message
 // scrolled the whole page). Real two-player matches against the real stack;
 // the DB is only used to put the match in a known state, the way qa-x15 does,
 // because the dice themselves are random.
-
-interface Match {
-  browser: Browser;
-  host: Page;
-  guest: Page;
-  matchId: string;
-}
-
-async function startTwoPlayerMatch(): Promise<Match> {
-  const browser = await chromium.launch();
-  const host = await (await browser.newContext()).newPage();
-  const guest = await (await browser.newContext()).newPage();
-
-  const code = await createCityRoom(host);
-  await skipIfDemoMode(host);
-  await host.getByRole('button', { name: /open a match/i }).click({ timeout: 40000 });
-  await host.getByRole('button', { name: /take a seat/i }).click({ timeout: 30000 });
-
-  await guest.goto(`${BASE}/room/${code}`);
-  await accept(guest);
-  await guest.getByRole('button', { name: /take a seat/i }).click({ timeout: 40000 });
-
-  for (const p of [host, guest]) {
-    await p.getByRole('button', { name: /ready/i }).first().click({ timeout: 20000 }).catch(() => {});
-  }
-  await host.getByRole('button', { name: /start match/i }).click({ timeout: 25000 });
-
-  await expect
-    .poll(() => sql(`select count(*) from city_matches where room_code='${code}' and status='active'`), {
-      timeout: 20000,
-    })
-    .toBe('1');
-  const matchId = sql(`select id from city_matches where room_code='${code}'`);
-  return { browser, host, guest, matchId };
-}
-
-// Host's turn, with a fresh 60s clock so nothing times out mid-test.
-const setTurn = (matchId: string, phase: string, doublesCount: number) =>
-  sql(
-    `update city_matches set current_seat=0, phase='${phase}', doubles_count=${doublesCount}, pace_seconds=60, turn_started_at=now(), turn_clock_paused_at=null where id='${matchId}'`
-  );
 
 // Counts how often the dice node is (re)mounted: every mount is one replay of
 // the tumble animation.

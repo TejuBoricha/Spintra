@@ -129,6 +129,10 @@ export interface CityResult {
 export interface CityAuction {
   id: string;
   space_idx: number;
+  /** Set by the server when the auction opens: half the list price, rounded
+   *  up to the bid step of 10 (migration 0112). Auctions already running when
+   *  that deployed have 10. */
+  opening_bid: number;
   high_bid: number;
   high_seat: number | null;
   passed_seats: number[];
@@ -674,7 +678,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
           .eq("status", "pending"),
         supabase
           .from("city_auctions")
-          .select("id, space_idx, high_bid, high_seat, passed_seats, ends_at, hard_ends_at")
+          .select("id, space_idx, opening_bid, high_bid, high_seat, passed_seats, ends_at, hard_ends_at")
           .eq("match_id", loadingFor)
           .eq("status", "running")
           .maybeSingle(),
@@ -809,7 +813,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
         if (!id) return Promise.resolve({ data: null, error: null });
         return supabase
           .from("city_auctions")
-          .select("id, space_idx, high_bid, high_seat, passed_seats, ends_at, hard_ends_at")
+          .select("id, space_idx, opening_bid, high_bid, high_seat, passed_seats, ends_at, hard_ends_at")
           .eq("match_id", id)
           .eq("status", "running")
           .limit(1) as unknown as PromiseLike<{

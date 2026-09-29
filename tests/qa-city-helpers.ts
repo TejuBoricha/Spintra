@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { execSync } from 'child_process';
 import path from 'path';
-import { test, type Page } from '@playwright/test';
+import { test, expect, chromium, type Browser, type Page } from '@playwright/test';
 
 export const SCRATCH = 'C:/Users/tejas/AppData/Local/Temp/claude/c--Users-tejas-Desktop-Spintra-1/cec4ff14-1fcd-49b4-a12a-68214422c5ee/scratchpad';
 export const SHOTS = path.join(SCRATCH, 'qa-shots');
@@ -119,6 +119,52 @@ export async function skipIfDemoMode(p: Page): Promise<void> {
     test.skip(true, 'App is running without Supabase configured (demo-mode BroadcastChannel fallback) — a second browser context can never see this room');
   }
 }
+
+export interface TwoPlayerCityMatch {
+  browser: Browser;
+  host: Page;
+  guest: Page;
+  matchId: string;
+}
+
+/**
+ * Two real, separate browsers: the host creates a City room and opens a match,
+ * both take a seat and ready up, the host starts it. The caller owns closing
+ * `browser`. Skips (via skipIfDemoMode) when the app has no Supabase.
+ */
+export async function startTwoPlayerCityMatch(): Promise<TwoPlayerCityMatch> {
+  const browser = await chromium.launch();
+  const host = await (await browser.newContext()).newPage();
+  const guest = await (await browser.newContext()).newPage();
+
+  const code = await createCityRoom(host);
+  await skipIfDemoMode(host);
+  await host.getByRole('button', { name: /open a match/i }).click({ timeout: 40000 });
+  await host.getByRole('button', { name: /take a seat/i }).click({ timeout: 30000 });
+
+  await guest.goto(`${BASE}/room/${code}`);
+  await acceptCookieBanner(guest);
+  await guest.getByRole('button', { name: /take a seat/i }).click({ timeout: 40000 });
+
+  for (const p of [host, guest]) {
+    await p.getByRole('button', { name: /ready/i }).first().click({ timeout: 20000 }).catch(() => {});
+  }
+  await host.getByRole('button', { name: /start match/i }).click({ timeout: 25000 });
+
+  await expect
+    .poll(() => sql(`select count(*) from city_matches where room_code='${code}' and status='active'`), {
+      timeout: 20000,
+    })
+    .toBe('1');
+  const matchId = sql(`select id from city_matches where room_code='${code}'`);
+  return { browser, host, guest, matchId };
+}
+
+/** The host's turn (seat 0), with a fresh 60s clock so nothing times out mid-test. */
+export const setHostTurn = (matchId: string, phase: string, doublesCount = 0) =>
+  sql(
+    `update city_matches set current_seat=0, phase='${phase}', doubles_count=${doublesCount}, pace_seconds=60, turn_started_at=now(), turn_clock_paused_at=null where id='${matchId}'`
+  );
 
 /** Reads authoritative rows straight from Postgres, bypassing the UI entirely. */
 export function sql(q: string): string {

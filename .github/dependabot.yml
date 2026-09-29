@@ -16,6 +16,19 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    # Two majors that were tried in a scratch copy on 2026-09-29 and are not
+    # ready. Revisit each when its blocker clears (see docs/TASKS.md).
+    ignore:
+      # eslint 10 crashes `npm run lint`: the eslint-plugin-react bundled inside
+      # eslint-config-next still calls context.getFilename(), which eslint 10
+      # removed. (Also true with eslint-config-next 16.3.6.)
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      # TypeScript 7.0: tsc and `next build` pass (and are about 3x faster), but
+      # typescript-eslint refuses to run ("does not support TS 7.0"; tracked in
+      # typescript-eslint#10940 for TS 7.1 and later).
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

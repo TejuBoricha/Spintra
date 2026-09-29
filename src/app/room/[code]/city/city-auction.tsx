@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { serverNow } from "@/lib/server-clock";
 import { Gavel } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,9 @@ import type { CityAuction, CityBoardSpace, CitySeat } from "./use-city-match";
 // a fast clock, or a modified one, cannot end an auction early.
 
 const STEPS = [10, 50, 100];
+
+// The countdown a bid resets to. Must match city_place_bid (migration 0112).
+const BID_RESET_SECONDS = 15;
 
 export function CityAuction({
   auction,
@@ -61,6 +65,20 @@ export function CityAuction({
     return () => clearInterval(t);
   }, [deadline]);
 
+  // Tell everyone an auction has opened, not just whoever is looking at this
+  // panel: it sits below the fold on most screens, and a player who isn't
+  // watching used to lose a property for the bare minimum bid (audit C-8). A
+  // toast for sighted players, and a live region for screen readers: a region
+  // only announces text that appears after it is on the page, hence the delay.
+  const [announcement, setAnnouncement] = useState("");
+  const spaceName = space?.name ?? "a space";
+  useEffect(() => {
+    const text = `Auction: ${spaceName}. Bids start at ${auction.opening_bid.toLocaleString()}.`;
+    toast(text);
+    const t = setTimeout(() => setAnnouncement(text), 100);
+    return () => clearTimeout(t);
+  }, [auction.id, auction.opening_bid, spaceName]);
+
   // Whoever notices the clock run out asks the server to settle. Every client
   // will try; the ones that lose the race get a harmless refusal.
   useEffect(() => {
@@ -70,19 +88,23 @@ export function CityAuction({
   }, [left, onSettle, serverClockSynced]);
 
   const seconds = Math.ceil(left / 1000);
-  const minBid = auction.high_seat === null ? 10 : auction.high_bid + 10;
+  const minBid = auction.high_seat === null ? auction.opening_bid : auction.high_bid + 10;
   const iAmHigh = mySeat != null && auction.high_seat === mySeat.seat;
   const iPassed = mySeat != null && auction.passed_seats.includes(mySeat.seat);
   const canBid = (n: number) => mySeat != null && n <= mySeat.cash && !iAmHigh;
 
   return (
     <div className="mt-4 rounded-xl border border-(--brand-primary)/40 bg-(--surface-panel) p-3">
+      <p className="sr-only" role="status" aria-live="polite">
+        {announcement}
+      </p>
       <div className="flex flex-wrap items-center gap-3 mb-3">
         <Gavel className="w-5 h-5 text-(--brand-primary)" aria-hidden="true" />
         <div className="flex-1 min-w-0">
           <p className="font-semibold">{space?.name ?? "This space"} is up for auction</p>
           <p className="text-xs text-muted-foreground">
-            Nobody bought it, so everyone gets to bid.{space ? ` List price ${space.price}.` : ""}
+            Nobody bought it, so everyone gets to bid.{space ? ` List price ${space.price}.` : ""}{" "}
+            Bids start at {auction.opening_bid.toLocaleString()}.
           </p>
         </div>
         <div className="text-right">
@@ -103,7 +125,8 @@ export function CityAuction({
         role="status"
         aria-live="off"
       >
-        {seconds > 0 ? `Closes in ${seconds}s.` : "Closing…"} Each new bid resets it to 10s.
+        {seconds > 0 ? `Closes in ${seconds}s.` : "Closing…"} Each new bid resets it to{" "}
+        {BID_RESET_SECONDS}s.
       </p>
 
       <ul className="mb-3">
