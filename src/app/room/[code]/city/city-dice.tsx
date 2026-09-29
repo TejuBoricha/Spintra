@@ -126,8 +126,14 @@ export function CityDice({
 }) {
   if (!dice || dice.length !== 2) return null;
   return (
-    <div className="flex items-center justify-center gap-3 mb-2" aria-hidden="true">
-      <div key={rollKey} className="flex items-center gap-3">
+    <div
+      className="flex items-center justify-center gap-3 mb-2"
+      aria-hidden="true"
+      data-testid="city-dice"
+    >
+      {/* data-testid: tests count how many times this node is (re)mounted,
+          since each mount is one replay of the tumble. */}
+      <div key={rollKey} className="flex items-center gap-3" data-testid="city-dice-roll">
         <Die value={dice[0]} />
         <Die value={dice[1]} />
       </div>

@@ -154,6 +154,7 @@ export function CityMatchShell() {
     startMatch,
     rollDice,
     endTurn,
+    rollAgain,
     buyProperty,
     declinePurchase,
     build,
@@ -194,14 +195,6 @@ export function CityMatchShell() {
   // this, so the guards live inside the effect instead of around the call.
   const claimedTurnRef = useRef<string | null>(null);
 
-  // CityDice's remount key (see its computation below, near where
-  // effectiveRoll is derived) — also unconditional for the same Rules of
-  // Hooks reason. State, not a ref: this repo's React Compiler lint rule
-  // (react-hooks/refs) forbids reading/writing a ref's .current during
-  // render, so this uses the same "adjust state during render" pattern
-  // already established for lastRollTurn/eventsMatchId in use-city-match.ts.
-  const [lastRollObjSeen, setLastRollObjSeen] = useState<CityRollResult | null>(null);
-  const [rollSeq, setRollSeq] = useState(0);
   useEffect(() => {
     if (!match || match.status !== "active" || match.phase === "auction") return;
     // Until the clock gap is measured, serverNow() is the raw computer clock,
@@ -449,6 +442,18 @@ export function CityMatchShell() {
       !mustDecide &&
       !inDebt &&
       !match.turn_clock_paused_at;
+    // After a doubles roll the server's end-turn doesn't hand the turn on, it
+    // grants a re-roll (city_end_turn_core: doubles_count 1..2 with a still-
+    // active seat; a third double sends the roller to Customs and resets the
+    // count). "End turn" was the only way to get it and said nothing about
+    // rolling again, so say it (audit C-7). A player held at Customs gets the
+    // detention controls instead, so they're excluded here.
+    const rerollPending =
+      canEnd &&
+      !detained &&
+      mySeat?.status === "active" &&
+      match.doubles_count >= 1 &&
+      match.doubles_count <= 2;
     const onSale = mySeat ? board[mySeat.position] : undefined;
     // A never-seated room member (a genuine spectator, FR-36) falls under
     // this too — before this fix their status line fell through to
@@ -464,31 +469,20 @@ export function CityMatchShell() {
       match.last_roll_turn === match.turn_number ? match.last_roll_result : null;
     const effectiveRoll = lastRoll ?? freshServerRoll;
 
-    // CityDice's remount key, below. A code-review pass found the first
-    // version (`${turn_number}-${doubles_count}-${dice}`) double-animated
-    // every doubles roll: rollDice() sets lastRoll synchronously, a render
-    // before the separate refetch() updates match.doubles_count, so that
-    // first render's key still carries the OLD doubles_count — a mount/
-    // tumble — and once refetch() lands moments later, doubles_count changes
-    // and the key changes again for the identical dice, remounting a second
-    // time. match.doubles_count is only ever stale like this for the roller's
-    // own optimistic lastRoll — every other client only ever observes a roll
-    // via freshServerRoll, which by construction can't see a new roll before
-    // match.doubles_count has already caught up in that same refetched row.
-    // So: while this tab has its own fresh lastRoll, key off lastRoll's own
-    // object identity (a new object every rollDice() call, no server
-    // round-trip needed); once it's cleared (a fresh reload, or watching
-    // another seat's turn), fall back to the value-based key, which is
-    // lag-free for that case.
-    if (lastRoll && lastRoll !== lastRollObjSeen) {
-      setLastRollObjSeen(lastRoll);
-      setRollSeq((n) => n + 1);
-    }
-    const rollKey = lastRoll
-      ? `mine-${rollSeq}`
-      : effectiveRoll
-        ? `${match.turn_number}-${match.doubles_count}-${effectiveRoll.dice[0]}-${effectiveRoll.dice[1]}`
-        : "";
+    // CityDice's remount key: the roll's own identity, the same for every
+    // viewer and for both sources of effectiveRoll (this tab's optimistic
+    // lastRoll and the server-persisted copy carry the same value). A
+    // remount restarts the tumble, so the key must change exactly once per
+    // real roll and never otherwise. It is (turn_number, dice) because every
+    // roll gets its own turn_number: city_grant_reroll bumps it, so a doubles
+    // re-roll is a new number even when the dice repeat. Keep doubles_count
+    // and lastRoll's identity out of it: the first is stale in the roller's
+    // own render until refetch() lands (a double tumble on every doubles
+    // roll), and keying on the second flipped the key when End turn cleared
+    // lastRoll, replaying the dice on every End turn (audit C-20).
+    const rollKey = effectiveRoll
+      ? `${match.turn_number}-${effectiveRoll.dice[0]}-${effectiveRoll.dice[1]}`
+      : "";
 
     return (
       <div className="max-w-5xl mx-auto">
@@ -627,6 +621,14 @@ export function CityMatchShell() {
                 Pass
               </Button>
             </>
+          ) : rerollPending ? (
+            // Doubles: the turn isn't over, and a second roll is the only way
+            // on, so this replaces Roll dice / End turn rather than sitting
+            // beside a disabled Roll dice.
+            <Button onClick={() => void rollAgain()}>
+              <Dices className="w-4 h-4" aria-hidden="true" />
+              Roll again
+            </Button>
           ) : (
             <>
               <Button onClick={() => void rollDice()} disabled={!canRoll}>
@@ -690,7 +692,10 @@ export function CityMatchShell() {
             : detained && isMyTurn
               ? `You're held at Customs. Roll doubles, spend a Transit Visa, or pay 90 to leave.`
               : effectiveRoll
-              ? narrate(effectiveRoll, board, seats)
+              ? narrate(effectiveRoll, board, seats) +
+                (rerollPending
+                  ? " That was doubles, so you roll again after any building or trading."
+                  : "")
               : mustDecide && onSale && !inDebt
                 ? `${onSale.name} is unclaimed. Buy it for ${onSale.price}, or pass.`
                 : isMyTurn && inDebt

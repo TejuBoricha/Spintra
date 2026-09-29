@@ -184,7 +184,12 @@ function runSqlOnce() {
 // an empty match is paused, players still need a seat to claim, a player
 // detained mid-turn has the turn ended (tick and autopilot), and a match that
 // just failed waits its turn.
-const EXPECTED_SQL_ASSERTIONS = 78;
+// 83 = 78 + five for migration 0111 (the feed's money record, audit C-10): a
+// debt settled by mortgaging is logged to its creditor and after the
+// mortgage, a debt with no creditor is logged as paid to the bank, and the
+// same ordering holds after accepting a trade and after selling a building,
+// and the Customs fee is logged as a fee rather than a tax.
+const EXPECTED_SQL_ASSERTIONS = 83;
 
 const sqlRows = runSql();
 if (sqlRows === null) process.exit(2);

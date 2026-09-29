@@ -4,7 +4,7 @@
 > DB schema live in `ARCHITECTURE.md`. Session-to-session handoff lives in `HANDOFF.md`. Backlog
 > and roadmap live in `TASKS.md`. Do not duplicate those here — link to them instead.
 > Always update this file after every significant milestone.
-> Last updated: 2026-07-17 IST
+> Last updated: 2026-09-29
 
 ---
 
@@ -72,6 +72,8 @@ Session closed with the actual first production deployment: Vercel project creat
 **Follow-up, same day: a real 2-player match was played against production.** Ran the branch's own code locally (not the deployed app — that still hasn't changed) pointed at production Supabase, drove 2 real browser sessions through room creation → seats → ready → start → a real dice roll, confirmed via screenshot (not just element checks): correct board content, correct starting cash, correct roll/movement/landing narration, realtime sync to the guest, zero console/page errors. Two harmless rooms created (`FWNR8E`, `FD2AZE`) — left for the existing cleanup cron, same as prior sessions' precedent.
 
 **Done, 2026-09-25, on the user's explicit go-ahead:** PR #43 merged to `main` (`45a75fa`), redeploying spintra.io with this feature. See the Current Focus entry below for the full sequence.
+
+**2026-09-26 → 2026-09-29: product audit fix waves (the audit and its status live in the "Spintra Product Audit" artifact; `TASKS.md` and `HANDOFF.md` track the work).** Wave 1 (security, privacy, backups, release gate; migrations 0106–0108) and wave 2a parts 1 and 2 are merged and deployed: server-owned presence (0109, PR #51) and the server-side City clock (0110, PR #52, applied to production 2026-09-29). Part 3 is done and tested on branch `claude/loving-noether-1iz9ku` (no PR yet): the dice replay on End turn (C-20), a "Roll again" button after doubles (C-7), chat scrolling the page (R-15), and the feed's money record (C-10, migration 0111: `debt_paid` and `fee_paid` events, raise-funds paths logging before the cash moves). All four were run against a real local stack and shown to fail without their fix; City regression is 85/85 and the full Playwright suite passes (97 passed, 2 skipped by design, 0 failed) with 0111 applied; see `CHANGELOG_AI.md`. Migration 0111 reaches production when the branch is merged. Still open: the migration-0036 ownership fix (needs the newer Postgres image production runs) and wave 4. Cloud sessions can run the full local stack with the recipe in `TASKS.md` (`ghcr.io` is blocked there, so Docker Hub images are tagged under the expected names).
 
 ---
 
