@@ -93,7 +93,59 @@ function sourceChecks() {
   return out;
 }
 
+// The SQL pauses the server's background jobs while it runs (0109's presence
+// sweep, 0110's City tick) and switches them on at the end. If the run fails
+// or is interrupted before then, or a job was already off on purpose, that
+// would leave the local database wrong, so the runner records each job's
+// state first and puts exactly that back afterwards.
+const PAUSED_JOBS = ["city-tick", "room-presence-sweep"];
+
+function psqlAt(query) {
+  return execFileSync(
+    "docker",
+    ["exec", CONTAINER, "psql", "-U", "postgres", "-d", "postgres", "-At", "-c", query],
+    { encoding: "utf8" }
+  ).trim();
+}
+
+function readJobStates() {
+  try {
+    const list = PAUSED_JOBS.map((j) => `'${j}'`).join(",");
+    return psqlAt(`select jobid || '|' || active from cron.job where jobname in (${list})`)
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => line.split("|"));
+  } catch {
+    return [];
+  }
+}
+
+function restoreJobStates(states) {
+  for (const [jobid, active] of states) {
+    try {
+      psqlAt(`select cron.alter_job(${Number(jobid)}, active := ${active === "true" || active === "t"})`);
+    } catch {
+      // Best effort: the stack may be down, in which case there is nothing to restore.
+    }
+  }
+}
+
 function runSql() {
+  const jobStates = readJobStates();
+  const onInterrupt = () => {
+    restoreJobStates(jobStates);
+    process.exit(130);
+  };
+  process.once("SIGINT", onInterrupt);
+  try {
+    return runSqlOnce();
+  } finally {
+    process.removeListener("SIGINT", onInterrupt);
+    restoreJobStates(jobStates);
+  }
+}
+
+function runSqlOnce() {
   const sql = fs.readFileSync(path.join(here, "city-regression.sql"), "utf8");
   let stdout;
   try {
@@ -108,7 +160,7 @@ function runSql() {
         `Is the local Supabase stack up?  npx supabase start\n\n` +
         String(err.stderr || err.message).trim().split("\n").slice(0, 5).join("\n")
     );
-    process.exit(2);
+    return null; // runSql restores the jobs, then the caller exits
   }
   return stdout
     .split("\n")
@@ -127,9 +179,15 @@ function runSql() {
 // debt check its own distinct error code instead of reusing the accepting
 // seat's — no new assertion for that, BUG-TRADE-PROPOSER-DEBT's existing
 // check was tightened in place to the exact new code).
-const EXPECTED_SQL_ASSERTIONS = 70;
+// 78 = 70 + eight for migration 0110 (the server timekeeper): a due turn is
+// claimed, a turn not yet due is left alone, an expired auction is settled,
+// an empty match is paused, players still need a seat to claim, a player
+// detained mid-turn has the turn ended (tick and autopilot), and a match that
+// just failed waits its turn.
+const EXPECTED_SQL_ASSERTIONS = 78;
 
 const sqlRows = runSql();
+if (sqlRows === null) process.exit(2);
 if (sqlRows.length !== EXPECTED_SQL_ASSERTIONS) {
   console.error(
     `

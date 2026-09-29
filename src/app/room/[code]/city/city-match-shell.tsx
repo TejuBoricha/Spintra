@@ -27,6 +27,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { serverNow } from "@/lib/server-clock";
 import { useRoomActivity } from "../context/room-activity-context";
 import { CityActivityFeed } from "./city-activity-feed";
 import { CityBoard } from "./city-board";
@@ -60,10 +61,10 @@ const SeatBadge = memo(function SeatBadge({
   seat: CitySeat;
   isCurrent: boolean;
 }) {
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => serverNow());
   useEffect(() => {
     if (!s.disconnected_at) return;
-    const id = setInterval(() => setNow(Date.now()), 5000);
+    const id = setInterval(() => setNow(serverNow()), 5000);
     return () => clearInterval(id);
   }, [s.disconnected_at]);
 
@@ -172,6 +173,7 @@ export function CityMatchShell() {
     passAuction,
     settleAuction,
     claimTimeout,
+    serverClockSynced,
     results,
     events,
     realtimeStatus,
@@ -202,6 +204,10 @@ export function CityMatchShell() {
   const [rollSeq, setRollSeq] = useState(0);
   useEffect(() => {
     if (!match || match.status !== "active" || match.phase === "auction") return;
+    // Until the clock gap is measured, serverNow() is the raw computer clock,
+    // and a fast one would claim early, be refused and never ask again for
+    // this turn. The server's own tick enforces the deadline regardless.
+    if (!serverClockSynced) return;
 
     const activeSeat = seats.find((s) => s.seat === match.current_seat);
     const activeInDebt = (activeSeat?.pending_debt ?? 0) > 0;
@@ -233,7 +239,9 @@ export function CityMatchShell() {
     const turnKey = `${match.id}:${match.turn_number}:${deadline}`;
     if (claimedTurnRef.current === turnKey) return;
 
-    const remaining = deadline - Date.now();
+    // Server time: a computer clock that runs fast used to claim every turn
+    // at its start, get refused, and never ask again (audit C-22).
+    const remaining = deadline - serverNow();
 
     if (remaining > 0) {
       const t = setTimeout(() => void claimTimeout(), remaining + 250);
@@ -242,7 +250,7 @@ export function CityMatchShell() {
 
     claimedTurnRef.current = turnKey;
     void claimTimeout();
-  }, [match, seats, claimTimeout]);
+  }, [match, seats, claimTimeout, serverClockSynced]);
 
   // An auction settling was previously silent — no toast, no confirmation,
   // just the panel vanishing and a cash number changing that a player might
@@ -641,6 +649,7 @@ export function CityMatchShell() {
             onBid={(n) => void placeBid(n)}
             onPass={() => void passAuction()}
             onSettle={() => void settleAuction()}
+            serverClockSynced={serverClockSynced}
           />
         )}
 
@@ -929,9 +938,9 @@ function narrate(roll: CityRollResult, board: CityBoardSpace[], seats: CitySeat[
  * anything authoritative, city_claim_timeout re-derives it server-side.
  */
 function TurnCountdown({ deadline }: { deadline: number }) {
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => serverNow());
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
+    const id = setInterval(() => setNow(serverNow()), 1000);
     return () => clearInterval(id);
   }, []);
   const remaining = Math.max(0, Math.round((deadline - now) / 1000));

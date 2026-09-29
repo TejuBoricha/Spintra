@@ -30,20 +30,22 @@ test('city: a live turn countdown is visible and actually ticks down', async () 
   await host.waitForTimeout(2000);
 
   const mid = sql(`select id from city_matches where room_code='${code}' and status='active'`);
-  // Backdate the clock so the countdown starts at a known, small value.
-  sql(`update city_matches set turn_started_at = now() - interval '35 seconds', pace_seconds = 40 where id='${mid}'`);
+  // Backdate the clock so the countdown starts at a known value: ~20s left.
+  // Not less: since 0110 the server's tick ends an expired turn by itself, so
+  // a countdown that runs out mid-test restarts at the next turn's 0:40.
+  sql(`update city_matches set turn_started_at = now() - interval '20 seconds', pace_seconds = 40 where id='${mid}'`);
   // No repeat accept(host) here -- consent is localStorage-gated (line 18
   // already accepted it in this same context) and can't reappear on
   // reload, so it would only cost time against this test's deliberately
-  // tight ~5s countdown margin for no effect.
+  // countdown margin for no effect.
   await host.reload();
   await host.waitForTimeout(1000);
 
   const timer = host.getByRole('timer');
   await expect(timer).toBeVisible({ timeout: 10000 });
   const first = await timer.textContent();
-  console.log('BUG-006 countdown reading (expect ~0:05):', first);
-  expect(first).toMatch(/^0:0[0-9]$/);
+  console.log('BUG-006 countdown reading (expect ~0:18):', first);
+  expect(first).toMatch(/^0:(0[0-9]|1[0-9]|20)$/);
 
   const toSeconds = (t: string | null) => {
     const [m, s] = (t ?? '0:00').split(':').map(Number);

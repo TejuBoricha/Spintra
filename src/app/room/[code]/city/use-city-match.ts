@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { syncServerClock } from "@/lib/server-clock";
 
 // Spintra City's data layer.
 //
@@ -280,6 +281,10 @@ interface UseCityMatchResult {
   passAuction: () => Promise<void>;
   settleAuction: () => Promise<void>;
   claimTimeout: () => Promise<void>;
+  /** True once this browser's clock has been measured against the server's
+   *  (src/lib/server-clock.ts). Anything that acts on a deadline waits for it:
+   *  before then, serverNow() is the raw computer clock. */
+  serverClockSynced: boolean;
   /** City's own postgres_changes channel status — separate from the room's
    *  base chat/participants channel (use-room-subscription.ts), which can
    *  stay connected while this one drops. "connected" in demo mode too:
@@ -414,6 +419,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   // per-ping fetch without becoming a dependency that rebuilds the channel.
   const lastEventIdRef = useRef(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [serverClockSynced, setServerClockSynced] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [realtimeStatus, setRealtimeStatus] =
     useState<"connected" | "reconnecting" | "offline">("connected");
@@ -575,6 +581,20 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     return () => {
       cancelled = true;
     };
+  }, [supabase]);
+
+  // Measure the gap between this computer's clock and the server's, so
+  // every countdown shows server time (src/lib/server-clock.ts). Re-measured
+  // every few minutes in case the computer's clock is adjusted mid-match.
+  useEffect(() => {
+    if (!supabase) return;
+    const sync = () =>
+      void syncServerClock(supabase).then((ok) => {
+        if (ok) setServerClockSynced(true);
+      });
+    sync();
+    const id = setInterval(sync, 5 * 60_000);
+    return () => clearInterval(id);
   }, [supabase]);
 
   // queueMicrotask defers the state updates out of the effect body, matching
@@ -1237,6 +1257,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     passAuction,
     settleAuction,
     claimTimeout,
+    serverClockSynced,
   };
 }
 
