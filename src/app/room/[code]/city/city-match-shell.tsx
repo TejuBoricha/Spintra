@@ -35,6 +35,7 @@ import { CityDice } from "./city-dice";
 import { CityHoldings } from "./city-holdings";
 import { CityTrade } from "./city-trade";
 import { CityAuction } from "./city-auction";
+import { CityMatchClock } from "./city-match-clock";
 import type { CityAuction as CityAuctionState, CityBoardSpace, CityRollResult, CitySeat } from "./use-city-match";
 import { useCityMatch } from "./use-city-match";
 
@@ -136,6 +137,10 @@ export function CityMatchShell() {
   // FR-42: chosen here, at match creation, not in RoomSettingsPanel — and
   // never touched again once city_create_match has written it.
   const [pacePreset, setPacePreset] = useState<25 | 40 | 60>(40);
+  // Classic plays to the last player standing; Timed ends at a limit, ranked on
+  // net worth (audit C-4, spec FR-06).
+  const [modePreset, setModePreset] = useState<"classic" | "timed">("classic");
+  const [minutesPreset, setMinutesPreset] = useState<15 | 30 | 60>(30);
   const {
     match,
     seats,
@@ -176,6 +181,7 @@ export function CityMatchShell() {
     claimTimeout,
     serverClockSynced,
     results,
+    lastSetup,
     events,
     realtimeStatus,
     refetch,
@@ -373,7 +379,19 @@ export function CityMatchShell() {
 
         {error && <ErrorNote message={error} />}
         {isHost ? (
-          <Button onClick={() => void createMatch("classic")}>Play again</Button>
+          // Repeat how the match that just ended was set up: it used to open a
+          // fresh Classic match at the default pace whatever had been chosen.
+          <Button
+            onClick={() =>
+              void createMatch(
+                lastSetup?.mode ?? "classic",
+                lastSetup?.mode === "timed" ? (lastSetup.time_limit_minutes ?? undefined) : undefined,
+                lastSetup?.pace_seconds
+              )
+            }
+          >
+            Play again
+          </Button>
         ) : (
           <p className="text-sm text-muted-foreground" role="status">
             Waiting for the host to start another match…
@@ -395,6 +413,43 @@ export function CityMatchShell() {
         {error && <ErrorNote message={error} />}
         {isHost ? (
           <>
+            <div className="flex items-center gap-1.5 mt-3" role="radiogroup" aria-label="Match length">
+              {(["classic", "timed"] as const).map((m) => (
+                <Button
+                  key={m}
+                  type="button"
+                  size="sm"
+                  variant={modePreset === m ? "default" : "outline"}
+                  role="radio"
+                  aria-checked={modePreset === m}
+                  onClick={() => setModePreset(m)}
+                >
+                  {m === "classic" ? "Classic · to the end" : "Timed"}
+                </Button>
+              ))}
+            </div>
+            {modePreset === "timed" && (
+              <div className="flex items-center gap-1.5 mt-2" role="radiogroup" aria-label="Time limit">
+                {([15, 30, 60] as const).map((mins) => (
+                  <Button
+                    key={mins}
+                    type="button"
+                    size="sm"
+                    variant={minutesPreset === mins ? "default" : "outline"}
+                    role="radio"
+                    aria-checked={minutesPreset === mins}
+                    onClick={() => setMinutesPreset(mins)}
+                  >
+                    {mins} min
+                  </Button>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground max-w-sm mt-2">
+              {modePreset === "timed"
+                ? "When time is up the round in progress finishes, then the player with the most money and property wins."
+                : "Play until only one player is left."}
+            </p>
             <div className="flex items-center gap-1.5 mt-3" role="radiogroup" aria-label="Turn pace">
               {([25, 40, 60] as const).map((secs) => (
                 <Button
@@ -411,7 +466,9 @@ export function CityMatchShell() {
               ))}
             </div>
             <Button
-              onClick={() => void createMatch("classic", undefined, pacePreset)}
+              onClick={() =>
+                void createMatch(modePreset, modePreset === "timed" ? minutesPreset : undefined, pacePreset)
+              }
               className="mt-2"
             >
               Open a match
@@ -510,6 +567,9 @@ export function CityMatchShell() {
               Match paused because everyone left. It carries on as soon as someone comes back.
             </p>
           </div>
+        )}
+        {match.mode === "timed" && match.time_limit_minutes != null && match.started_at && (
+          <CityMatchClock startedAt={match.started_at} limitMinutes={match.time_limit_minutes} />
         )}
         <div className="flex flex-wrap items-center gap-3 mb-3">
           <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
@@ -759,6 +819,11 @@ export function CityMatchShell() {
         <h2 className="text-xl font-bold mt-3">Spintra City</h2>
         <p className="text-sm text-muted-foreground">
           {seats.length} of {MAX_SEATS} seated · {readyCount} ready
+        </p>
+        <p className="text-xs text-muted-foreground mt-1" data-testid="city-lobby-mode">
+          {match.mode === "timed" && match.time_limit_minutes != null
+            ? `Timed match · ${match.time_limit_minutes} minutes, then the richest player wins`
+            : "Classic match · play until one player is left"}
         </p>
       </div>
 
