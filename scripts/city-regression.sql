@@ -3343,13 +3343,28 @@ end $blk$;
 --    accept a trade) log their own event first so the feed reads in order.
 -- 2) The Customs fee was logged as `tax_paid`; it is now `fee_paid`.
 -- ===========================================================================
+-- Each C-10 block seats its own three players. rg_match deletes the players it
+-- is given from every earlier room, which fires the departure trigger and the
+-- autopilot there; the shared three would do that to earlier blocks' half-built
+-- matches (the same reason the C-22 blocks pass their own).
+create or replace function pg_temp.rg_c10_users(p_k int) returns text[] language sql as $fn$
+  select array[format('c00000%s1-1111-4111-8111-111111111111', p_k),
+               format('c00000%s2-2222-4222-8222-222222222222', p_k),
+               format('c00000%s3-3333-4333-8333-333333333333', p_k)];
+$fn$;
+create or replace function pg_temp.rg_c10_as(p_k int, p_seat int) returns void language plpgsql as $fn$
+begin
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', (pg_temp.rg_c10_users(p_k))[p_seat + 1], 'role', 'authenticated')::text, true);
+end $fn$;
+
 do $blk$
 declare
   m uuid; ok boolean := true; act text := ''; res jsonb; v_val int;
   c_before int; c_after int; debt_left int; n_paid int;
   mort_id bigint; paid_id bigint; paid_actor int; paid_amount int; paid_to int;
 begin
-  m := pg_temp.rg_match('CITYRGC10A', 9101);
+  m := pg_temp.rg_match('CITYRGC10A', 9101, pg_temp.rg_c10_users(1));
   delete from public.city_assets where match_id = m;
   insert into public.city_assets (match_id, space_idx, owner_seat, buildings, is_mortgaged)
   values (m, 1, 0, 0, false);
@@ -3361,7 +3376,7 @@ begin
   update public.city_matches set current_seat = 0, phase = 'required_decision',
     turn_clock_paused_at = null where id = m;
   begin
-    perform pg_temp.rg_as(0);
+    perform pg_temp.rg_c10_as(1, 0);
     select public.city_mortgage(m, 1) into res;
   exception when others then ok := false; act := act || 'city_mortgage raised ' || sqlerrm || '; ';
   end;
@@ -3394,7 +3409,7 @@ declare
   m uuid; ok boolean := true; act text := ''; res jsonb; v_val int;
   n_paid int; paid_amount int; paid_to int; has_to boolean;
 begin
-  m := pg_temp.rg_match('CITYRGC10B', 9102);
+  m := pg_temp.rg_match('CITYRGC10B', 9102, pg_temp.rg_c10_users(2));
   delete from public.city_assets where match_id = m;
   insert into public.city_assets (match_id, space_idx, owner_seat, buildings, is_mortgaged)
   values (m, 1, 0, 0, false);
@@ -3405,7 +3420,7 @@ begin
   update public.city_matches set current_seat = 0, phase = 'required_decision',
     turn_clock_paused_at = null where id = m;
   begin
-    perform pg_temp.rg_as(0);
+    perform pg_temp.rg_c10_as(2, 0);
     select public.city_mortgage(m, 1) into res;
   exception when others then ok := false; act := act || 'city_mortgage raised ' || sqlerrm || '; ';
   end;
@@ -3427,7 +3442,7 @@ declare
   m uuid; ok boolean := true; act text := ''; offer uuid;
   trade_id bigint; paid_id bigint; paid_amount int; paid_to int; paid_actor int;
 begin
-  m := pg_temp.rg_match('CITYRGC10C', 9103);
+  m := pg_temp.rg_match('CITYRGC10C', 9103, pg_temp.rg_c10_users(3));
   delete from public.city_assets where match_id = m;
   insert into public.city_assets (match_id, space_idx, owner_seat, buildings, is_mortgaged)
   values (m, 1, 0, 0, false);
@@ -3436,9 +3451,9 @@ begin
   update public.city_matches set current_seat = 1, phase = 'optional_actions' where id = m;
   begin
     -- seat 1 buys seat 0's property for 100: enough to clear the 50 owed.
-    perform pg_temp.rg_as(1);
+    perform pg_temp.rg_c10_as(3, 1);
     offer := public.city_propose_trade(m, 0, '{}', array[1], 100, 0);
-    perform pg_temp.rg_as(0);
+    perform pg_temp.rg_c10_as(3, 0);
     perform public.city_accept_trade(offer);
   exception when others then ok := false; act := act || 'trade raised ' || sqlerrm || '; ';
   end;
@@ -3466,7 +3481,7 @@ declare
   m uuid; ok boolean := true; act text := ''; res jsonb; v_val int;
   sold_id bigint; paid_id bigint; paid_amount int; paid_to int;
 begin
-  m := pg_temp.rg_match('CITYRGC10D', 9104);
+  m := pg_temp.rg_match('CITYRGC10D', 9104, pg_temp.rg_c10_users(4));
   delete from public.city_assets where match_id = m;
   insert into public.city_assets (match_id, space_idx, owner_seat, buildings, is_mortgaged)
   values (m, 1, 0, 1, false);
@@ -3476,7 +3491,7 @@ begin
   update public.city_matches set current_seat = 0, phase = 'required_decision',
     turn_clock_paused_at = null where id = m;
   begin
-    perform pg_temp.rg_as(0);
+    perform pg_temp.rg_c10_as(4, 0);
     select public.city_sell_building(m, 1) into res;
   exception when others then ok := false; act := act || 'city_sell_building raised ' || sqlerrm || '; ';
   end;
@@ -3503,13 +3518,13 @@ declare
   m uuid; ok boolean := true; act text := ''; res jsonb;
   fee_kind text; fee_amount int; fee_actor int; n_tax int; cash_after int;
 begin
-  m := pg_temp.rg_match('CITYRGC10E', 9105);
+  m := pg_temp.rg_match('CITYRGC10E', 9105, pg_temp.rg_c10_users(5));
   update public.city_match_players set in_detention = true, detention_turns = 0, cash = 500
    where match_id = m and seat = 0;
   update public.city_matches set current_seat = 0, phase = 'awaiting_roll',
     turn_clock_paused_at = null where id = m;
   begin
-    perform pg_temp.rg_as(0);
+    perform pg_temp.rg_c10_as(5, 0);
     select public.city_leave_detention(m, 'pay') into res;
   exception when others then ok := false; act := act || 'city_leave_detention raised ' || sqlerrm || '; ';
   end;
