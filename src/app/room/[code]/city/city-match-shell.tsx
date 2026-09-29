@@ -36,6 +36,7 @@ import { CityHoldings } from "./city-holdings";
 import { CityTrade } from "./city-trade";
 import { CityAuction } from "./city-auction";
 import { CityMatchClock } from "./city-match-clock";
+import { CityTileDetail } from "./city-tile-detail";
 import type { CityAuction as CityAuctionState, CityBoardSpace, CityRollResult, CitySeat } from "./use-city-match";
 import { useCityMatch } from "./use-city-match";
 
@@ -58,9 +59,11 @@ const MIN_PLAYERS = 2;
 const SeatBadge = memo(function SeatBadge({
   seat: s,
   isCurrent,
+  isMe,
 }: {
   seat: CitySeat;
   isCurrent: boolean;
+  isMe: boolean;
 }) {
   const [now, setNow] = useState(() => serverNow());
   useEffect(() => {
@@ -91,6 +94,10 @@ const SeatBadge = memo(function SeatBadge({
       data-testid="city-seat-badge"
     >
       <span className={terminal ? "line-through" : undefined}>{s.username}</span>
+      {isMe && (
+        // With auto-generated names, players couldn't tell which seat was theirs (audit C-13).
+        <span className="text-[10px] font-semibold uppercase tracking-wide opacity-90">you</span>
+      )}
       {terminal ? (
         // A bare $0 read as "just poor," indistinguishable from an
         // active seat that's simply broke — an explicit label plus
@@ -541,104 +548,35 @@ export function CityMatchShell() {
       ? `${match.turn_number}-${effectiveRoll.dice[0]}-${effectiveRoll.dice[1]}`
       : "";
 
-    return (
-      <div className="max-w-5xl mx-auto">
-        {/* BUG-042: City's own realtime channel had no visible failure state
-            at all — cash badges and the board could silently stop updating
-            with nothing telling the player why. */}
-        {realtimeStatus !== "connected" && (
-          <ConnectionBanner
-            state={realtimeStatus}
-            onRetry={() => void refetch()}
-            className="mb-3 rounded-xl"
-          />
-        )}
-        {/* FR-31: every seat went away with nobody left to hand the turn
-            to, so the match paused durably rather than being destroyed or
-            silently stuck. Clears itself — server-side, the instant anyone
-            reconnects — no action is available here to take. */}
-        {match.status === "paused" && (
-          <div
-            className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 flex items-center gap-2"
-            role="status"
-          >
-            <Clock className="w-4 h-4 text-amber-300 shrink-0" aria-hidden="true" />
-            <p className="text-sm text-amber-200">
-              Match paused because everyone left. It carries on as soon as someone comes back.
-            </p>
-          </div>
-        )}
-        {match.mode === "timed" && match.time_limit_minutes != null && match.started_at && (
-          <CityMatchClock startedAt={match.started_at} limitMinutes={match.time_limit_minutes} />
-        )}
-        <div className="flex flex-wrap items-center gap-3 mb-3">
-          <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
-            {seats.map((s) => (
-              <SeatBadge key={s.id} seat={s} isCurrent={s.seat === match.current_seat} />
-            ))}
-          </div>
-          {/* BUG-006: turn_started_at/pace_seconds have driven a real
-              consequence (city_claim_timeout) since BUG-003's fix, but
-              nothing ever showed a player the clock was running at all —
-              same gating as the auto-claim effect above. Round H: while the
-              active seat owes a debt, this is the fixed 90s liquidation
-              window (FR-33/FR-42), not the ordinary pace-based clock. */}
-          {match.status === "active" && match.phase !== "auction" && !match.turn_clock_paused_at && (
-            (active?.pending_debt ?? 0) > 0 && match.debt_started_at ? (
-              <TurnCountdown deadline={new Date(match.debt_started_at).getTime() + 90_000} />
-            ) : (
-              match.turn_started_at && (
-                <TurnCountdown
-                  deadline={new Date(match.turn_started_at).getTime() + match.pace_seconds * 1000}
-                />
-              )
-            )
-          )}
-          {/* FR-29: a deliberate "I'm leaving" action, distinct from a
-              disconnect — routes through the same retire/liquidation
-              sequence a kick already uses. Confirmed first: unlike Leave
-              seat in the lobby, this forfeits a live position. Hidden
-              while paused — city_retire_self requires status='active',
-              same as every other command RPC. */}
-          {!iAmOut && match.status === "active" && (
+    // The roll, the dice and the buttons live in the board's empty middle, so
+    // they are on screen wherever the board is (audit C-19, C-17). No !auction
+    // gate on the dice: a review pass found one previously fully unmounted
+    // CityDice while an auction ran, so it remounted (and replayed its
+    // tumble) the instant the auction settled, even though it was still the
+    // same already-shown roll.
+    const boardCentre = (
+      <>
+        <Badge variant={isMyTurn ? "default" : "secondary"} data-testid="city-turn-banner">
+          {iAmOut ? "Watching" : isMyTurn ? "Your turn" : `${active?.username ?? "Next player"}'s turn`}
+        </Badge>
+        {effectiveRoll && <CityDice dice={effectiveRoll.dice} rollKey={rollKey} />}
+        {auction && (
+          <div className="flex flex-col items-center gap-1 text-center">
+            <p className="m-0 text-xs text-(--city-on-dark-soft)">Auction open. Bids are below the board.</p>
             <Button
               size="sm"
-              variant="ghost"
-              className="text-muted-foreground"
-              onClick={() => setIsRetireConfirmOpen(true)}
+              variant="outline"
+              onClick={() =>
+                document.getElementById("city-auction-panel")?.scrollIntoView({ block: "center", behavior: "smooth" })
+              }
             >
-              <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
-              Retire
+              Go to the auction
             </Button>
-          )}
-        </div>
-
-        {error && (
-          <div className="mb-3">
-            <ErrorNote message={error} />
           </div>
         )}
-
-        <CityBoard
-          board={board}
-          seats={seats}
-          assets={assets}
-          currentSeat={match.current_seat}
-          selectedIdx={selected}
-          onSelect={setSelected}
-        />
-
-        {/* No !auction gate — a review pass found one here previously fully
-            unmounted CityDice while an auction ran, so it remounted (and
-            replayed its tumble) the instant the auction settled, even though
-            it was still the same already-shown roll. The text narration
-            below never had that gate either, so this also fixes the
-            visible inconsistency between the two during an auction. */}
-        {effectiveRoll && <CityDice dice={effectiveRoll.dice} rollKey={rollKey} />}
-
         <div
           className={
-            "flex flex-wrap items-center justify-center gap-2 mt-4" +
+            "flex flex-wrap items-center justify-center gap-2" +
             (auction ? " hidden" : "")
           }
         >
@@ -701,8 +639,113 @@ export function CityMatchShell() {
             </>
           )}
         </div>
+      </>
+    );
+
+    return (
+      <div className="max-w-5xl mx-auto">
+        {/* BUG-042: City's own realtime channel had no visible failure state
+            at all — cash badges and the board could silently stop updating
+            with nothing telling the player why. */}
+        {realtimeStatus !== "connected" && (
+          <ConnectionBanner
+            state={realtimeStatus}
+            onRetry={() => void refetch()}
+            className="mb-3 rounded-xl"
+          />
+        )}
+        {/* FR-31: every seat went away with nobody left to hand the turn
+            to, so the match paused durably rather than being destroyed or
+            silently stuck. Clears itself — server-side, the instant anyone
+            reconnects — no action is available here to take. */}
+        {match.status === "paused" && (
+          <div
+            className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 flex items-center gap-2"
+            role="status"
+          >
+            <Clock className="w-4 h-4 text-amber-300 shrink-0" aria-hidden="true" />
+            <p className="text-sm text-amber-200">
+              Match paused because everyone left. It carries on as soon as someone comes back.
+            </p>
+          </div>
+        )}
+        {match.mode === "timed" && match.time_limit_minutes != null && match.started_at && (
+          <CityMatchClock startedAt={match.started_at} limitMinutes={match.time_limit_minutes} />
+        )}
+        <div className="flex flex-wrap items-center gap-3 mb-3">
+          <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
+            {seats.map((s) => (
+              <SeatBadge
+                key={s.id}
+                seat={s}
+                isCurrent={s.seat === match.current_seat}
+                isMe={s.user_id === currentUser.id}
+              />
+            ))}
+          </div>
+          {/* BUG-006: turn_started_at/pace_seconds have driven a real
+              consequence (city_claim_timeout) since BUG-003's fix, but
+              nothing ever showed a player the clock was running at all —
+              same gating as the auto-claim effect above. Round H: while the
+              active seat owes a debt, this is the fixed 90s liquidation
+              window (FR-33/FR-42), not the ordinary pace-based clock. */}
+          {match.status === "active" && match.phase !== "auction" && !match.turn_clock_paused_at && (
+            (active?.pending_debt ?? 0) > 0 && match.debt_started_at ? (
+              <TurnCountdown deadline={new Date(match.debt_started_at).getTime() + 90_000} />
+            ) : (
+              match.turn_started_at && (
+                <TurnCountdown
+                  deadline={new Date(match.turn_started_at).getTime() + match.pace_seconds * 1000}
+                />
+              )
+            )
+          )}
+          {/* FR-29: a deliberate "I'm leaving" action, distinct from a
+              disconnect — routes through the same retire/liquidation
+              sequence a kick already uses. Confirmed first: unlike Leave
+              seat in the lobby, this forfeits a live position. Hidden
+              while paused — city_retire_self requires status='active',
+              same as every other command RPC. */}
+          {!iAmOut && match.status === "active" && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-muted-foreground"
+              onClick={() => setIsRetireConfirmOpen(true)}
+            >
+              <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
+              Retire
+            </Button>
+          )}
+        </div>
+
+        {error && (
+          <div className="mb-3">
+            <ErrorNote message={error} />
+          </div>
+        )}
+
+        <CityBoard
+          board={board}
+          seats={seats}
+          assets={assets}
+          currentSeat={match.current_seat}
+          selectedIdx={selected}
+          onSelect={(i) => setSelected((cur) => (cur === i ? null : i))}
+          centre={boardCentre}
+        />
+
+        {selected !== null && board[selected] && (
+          <CityTileDetail
+            space={board[selected]}
+            asset={assets.find((a) => a.space_idx === selected)}
+            seats={seats}
+            onClose={() => setSelected(null)}
+          />
+        )}
 
         {auction && (
+          <div id="city-auction-panel">
           <CityAuction
             auction={auction}
             board={board}
@@ -713,6 +756,7 @@ export function CityMatchShell() {
             onSettle={() => void settleAuction()}
             serverClockSynced={serverClockSynced}
           />
+          </div>
         )}
 
         <CityHoldings

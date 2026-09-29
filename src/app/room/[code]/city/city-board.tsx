@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Ban, Coffee, MoveDown, Plane, Scale, Sparkles, Zap } from "lucide-react";
 import type { CityAsset, CityBoardSpace, CitySeat } from "./use-city-match";
 
@@ -292,6 +293,48 @@ function initials(seats: CitySeat[]): Map<number, string> {
   );
 }
 
+// Every pixel value in this file (tile bands, flags, tokens, the 11px names)
+// was designed and measured at one board size, 700px, the width at which the
+// longest city name still sets on one line. So the board is never re-laid-out
+// for other screens: it is drawn at 700px and scaled as a whole, which keeps
+// every name fitting at every size. The size follows what the screen has room
+// for: the width of its column, and the height left under the room header, so
+// the Roll and End turn buttons in the board's centre are on screen without
+// scrolling (audit C-19, C-3, C-31).
+const BOARD_PX = 700;
+const MIN_BOARD_PX = 300;
+const MAX_BOARD_PX = 920;
+// Room the page keeps above the board (room header, seat badges and clock).
+const RESERVED_ABOVE_PX = 190;
+
+/** The board's on-screen edge in px, or null until the first measurement. */
+function useBoardSize(ref: React.RefObject<HTMLElement | null>): number | null {
+  const [size, setSize] = useState<number | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const width = el.clientWidth;
+      const height = window.visualViewport?.height ?? window.innerHeight;
+      const next = Math.round(
+        Math.max(MIN_BOARD_PX, Math.min(width, height - RESERVED_ABOVE_PX, MAX_BOARD_PX))
+      );
+      // A 1px wobble (a scrollbar appearing as the board changes the page
+      // height) must not keep re-rendering the board.
+      setSize((prev) => (prev !== null && Math.abs(prev - next) < 2 ? prev : next));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [ref]);
+  return size;
+}
+
 export function CityBoard({
   board,
   seats,
@@ -299,6 +342,7 @@ export function CityBoard({
   currentSeat,
   selectedIdx,
   onSelect,
+  centre,
 }: {
   board: CityBoardSpace[];
   seats: CitySeat[];
@@ -306,23 +350,39 @@ export function CityBoard({
   currentSeat: number | null;
   selectedIdx: number | null;
   onSelect: (idx: number) => void;
+  /** Drawn in the empty middle of the board, at normal size (not scaled with
+   *  the tiles), so buttons stay tappable on a phone. */
+  centre?: ReactNode;
 }) {
   const marks = initials(seats);
   const assetBy = new Map(assets.map((a) => [a.space_idx, a]));
+  const measureRef = useRef<HTMLDivElement>(null);
+  const size = useBoardSize(measureRef);
+  const scale = size ? size / BOARD_PX : 1;
 
   return (
-    <div className="rounded-2xl border border-(--border-hairline) bg-linear-to-br from-(--city-frame-a) to-(--city-frame-b) p-3 overflow-x-auto overscroll-x-contain">
+    <div className="rounded-2xl border border-(--border-hairline) bg-linear-to-br from-(--city-frame-a) to-(--city-frame-b) p-3">
       {FLAG_DEFS}
-      {/* One fixed width everywhere. The board is square, so width sets height:
-          left to fill the room's content column it grew past the viewport and
-          pushed the top row off screen, and capping it lower than 700px clipped
-          the longest city name ("Melbourne"). 700px is the width at which every
-          name still sets on one line, and it leaves room for the room header and
-          the action bar on a laptop. Narrower viewports scroll the wrapper above
-          rather than the page. */}
+      <div ref={measureRef} className="w-full">
+        {/* The stage is the board's on-screen size; the 700px board inside it
+            is scaled down (or up) to fill it. transform doesn't change layout
+            size, so the stage carries the width and height itself. */}
+        <div
+          className="relative mx-auto"
+          style={{
+            width: size ?? "100%",
+            height: size ?? undefined,
+            aspectRatio: size ? undefined : "1 / 1",
+          }}
+          data-testid="city-board-stage"
+        >
       <div
-        className="grid aspect-square gap-[2px] rounded-lg overflow-hidden bg-(--city-gap) p-[2px] w-175 mx-auto"
+        className="grid aspect-square gap-[2px] rounded-lg overflow-hidden bg-(--city-gap) p-[2px]"
         style={{
+          width: BOARD_PX,
+          transform: `scale(${scale})`,
+          transformOrigin: "top left",
+          visibility: size ? undefined : "hidden",
           gridTemplateColumns: "1.42fr repeat(9,1fr) 1.42fr",
           gridTemplateRows: "1.42fr repeat(9,1fr) 1.42fr",
         }}
@@ -400,19 +460,37 @@ export function CityBoard({
         >
           {/* One graphic anchor rather than an illustration — a seal ring
               behind the wordmark, in the same brand lime everything else on
-              this board now draws its accents from. */}
-          <span
-            className="absolute w-17 h-17 rounded-full border-2 border-(--brand-primary)/90"
-            aria-hidden="true"
-          />
-          <span
-            className="absolute w-13 h-13 rounded-full border border-(--brand-primary)/55"
-            aria-hidden="true"
-          />
-          <p className="relative text-2xl sm:text-3xl font-extrabold tracking-tight text-(--brand-primary) m-0">Spintra City</p>
-          <p className="relative font-mono text-[10px] tracking-[0.36em] text-(--city-on-dark-soft) m-0">
-            WORLD TOUR
-          </p>
+              this board now draws its accents from. With a centre HUD on top
+              the wordmark would sit under the buttons, so it steps aside. */}
+          {!centre && (
+            <>
+              <span
+                className="absolute w-17 h-17 rounded-full border-2 border-(--brand-primary)/90"
+                aria-hidden="true"
+              />
+              <span
+                className="absolute w-13 h-13 rounded-full border border-(--brand-primary)/55"
+                aria-hidden="true"
+              />
+              <p className="relative text-2xl sm:text-3xl font-extrabold tracking-tight text-(--brand-primary) m-0">Spintra City</p>
+              <p className="relative font-mono text-[10px] tracking-[0.36em] text-(--city-on-dark-soft) m-0">
+                WORLD TOUR
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+
+      {centre && (
+        // Cells 2-10 of 11 (1.42fr corners + 9 tiles): 12% in from each edge.
+        <div
+          className="absolute flex flex-col items-center justify-center gap-2 overflow-y-auto p-2"
+          style={{ left: "12%", top: "12%", width: "76%", height: "76%" }}
+          data-testid="city-board-centre"
+        >
+          {centre}
+        </div>
+      )}
         </div>
       </div>
     </div>
