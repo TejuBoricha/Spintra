@@ -92,9 +92,15 @@ export function useRoomChat({
     };
   }, [roomCode, currentUser.id, authReady, setMessages]);
 
-  // Scroll to bottom on new message
+  // Scroll the chat list to its bottom on a new message. Not scrollIntoView:
+  // that scrolls every scrollable ancestor too, so in a room taller than the
+  // screen (every Spintra City match) each incoming message dragged the whole
+  // page ~200px and the board jumped away from under the player (audit R-15).
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const viewport = messagesEndRef.current?.closest<HTMLElement>(
+      '[data-slot="scroll-area-viewport"]'
+    );
+    viewport?.scrollTo({ top: viewport.scrollHeight, behavior: "smooth" });
   }, [messages.length]);
 
   const loadOlderMessages = useCallback(async () => {

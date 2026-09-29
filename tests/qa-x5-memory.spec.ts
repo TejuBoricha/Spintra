@@ -41,7 +41,7 @@ test('TC-PERF: long-session memory profile', async () => {
     const st=sql(`select status from city_matches where id='${mid}'`);
     if (st!=='active'){ note(`match ended at turn ${turns} (${st})`); break; }
     for (const p of [A,B]) {
-      for (const nm of [/roll dice/i,/^Buy /i,/^Pass$/,/end turn/i]) {
+      for (const nm of [/roll dice/i,/^Buy /i,/^Pass$/,/end turn/i,/roll again/i]) {
         const b=p.getByRole('button',{name:nm});
         if (await b.count() && await b.first().isEnabled().catch(()=>false)) {
           await b.first().click({timeout:6000}).catch(()=>{}); await p.waitForTimeout(280); turns++;

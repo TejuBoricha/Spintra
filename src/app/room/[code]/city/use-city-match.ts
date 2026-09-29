@@ -252,6 +252,8 @@ interface UseCityMatchResult {
   startMatch: () => Promise<void>;
   rollDice: () => Promise<void>;
   endTurn: () => Promise<void>;
+  /** After doubles: take the re-roll the server grants on end-turn, then roll. */
+  rollAgain: () => Promise<void>;
   buyProperty: () => Promise<void>;
   declinePurchase: () => Promise<void>;
   build: (spaceIdx: number) => Promise<void>;
@@ -952,16 +954,17 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   // Takes a PromiseLike rather than a Promise: supabase.rpc() returns a
   // thenable query builder, not a true Promise.
   const runCommand = useCallback(
-    async (fn: () => PromiseLike<{ error: { message: string } | null }>) => {
-      if (!supabase) return;
+    async (fn: () => PromiseLike<{ error: { message: string } | null }>): Promise<boolean> => {
+      if (!supabase) return false;
       const { error: rpcError } = await fn();
       if (rpcError) {
         console.error("City command failed:", rpcError);
         setError(friendlyCommandError(rpcError.message));
-        return;
+        return false;
       }
       setError(null);
       await refetch();
+      return true;
     },
     [supabase, refetch]
   );
@@ -1041,6 +1044,24 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     setLastRoll(null);
     await runCommand(() => supabase!.rpc("city_end_turn", { p_match_id: id }));
   }, [runCommand, supabase]);
+
+  // After doubles, city_end_turn doesn't pass the turn: it grants a re-roll
+  // (city_end_turn_core), which used to leave the player pressing "End turn"
+  // and then "Roll dice" with nothing saying so (audit C-7). This does both
+  // steps. The roll only goes ahead once the server has accepted the grant
+  // and the refetch has landed, so the roll is keyed to the new turn_number
+  // (a roll made against the old one would remount the dice when it caught
+  // up). If the roll itself fails, the re-roll is still granted and the
+  // ordinary "Roll dice" button is enabled.
+  const rollAgain = useCallback(async () => {
+    const id = matchIdRef.current;
+    if (!id) return;
+    setLastRoll(null);
+    const granted = await runCommand(() =>
+      supabase!.rpc("city_end_turn", { p_match_id: id })
+    );
+    if (granted) await rollDice();
+  }, [runCommand, supabase, rollDice]);
 
   const buyProperty = useCallback(async () => {
     const id = matchIdRef.current;
@@ -1236,6 +1257,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     startMatch,
     rollDice,
     endTurn,
+    rollAgain,
     buyProperty,
     declinePurchase,
     build,
