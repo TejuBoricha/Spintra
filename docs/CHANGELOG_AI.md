@@ -3078,3 +3078,20 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 
 **Verification (local stack, Postgres 17.6.1.140 as CI uses):** `npm run verify` clean; a fresh `db reset` applies 0001–0113; City regression 90/90 (88 SQL assertions plus 2 static); with the database at 0112 only the new round-wrap block fails; `qa-x23` (Timed journey: lobby Timed 15, clock, time's up, match finishes, Play again repeats `timed:15:60`; and Classic stays the default) passes; the full Playwright suite result is in the PR description.
 **Not done / caveats:** the 15, 30 and 60 minute presets and Classic's default are reasoned, not playtested. Production runs Postgres 17.6.1.141, which is untested here.
+
+---
+
+## [2026-09-29] — Dependabot #55 merged, the production Postgres image tested, wave 4 step 1 started
+
+**AI:** Claude Code
+**Task:** Finish the delegated chain (Timed mode #57 merged and its deploy succeeded; Dependabot #55 merged), use waiting time for safe side work, and begin wave 4 (the full-screen City layout) without merging anything visual unreviewed.
+**Files Modified:** `src/app/room/[code]/city/city-board.tsx`, `src/app/room/[code]/city/city-match-shell.tsx`, `src/app/room/[code]/city/city-tile-detail.tsx` (new), `tests/qa-x24-board-fit.spec.ts` (new), `docs/TASKS.md`, `docs/HANDOFF.md`, `docs/AI_CONTEXT.md`, `docs/CHANGELOG_AI.md`, `docs/WAVE4_CITY_LAYOUT_PLAN.md` (new), `docs/INDEX.md`
+
+**What changed:**
+- **#55 (minor/patch group, 19 updates) merged as `3c0173f`.** Dependabot had rebased it onto `c133a92`; its CI (both `validate`, both `db-integration`, Vercel) was green on that head, `main` then moved (#57), so its branch was updated with `main` (a merge commit, no history rewritten), CI re-ran green on `fadb2a0`, and it was merged pinned to that SHA. It does **not** contain framer-motion 13 (an earlier message in the session said it did; that was wrong). Vercel's production deploy completed; the live site was not smoke-tested (egress blocked).
+- **Production Postgres image (17.6.1.141) tested.** The Docker Hub pull worked on retry. Fresh reset 0001-0113 clean, City regression 90/90, the 9 City e2e specs from this work pass. The migration-0036 "must be owner of table messages" failure did not reproduce (the `postgres` role is a member of `supabase_realtime_admin` here); the item stays open as not reproduced.
+- **Wave 4 step 1 (branch, no PR):** the board is drawn at its designed 700px and scaled as a whole to the column and the screen height; the dice, a turn banner and the action buttons moved into the board centre (unscaled); tapping a tile shows its details (price, build cost, rent tiers, tax, owner); your own badge says "you"; during an auction the centre points at the panel. Checked by looking at real screenshots at 1366x768, 1920x1080, 820x1180 and 390x844: the buttons are on screen at scroll-top on all four, the dice land inside the board, nothing scrolls sideways.
+- **Audit page** republished as version 9 (C-4 and C-8 deployed, decision card done, P-8 and Q-6 updated).
+
+**Verification:** `npm run verify` clean; `qa-x24-board-fit` passes and fails on the previous code; full local suite at the stop: 101 passed, 2 failed, 2 skipped (the failures are two older tests that assumed the old layout, listed in `TASKS.md`).
+**Not done / caveats:** the two tests above are not fixed yet; the wave 4 PR is not opened; step 1 is only checked in Chromium at those four sizes and by eye on screenshots, so the owner should look at the Vercel preview before it merges; at 1366x768 the bottom of the board is below the fold at scroll-top until the page is scrolled about 100px (step 2 addresses the header and side column).
