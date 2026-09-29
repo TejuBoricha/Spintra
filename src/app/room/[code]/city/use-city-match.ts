@@ -115,6 +115,13 @@ export interface CityAsset {
 }
 
 /** One row of a finished match's standings, from the `city_match_results` view. */
+/** How a match was set up, kept so "Play again" can repeat it. */
+export interface CityMatchSetup {
+  mode: "classic" | "timed";
+  time_limit_minutes: number | null;
+  pace_seconds: 25 | 40 | 60;
+}
+
 export interface CityResult {
   match_id: string;
   seat: number;
@@ -281,6 +288,9 @@ interface UseCityMatchResult {
   leaveDetention: (method: "pay" | "visa" | "roll") => Promise<void>;
   auction: CityAuction | null;
   results: CityResult[];
+  /** How the match that just finished was set up (null until there is one), so
+   *  "Play again" can repeat its mode, time limit and pace. */
+  lastSetup: CityMatchSetup | null;
   /** The persistent activity feed, oldest first, for the live match only —
    *  cleared and reloaded whenever `match.id` changes. */
   events: CityMatchEvent[];
@@ -420,6 +430,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
   const [offers, setOffers] = useState<CityTradeOffer[]>([]);
   const [auction, setAuction] = useState<CityAuction | null>(null);
   const [results, setResults] = useState<CityResult[]>([]);
+  const [lastSetup, setLastSetup] = useState<CityMatchSetup | null>(null);
   const [events, setEvents] = useState<CityMatchEvent[]>([]);
   // Highest event id already in `events`, for the incremental fetch below —
   // a ref because it drives no rendering itself and must survive across the
@@ -494,6 +505,20 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
       const rows = (last ?? []) as unknown as CityResult[];
       const newest = rows[0]?.match_id;
       setResults(newest ? rows.filter((r) => r.match_id === newest) : []);
+      // How that match was set up, so "Play again" repeats it (audit C-4: it
+      // used to open a fresh Classic match at the default pace). The results
+      // view doesn't carry these; the match row does, and a room member may
+      // read it after it finishes.
+      if (newest) {
+        const { data: setup } = await supabase
+          .from("city_matches")
+          .select("mode, time_limit_minutes, pace_seconds")
+          .eq("id", newest)
+          .maybeSingle();
+        setLastSetup((setup ?? null) as unknown as CityMatchSetup | null);
+      } else {
+        setLastSetup(null);
+      }
       setIsLoading(false);
       return;
     }
@@ -1279,6 +1304,7 @@ export function useCityMatch(roomCode: string, currentUserId: string): UseCityMa
     leaveDetention,
     auction,
     results,
+    lastSetup,
     events,
     placeBid,
     passAuction,
