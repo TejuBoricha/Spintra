@@ -739,7 +739,11 @@ test('XP earned from a trivia win survives an immediate reconnect', async ({ pag
   // presence after reconnect proves XP survived the round trip, regardless
   // of the exact numeric value.
   await page.getByRole('button', { name: /people \(1\)/i }).click();
-  await expect(page.getByText(/Rookie|Explorer|Challenger|Master|Legend/)).toBeVisible({ timeout: 15000 });
+  // Anchored to the whole label. The unanchored version also matched the
+  // trivia answer option "Explorer 1" (trivia-questions.ts) whenever that
+  // question was the one drawn, and failed with a strict-mode violation on
+  // two elements: a flake that depended on which question came up.
+  await expect(page.getByText(/^(Rookie|Explorer|Challenger|Master|Legend)$/)).toBeVisible({ timeout: 15000 });
 });
 
 // Bingo's event-listener effect was the site of two real bugs fixed earlier
