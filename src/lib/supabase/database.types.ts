@@ -196,6 +196,7 @@ export type Database = {
           high_seat: number | null
           id: string
           match_id: string
+          opening_bid: number
           passed_seats: number[]
           settled_at: string | null
           space_idx: number
@@ -209,6 +210,7 @@ export type Database = {
           high_seat?: number | null
           id?: string
           match_id: string
+          opening_bid?: number
           passed_seats?: number[]
           settled_at?: string | null
           space_idx: number
@@ -222,6 +224,7 @@ export type Database = {
           high_seat?: number | null
           id?: string
           match_id?: string
+          opening_bid?: number
           passed_seats?: number[]
           settled_at?: string | null
           space_idx?: number

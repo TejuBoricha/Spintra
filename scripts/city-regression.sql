@@ -3545,6 +3545,115 @@ begin
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 
+-- ===========================================================================
+-- C-8 (product decision 2026-09-29; migration 0112) -- an auction opens at half
+-- the list price (was a flat 10), with a 30s first window (was 15s) and a 15s
+-- reset per bid (was 10s). Nothing here placed a bid before, so this is also
+-- the first SQL coverage of city_place_bid. Uses the C-10 helpers for its own
+-- players (see the note there). Every statement in a DO block sees the same
+-- now(), so the deadlines below are exact.
+-- opening_bid is read through to_jsonb() so that against a database without
+-- 0112 these blocks report the old behaviour as a FAIL instead of raising on
+-- a column that does not exist yet.
+-- ===========================================================================
+do $blk$
+declare
+  m uuid; ok boolean := true; act text := ''; res jsonb;
+  v_price int; v_reserve int; a public.city_auctions;
+  first_secs numeric; hard_secs numeric; reset_secs numeric; high_after int; err text;
+begin
+  m := pg_temp.rg_match('CITYRGC8A', 9201, pg_temp.rg_c10_users(6));
+  delete from public.city_assets where match_id = m;
+  select price into v_price from public.city_board_spaces where idx = 1;
+  v_reserve := greatest(10, (ceil(v_price / 20.0) * 10)::int);
+  if v_reserve <= 10 then
+    ok := false; act := act || format('test setup: reserve %s is not above the old floor of 10; ', v_reserve);
+  end if;
+  -- Seat 0 stands on an unowned property and passes on it.
+  update public.city_match_players set position = 1 where match_id = m and seat = 0;
+  update public.city_matches set current_seat = 0, phase = 'required_decision',
+    turn_clock_paused_at = null where id = m;
+  begin
+    perform pg_temp.rg_c10_as(6, 0);
+    select public.city_decline_purchase(m) into res;
+  exception when others then ok := false; act := act || 'city_decline_purchase raised ' || sqlerrm || '; ';
+  end;
+  select * into a from public.city_auctions where match_id = m and status = 'running';
+  first_secs := extract(epoch from (a.ends_at - now()));
+  hard_secs := extract(epoch from (a.hard_ends_at - now()));
+  if (to_jsonb(a)->>'opening_bid')::int is distinct from v_reserve then
+    ok := false; act := act || format('opening_bid %s, expected half of %s rounded up to 10 = %s; ', (to_jsonb(a)->>'opening_bid')::int, v_price, v_reserve);
+  end if;
+  if first_secs <> 30 or hard_secs <> 120 then
+    ok := false; act := act || format('first window %ss (expected 30), hard ceiling %ss (expected 120); ', first_secs, hard_secs);
+  end if;
+
+  -- Below the reserve is refused, as the opening bid.
+  begin
+    perform pg_temp.rg_c10_as(6, 1);
+    perform public.city_place_bid(m, v_reserve - 10);
+    ok := false; act := act || format('a bid of %s, under the reserve %s, was accepted; ', v_reserve - 10, v_reserve);
+  exception when others then
+    if sqlerrm not like '%CITY_BID_TOO_LOW%' then
+      ok := false; act := act || 'below-reserve bid refused for the wrong reason: ' || sqlerrm || '; ';
+    end if;
+  end;
+  -- The reserve itself is accepted, and resets the clock to 15s.
+  begin
+    perform pg_temp.rg_c10_as(6, 1);
+    select public.city_place_bid(m, v_reserve) into res;
+  exception when others then ok := false; act := act || 'a bid at the reserve raised ' || sqlerrm || '; ';
+  end;
+  select * into a from public.city_auctions where id = a.id;
+  reset_secs := extract(epoch from (a.ends_at - now()));
+  if a.high_bid is distinct from v_reserve or a.high_seat is distinct from 1 or reset_secs <> 15 then
+    ok := false; act := act || format('after the reserve bid: high %s by seat %s, clock reset to %ss (expected %s by seat 1, 15s); ', a.high_bid, a.high_seat, reset_secs, v_reserve);
+  end if;
+  -- The decliner may still bid, as in the standard rules.
+  begin
+    perform pg_temp.rg_c10_as(6, 0);
+    select public.city_place_bid(m, v_reserve + 10) into res;
+  exception when others then ok := false; act := act || 'the decliner could not bid: ' || sqlerrm || '; ';
+  end;
+  select high_bid into high_after from public.city_auctions where id = a.id;
+  if high_after is distinct from v_reserve + 10 then
+    ok := false; act := act || format('decliner bid left high bid at %s, expected %s; ', high_after, v_reserve + 10);
+  end if;
+  insert into rg values (default,'C-8-AUCTION-RESERVE','an auction opens at half the list price, 30s first window, 15s per-bid reset; under the reserve is refused',
+    format('opening_bid %s (price %s); 30s then 120s ceiling; a bid of %s refused; %s accepted and resets to 15s; the decliner can still bid', v_reserve, v_price, v_reserve - 10, v_reserve),
+    case when ok then format('opening_bid %s, %ss window, reset to %ss', (to_jsonb(a)->>'opening_bid')::int, first_secs, reset_secs) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+do $blk$
+declare
+  m uuid; ok boolean := true; act text := ''; res jsonb; a public.city_auctions;
+begin
+  m := pg_temp.rg_match('CITYRGC8B', 9202, pg_temp.rg_c10_users(7));
+  delete from public.city_assets where match_id = m;
+  update public.city_matches set current_seat = 0, phase = 'auction', turn_clock_paused_at = null where id = m;
+  -- An auction row as it existed before 0112 (no opening_bid): it keeps the
+  -- old floor of 10, which is what it was opened with.
+  insert into public.city_auctions (match_id, space_idx, ends_at, hard_ends_at)
+  values (m, 1, now() + interval '15 seconds', now() + interval '2 minutes');
+  select * into a from public.city_auctions where match_id = m and status = 'running';
+  if (to_jsonb(a)->>'opening_bid')::int <> 10 then
+    ok := false; act := act || format('an auction opened without a reserve got opening_bid %s, expected 10; ', (to_jsonb(a)->>'opening_bid')::int);
+  end if;
+  begin
+    perform pg_temp.rg_c10_as(7, 1);
+    select public.city_place_bid(m, 10) into res;
+  exception when others then ok := false; act := act || 'a bid of 10 on a pre-0112 auction raised ' || sqlerrm || '; ';
+  end;
+  select * into a from public.city_auctions where id = a.id;
+  if a.high_bid is distinct from 10 then
+    ok := false; act := act || format('high bid %s after bidding 10, expected 10; ', a.high_bid);
+  end if;
+  insert into rg values (default,'C-8-AUCTION-LEGACY-FLOOR','an auction opened before 0112 keeps the old floor of 10',
+    'opening_bid defaults to 10 and a bid of 10 is accepted', case when ok then format('opening_bid %s, high bid %s', (to_jsonb(a)->>'opening_bid')::int, a.high_bid) else act end,
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
 -- ---------------------------------------------------------------------------
 -- teardown + report
 -- ---------------------------------------------------------------------------

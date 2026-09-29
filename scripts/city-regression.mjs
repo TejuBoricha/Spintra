@@ -189,7 +189,11 @@ function runSqlOnce() {
 // mortgage, a debt with no creditor is logged as paid to the bank, and the
 // same ordering holds after accepting a trade and after selling a building,
 // and the Customs fee is logged as a fee rather than a tax.
-const EXPECTED_SQL_ASSERTIONS = 83;
+// 85 = 83 + two for migration 0112 (audit C-8, the auction reserve): a new
+// auction opens at half the list price with the new windows and refuses a
+// lower bid (the first SQL coverage of city_place_bid), and one opened before
+// the migration keeps the old floor of 10.
+const EXPECTED_SQL_ASSERTIONS = 85;
 
 const sqlRows = runSql();
 if (sqlRows === null) process.exit(2);
