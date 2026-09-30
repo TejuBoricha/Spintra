@@ -34,6 +34,7 @@ import {
   type MatchRef,
   generateBracketForType,
   recordMatchResult,
+  calculateStandings,
 } from "@/lib/tournament-engine";
 
 const GameIcon = getGameByType("tournament")!.icon;
@@ -291,7 +292,10 @@ export default function TournamentPage() {
 
       if (outcome.kind === "champion") {
         fireConfetti();
-        toast.success(`${outcome.winner} wins the tournament!`, { icon: <Emoji name="trophy" size={18} /> });
+        const shared = (outcome.tournament.winners?.length ?? 0) > 1;
+        toast.success(shared ? `${outcome.winner} share first place!` : `${outcome.winner} wins the tournament!`, {
+          icon: <Emoji name="trophy" size={18} />,
+        });
         return;
       }
       if (outcome.kind === "grand-final-set") {
@@ -342,7 +346,7 @@ export default function TournamentPage() {
     });
 
     if (tournament.winner) {
-      lines.push(`🏆 Champion: ${tournament.winner}`);
+      lines.push(`🏆 ${(tournament.winners?.length ?? 0) > 1 ? "Shared first place" : "Champion"}: ${tournament.winner}`);
     }
 
     lines.push("");
@@ -427,30 +431,8 @@ export default function TournamentPage() {
     const allMatches = rounds.flat();
     if (allMatches.length === 0) return null;
 
-    // Calculate standings
-    const standings = new Map<string, { wins: number; losses: number; draws: number }>();
-    tournament?.participants.forEach((p) => standings.set(p, { wins: 0, losses: 0, draws: 0 }));
-
-    allMatches.forEach((m) => {
-      if (m.status === "completed" && m.score1 !== null && m.score2 !== null) {
-        const p1 = m.player1!;
-        const p2 = m.player2!;
-        if (m.score1 > m.score2) {
-          standings.get(p1)!.wins++;
-          standings.get(p2)!.losses++;
-        } else if (m.score2 > m.score1) {
-          standings.get(p2)!.wins++;
-          standings.get(p1)!.losses++;
-        } else {
-          standings.get(p1)!.draws++;
-          standings.get(p2)!.draws++;
-        }
-      }
-    });
-
-    const sorted = [...standings.entries()].sort(
-      (a, b) => b[1].wins * 3 + b[1].draws - (a[1].wins * 3 + a[1].draws)
-    );
+    // Same standings the champion is decided from (points, then score difference, then score).
+    const standings = calculateStandings(rounds, tournament?.participants ?? []);
 
     return (
       <div className="space-y-6">
@@ -460,20 +442,24 @@ export default function TournamentPage() {
             Standings
           </h3>
           <div className="space-y-1">
-            {sorted.map(([name, record], i) => (
+            {standings.map((row) => (
               <div
-                key={name}
+                key={row.player}
                 className="flex items-center gap-3 px-3 py-2 rounded-xl bg-(--surface-sunken) border border-(--border-hairline)"
               >
                 <span className="text-xs font-mono text-muted-foreground w-6 text-right">
-                  #{i + 1}
+                  #{row.rank}
                 </span>
-                <span className="text-sm font-medium flex-1">{name}</span>
+                <span className="text-sm font-medium flex-1">{row.player}</span>
                 <span className="text-xs text-muted-foreground">
-                  {record.wins}W {record.losses}L {record.draws}D
+                  {row.wins}W {row.losses}L {row.draws}D
+                  <span className="ml-2" title="Score difference: the tiebreaker after points">
+                    {row.diff > 0 ? "+" : ""}
+                    {row.diff}
+                  </span>
                 </span>
                 <span className="text-xs font-bold text-emerald-400 ml-2">
-                  {record.wins * 3 + record.draws} pts
+                  {row.points} pts
                 </span>
               </div>
             ))}
@@ -775,7 +761,7 @@ export default function TournamentPage() {
                   <CelebrationBanner
                     icon={<Crown className="w-12 h-12 text-amber-400" />}
                     title={tournament.winner}
-                    subtitle={<><Emoji name="trophy" size={20} pop /> Tournament Champion</>}
+                    subtitle={<><Emoji name="trophy" size={20} pop /> {(tournament.winners?.length ?? 0) > 1 ? "Shared first place" : "Tournament Champion"}</>}
                     titleClassName="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400 bg-clip-text text-transparent"
                   />
                 )}

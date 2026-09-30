@@ -24,6 +24,8 @@ export interface Tournament {
   seeds: string[];
   currentRound: number;
   winner: string | null;
+  /** Everyone level for first place when a round robin or Swiss ends level (`winner` then names them all). */
+  winners?: string[];
   losersBracket?: BracketMatch[][]; // For double elimination
   grandFinal?: BracketMatch | null; // Winners-bracket champ vs. losers-bracket champ
 }
@@ -153,10 +155,37 @@ export function generateRoundRobin(participants: string[]): BracketMatch[][] {
   return [matches];
 }
 
-export function calculateStandings(rounds: BracketMatch[][], participants: string[]) {
+export interface Standing {
+  player: string;
+  points: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  /** Total of this player's own scores; a tiebreaker after the score difference. */
+  scored: number;
+  /** Own scores minus opponents' scores; the first tiebreaker after points. */
+  diff: number;
+  /** 1 for first place; players level on points, difference and score share a rank. */
+  rank: number;
+}
+
+const BYE_NAME = "__BYE__";
+
+/**
+ * Round robin and Swiss standings: points (3 for a win, 1 for a draw), then score
+ * difference, then total scored (audit T-4: a tie used to be settled by whoever was
+ * typed first). Players still level on all three share a rank.
+ */
+export function calculateStandings(rounds: BracketMatch[][], participants: string[]): Standing[] {
   const points: Record<string, number> = {};
-  participants.forEach(p => points[p] = 0);
-  
+  const scored: Record<string, number> = {};
+  const conceded: Record<string, number> = {};
+  participants.forEach((p) => {
+    points[p] = 0;
+    scored[p] = 0;
+    conceded[p] = 0;
+  });
+
   for (const round of rounds) {
     for (const match of round) {
       if (match.status === "completed" && match.player1 && match.player2) {
@@ -169,18 +198,42 @@ export function calculateStandings(rounds: BracketMatch[][], participants: strin
             points[match.player1] = (points[match.player1] || 0) + 1;
             points[match.player2] = (points[match.player2] || 0) + 1;
           }
+          // A bye has no real opponent, so its score says nothing about strength.
+          if (match.player1 !== BYE_NAME && match.player2 !== BYE_NAME) {
+            scored[match.player1] = (scored[match.player1] || 0) + match.score1;
+            conceded[match.player1] = (conceded[match.player1] || 0) + match.score2;
+            scored[match.player2] = (scored[match.player2] || 0) + match.score2;
+            conceded[match.player2] = (conceded[match.player2] || 0) + match.score1;
+          }
         }
       }
     }
   }
 
-  return participants.map(p => ({ 
-    player: p, 
-    points: points[p], 
+  const rows: Standing[] = participants.map((p) => ({
+    player: p,
+    points: points[p],
     wins: rounds.flat().filter(m => m.status === "completed" && m.winner === p).length,
     draws: rounds.flat().filter(m => m.status === "completed" && m.score1 === m.score2 && m.score1 !== null && (m.player1 === p || m.player2 === p)).length,
     losses: rounds.flat().filter(m => m.status === "completed" && m.winner !== p && m.winner !== null && (m.player1 === p || m.player2 === p)).length,
-  })).sort((a, b) => b.points - a.points);
+    scored: scored[p],
+    diff: scored[p] - conceded[p],
+    rank: 0,
+  }));
+  rows.sort((a, b) => b.points - a.points || b.diff - a.diff || b.scored - a.scored);
+
+  let rank = 1;
+  rows.forEach((row, i) => {
+    const prev = rows[i - 1];
+    if (prev && (row.points !== prev.points || row.diff !== prev.diff || row.scored !== prev.scored)) rank = i + 1;
+    row.rank = rank;
+  });
+  return rows;
+}
+
+/** Everyone in first place: one player, or several when the tiebreakers leave them level. */
+export function firstPlace(standings: Standing[]): string[] {
+  return standings.filter((row) => row.rank === 1).map((row) => row.player);
 }
 
 export function generateNextSwissRound(rounds: BracketMatch[][], participants: string[]): BracketMatch[] {
@@ -753,12 +806,17 @@ export function recordMatchResult(
         }
       }
 
-      const standings = calculateStandings(updatedBracket, tournament.participants);
-      const champion = standings[0].player;
+      const leaders = firstPlace(calculateStandings(updatedBracket, tournament.participants));
+      const champion = leaders.join(" & ");
       return {
         kind: "champion",
         winner: champion,
-        tournament: { ...tournament, rounds: updatedBracket, winner: champion }
+        tournament: {
+          ...tournament,
+          rounds: updatedBracket,
+          winner: champion,
+          winners: leaders.length > 1 ? leaders : undefined,
+        },
       };
     }
   }

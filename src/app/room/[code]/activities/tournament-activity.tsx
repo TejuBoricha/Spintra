@@ -226,9 +226,12 @@ export function TournamentActivity() {
         setTournament(event.tournament);
         if (event.outcome === "champion") {
           fireConfetti();
-          toast.success(`${event.tournament.winner} wins the tournament!`, {
-            icon: <Emoji name="trophy" size={18} />,
-          });
+          toast.success(
+            (event.tournament.winners?.length ?? 0) > 1
+              ? `${event.tournament.winner} share first place!`
+              : `${event.tournament.winner} wins the tournament!`,
+            { icon: <Emoji name="trophy" size={18} /> }
+          );
         } else if (event.outcome === "grand-final-set") {
           toast.success("Grand Final is set!", { id: "grand-final-set" });
         }
@@ -387,7 +390,7 @@ export function TournamentActivity() {
             <CelebrationBanner
               icon={<Crown className="w-12 h-12 text-amber-400" />}
               title={tournament.winner}
-              subtitle={<><Emoji name="trophy" size={20} pop /> Tournament Champion</>}
+              subtitle={<><Emoji name="trophy" size={20} pop /> {(tournament.winners?.length ?? 0) > 1 ? "Shared first place" : "Tournament Champion"}</>}
               titleClassName="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400 bg-clip-text text-transparent"
             />
           )}
@@ -517,11 +520,11 @@ export function TournamentActivity() {
                             </tr>
                           </thead>
                           <tbody>
-                            {standings.map((row, idx) => (
+                            {standings.map((row) => (
                               <tr key={row.player} className="border-b border-(--border-hairline) last:border-0">
-                                <td className="py-2 font-mono text-muted-foreground">{idx + 1}</td>
+                                <td className="py-2 font-mono text-muted-foreground">{row.rank}</td>
                                 <td className="py-2 font-semibold flex items-center gap-2">
-                                  {idx === 0 && row.points > 0 ? <Trophy className="w-4 h-4 text-amber-400" /> : null}
+                                  {row.rank === 1 && row.points > 0 ? <Trophy className="w-4 h-4 text-amber-400" /> : null}
                                   {row.player}
                                 </td>
                                 <td className="py-2 text-center text-emerald-500">{row.wins}</td>
