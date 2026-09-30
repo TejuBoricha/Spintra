@@ -3739,6 +3739,80 @@ begin
     case when ok then 'PASS' else 'FAIL' end);
 end $blk$;
 
+-- ===========================================================================
+-- C-1 (audit) — a roll of doubles that ends in Customs must not grant another
+-- roll. The roll counted the doubles even though the move sent the player to
+-- Customs, so ending the turn granted a re-roll from inside detention.
+-- ===========================================================================
+-- Space 30 ("Detained") sends the roller to Customs. The seed's own dice are
+-- searched for a doubles roll and the start position is chosen so it lands
+-- exactly on space 30.
+do $blk$
+declare m uuid; c int := 0; d int[]; pos int; dcount int; seat_after int; ph_after text; det boolean; ok boolean;
+begin
+  m := pg_temp.rg_match('CITYRGC1', 9101, array['b1111111-1111-4111-8111-111111111111','b2222222-2222-4222-8222-222222222222','b3333333-3333-4333-8333-333333333333']);
+  loop
+    d := public.city_derive_dice(9101::bigint, c);
+    exit when d[1] = d[2];
+    c := c + 1;
+  end loop;
+  pos := (30 - (d[1] + d[2]) + 40) % 40;
+  update public.city_match_players set position = pos, cash = 1500, in_detention = false where match_id = m and seat = 0;
+  update public.city_matches set current_seat = 0, phase = 'awaiting_roll', rng_counter = c, doubles_count = 0,
+         turn_started_at = now(), turn_clock_paused_at = null where id = m;
+
+  perform set_config('request.jwt.claims', json_build_object('sub','b1111111-1111-4111-8111-111111111111','role','authenticated')::text, true);
+  perform public.city_roll_dice(m);
+  select doubles_count into dcount from public.city_matches where id = m;
+  select in_detention into det from public.city_match_players where match_id = m and seat = 0;
+
+  perform public.city_end_turn(m);
+  select current_seat, phase into seat_after, ph_after from public.city_matches where id = m;
+
+  ok := det is true and dcount = 0 and seat_after = 1 and ph_after = 'awaiting_roll';
+  insert into rg values (default,'C-1-DOUBLES-INTO-CUSTOMS','doubles that end in Customs end the turn: no re-roll from detention',
+    'detained, doubles_count 0, and after End turn it is seat 1''s roll',
+    format('detained=%s, doubles_count=%s, after End turn: seat %s, phase %s', det, dcount, seat_after, ph_after),
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
+-- ===========================================================================
+-- C-2 (audit) — going bankrupt on your own roll must not skip the next
+-- player's roll. The bankruptcy passed the turn on, and then the roll's own
+-- final update wrote its "optional_actions" phase over the next player's
+-- "awaiting_roll".
+-- ===========================================================================
+-- Seat 0 has no cash and owns nothing, and lands on space 38 ("Luxury Duty"), a
+-- tax it cannot pay, so it is bankrupt inside its own roll. A non-doubles
+-- roll is searched for so the start position can be chosen to land on 38.
+do $blk$
+declare m uuid; c int := 0; d int[]; pos int; st text; seat_after int; ph_after text; roll_turn int; turn_after int; ok boolean;
+begin
+  m := pg_temp.rg_match('CITYRGC2', 9102, array['c1111111-1111-4111-8111-111111111111','c2222222-2222-4222-8222-222222222222','c3333333-3333-4333-8333-333333333333']);
+  loop
+    d := public.city_derive_dice(9102::bigint, c);
+    exit when d[1] <> d[2];
+    c := c + 1;
+  end loop;
+  pos := (38 - (d[1] + d[2]) + 40) % 40;
+  delete from public.city_assets where match_id = m;
+  update public.city_match_players set position = pos, cash = 0, pending_debt = 0, in_detention = false where match_id = m and seat = 0;
+  update public.city_matches set current_seat = 0, phase = 'awaiting_roll', rng_counter = c, doubles_count = 0,
+         turn_started_at = now(), turn_clock_paused_at = null where id = m;
+
+  perform set_config('request.jwt.claims', json_build_object('sub','c1111111-1111-4111-8111-111111111111','role','authenticated')::text, true);
+  perform public.city_roll_dice(m);
+
+  select status into st from public.city_match_players where match_id = m and seat = 0;
+  select current_seat, phase, last_roll_turn, turn_number into seat_after, ph_after, roll_turn, turn_after from public.city_matches where id = m;
+
+  ok := st = 'bankrupt' and seat_after = 1 and ph_after = 'awaiting_roll';
+  insert into rg values (default,'C-2-BANKRUPT-ON-OWN-ROLL','going bankrupt on your own roll leaves the next player to roll',
+    'seat 0 bankrupt, and it is seat 1''s turn in phase awaiting_roll',
+    format('seat 0 %s; seat %s, phase %s (last_roll_turn %s, turn %s)', st, seat_after, ph_after, roll_turn, turn_after),
+    case when ok then 'PASS' else 'FAIL' end);
+end $blk$;
+
 -- ---------------------------------------------------------------------------
 -- teardown + report
 -- ---------------------------------------------------------------------------

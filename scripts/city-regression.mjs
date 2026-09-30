@@ -197,7 +197,10 @@ function runSqlOnce() {
 // hand-off): a Timed match past its limit finishes when a hand-off wraps to a
 // new round, it does not finish mid-round (the round completes), and before
 // the limit, or in Classic mode, a wrap just starts another round.
-const EXPECTED_SQL_ASSERTIONS = 88;
+// 90 = 88 + two for migration 0114 (audit C-1 and C-2, two roll bugs): doubles that
+// end in Customs end the turn (no re-roll from detention), and going bankrupt on
+// your own roll leaves the next player to roll.
+const EXPECTED_SQL_ASSERTIONS = 90;
 
 const sqlRows = runSql();
 if (sqlRows === null) process.exit(2);
