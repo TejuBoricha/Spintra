@@ -3095,3 +3095,14 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 
 **Verification:** `npm run verify` clean; `qa-x24-board-fit` passes and fails on the previous code; full local suite at the stop: 101 passed, 2 failed, 2 skipped (the failures are two older tests that assumed the old layout, listed in `TASKS.md`).
 **Not done / caveats:** the two tests above are not fixed yet; the wave 4 PR is not opened; step 1 is only checked in Chromium at those four sizes and by eye on screenshots, so the owner should look at the Vercel preview before it merges; at 1366x768 the bottom of the board is below the fold at scroll-top until the page is scrolled about 100px (step 2 addresses the header and side column).
+
+---
+
+## [2026-09-30] — CI audit gate: three transitive advisories patched (lockfile only)
+
+**AI:** Claude Code
+**Task:** PR #58's `validate` job failed at `npm run audit` (`npm audit --audit-level=moderate`), not at any test. New advisories were published after yesterday's green run: `brace-expansion` (high), `fast-uri` and `ip-address` (moderate), all transitive. The branch's lockfile is byte-identical to `main`'s, so the failure is not specific to the PR and would hit any push to `main` and any Dependabot PR until the lockfile is updated.
+**Files Modified:** `package-lock.json`, `docs/CHANGELOG_AI.md`
+**What changed:** only those packages, within their existing semver ranges: `brace-expansion` 5.0.9 -> 5.0.12 (three nested copies) and 1.1.18 -> 1.1.21, `fast-uri` 3.1.7 -> 3.1.8, `ip-address` 10.7.0 -> 10.7.2 (version, resolved and integrity from npm's own resolution: 18 lines added, 18 removed). A plain `npm audit fix` was rejected: it would have rewritten about 150 entries and dropped the `libc` hints on 41 native optional packages (npm 10.9 drops them whenever it rewrites the lockfile), which is noise and a behaviour change in a security patch.
+**Verification:** `npm ci` clean; `npm run audit` 0 vulnerabilities; `npm run verify` clean; `next build` ok; spot-checked `qa-x24`, `city-lobby`, `smoke` and `qa-x12` pass. The full suite runs in CI.
+**Caveat:** this rides on the wave 4 PR (#58) because the designated branch is single-use; it is its own commit so it can be cherry-picked onto a separate PR if preferred. The audit gate is strict on purpose (moderate and up): expect this to recur whenever a new advisory lands, and the fix is the same targeted lockfile update.
