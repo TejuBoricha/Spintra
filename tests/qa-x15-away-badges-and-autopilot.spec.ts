@@ -99,6 +99,12 @@ test('city: away badge, autopilot counter, forced retire, and terminal-seat hygi
   psql(`update city_match_players set in_detention=true, detention_turns=0 where match_id='${matchId}' and seat=2;`);
 
   for (let i = 0; i < 2; i++) {
+    // Re-parked every pass: rolling doubles out of detention releases the seat
+    // (city_leave_detention_core), and the dice are fixed by the match's random
+    // seed, so about 1 match in 6 would release seat 2 on the first pass. Its
+    // second turn is then an ordinary roll that can open an auction instead of
+    // counting as an autopiloted turn, and the forced retire never happens.
+    psql(`update city_match_players set in_detention=true, detention_turns=0 where match_id='${matchId}' and seat=2;`);
     psql(`update city_matches set current_seat=1, phase='optional_actions', turn_clock_paused_at=null where id='${matchId}';`);
     await g1.reload();
     await g1.waitForTimeout(1500);
