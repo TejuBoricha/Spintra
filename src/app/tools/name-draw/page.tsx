@@ -69,11 +69,10 @@ export default function NameDrawPage() {
     [textInput]
   );
 
-  const [drawnIndices, setDrawnIndices] = useState<number[]>([]);
-  const drawnNames = useMemo(
-    () => drawnIndices.map((idx) => names[idx] || "Player"),
-    [drawnIndices, names]
-  );
+  // The history holds the names themselves, not positions in the list: positions
+  // move when the list is edited, which used to change who the history showed and
+  // who counted as already drawn (audit T-5).
+  const [drawnNames, setDrawnNames] = useState<string[]>([]);
   const [currentWinner, setCurrentWinner] = useState<string | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [shufflingName, setShufflingName] = useState<string>("");
@@ -86,9 +85,19 @@ export default function NameDrawPage() {
   const availableNamesList = useMemo(
     () => {
       const mapped = names.map((name, id) => ({ id, name }));
-      return eliminationMode ? mapped.filter((obj) => !drawnIndices.includes(obj.id)) : mapped;
+      if (!eliminationMode) return mapped;
+      // Each drawn name takes one matching line out of the pool, so two people with the
+      // same name are drawn one at a time.
+      const drawnLeft = new Map<string, number>();
+      for (const drawn of drawnNames) drawnLeft.set(drawn, (drawnLeft.get(drawn) ?? 0) + 1);
+      return mapped.filter((obj) => {
+        const left = drawnLeft.get(obj.name) ?? 0;
+        if (left === 0) return true;
+        drawnLeft.set(obj.name, left - 1);
+        return false;
+      });
     },
-    [eliminationMode, names, drawnIndices]
+    [eliminationMode, names, drawnNames]
   );
 
   const availableNames = useMemo(
@@ -122,7 +131,6 @@ export default function NameDrawPage() {
       // Pick winner(s) upfront
       const pickedObjects = shuffleArray(availableNamesList).slice(0, count);
       const picked = pickedObjects.map((o) => o.name);
-      const pickedIndices = pickedObjects.map((o) => o.id);
 
       // Shuffle animation: cycle through names rapidly
       let cycles = 0;
@@ -141,7 +149,7 @@ export default function NameDrawPage() {
               setCurrentWinner(picked[0]);
             }
             setMultiWinners(picked);
-            setDrawnIndices((prev) => [...prev, ...pickedIndices]);
+            setDrawnNames((prev) => [...prev, ...picked]);
             setIsDrawing(false);
             playSuccess(soundEnabled);
 
@@ -168,7 +176,7 @@ export default function NameDrawPage() {
 
   const reset = useCallback(() => {
     clearShuffleInterval();
-    setDrawnIndices([]);
+    setDrawnNames([]);
     setCurrentWinner(null);
     setMultiWinners([]);
     setShufflingName("");
@@ -178,7 +186,7 @@ export default function NameDrawPage() {
 
   const clearAll = useCallback(() => {
     setTextInput("");
-    setDrawnIndices([]);
+    setDrawnNames([]);
     setCurrentWinner(null);
     setMultiWinners([]);
     setShufflingName("");
@@ -197,7 +205,7 @@ export default function NameDrawPage() {
       const merged = [...new Set([...existing, ...samples])];
       return merged.join("\n");
     });
-    setDrawnIndices([]);
+    setDrawnNames([]);
     setCurrentWinner(null);
     setMultiWinners([]);
     toast.success(`Added ${pluralize(samples.length, "name")}`);
@@ -227,7 +235,7 @@ export default function NameDrawPage() {
           const merged = [...new Set([...existing, ...parsed])];
           return merged.join("\n");
         });
-        setDrawnIndices([]);
+        setDrawnNames([]);
         setCurrentWinner(null);
         setMultiWinners([]);
         toast.success(`Imported ${pluralize(parsed.length, "name")}`);
@@ -504,7 +512,7 @@ export default function NameDrawPage() {
                       transition={{ delay: 0.5 }}
                       className="text-muted-foreground text-sm"
                     >
-                      {drawnNames.length} of {names.length} drawn
+                      {drawnNames.length} of {Math.max(names.length, drawnNames.length)} drawn
                     </motion.p>
                   </motion.div>
                 ) : multiWinners.length > 1 ? (
@@ -576,8 +584,8 @@ export default function NameDrawPage() {
               </AnimatePresence>
             </div>
 
-            {/* Draw Buttons */}
-            <div className="flex items-center gap-3">
+            {/* Draw Buttons: the icon buttons wrap under the two big ones on a phone (audit T-6) */}
+            <div className="flex flex-wrap items-center gap-3">
               <Button
                 size="lg"
                 onClick={() => doDraw(1)}
@@ -585,7 +593,7 @@ export default function NameDrawPage() {
                   isDrawing ||
                   availableNames.length === 0
                 }
-                className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white border-0 shadow-lg shadow-amber-500/25"
+                className="min-w-[9rem] flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white border-0 shadow-lg shadow-amber-500/25"
               >
                 <Play className="w-4 h-4 mr-2" />
                 Draw One
@@ -598,7 +606,7 @@ export default function NameDrawPage() {
                   isDrawing ||
                   availableNames.length === 0
                 }
-                className="flex-1 hover:border-amber-500/30"
+                className="min-w-[9rem] flex-1 hover:border-amber-500/30"
               >
                 <Shuffle className="w-4 h-4 mr-2" />
                 Draw {Math.min(drawCount, availableNames.length)}
