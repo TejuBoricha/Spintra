@@ -308,8 +308,10 @@ const BOARD_PX = 700;
 // unreadable and a taller page is the better trade); the width still wins.
 const MIN_BOARD_PX = 300;
 const MAX_BOARD_PX = 920;
-// Breathing room under the board (the frame's own padding is already counted).
-const BOTTOM_MARGIN_PX = 24;
+// What sits below the board's own edge on the page: the frame's bottom padding
+// (12px) and the room's game-area padding (24px). Counting it keeps the whole
+// page, not just the board, inside the screen, so nothing needs scrolling.
+const BOTTOM_MARGIN_PX = 36;
 
 /** The board's on-screen edge in px, or null until the first measurement. */
 function useBoardSize(ref: React.RefObject<HTMLElement | null>): number | null {

@@ -874,7 +874,15 @@ function RoomUIInner({
   );
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row w-full">
+    // The site layout gives <main> a 6rem top padding for the fixed nav, so a
+    // min-h-screen room was always 6rem taller than the screen and its sidebar's
+    // chat input sat below the fold (audit R-13). A City match is laid out to fit
+    // the screen (board, panel and chat together), so it takes screen minus nav.
+    <div
+      className={`${
+        roomType === "city" ? "min-h-[calc(100dvh-6rem)]" : "min-h-screen"
+      } flex flex-col md:flex-row w-full`}
+    >
       {/* Screen-reader-only announcements for participant join/leave and
           game changes — found missing entirely in the Session 41 audit.
           Visually hidden (sr-only): these are transient events that would
