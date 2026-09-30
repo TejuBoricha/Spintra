@@ -12,3 +12,8 @@ export const ROOM_MAX_CAPACITY = 50;
 
 // Default capacity for a newly-created room (must sit within the bounds above).
 export const ROOM_DEFAULT_CAPACITY = 10;
+
+// Default for a Classroom room: a teacher who never touches the slider should
+// not turn student 11 away with "room full" (audit L-6). Only the create page's
+// starting value; a teacher's own choice is never overridden.
+export const CLASSROOM_DEFAULT_CAPACITY = 30;

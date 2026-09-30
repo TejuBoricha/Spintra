@@ -12,7 +12,7 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import type { RoomType } from "@/lib/types";
 import { GAMES } from "@/lib/games";
-import { ROOM_MIN_CAPACITY, ROOM_MAX_CAPACITY, ROOM_DEFAULT_CAPACITY } from "@/lib/room-config";
+import { ROOM_MIN_CAPACITY, ROOM_MAX_CAPACITY, ROOM_DEFAULT_CAPACITY, CLASSROOM_DEFAULT_CAPACITY } from "@/lib/room-config";
 import { getOrCreateRoomUser, setLocalRoomCreator } from "@/lib/room-user";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { trackEvent } from "@/lib/analytics";
@@ -114,7 +114,11 @@ export default function CreateRoomClient() {
   }, []);
   const [roomName, setRoomName] = useState("");
   const [isPublic, setIsPublic] = useState(false);
-  const [maxParticipants, setMaxParticipants] = useState(ROOM_DEFAULT_CAPACITY);
+  // null until the host moves the slider, so the starting value follows the room
+  // type (30 for a classroom, 10 otherwise) and a chosen value is kept as is.
+  const [capacityChoice, setCapacityChoice] = useState<number | null>(null);
+  const maxParticipants =
+    capacityChoice ?? (selectedType === "classroom" ? CLASSROOM_DEFAULT_CAPACITY : ROOM_DEFAULT_CAPACITY);
   const [isCreating, setIsCreating] = useState(false);
   const [createdRoom, setCreatedRoom] = useState<{ code: string; url: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -332,7 +336,7 @@ export default function CreateRoomClient() {
                 min={ROOM_MIN_CAPACITY}
                 max={ROOM_MAX_CAPACITY}
                 value={[maxParticipants]}
-                onValueChange={(v) => setMaxParticipants(Array.isArray(v) ? v[0] : v)}
+                onValueChange={(v) => setCapacityChoice(Array.isArray(v) ? v[0] : v)}
                 className="mt-2"
               />
             </div>
