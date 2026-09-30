@@ -1,6 +1,6 @@
 # Wave 4: full-screen Spintra City layout — impact assessment (draft, read-only research)
 
-Status (updated 2026-09-29, end of day): **step 1 is built** (branch `claude/loving-noether-1iz9ku`, no PR yet; see `TASKS.md`); steps 2 and 3 are not started. The rest of this page is the original assessment, kept as the plan. Merge policy: the assistant does not merge a wave 4 PR until the owner has looked at its Vercel preview.
+Status (updated 2026-09-30): **steps 1 and 2 are built** (branch `claude/loving-noether-1iz9ku`, PR #58 open, not merged; see `TASKS.md`); step 3 (a per-player money ledger, C-18) and the header/site-nav compaction are not started. The owner's stated purpose is that players get the most out of the visible screen without scrolling; step 2 was done as a side panel with Activity / Holdings / Trade tabs, and the chat-input fix (R-13) fell out of making the City room fit the screen. The rest of this page is the original assessment, kept as the plan. Merge policy: the assistant does not merge a wave 4 PR until the owner has looked at its Vercel preview.
 
 ## What the code does today (read, not guessed)
 
