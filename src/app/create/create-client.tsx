@@ -15,6 +15,7 @@ import { GAMES } from "@/lib/games";
 import { ROOM_MIN_CAPACITY, ROOM_MAX_CAPACITY, ROOM_DEFAULT_CAPACITY, CLASSROOM_DEFAULT_CAPACITY } from "@/lib/room-config";
 import { getOrCreateRoomUser, setLocalRoomCreator } from "@/lib/room-user";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { withAuthRetry, isTransientAuthError, AUTH_BUSY_MESSAGE } from "@/lib/supabase/auth-retry";
 import { trackEvent } from "@/lib/analytics";
 import { getRoomByCode } from "@/lib/room-lookup";
 
@@ -82,7 +83,7 @@ export default function CreateRoomClient() {
         let sessionUser = sessionData.session?.user;
 
         if (!sessionUser) {
-          const { data, error } = await supabase.auth.signInAnonymously();
+          const { data, error } = await withAuthRetry(() => supabase.auth.signInAnonymously());
           if (error) throw error;
           sessionUser = data?.user || undefined;
         }
@@ -100,7 +101,9 @@ export default function CreateRoomClient() {
       } catch (err) {
         console.error("Failed to initialize Supabase anonymous session:", err);
         const errMsg = (err as { message?: string })?.message || "";
-        if (errMsg.includes("Anonymous sign-ins are disabled")) {
+        if (isTransientAuthError(err)) {
+          toast.error(AUTH_BUSY_MESSAGE);
+        } else if (errMsg.includes("Anonymous sign-ins are disabled")) {
           toast.error(
             "Anonymous sign-ins are disabled in your Supabase project. Please enable 'Allow Anonymous Sign-ins' in your Supabase Dashboard (Settings -> Authentication)."
           );

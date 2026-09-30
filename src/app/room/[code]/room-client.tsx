@@ -6,6 +6,7 @@ import { AnimatePresence } from "framer-motion";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import type { User, ChatMessage, RoomType } from "@/lib/types";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { withAuthRetry, isTransientAuthError, AUTH_BUSY_MESSAGE } from "@/lib/supabase/auth-retry";
 import { getOrCreateRoomUser, getLocalRoomCreatorId } from "@/lib/room-user";
 import { isUserBannedFromRoom } from "@/lib/room-bans";
 import { getRoomByCode } from "@/lib/room-lookup";
@@ -167,7 +168,11 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   const [currentUser, setCurrentUser] = useState<User>(getOrCreateRoomUser);
   const [authReady, setAuthReady] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
-  const [accessError, setAccessError] = useState<"full" | "locked" | "not_found" | "banned" | "error" | null>(null);
+  const [accessError, setAccessError] = useState<"full" | "locked" | "not_found" | "banned" | "error" | "busy" | null>(null);
+  // Set when anonymous sign-in was still being refused (rate limit, network)
+  // after its retries, so the room lookup below is not run without a session:
+  // it would come back empty and say "Room Not Found" (audit L-3).
+  const signInBusyRef = useRef(false);
   const router = useRouter();
 
   // Cached from verifyAccess below so useRoomSubscription doesn't have to
@@ -228,7 +233,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         let sessionUser = sessionData.session?.user;
 
         if (!sessionUser) {
-          const { data, error } = await supabase.auth.signInAnonymously();
+          const { data, error } = await withAuthRetry(() => supabase.auth.signInAnonymously());
           if (error) throw error;
           sessionUser = data?.user || undefined;
         }
@@ -245,6 +250,11 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         }
       } catch (err) {
         console.error("Failed to initialize Supabase anonymous session:", err);
+        if (isTransientAuthError(err)) {
+          signInBusyRef.current = true;
+          setAccessError("busy");
+          setCheckingAccess(false);
+        }
       } finally {
         setAuthReady(true);
       }
@@ -255,7 +265,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
 
   // Pre-entry validation logic (runs only when auth is ready)
   useEffect(() => {
-    if (!authReady) return;
+    if (!authReady || signInBusyRef.current) return;
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       queueMicrotask(() => {
@@ -447,6 +457,11 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         desc: "The host removed you from this room and you can't rejoin it.",
         emoji: "broom" as EmojiName,
       },
+      busy: {
+        title: "Sign-in Is Busy",
+        desc: AUTH_BUSY_MESSAGE,
+        emoji: "disappointed_face" as EmojiName,
+      },
       error: {
         title: "Couldn't Connect",
         desc: "We couldn't check this room right now. That doesn't mean it's gone. Check your connection and try again.",
@@ -464,7 +479,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
             <h1 tabIndex={-1} ref={(el) => el?.focus()} className="font-display text-2xl font-black text-foreground">{errorDetails.title}</h1>
             <p className="text-muted-foreground text-sm leading-relaxed">{errorDetails.desc}</p>
           </div>
-          {accessError === "error" ? (
+          {accessError === "error" || accessError === "busy" ? (
             <button
               onClick={() => window.location.reload()}
               className="w-full h-11 rounded-pill border-2 border-(--border-strong) bg-primary text-primary-foreground font-body font-bold hover:brightness-95 transition-all"
