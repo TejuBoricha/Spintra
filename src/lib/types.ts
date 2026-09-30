@@ -50,7 +50,9 @@ type NdWinnerEvent        = { kind: "name_draw_winner"; winner: string };
 // Same rename/replay-compat treatment as TmTeamsLegacyEvent above.
 type NdWinnerLegacyEvent  = { kind: "nd_winner"; winner: string };
 type TriviaQuestionEvent  = { kind: "trivia_question"; questionId?: string; text: string; options: string[]; correctIndex?: number; num: number; category: string; difficulty: "easy" | "medium" | "hard" };
-type TriviaAnswerEvent    = { kind: "trivia_answer"; userId: string; username: string; choiceIndex: number; correctIndex?: number; correct: boolean };
+// `questionNum` is the number of the question the answer belongs to; receivers ignore an answer
+// for a question other than the one on screen, so a late answer never counts for the next one.
+type TriviaAnswerEvent    = { kind: "trivia_answer"; userId: string; username: string; choiceIndex: number; correctIndex?: number; correct: boolean; questionNum?: number };
 type ActivityResetEvent   = { kind: "activity_reset" };
 // lucky-wheel
 type WheelEntriesEvent  = { kind: "wheel_entries"; entries: string[] };

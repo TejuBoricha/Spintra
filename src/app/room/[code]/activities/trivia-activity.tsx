@@ -80,9 +80,20 @@ export function TriviaActivity() {
     triviaAnswersRef.current = triviaAnswers;
   }, [triviaAnswers]);
 
+  // The number of the question on screen, for the same reason as above: the event
+  // listener must tell an answer to THIS question from a late one for the previous
+  // question (audit G-4).
+  const questionNumRef = useRef<number | null>(null);
+  // The question this player has already answered (or is answering). Set before the
+  // first await in the click handler: `hasAnswered` only flips once the server has echoed
+  // the answer back, so a second quick click used to send a second answer and both scored
+  // (audit G-3).
+  const answeredQuestionRef = useRef<string | null>(null);
+
   useEffect(() => {
     return registerEventListener((event) => {
       if (event.kind === "trivia_question") {
+        questionNumRef.current = event.num;
         setTriviaQuestion({
           id: event.questionId,
           text: event.text,
@@ -102,6 +113,15 @@ export function TriviaActivity() {
         });
         playSwipe(soundEnabled);
       } else if (event.kind === "trivia_answer") {
+        // An answer for another question (a late one from the round before) is not
+        // this question's answer. Answers without a number (older clients) still count.
+        if (
+          typeof event.questionNum === "number" &&
+          questionNumRef.current !== null &&
+          event.questionNum !== questionNumRef.current
+        ) {
+          return;
+        }
         // An answer can reach us twice (live, then again in the server's
         // log after a reconnect), so only play the reveal sound the first
         // time this userId is seen for the current question. Answers used
@@ -129,6 +149,7 @@ export function TriviaActivity() {
           }
         }
       } else if (event.kind === "activity_reset") {
+        questionNumRef.current = null;
         setTriviaQuestion(null);
         setTriviaAnswers({});
       }
@@ -285,6 +306,10 @@ export function TriviaActivity() {
                   data-testid="trivia-option"
                   disabled={hasAnswered}
                   onClick={async () => {
+                    const questionKey = `${triviaQuestion.id ?? triviaQuestion.text}:${triviaQuestion.num}`;
+                    if (answeredQuestionRef.current === questionKey) return;
+                    answeredQuestionRef.current = questionKey;
+
                     let correct = false;
                     let correctIndex = triviaQuestion.correctIndex;
 
@@ -310,6 +335,7 @@ export function TriviaActivity() {
                       choiceIndex: i,
                       correctIndex,
                       correct,
+                      questionNum: triviaQuestion.num,
                     });
                     // Refused by the server (e.g. too many actions at once):
                     // nobody else saw it, and it isn't scored. The choices
