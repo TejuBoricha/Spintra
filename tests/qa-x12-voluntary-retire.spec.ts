@@ -64,7 +64,11 @@ test('city: a player can voluntarily retire mid-match and the match carries on',
   // this is "one seat leaves," not "the match ended."
   await host.reload();
   await host.waitForTimeout(1000);
-  await expect(host.getByText(/waiting for|your turn|roll the dice/i)).toBeVisible({ timeout: 15000 });
+  // The narration line is the status region. (The board centre's "Your turn"
+  // banner matches the same words, so a bare getByText would find two.)
+  await expect(
+    host.getByRole('status').filter({ hasText: /waiting for|your turn|roll the dice/i }).first()
+  ).toBeVisible({ timeout: 15000 });
   await expect(host.getByRole('heading', { name: /wins$/i })).toHaveCount(0);
 
   await browser.close();
