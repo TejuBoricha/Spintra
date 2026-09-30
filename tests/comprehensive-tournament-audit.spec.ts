@@ -286,15 +286,19 @@ test.describe('Tournament UI E2E & Edge Cases Spec', () => {
     const matchCount = await page.locator('[data-testid="tournament-match"]').count();
     expect(matchCount).toBeGreaterThanOrEqual(2);
 
-    const byeMatch = page.locator('[data-testid="tournament-match"]').nth(1);
-    const text = await byeMatch.textContent();
-    expect(text).toContain('__BYE__');
+    // Find the matches by what they are, not by position: standard seeding gives the
+    // top seed the bye and puts that match first, so its index is not part of the contract.
+    const byeMatch = page.locator('[data-testid="tournament-match"]').filter({ hasText: '__BYE__' });
+    await expect(byeMatch).toHaveCount(1);
 
     // Verify BYE match is auto-completed
     await expect(byeMatch).toHaveAttribute('data-match-status', 'completed');
 
-    // Score the real match
-    const realMatch = page.locator('[data-testid="tournament-match"]').first();
+    // Score the real match: the only one that is ready and not yet played.
+    const realMatch = page.locator(
+      '[data-testid="tournament-match"][data-match-ready="true"]:not([data-match-status="completed"])'
+    );
+    await expect(realMatch).toHaveCount(1);
     await expect(realMatch).toHaveAttribute('data-match-status', 'pending');
     await realMatch.click();
 

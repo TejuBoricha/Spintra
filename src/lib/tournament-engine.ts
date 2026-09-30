@@ -41,6 +41,34 @@ export function padWithByes(participants: string[]): string[] {
   return [...participants, ...byes];
 }
 
+/**
+ * Standard bracket order for a power-of-two field: slot i holds the seed that
+ * plays there, so seed 1 meets the last seed, 2 meets the second to last, and
+ * the top seeds can only meet in the late rounds ([1,8,4,5,2,7,3,6] for 8).
+ */
+function bracketSeedOrder(size: number): number[] {
+  let order = [1];
+  while (order.length < size) {
+    const n = order.length * 2;
+    order = order.flatMap((seed) => [seed, n + 1 - seed]);
+  }
+  return order;
+}
+
+/**
+ * Arrange a seed-ordered, power-of-two padded list (index 0 is seed 1, byes
+ * last) into first-round slots. Pairing neighbours instead put every bye at the
+ * end, so with two or more byes a bye faced a bye (which never resolves and
+ * leaves the bracket stuck: 5, 6, 9 to 14 and 17 players) and seeds 1 and 2
+ * met in round one. In standard order each bye faces one of the top seeds
+ * (audit T-1, T-3).
+ */
+export function placeBySeed(padded: string[]): string[] {
+  const size = padded.length;
+  if (size < 2 || (size & (size - 1)) !== 0) return [...padded];
+  return bracketSeedOrder(size).map((seed) => padded[seed - 1]);
+}
+
 /** Seed sort: put seeded players first in tournament order, then fill rest randomly */
 export function applySeeds(participants: string[], seeds: string[]): string[] {
   if (seeds.length === 0) return shuffleArray(participants);
@@ -56,7 +84,7 @@ export function generateSingleElimination(
   seeds: string[]
 ): BracketMatch[][] {
   const ordered = applySeeds(participants, seeds);
-  const padded = padWithByes(ordered);
+  const padded = placeBySeed(padWithByes(ordered));
   const numRounds = Math.log2(padded.length);
 
   const rounds: BracketMatch[][] = [];
@@ -257,7 +285,7 @@ export function generateDoubleElimination(
   seeds: string[]
 ): { winners: BracketMatch[][]; losers: BracketMatch[][] } {
   const ordered = applySeeds(participants, seeds);
-  const padded = padWithByes(ordered);
+  const padded = placeBySeed(padWithByes(ordered));
   const numRounds = Math.log2(padded.length);
 
   // Winners bracket (same as single elim)
