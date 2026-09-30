@@ -27,6 +27,7 @@ import type { RoomType } from "@/lib/types";
 import { GAMES } from "@/lib/games";
 import { getOrCreateRoomUser } from "@/lib/room-user";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { withAuthRetry, isTransientAuthError, AUTH_BUSY_MESSAGE } from "@/lib/supabase/auth-retry";
 import { checkCanJoinRoom, ROOM_JOIN_ERROR_MESSAGES } from "@/lib/room-join-check";
 
 interface ExploreRoom {
@@ -111,10 +112,12 @@ export default function ExplorePage() {
       try {
         const { data: session } = await supabase.auth.getSession();
         if (!session.session) {
-          await supabase.auth.signInAnonymously();
+          const { error } = await withAuthRetry(() => supabase.auth.signInAnonymously());
+          if (error) throw error;
         }
       } catch (err) {
         console.error("Explore page: anonymous sign-in failed:", err);
+        if (isTransientAuthError(err)) toast.error(AUTH_BUSY_MESSAGE);
       } finally {
         setAuthReady(true);
       }

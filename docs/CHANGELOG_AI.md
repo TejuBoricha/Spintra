@@ -3165,3 +3165,15 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 **Verification:** `npm run verify` clean; the new spec (three tests) fails with the change reverted (30 expected, 10 received) and passes with it; the full local suite on the combined tournament and capacity build: 113 passed, 2 skipped, 0 failed.
 **Also today (state, not new work):** PR #58 (wave 4 steps 1 and 2) merged as `71b4519` and PR #59 (tournament brackets, T-1) merged as `4a4fec4`, each with all five checks green on the exact head. Header compaction was deferred (recorded in `TASKS.md`). The live site was not looked at by the assistant (egress blocks spintra.io).
 **Not done:** capacity above 50 (database ceiling, migration 0049); the classroom reliability items L-1 and L-3.
+
+---
+
+## [2026-09-30] — Rate-limited sign-in is retried, and a still-busy sign-in is named as such (audit L-3); PR #60 merged
+
+**AI:** Claude Code
+**Task:** Next classroom item: when the sign-in limit hits, students got a vague error and no retry. Read the sign-in paths first: without a session, row-level security empties every room lookup, so the room page showed "Room Not Found" (or the join said "Unable to join room") while the real cause sat in the console.
+**Files Modified:** `src/lib/supabase/auth-retry.ts` (new), `src/app/room/[code]/room-client.tsx`, `src/app/create/create-client.tsx`, `src/app/explore/page.tsx`, `tests/qa-x27-signin-retry.spec.ts` (new), `docs/TASKS.md`, `docs/HANDOFF.md`, `docs/AI_CONTEXT.md`, `docs/CHANGELOG_AI.md`
+**What changed:** `withAuthRetry` retries transient errors up to four times with a doubling, jittered wait (1s, 2s, 4s, each between 50% and 100%); `isTransientAuthError` covers 429, status 0 / network, 5xx and rate-limit codes and messages, and treats "Anonymous sign-ins are disabled" as permanent. The room page no longer runs its access check without a session after the retries are used up: it shows a new "Sign-in Is Busy" screen (Try Again reloads), so a student is never told the room is gone. Create and Explore retry the same way and toast the same message if it stays busy.
+**Verification:** `npm run verify` clean; new spec (five helper tests, two browser tests with the `/auth/v1/signup` route answering 429): a student refused twice still gets a participant row (three sign-in requests), and one refused throughout sees the busy screen, not "Room Not Found", with no participant row; both browser tests fail with the page changes reverted (participant count 1 instead of 2, no busy screen) and pass with them. Full local suite on this build: 120 passed, 2 skipped, 0 failed.
+**Also today:** PR #60 (Classroom rooms start at 30 seats, L-6) merged as `9d1318d` with all five checks green on the exact head.
+**Not done:** the sign-in rate limit itself (Q-2, a dashboard setting); L-1 (a normal game round can knock a whole room offline and it never reconnects: the events channel already resyncs, but the main room channel's close handler only changes the message and never re-joins); L-2, L-4, L-5, L-7, L-8.
