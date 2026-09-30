@@ -321,7 +321,13 @@ function useBoardSize(ref: React.RefObject<HTMLElement | null>): number | null {
     if (!el) return;
     const measure = () => {
       const width = el.clientWidth;
-      const height = window.visualViewport?.height ?? window.innerHeight;
+      // innerHeight, not visualViewport.height: right after a resize a newer
+      // Chromium can still report the previous visual viewport height here, which
+      // sized the board for the old screen (CI saw an 800px screen while the
+      // window was 768px and the board ran 32px past the bottom); and the visual
+      // viewport also shrinks when a phone keyboard opens for the chat input,
+      // which would make the board jump while someone types.
+      const height = window.innerHeight;
       // Where the board starts on the PAGE (not the screen), so the answer does
       // not change as the page is scrolled: the room left below it at scroll-top.
       const top = el.getBoundingClientRect().top + window.scrollY;
