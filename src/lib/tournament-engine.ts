@@ -501,6 +501,51 @@ export type MatchResultOutcome =
   | { kind: "advanced"; winner: string | null; tournament: Tournament };
 
 /**
+ * Whether changing who won an already-scored match would leave the bracket
+ * inconsistent (audit T-2). The result has been used once a later match it fed
+ * has its own result, or the Grand Final it feeds is already set; changing the
+ * winner then leaves the old winner in that later match, and can crown the wrong
+ * champion. Correcting a score without changing the winner is always safe, and so
+ * is changing the winner while nothing downstream has been played (the new winner
+ * simply takes the slot). Returns the reason to refuse, or null.
+ */
+function rescoreBlockedReason(
+  tournament: Tournament,
+  editingMatch: MatchRef,
+  winner: string | null
+): string | null {
+  const { match, roundIdx, position, bracketKey } = editingMatch;
+  if (match.status !== "completed" || match.winner === winner) return null;
+  if (bracketKey === "grandFinal") return null;
+  if (tournament.type !== "single-elimination" && tournament.type !== "double-elimination") return null;
+
+  const blocked =
+    "A later match already used this result, so who won can't be changed. You can still correct the score as long as the same player wins.";
+  const usedBy: (BracketMatch | undefined)[] = [];
+
+  if (bracketKey === "rounds") {
+    const next = tournament.rounds[roundIdx + 1]?.find((m) => m.position === Math.floor(position / 2));
+    if (next) usedBy.push(next);
+    else if (tournament.grandFinal) return blocked; // the winners final feeds the Grand Final
+    if (tournament.type === "double-elimination" && tournament.losersBracket) {
+      // Where the loser drops into the losers bracket (same shape as recordMatchResult).
+      const rw = roundIdx + 1;
+      const targetRound = rw === 1 ? 0 : 2 * rw - 3;
+      const targetPos = rw === 1 ? Math.floor(position / 2) : position;
+      usedBy.push(tournament.losersBracket[targetRound]?.find((m) => m.position === targetPos));
+    }
+  } else {
+    const lb = tournament.losersBracket ?? [];
+    const nextPos = roundIdx % 2 === 0 ? position : Math.floor(position / 2);
+    const next = lb[roundIdx + 1]?.find((m) => m.position === nextPos);
+    if (next) usedBy.push(next);
+    else if (tournament.grandFinal) return blocked; // the losers final feeds the Grand Final
+  }
+
+  return usedBy.some((m) => m?.status === "completed") ? blocked : null;
+}
+
+/**
  * Pure state transition for recording a match's score: updates the match,
  * advances the winner (and, for double elimination, drops the loser into the
  * losers bracket), and detects tournament/grand-final completion. Ported
@@ -543,6 +588,9 @@ export function recordMatchResult(
       message: "Elimination matches need a winner, so the scores can't be tied.",
     };
   }
+
+  const blockedReason = rescoreBlockedReason(tournament, editingMatch, winner);
+  if (blockedReason) return { kind: "invalid", message: blockedReason };
 
   const bracket = bracketKey === "losersBracket" ? tournament.losersBracket! : tournament.rounds;
 
