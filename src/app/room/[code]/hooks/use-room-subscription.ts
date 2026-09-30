@@ -123,6 +123,14 @@ export function useRoomSubscription({
   // "Trying to reconnect..." indefinitely either way with no further
   // guidance for the user.
   const realtimeReconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // When the server closes a room's channel on purpose (it does, to a whole room
+  // at once, when a burst goes over its limits) supabase-js does not join it
+  // again: it only re-joins after an error. The subscriptions effect asks for a
+  // fresh set of channels by bumping channelGeneration, after a wait that grows
+  // with rejoinAttemptsRef so a class does not all come back in the same second
+  // (audit L-1).
+  const [channelGeneration, setChannelGeneration] = useState(0);
+  const rejoinAttemptsRef = useRef(0);
   // Latest loadParticipants closure, so the subscriptions effect below can
   // trigger a one-time reconciliation fetch the moment its channel reaches
   // SUBSCRIBED — closing the pre-existing race where a postgres_changes
@@ -1550,6 +1558,37 @@ export function useRoomSubscription({
     // loading (the host switching, or a live change arriving), the result
     // is stale: it's dropped and the catch-up runs again.
     let disposed = false;
+    // Joins both channels again after the server closed one (audit L-1). The
+    // wait is 1s, 2s, 4s ... up to 15s, each between 50% and 100% of that; the
+    // count only starts over once both channels have stayed joined for 30s, so
+    // a channel that is closed again right after joining backs off instead of
+    // hammering the server.
+    let rejoinTimer: ReturnType<typeof setTimeout> | null = null;
+    let stableTimer: ReturnType<typeof setTimeout> | null = null;
+    let mainJoined = false;
+    let eventsJoined = false;
+    const scheduleRejoin = () => {
+      if (disposed) return;
+      if (stableTimer) {
+        clearTimeout(stableTimer);
+        stableTimer = null;
+      }
+      if (rejoinTimer) return;
+      const wait = Math.min(1000 * 2 ** rejoinAttemptsRef.current, 15_000) * (0.5 + Math.random() * 0.5);
+      rejoinAttemptsRef.current += 1;
+      rejoinTimer = setTimeout(() => {
+        rejoinTimer = null;
+        if (!disposed) setChannelGeneration((n) => n + 1);
+      }, wait);
+    };
+    const noteJoined = () => {
+      if (mainJoined && eventsJoined && !stableTimer) {
+        stableTimer = setTimeout(() => {
+          stableTimer = null;
+          rejoinAttemptsRef.current = 0;
+        }, 30_000);
+      }
+    };
     let resyncing = false;
     let resyncAgain = false;
     let forceNext = false;
@@ -1693,7 +1732,11 @@ export function useRoomSubscription({
         if (seq) advanceSeq(seq);
       })
       .subscribe((status: string) => {
+        // Our own teardown (removeChannel) reports CLOSED too; not a drop.
+        if (disposed) return;
         if (status === "SUBSCRIBED") {
+          eventsJoined = true;
+          noteJoined();
           if (eventsChannelDropped) {
             eventsChannelDropped = false;
             setNotification((current) =>
@@ -1703,15 +1746,23 @@ export function useRoomSubscription({
             );
           }
           void resyncFromServer();
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          eventsJoined = false;
           eventsChannelDropped = true;
           console.error(`Game event channel ${status} for room ${roomCode}`);
           setNotification("Realtime connection lost. Trying to reconnect...");
+          // CHANNEL_ERROR and TIMED_OUT are retried by supabase-js itself; a
+          // channel the server closed is not.
+          if (status === "CLOSED") scheduleRejoin();
         }
       });
 
     channel.subscribe((status: string) => {
+      // Our own teardown (removeChannel) reports CLOSED too; not a drop.
+      if (disposed) return;
       if (status === "SUBSCRIBED") {
+        mainJoined = true;
+        noteJoined();
         if (realtimeReconnectTimerRef.current) {
           clearTimeout(realtimeReconnectTimerRef.current);
           realtimeReconnectTimerRef.current = null;
@@ -1734,6 +1785,10 @@ export function useRoomSubscription({
         // tick, so we're never left looking offline (audit R-1).
         heartbeatNowRef.current?.();
       } else {
+        mainJoined = false;
+        // CHANNEL_ERROR and TIMED_OUT are retried by supabase-js itself; a
+        // channel the server closed is not.
+        if (status === "CLOSED") scheduleRejoin();
         setIsRealtimeReady(false);
         setRealtimeError("Realtime subscription failed.");
         setNotification("Realtime connection lost. Trying to reconnect...");
@@ -1753,6 +1808,11 @@ export function useRoomSubscription({
     });
 
     return () => {
+      // First, so the CLOSED that removeChannel reports below is not taken for
+      // a drop by the callbacks above.
+      disposed = true;
+      if (rejoinTimer) clearTimeout(rejoinTimer);
+      if (stableTimer) clearTimeout(stableTimer);
       if (realtimeReconnectTimerRef.current) {
         clearTimeout(realtimeReconnectTimerRef.current);
         realtimeReconnectTimerRef.current = null;
@@ -1762,7 +1822,6 @@ export function useRoomSubscription({
       document.removeEventListener("visibilitychange", handleVisible);
       clearInterval(seqCheckTimer);
       resyncRef.current = null;
-      disposed = true;
       supabaseChannelRef.current = null;
     };
     // Deliberately currentUser.id/.username only — not the whole currentUser
@@ -1786,6 +1845,7 @@ export function useRoomSubscription({
     authReady,
     handleActivityEvent,
     participantRowReady,
+    channelGeneration,
   ]);
 
   // Tell the server we're here (migration 0109). room_heartbeat every 10
