@@ -106,6 +106,9 @@
 
   /* Semantic — gradients */
   --gradient-brand: linear-gradient(135deg, var(--lime-400), var(--lime-300));
+  /* The highlighted word in headings. Same as the brand gradient on the dark theme;
+     the light theme overrides it below because lime on cream is about 1.07:1 (audit X-4). */
+  --gradient-brand-text: var(--gradient-brand);
   --gradient-toy: linear-gradient(135deg, var(--violet-500), var(--coral-500));
   --gradient-avatar: linear-gradient(135deg, var(--violet-500), var(--violet-800));
 
@@ -244,6 +247,8 @@
 }
 
 .light {
+  /* Dark olive, 4.9:1 to 7.7:1 on the cream page (lime-700 to #435209), instead of lime-400 at 1.07:1. */
+  --gradient-brand-text: linear-gradient(135deg, var(--lime-700), #435209);
   --surface-app: var(--cream-100);
   --surface-panel: #ffffff;
   --surface-panel-soft: var(--cream-50);
@@ -419,7 +424,7 @@ body {
 
 /* Gradient text */
 .gradient-text {
-  background: var(--gradient-brand);
+  background: var(--gradient-brand-text);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
