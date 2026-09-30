@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { joinErrorMessage } from "@/lib/room-join-errors";
 import { banUserFromRoom } from "@/lib/room-bans";
 import { moderationKickBan } from "@/lib/moderation";
 import { generateUUID } from "@/lib/utils";
@@ -814,12 +815,7 @@ export function useRoomSubscription({
         if (error) {
           console.error("Failed to register participant in DB:", error.message);
           if (isMounted) {
-            const message = error.message.includes("banned")
-              ? "You have been banned from this room by the host."
-              : error.message.includes("limit")
-              ? "This room has reached its participant limit."
-              : "Unable to join room.";
-            toast.error(message);
+            toast.error(joinErrorMessage(error.message));
             router.push("/explore");
           }
           return;
