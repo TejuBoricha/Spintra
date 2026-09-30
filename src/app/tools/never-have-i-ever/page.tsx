@@ -13,8 +13,8 @@ import { shuffleArray } from "@/lib/utils";
 const GameIcon = getGameByType("never-have-i-ever")!.icon;
 
 const statements = [
-  "Never have I ever lied in a job interview",
-  "Never have I ever stalked someone on social media",
+  "Never have I ever lied to get out of doing chores",
+  "Never have I ever looked up an old photo of myself and cringed",
   "Never have I ever sung karaoke in public",
   "Never have I ever stayed up all night",
   "Never have I ever pretended to like a gift",
@@ -26,11 +26,11 @@ const statements = [
   "Never have I ever traveled alone",
   "Never have I ever tried to learn a TikTok dance",
   "Never have I ever binge-watched an entire season in one day",
-  "Never have I ever been on a blind date",
+  "Never have I ever gotten a nickname I didn't like",
   "Never have I ever spent too much money on something I didn't need",
   "Never have I ever gotten lost in a new city",
-  "Never have I ever used a fake ID",
-  "Never have I ever talked my way out of a ticket",
+  "Never have I ever worn a costume when it wasn't Halloween",
+  "Never have I ever talked my way out of trouble",
   "Never have I ever gone viral (even in a small group chat)",
   "Never have I ever pulled an all-nighter for no reason",
 ];
