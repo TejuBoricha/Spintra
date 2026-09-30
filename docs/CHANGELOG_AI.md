@@ -3106,3 +3106,14 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 **What changed:** only those packages, within their existing semver ranges: `brace-expansion` 5.0.9 -> 5.0.12 (three nested copies) and 1.1.18 -> 1.1.21, `fast-uri` 3.1.7 -> 3.1.8, `ip-address` 10.7.0 -> 10.7.2 (version, resolved and integrity from npm's own resolution: 18 lines added, 18 removed). A plain `npm audit fix` was rejected: it would have rewritten about 150 entries and dropped the `libc` hints on 41 native optional packages (npm 10.9 drops them whenever it rewrites the lockfile), which is noise and a behaviour change in a security patch.
 **Verification:** `npm ci` clean; `npm run audit` 0 vulnerabilities; `npm run verify` clean; `next build` ok; spot-checked `qa-x24`, `city-lobby`, `smoke` and `qa-x12` pass. The full suite runs in CI.
 **Caveat:** this rides on the wave 4 PR (#58) because the designated branch is single-use; it is its own commit so it can be cherry-picked onto a separate PR if preferred. The audit gate is strict on purpose (moderate and up): expect this to recur whenever a new advisory lands, and the fix is the same targeted lockfile update.
+
+---
+
+## [2026-09-30] — Wave 4 step 1: a 320px phone bug found from device screenshots
+
+**AI:** Claude Code
+**Task:** The owner could not test the Vercel preview on devices, so the wave 4 step 1 build was run in Playwright device emulation (laptop, 1080p, iPad portrait and landscape, iPhone 13, Pixel 5, Galaxy S9+; touch where the device has it) and the screenshots were read.
+**Files Modified:** `src/app/room/[code]/city/city-board.tsx`, `src/app/room/[code]/city/city-match-shell.tsx`, `tests/qa-x24-board-fit.spec.ts`, `docs/CHANGELOG_AI.md`
+**What changed:** on a 320px screen the board's 300px floor exceeded the ~264px of room, so the right-hand column ran off the screen (unreachable: nothing scrolls it, and an ancestor clips it, which is why the page-overflow check passed). The floor now applies to the height-derived size only and never exceeds the available width. Also at 320px the turn clock overlapped the first seat badge (worse with the new "you" label); the badge group now takes its own line below 360px. `qa-x24` gained a 320x658 case (board inside the screen, clock not overlapping a badge): it fails on the previous code (329 > 320) and passes now.
+**Lesson:** a passing "no horizontal page overflow" check is not proof nothing is cut off, because an ancestor with overflow hidden hides it; assert the element's own right edge against the viewport (as qa-x24 now does) and read the screenshot.
+**Known, not fixed here (step 2 and later):** on phones and laptops the site nav, room title and 11 host icons (audit R-12) take about half the screen before the board, so the board's lower rows are below the fold at load (Roll dice is on screen); on portrait tablet the 320px chat column narrows the board.
