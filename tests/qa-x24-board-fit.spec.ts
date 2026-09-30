@@ -33,6 +33,12 @@ test('the board fits the screen, the actions are on it, tiles explain themselves
       expect(box.x, `${name}: board starts left of the screen`).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width, `${name}: board runs past the right edge`).toBeLessThanOrEqual(w);
       expect(Math.abs(box.width - box.height), `${name}: board is not square`).toBeLessThanOrEqual(2);
+      // The WHOLE board is on screen at load (a cut-off bottom row hides Departure,
+      // where everyone starts). Not asserted on the 320px phone, where the header
+      // and the stacked seat row leave less room than the smallest readable board.
+      if (w >= 360) {
+        expect(box.y + box.height, `${name}: the board's bottom row is below the fold at load`).toBeLessThanOrEqual(h);
+      }
 
       // The seat badges and the turn clock share a row; at 320px they overlapped.
       const clock = host.getByText(/^\d:\d{2}$/).first();

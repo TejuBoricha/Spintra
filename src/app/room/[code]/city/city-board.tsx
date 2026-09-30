@@ -298,14 +298,18 @@ function initials(seats: CitySeat[]): Map<number, string> {
 // longest city name still sets on one line. So the board is never re-laid-out
 // for other screens: it is drawn at 700px and scaled as a whole, which keeps
 // every name fitting at every size. The size follows what the screen has room
-// for: the width of its column, and the height left under the room header, so
-// the Roll and End turn buttons in the board's centre are on screen without
-// scrolling (audit C-19, C-3, C-31).
+// for: the width of its column, and the height left below whatever the page
+// puts above the board (site nav, room header, seat badges), so the WHOLE board
+// is on screen at load with the Roll and End turn buttons in its centre (audit
+// C-19, C-3, C-31). A board with its bottom row cut off hides Departure, where
+// everyone starts.
 const BOARD_PX = 700;
+// Never smaller than this because of HEIGHT (below about 300px the names are
+// unreadable and a taller page is the better trade); the width still wins.
 const MIN_BOARD_PX = 300;
 const MAX_BOARD_PX = 920;
-// Room the page keeps above the board (room header, seat badges and clock).
-const RESERVED_ABOVE_PX = 190;
+// Breathing room under the board (the frame's own padding is already counted).
+const BOTTOM_MARGIN_PX = 24;
 
 /** The board's on-screen edge in px, or null until the first measurement. */
 function useBoardSize(ref: React.RefObject<HTMLElement | null>): number | null {
@@ -316,19 +320,28 @@ function useBoardSize(ref: React.RefObject<HTMLElement | null>): number | null {
     const measure = () => {
       const width = el.clientWidth;
       const height = window.visualViewport?.height ?? window.innerHeight;
+      // Where the board starts on the PAGE (not the screen), so the answer does
+      // not change as the page is scrolled: the room left below it at scroll-top.
+      const top = el.getBoundingClientRect().top + window.scrollY;
       // The floor applies to the height-derived size only: a very narrow phone
       // (320px leaves about 264px inside the page and frame padding) must still
       // get a board that fits its width, or the right-hand column runs off the
       // screen with nothing to scroll it into view.
-      const byHeight = Math.max(MIN_BOARD_PX, Math.min(height - RESERVED_ABOVE_PX, MAX_BOARD_PX));
+      const byHeight = Math.max(
+        MIN_BOARD_PX,
+        Math.min(height - top - BOTTOM_MARGIN_PX, MAX_BOARD_PX)
+      );
       const next = Math.round(Math.max(1, Math.min(width, byHeight)));
-      // A 1px wobble (a scrollbar appearing as the board changes the page
+      // A few px of wobble (a scrollbar appearing as the board changes the page
       // height) must not keep re-rendering the board.
-      setSize((prev) => (prev !== null && Math.abs(prev - next) < 2 ? prev : next));
+      setSize((prev) => (prev !== null && Math.abs(prev - next) < 4 ? prev : next));
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(el);
+    // A banner appearing above the board (connection lost, match paused, the
+    // Timed clock) moves it down without resizing it: watch the page height too.
+    observer.observe(document.body);
     window.addEventListener("resize", measure);
     return () => {
       observer.disconnect();
