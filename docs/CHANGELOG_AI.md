@@ -3078,3 +3078,66 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 
 **Verification (local stack, Postgres 17.6.1.140 as CI uses):** `npm run verify` clean; a fresh `db reset` applies 0001–0113; City regression 90/90 (88 SQL assertions plus 2 static); with the database at 0112 only the new round-wrap block fails; `qa-x23` (Timed journey: lobby Timed 15, clock, time's up, match finishes, Play again repeats `timed:15:60`; and Classic stays the default) passes; the full Playwright suite result is in the PR description.
 **Not done / caveats:** the 15, 30 and 60 minute presets and Classic's default are reasoned, not playtested. Production runs Postgres 17.6.1.141, which is untested here.
+
+---
+
+## [2026-09-29] — Dependabot #55 merged, the production Postgres image tested, wave 4 step 1 started
+
+**AI:** Claude Code
+**Task:** Finish the delegated chain (Timed mode #57 merged and its deploy succeeded; Dependabot #55 merged), use waiting time for safe side work, and begin wave 4 (the full-screen City layout) without merging anything visual unreviewed.
+**Files Modified:** `src/app/room/[code]/city/city-board.tsx`, `src/app/room/[code]/city/city-match-shell.tsx`, `src/app/room/[code]/city/city-tile-detail.tsx` (new), `tests/qa-x24-board-fit.spec.ts` (new), `docs/TASKS.md`, `docs/HANDOFF.md`, `docs/AI_CONTEXT.md`, `docs/CHANGELOG_AI.md`, `docs/WAVE4_CITY_LAYOUT_PLAN.md` (new), `docs/INDEX.md`
+
+**What changed:**
+- **#55 (minor/patch group, 19 updates) merged as `3c0173f`.** Dependabot had rebased it onto `c133a92`; its CI (both `validate`, both `db-integration`, Vercel) was green on that head, `main` then moved (#57), so its branch was updated with `main` (a merge commit, no history rewritten), CI re-ran green on `fadb2a0`, and it was merged pinned to that SHA. It does **not** contain framer-motion 13 (an earlier message in the session said it did; that was wrong). Vercel's production deploy completed; the live site was not smoke-tested (egress blocked).
+- **Production Postgres image (17.6.1.141) tested.** The Docker Hub pull worked on retry. Fresh reset 0001-0113 clean, City regression 90/90, the 9 City e2e specs from this work pass. The migration-0036 "must be owner of table messages" failure did not reproduce (the `postgres` role is a member of `supabase_realtime_admin` here); the item stays open as not reproduced.
+- **Wave 4 step 1 (branch, no PR):** the board is drawn at its designed 700px and scaled as a whole to the column and the screen height; the dice, a turn banner and the action buttons moved into the board centre (unscaled); tapping a tile shows its details (price, build cost, rent tiers, tax, owner); your own badge says "you"; during an auction the centre points at the panel. Checked by looking at real screenshots at 1366x768, 1920x1080, 820x1180 and 390x844: the buttons are on screen at scroll-top on all four, the dice land inside the board, nothing scrolls sideways.
+- **Audit page** republished as version 9 (C-4 and C-8 deployed, decision card done, P-8 and Q-6 updated).
+
+**Verification:** `npm run verify` clean; `qa-x24-board-fit` passes and fails on the previous code; full local suite at the stop: 101 passed, 2 failed, 2 skipped (the failures are two older tests that assumed the old layout, listed in `TASKS.md`).
+**Not done / caveats:** the two tests above are not fixed yet; the wave 4 PR is not opened; step 1 is only checked in Chromium at those four sizes and by eye on screenshots, so the owner should look at the Vercel preview before it merges; at 1366x768 the bottom of the board is below the fold at scroll-top until the page is scrolled about 100px (step 2 addresses the header and side column).
+
+---
+
+## [2026-09-30] — CI audit gate: three transitive advisories patched (lockfile only)
+
+**AI:** Claude Code
+**Task:** PR #58's `validate` job failed at `npm run audit` (`npm audit --audit-level=moderate`), not at any test. New advisories were published after yesterday's green run: `brace-expansion` (high), `fast-uri` and `ip-address` (moderate), all transitive. The branch's lockfile is byte-identical to `main`'s, so the failure is not specific to the PR and would hit any push to `main` and any Dependabot PR until the lockfile is updated.
+**Files Modified:** `package-lock.json`, `docs/CHANGELOG_AI.md`
+**What changed:** only those packages, within their existing semver ranges: `brace-expansion` 5.0.9 -> 5.0.12 (three nested copies) and 1.1.18 -> 1.1.21, `fast-uri` 3.1.7 -> 3.1.8, `ip-address` 10.7.0 -> 10.7.2 (version, resolved and integrity from npm's own resolution: 18 lines added, 18 removed). A plain `npm audit fix` was rejected: it would have rewritten about 150 entries and dropped the `libc` hints on 41 native optional packages (npm 10.9 drops them whenever it rewrites the lockfile), which is noise and a behaviour change in a security patch.
+**Verification:** `npm ci` clean; `npm run audit` 0 vulnerabilities; `npm run verify` clean; `next build` ok; spot-checked `qa-x24`, `city-lobby`, `smoke` and `qa-x12` pass. The full suite runs in CI.
+**Caveat:** this rides on the wave 4 PR (#58) because the designated branch is single-use; it is its own commit so it can be cherry-picked onto a separate PR if preferred. The audit gate is strict on purpose (moderate and up): expect this to recur whenever a new advisory lands, and the fix is the same targeted lockfile update.
+
+---
+
+## [2026-09-30] — Wave 4 step 1: a 320px phone bug found from device screenshots
+
+**AI:** Claude Code
+**Task:** The owner could not test the Vercel preview on devices, so the wave 4 step 1 build was run in Playwright device emulation (laptop, 1080p, iPad portrait and landscape, iPhone 13, Pixel 5, Galaxy S9+; touch where the device has it) and the screenshots were read.
+**Files Modified:** `src/app/room/[code]/city/city-board.tsx`, `src/app/room/[code]/city/city-match-shell.tsx`, `tests/qa-x24-board-fit.spec.ts`, `docs/CHANGELOG_AI.md`
+**What changed:** on a 320px screen the board's 300px floor exceeded the ~264px of room, so the right-hand column ran off the screen (unreachable: nothing scrolls it, and an ancestor clips it, which is why the page-overflow check passed). The floor now applies to the height-derived size only and never exceeds the available width. Also at 320px the turn clock overlapped the first seat badge (worse with the new "you" label); the badge group now takes its own line below 360px. `qa-x24` gained a 320x658 case (board inside the screen, clock not overlapping a badge): it fails on the previous code (329 > 320) and passes now.
+**Lesson:** a passing "no horizontal page overflow" check is not proof nothing is cut off, because an ancestor with overflow hidden hides it; assert the element's own right edge against the viewport (as qa-x24 now does) and read the screenshot.
+**Known, not fixed here (step 2 and later):** on phones and laptops the site nav, room title and 11 host icons (audit R-12) take about half the screen before the board, so the board's lower rows are below the fold at load (Roll dice is on screen); on portrait tablet the 320px chat column narrows the board.
+
+---
+
+## [2026-09-30] — Wave 4 step 1: the whole board on screen at load
+
+**AI:** Claude Code
+**Task:** The owner looked at a device-emulation screenshot (iPad landscape) and asked whether the board was cropped. It was: the bottom row (Customs ... Departure, where everyone starts) sat below the fold at load on laptops, tablets and phones. Earlier notes calling this "fit after scrolling about 100px" were a known limit that read as a bug, and Departure being hidden is a real play problem.
+**Files Modified:** `src/app/room/[code]/city/city-board.tsx`, `tests/qa-x24-board-fit.spec.ts`, `docs/TASKS.md`, `docs/CHANGELOG_AI.md`
+**What changed:** `useBoardSize` no longer assumes a fixed 190px above the board. It measures where the board starts on the page (document offset, so scrolling does not change the answer) and sizes the board to the room left below it (floor 300px, cap 920px, never wider than the width available), re-measuring on resize and when the page height changes (a banner appearing above the board). Measured at load, whole board on screen: laptop 1366x768 484px, desktop 1920x1080 796px, iPad portrait 416px, iPad landscape 474px, iPhone 13 300px, Pixel 5 335px; a 320px phone is 10px short (668 vs 658). `qa-x24` now asserts the board's bottom edge is inside the screen at load for every size from 360px up; it fails on the previous build (laptop: "the board's bottom row is below the fold at load") and passes now.
+**Trade-off:** boards are smaller on short screens (laptop 578px to 484px, tile text about 7.8px); tapping a tile shows the readable detail. Compacting the header (the site nav, room title and 11 host icons, audit R-12) is what would give the size back and belongs with step 2.
+**Supersedes:** the earlier "scroll about 100px" limitation in this file's wave 4 step 1 entries and in `TASKS.md`.
+
+---
+
+## [2026-09-30] — Wave 4 step 2: a side panel beside the board, so nothing needs scrolling
+
+**AI:** Claude Code
+**Task:** The owner restated the purpose of wave 4: players should get the most out of the visible screen without scrolling. Step 1 had put the board and the roll buttons on screen, but holdings, trades, the activity feed and the chat input were still below the fold and more than half the screen width was empty. Step 2 was built on the same branch and PR (#58) so the owner reviews one complete layout.
+**Files Modified:** `src/app/room/[code]/city/city-match-shell.tsx`, `src/app/room/[code]/city/city-board.tsx`, `src/app/room/[code]/room-client.tsx`, `tests/qa-x25-side-panel.spec.ts` (new), `docs/TASKS.md`, `docs/HANDOFF.md`, `docs/AI_CONTEXT.md`, `docs/CHANGELOG_AI.md`, `docs/WAVE4_CITY_LAYOUT_PLAN.md`
+**What changed:** the match view is a grid of three cells (seat strip, board, side panel). Above 960px of match-view width (a container query on the match view itself, so it follows the room column, not the screen) the board takes the left column and the strip and the panel share the right one: players with cash, the turn clock, Retire, the narration line, tile detail, the auction, and Activity / Holdings / Trade tabs (Activity by default; a dot with screen-reader text on the Trade tab when an offer is waiting for you). The panel's height comes from the board's row and it scrolls inside, so a long feed never makes the page taller. Below 960px the stacked layout is unchanged with all three sections visible. For City rooms the room's minimum height is now `100dvh - 6rem` (the site layout gives `<main>` a 6rem top padding for the nav, so a `min-h-screen` room was always 6rem taller than the screen, which is why the chat input sat below the fold: audit R-13), and the board's bottom margin counts the frame and page padding (36px) so the whole page fits.
+**Two bugs of my own found on the way, both caught by the new spec:** (1) I planned to show all three sections on narrow screens with a class override and left it out; (2) when I added it, it still failed, because Chromium enforces the `hidden` attribute with `display: none !important`, which no author class can beat. The panels are now plain `tabpanel` divs shown or hidden by ordinary width classes; the tabs primitive is kept for the tab strip only.
+**Measured:** 1366x768 board 516px, page overflow 1px (rounding), chat input bottom 753 of 768; 1920x1080 board 828px, chat input 1065 of 1080; a 1280px window keeps the stacked layout (the size most of the suite runs at, so existing specs are unaffected).
+**Verification:** `npm run verify` clean; `qa-x25-side-panel` (three tests: no page scroll at 1366x768, 1440x900 and 1920x1080 including the chat input; one panel at a time when wide and all three when stacked; the waiting-offer dot) fails on the previous layout and passes on this; full local suite result in the PR description.
+**Caveats:** the header (site nav, room title, 11 host icons: audit R-12) still costs about 180px, so the board is smaller than it could be; compacting it during a match touches global navigation and needs an owner decision. The seat strip is not yet a per-player ledger (C-18). Portrait tablets keep the 320px chat column. Only checked in Chromium. The R-13 fix (screen-height room) applies to City rooms only; other room types keep `min-h-screen`.

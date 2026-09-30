@@ -133,15 +133,19 @@ test('R-15: an incoming chat message does not scroll the page (City match)', asy
   test.setTimeout(150_000);
   const { browser, host, guest } = await startTwoPlayerMatch();
   try {
-    await host.setViewportSize({ width: 1280, height: 600 });
+    // Short on purpose: the board is scaled to the screen height (wave 4), so at
+    // 600px the page only overflows by the panels under the board. At 500px the page
+    // is still taller than the screen by enough to be scrolled well down, which is
+    // the state this bug needs (checked: with the R-15 fix reverted this fails).
+    await host.setViewportSize({ width: 1280, height: 500 });
     await host.waitForTimeout(500);
 
     const pageOverflow = await host.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
-    expect(pageOverflow, 'a City match page is taller than the screen').toBeGreaterThan(400);
-    await host.evaluate(() => window.scrollTo(0, 300));
+    expect(pageOverflow, 'a City match page is taller than the screen').toBeGreaterThan(250);
+    await host.evaluate(() => window.scrollTo(0, 200));
     await host.waitForTimeout(300);
     const before = await host.evaluate(() => window.scrollY);
-    expect(before).toBeGreaterThan(200);
+    expect(before).toBeGreaterThan(150);
 
     await sendChat(guest, host, 16, 'r15');
 

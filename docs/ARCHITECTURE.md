@@ -46,7 +46,8 @@ spintra/
 │   ├── HOST_MIGRATION_AUDIT.md     ← Host-migration investigation report (all 14 games + infra)
 │   ├── SPINTRA_CITY_SPEC.md        ← "Spintra City" engineering spec — START HERE for that feature
 │   ├── SPINTRA_CITY_DESIGN.md      ← "Spintra City" feature: decisions, research, build plan
-│   └── SPINTRA_CITY_CONTENT.md     ← "Spintra City" board content (spaces, economy, card decks)
+│   ├── SPINTRA_CITY_CONTENT.md     ← "Spintra City" board content (spaces, economy, card decks)
+│   └── WAVE4_CITY_LAYOUT_PLAN.md   ← Plan for the full-screen City layout (audit wave 4); step 1 built
 ├── src/
 │   ├── app/
 │   │   ├── globals.css             ← Global styles + glass/glass-card utilities

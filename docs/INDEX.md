@@ -16,6 +16,7 @@
 | Anything to do with the "Spintra City" feature | **`SPINTRA_CITY_SPEC.md` first** — requirements, integration, slices, traceability |
 | Why a Spintra City decision was made (or what's still open) | `SPINTRA_CITY_DESIGN.md` |
 | Editing the "Spintra City" board, economy, or card content | `SPINTRA_CITY_CONTENT.md` |
+| `WAVE4_CITY_LAYOUT_PLAN.md` | The plan for wave 4, the full-screen Spintra City layout (audit C-19, C-30, C-31, C-3, C-17, C-18, R-13): what the code does today, three staged PRs, the risk assessment, defaults and open questions. Step 1 is built; read this before steps 2 and 3. |
 
 Load only what the row tells you to. Don't read every document by default — see `AI_RULES.md` §8 (Context Optimization).
 

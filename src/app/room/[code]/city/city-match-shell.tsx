@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConnectionBanner } from "@/components/ui/connection-banner";
 import { pluralize } from "@/lib/utils";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +37,7 @@ import { CityHoldings } from "./city-holdings";
 import { CityTrade } from "./city-trade";
 import { CityAuction } from "./city-auction";
 import { CityMatchClock } from "./city-match-clock";
+import { CityTileDetail } from "./city-tile-detail";
 import type { CityAuction as CityAuctionState, CityBoardSpace, CityRollResult, CitySeat } from "./use-city-match";
 import { useCityMatch } from "./use-city-match";
 
@@ -58,9 +60,11 @@ const MIN_PLAYERS = 2;
 const SeatBadge = memo(function SeatBadge({
   seat: s,
   isCurrent,
+  isMe,
 }: {
   seat: CitySeat;
   isCurrent: boolean;
+  isMe: boolean;
 }) {
   const [now, setNow] = useState(() => serverNow());
   useEffect(() => {
@@ -91,6 +95,10 @@ const SeatBadge = memo(function SeatBadge({
       data-testid="city-seat-badge"
     >
       <span className={terminal ? "line-through" : undefined}>{s.username}</span>
+      {isMe && (
+        // With auto-generated names, players couldn't tell which seat was theirs (audit C-13).
+        <span className="text-[10px] font-semibold uppercase tracking-wide opacity-90">you</span>
+      )}
       {terminal ? (
         // A bare $0 read as "just poor," indistinguishable from an
         // active seat that's simply broke — an explicit label plus
@@ -134,6 +142,8 @@ export function CityMatchShell() {
   const { roomCode, isHost, currentUser } = useRoomActivity();
   const [selected, setSelected] = useState<number | null>(null);
   const [isRetireConfirmOpen, setIsRetireConfirmOpen] = useState(false);
+  // Wide screens show one of these at a time beside the board; narrower ones show all three, stacked.
+  const [sideTab, setSideTab] = useState<"activity" | "holdings" | "trade">("activity");
   // FR-42: chosen here, at match creation, not in RoomSettingsPanel — and
   // never touched again once city_create_match has written it.
   const [pacePreset, setPacePreset] = useState<25 | 40 | 60>(40);
@@ -541,104 +551,39 @@ export function CityMatchShell() {
       ? `${match.turn_number}-${effectiveRoll.dice[0]}-${effectiveRoll.dice[1]}`
       : "";
 
-    return (
-      <div className="max-w-5xl mx-auto">
-        {/* BUG-042: City's own realtime channel had no visible failure state
-            at all — cash badges and the board could silently stop updating
-            with nothing telling the player why. */}
-        {realtimeStatus !== "connected" && (
-          <ConnectionBanner
-            state={realtimeStatus}
-            onRetry={() => void refetch()}
-            className="mb-3 rounded-xl"
-          />
-        )}
-        {/* FR-31: every seat went away with nobody left to hand the turn
-            to, so the match paused durably rather than being destroyed or
-            silently stuck. Clears itself — server-side, the instant anyone
-            reconnects — no action is available here to take. */}
-        {match.status === "paused" && (
-          <div
-            className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 flex items-center gap-2"
-            role="status"
-          >
-            <Clock className="w-4 h-4 text-amber-300 shrink-0" aria-hidden="true" />
-            <p className="text-sm text-amber-200">
-              Match paused because everyone left. It carries on as soon as someone comes back.
+    // The roll, the dice and the buttons live in the board's empty middle, so
+    // they are on screen wherever the board is (audit C-19, C-17). No !auction
+    // gate on the dice: a review pass found one previously fully unmounted
+    // CityDice while an auction ran, so it remounted (and replayed its
+    // tumble) the instant the auction settled, even though it was still the
+    // same already-shown roll.
+    const boardCentre = (
+      <>
+        <Badge variant={isMyTurn ? "default" : "secondary"} data-testid="city-turn-banner">
+          {iAmOut ? "Watching" : isMyTurn ? "Your turn" : `${active?.username ?? "Next player"}'s turn`}
+        </Badge>
+        {effectiveRoll && <CityDice dice={effectiveRoll.dice} rollKey={rollKey} />}
+        {auction && (
+          <div className="flex flex-col items-center gap-1 text-center">
+            <p className="m-0 text-xs text-(--city-on-dark-soft)">
+              Auction open.{" "}
+              <span className="@min-[960px]:hidden">Bids are below the board.</span>
+              <span className="hidden @min-[960px]:inline">Bids are in the panel on the right.</span>
             </p>
-          </div>
-        )}
-        {match.mode === "timed" && match.time_limit_minutes != null && match.started_at && (
-          <CityMatchClock startedAt={match.started_at} limitMinutes={match.time_limit_minutes} />
-        )}
-        <div className="flex flex-wrap items-center gap-3 mb-3">
-          <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
-            {seats.map((s) => (
-              <SeatBadge key={s.id} seat={s} isCurrent={s.seat === match.current_seat} />
-            ))}
-          </div>
-          {/* BUG-006: turn_started_at/pace_seconds have driven a real
-              consequence (city_claim_timeout) since BUG-003's fix, but
-              nothing ever showed a player the clock was running at all —
-              same gating as the auto-claim effect above. Round H: while the
-              active seat owes a debt, this is the fixed 90s liquidation
-              window (FR-33/FR-42), not the ordinary pace-based clock. */}
-          {match.status === "active" && match.phase !== "auction" && !match.turn_clock_paused_at && (
-            (active?.pending_debt ?? 0) > 0 && match.debt_started_at ? (
-              <TurnCountdown deadline={new Date(match.debt_started_at).getTime() + 90_000} />
-            ) : (
-              match.turn_started_at && (
-                <TurnCountdown
-                  deadline={new Date(match.turn_started_at).getTime() + match.pace_seconds * 1000}
-                />
-              )
-            )
-          )}
-          {/* FR-29: a deliberate "I'm leaving" action, distinct from a
-              disconnect — routes through the same retire/liquidation
-              sequence a kick already uses. Confirmed first: unlike Leave
-              seat in the lobby, this forfeits a live position. Hidden
-              while paused — city_retire_self requires status='active',
-              same as every other command RPC. */}
-          {!iAmOut && match.status === "active" && (
             <Button
               size="sm"
-              variant="ghost"
-              className="text-muted-foreground"
-              onClick={() => setIsRetireConfirmOpen(true)}
+              variant="outline"
+              onClick={() =>
+                document.getElementById("city-auction-panel")?.scrollIntoView({ block: "center", behavior: "smooth" })
+              }
             >
-              <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
-              Retire
+              Go to the auction
             </Button>
-          )}
-        </div>
-
-        {error && (
-          <div className="mb-3">
-            <ErrorNote message={error} />
           </div>
         )}
-
-        <CityBoard
-          board={board}
-          seats={seats}
-          assets={assets}
-          currentSeat={match.current_seat}
-          selectedIdx={selected}
-          onSelect={setSelected}
-        />
-
-        {/* No !auction gate — a review pass found one here previously fully
-            unmounted CityDice while an auction ran, so it remounted (and
-            replayed its tumble) the instant the auction settled, even though
-            it was still the same already-shown roll. The text narration
-            below never had that gate either, so this also fixes the
-            visible inconsistency between the two during an auction. */}
-        {effectiveRoll && <CityDice dice={effectiveRoll.dice} rollKey={rollKey} />}
-
         <div
           className={
-            "flex flex-wrap items-center justify-center gap-2 mt-4" +
+            "flex flex-wrap items-center justify-center gap-2" +
             (auction ? " hidden" : "")
           }
         >
@@ -701,71 +646,221 @@ export function CityMatchShell() {
             </>
           )}
         </div>
+      </>
+    );
 
-        {auction && (
-          <CityAuction
-            auction={auction}
-            board={board}
-            seats={seats}
-            mySeat={mySeat}
-            onBid={(n) => void placeBid(n)}
-            onPass={() => void passAuction()}
-            onSettle={() => void settleAuction()}
-            serverClockSynced={serverClockSynced}
+    // A trade offer waiting for you shows as a dot on the Trade tab, so a hidden tab
+    // never hides an incoming offer.
+    const waitingOffers = mySeat ? offers.filter((o) => o.status === "pending" && o.to_seat === mySeat.seat).length : 0;
+
+    return (
+      <div className="@container mx-auto w-full max-w-[1440px]">
+        {/* BUG-042: City's own realtime channel had no visible failure state
+            at all — cash badges and the board could silently stop updating
+            with nothing telling the player why. */}
+        {realtimeStatus !== "connected" && (
+          <ConnectionBanner
+            state={realtimeStatus}
+            onRetry={() => void refetch()}
+            className="mb-3 rounded-xl"
           />
         )}
+        {/* FR-31: every seat went away with nobody left to hand the turn
+            to, so the match paused durably rather than being destroyed or
+            silently stuck. Clears itself — server-side, the instant anyone
+            reconnects — no action is available here to take. */}
+        {match.status === "paused" && (
+          <div
+            className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 flex items-center gap-2"
+            role="status"
+          >
+            <Clock className="w-4 h-4 text-amber-300 shrink-0" aria-hidden="true" />
+            <p className="text-sm text-amber-200">
+              Match paused because everyone left. It carries on as soon as someone comes back.
+            </p>
+          </div>
+        )}
+        {match.mode === "timed" && match.time_limit_minutes != null && match.started_at && (
+          <CityMatchClock startedAt={match.started_at} limitMinutes={match.time_limit_minutes} />
+        )}
+        {error && (
+          <div className="mb-3">
+            <ErrorNote message={error} />
+          </div>
+        )}
 
-        <CityHoldings
-          board={board}
-          assets={assets}
-          mySeat={mySeat}
-          isMyTurn={isMyTurn}
-          onBuild={(i) => void build(i)}
-          onSell={(i) => void sellBuilding(i)}
-          onMortgage={(i) => void mortgage(i)}
-          onUnmortgage={(i) => void unmortgage(i)}
-          onGiveUp={() => void declareBankruptcy()}
-        />
+        {/* Three cells: the seat strip, the board and the side panel. Stacked in that order
+            below 960px of match-view width (as before); above it the board takes the left
+            column and the strip and the panel share the right one, so the players, the
+            narration, the tabs and the board are all on screen at once. */}
+        <div className="grid gap-3 @min-[960px]:grid-cols-[minmax(0,1fr)_22rem] @min-[960px]:grid-rows-[auto_minmax(0,1fr)] @min-[960px]:gap-x-4 @min-[960px]:gap-y-2">
+          <div className="flex flex-wrap items-center gap-3 @min-[960px]:col-start-2 @min-[960px]:row-start-1">
+            <div className="flex flex-wrap gap-1.5 flex-1 min-w-full min-[360px]:min-w-0">
+              {seats.map((s) => (
+                <SeatBadge
+                  key={s.id}
+                  seat={s}
+                  isCurrent={s.seat === match.current_seat}
+                  isMe={s.user_id === currentUser.id}
+                />
+              ))}
+            </div>
+            {/* BUG-006: turn_started_at/pace_seconds have driven a real
+                consequence (city_claim_timeout) since BUG-003's fix, but
+                nothing ever showed a player the clock was running at all —
+                same gating as the auto-claim effect above. Round H: while the
+                active seat owes a debt, this is the fixed 90s liquidation
+                window (FR-33/FR-42), not the ordinary pace-based clock. */}
+            {match.status === "active" && match.phase !== "auction" && !match.turn_clock_paused_at && (
+              (active?.pending_debt ?? 0) > 0 && match.debt_started_at ? (
+                <TurnCountdown deadline={new Date(match.debt_started_at).getTime() + 90_000} />
+              ) : (
+                match.turn_started_at && (
+                  <TurnCountdown
+                    deadline={new Date(match.turn_started_at).getTime() + match.pace_seconds * 1000}
+                  />
+                )
+              )
+            )}
+            {/* FR-29: a deliberate "I'm leaving" action, distinct from a
+                disconnect — routes through the same retire/liquidation
+                sequence a kick already uses. Confirmed first: unlike Leave
+                seat in the lobby, this forfeits a live position. Hidden
+                while paused — city_retire_self requires status='active',
+                same as every other command RPC. */}
+            {!iAmOut && match.status === "active" && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-muted-foreground"
+                onClick={() => setIsRetireConfirmOpen(true)}
+              >
+                <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
+                Retire
+              </Button>
+            )}
+          </div>
 
-        <CityTrade
-          board={board}
-          assets={assets}
-          seats={seats}
-          mySeat={mySeat}
-          offers={offers}
-          onPropose={(a) => void proposeTrade(a)}
-          onAccept={(id) => void acceptTrade(id)}
-          onDecline={(id) => void declineTrade(id)}
-          onWithdraw={(id) => void withdrawTrade(id)}
-        />
+          <div className="min-w-0 @min-[960px]:col-start-1 @min-[960px]:row-start-1 @min-[960px]:row-span-2">
+            <CityBoard
+              board={board}
+              seats={seats}
+              assets={assets}
+              currentSeat={match.current_seat}
+              selectedIdx={selected}
+              onSelect={(i) => setSelected((cur) => (cur === i ? null : i))}
+              centre={boardCentre}
+            />
 
-        <CityActivityFeed events={events} seats={seats} board={board} />
+          </div>
+          <div className="relative min-w-0 @min-[960px]:col-start-2 @min-[960px]:row-start-2">
+            {/* Absolute on wide screens so this panel's height comes from the board's row,
+                never the other way round: a long activity feed scrolls in here instead of
+                making the page taller. */}
+            <div className="flex flex-col gap-3 @min-[960px]:absolute @min-[960px]:inset-0 @min-[960px]:overflow-y-auto">
+            {/* aria-live so a screen reader hears the roll, not just sighted players. */}
+            <p
+              className="text-sm text-muted-foreground text-center @min-[960px]:text-left"
+              role="status"
+              aria-live="polite"
+            >
+              {iAmOut
+                ? exitText(mySeat)
+                : detained && isMyTurn
+                  ? `You're held at Customs. Roll doubles, spend a Transit Visa, or pay 90 to leave.`
+                  : effectiveRoll
+                  ? narrate(effectiveRoll, board, seats) +
+                    (rerollPending
+                      ? " That was doubles, so you roll again after any building or trading."
+                      : "")
+                  : mustDecide && onSale && !inDebt
+                    ? `${onSale.name} is unclaimed. Buy it for ${onSale.price}, or pass.`
+                    : isMyTurn && inDebt
+                      ? "You're short on cash. Sell, mortgage, or trade to raise it, or declare bankruptcy."
+                      : isMyTurn && match.phase === "awaiting_roll"
+                        ? "Your turn. Roll the dice."
+                        : isMyTurn
+                          ? "You've rolled. Build, trade, or end your turn when you're ready."
+                          : `Waiting for ${active?.username ?? "the next player"}.`}
+            </p>
 
-        {/* aria-live so a screen reader hears the roll, not just sighted players. */}
-        <p
-          className="text-sm text-muted-foreground text-center mt-3"
-          role="status"
-          aria-live="polite"
-        >
-          {iAmOut
-            ? exitText(mySeat)
-            : detained && isMyTurn
-              ? `You're held at Customs. Roll doubles, spend a Transit Visa, or pay 90 to leave.`
-              : effectiveRoll
-              ? narrate(effectiveRoll, board, seats) +
-                (rerollPending
-                  ? " That was doubles, so you roll again after any building or trading."
-                  : "")
-              : mustDecide && onSale && !inDebt
-                ? `${onSale.name} is unclaimed. Buy it for ${onSale.price}, or pass.`
-                : isMyTurn && inDebt
-                  ? "You're short on cash. Sell, mortgage, or trade to raise it, or declare bankruptcy."
-                  : isMyTurn && match.phase === "awaiting_roll"
-                    ? "Your turn. Roll the dice."
-                    : isMyTurn
-                      ? "You've rolled. Build, trade, or end your turn when you're ready."
-                      : `Waiting for ${active?.username ?? "the next player"}.`}
-        </p>
+            {selected !== null && board[selected] && (
+              <CityTileDetail
+                space={board[selected]}
+                asset={assets.find((a) => a.space_idx === selected)}
+                seats={seats}
+                onClose={() => setSelected(null)}
+              />
+            )}
+
+            {auction && (
+              <div id="city-auction-panel">
+              <CityAuction
+                auction={auction}
+                board={board}
+                seats={seats}
+                mySeat={mySeat}
+                onBid={(n) => void placeBid(n)}
+                onPass={() => void passAuction()}
+                onSettle={() => void settleAuction()}
+                serverClockSynced={serverClockSynced}
+              />
+              </div>
+            )}
+
+            <Tabs value={sideTab} onValueChange={(v) => setSideTab(v as typeof sideTab)} className="gap-3">
+              {/* The tab strip only exists where one panel shows at a time. Below
+                  960px of match-view width all three sections are stacked and all
+                  visible, exactly as before. The panels are plain tabpanel divs, not the
+              tabs primitive's: it hides inactive ones with the hidden attribute,
+              which browsers enforce with !important, so no class can show them
+              again on a narrow screen. */}
+              <TabsList className="hidden w-full @min-[960px]:inline-flex">
+                <TabsTrigger value="activity">Activity</TabsTrigger>
+                <TabsTrigger value="holdings">Holdings</TabsTrigger>
+                <TabsTrigger value="trade">
+                  Trade
+                  {waitingOffers > 0 && (
+                    <>
+                      <span className="size-2 rounded-full bg-(--brand-primary)" aria-hidden="true" />
+                      <span className="sr-only">, {pluralize(waitingOffers, "offer")} waiting</span>
+                    </>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+              <div role="tabpanel" aria-label="Holdings" className={sideTab !== "holdings" ? "@min-[960px]:hidden" : undefined}>
+            <CityHoldings
+              board={board}
+              assets={assets}
+              mySeat={mySeat}
+              isMyTurn={isMyTurn}
+              onBuild={(i) => void build(i)}
+              onSell={(i) => void sellBuilding(i)}
+              onMortgage={(i) => void mortgage(i)}
+              onUnmortgage={(i) => void unmortgage(i)}
+              onGiveUp={() => void declareBankruptcy()}
+            />
+              </div>
+              <div role="tabpanel" aria-label="Trade" className={sideTab !== "trade" ? "@min-[960px]:hidden" : undefined}>
+            <CityTrade
+              board={board}
+              assets={assets}
+              seats={seats}
+              mySeat={mySeat}
+              offers={offers}
+              onPropose={(a) => void proposeTrade(a)}
+              onAccept={(id) => void acceptTrade(id)}
+              onDecline={(id) => void declineTrade(id)}
+              onWithdraw={(id) => void withdrawTrade(id)}
+            />
+              </div>
+              <div role="tabpanel" aria-label="Activity" className={sideTab !== "activity" ? "@min-[960px]:hidden" : undefined}>
+            <CityActivityFeed events={events} seats={seats} board={board} />
+              </div>
+            </Tabs>
+            </div>
+          </div>
+        </div>
 
         <Dialog open={isRetireConfirmOpen} onOpenChange={setIsRetireConfirmOpen}>
           <DialogContent>
