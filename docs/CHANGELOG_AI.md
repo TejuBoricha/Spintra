@@ -3190,3 +3190,15 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 **Verification:** typecheck clean, lint clean apart from the existing warning; new spec `qa-x28-channel-rejoin` (three tests): a `phx_close` for the main channel and for the game-event channel each leads to a second join and clears the failure notice, and a channel closed again after every re-join is joined after a growing wait (third wait at least 1.9s). All three fail with the hook change reverted (one join after 30s) and pass with it. Full local suite: see the PR.
 **Also today (state, not new work):** PR #61 (rate-limited sign-in retry, L-3) merged as `9aebaba` with all five checks green on the exact head.
 **Not done / not measured:** a real 30-player burst against the local realtime server (the injected close reproduces the server's response, not the load that provokes it); a channel stuck joining rather than closed (left to the realtime client's own retry); L-2, L-4, L-5, L-7, L-8; the sign-in rate limit itself (Q-2).
+
+---
+
+## [2026-09-30] — Tournament seeds box takes several seeds and the copy says what seeding does (audit T-3, the rest); PR #62 merged
+
+**AI:** Claude Code
+**Task:** T-3 was only half fixed after the bracket placement work (PR #59): the seeds box on the tournament page could take one seed, and the how-to still said "The bracket is seeded for you".
+**Files Modified:** `src/app/tools/tournament/page.tsx`, `src/lib/tool-seo-content.ts`, `tests/qa-x29-tournament-seeds.spec.ts` (new), `docs/TASKS.md`, `docs/HANDOFF.md`, `docs/AI_CONTEXT.md`, `docs/CHANGELOG_AI.md`
+**What changed:** the seeds field is a `Textarea` (an `<input>` drops line breaks, so a second seed could never be entered; the seeds were already parsed line by line). The how-to line now says: list your top seeds first to keep them apart until the later rounds; everyone else is drawn at random. I first wrote the copy and the test as if unseeded players kept the order they were typed in; the run showed they are drawn at random (`applySeeds` shuffles them, by design), so the test now pins only what is fixed (seed 1 opens the first match, seed 2 the third, so they are in opposite halves) and the copy says what happens.
+**Verification:** `npm run verify` clean; new spec (two tests; repeated five times to cover the random draw): several seeds are kept and land in opposite halves, and the page no longer says "seeded for you"; both tests fail with the change reverted and pass with it; the tournament specs together (this one, `comprehensive-tournament-audit`, `tournament-bracket-sizes`): 53 passed. Full suite: see the PR.
+**Also today (state, not new work):** PR #62 (the page joins a room's channels again after the server closes one, L-1) merged as `a6776fd`. Its pull-request `db-integration` job was lost twice to the runner and passed on the third attempt, with the push-event run of the same commit green in full; recorded on the PR. The audit report (version 11) was updated for the merged wave 3, wave 4 and classroom items.
+**Not done:** T-2 (re-scoring a finished match does not update later rounds), T-4 (ties crowned by list order), T-5.
