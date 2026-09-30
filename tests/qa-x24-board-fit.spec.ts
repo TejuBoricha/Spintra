@@ -9,6 +9,7 @@ const SIZES: [string, number, number][] = [
   ['desktop 1920x1080', 1920, 1080],
   ['portrait tablet 820x1180', 820, 1180],
   ['phone 390x844', 390, 844],
+  ['small phone 320x658', 320, 658],
 ];
 
 test('the board fits the screen, the actions are on it, tiles explain themselves, and you are marked', async () => {
@@ -32,6 +33,17 @@ test('the board fits the screen, the actions are on it, tiles explain themselves
       expect(box.x, `${name}: board starts left of the screen`).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width, `${name}: board runs past the right edge`).toBeLessThanOrEqual(w);
       expect(Math.abs(box.width - box.height), `${name}: board is not square`).toBeLessThanOrEqual(2);
+
+      // The seat badges and the turn clock share a row; at 320px they overlapped.
+      const clock = host.getByText(/^\d:\d{2}$/).first();
+      if (await clock.count()) {
+        const c = (await clock.boundingBox())!;
+        for (const b of await host.getByTestId('city-seat-badge').all()) {
+          const bb = (await b.boundingBox())!;
+          const overlap = bb.x < c.x + c.width && c.x < bb.x + bb.width && bb.y < c.y + c.height && c.y < bb.y + bb.height;
+          expect(overlap, `${name}: the turn clock overlaps a seat badge`).toBe(false);
+        }
+      }
 
       // The roll button is on the board (in its centre), and on screen without scrolling.
       const roll = host.getByRole('button', { name: /^roll dice$/i });

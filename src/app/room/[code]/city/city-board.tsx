@@ -316,9 +316,12 @@ function useBoardSize(ref: React.RefObject<HTMLElement | null>): number | null {
     const measure = () => {
       const width = el.clientWidth;
       const height = window.visualViewport?.height ?? window.innerHeight;
-      const next = Math.round(
-        Math.max(MIN_BOARD_PX, Math.min(width, height - RESERVED_ABOVE_PX, MAX_BOARD_PX))
-      );
+      // The floor applies to the height-derived size only: a very narrow phone
+      // (320px leaves about 264px inside the page and frame padding) must still
+      // get a board that fits its width, or the right-hand column runs off the
+      // screen with nothing to scroll it into view.
+      const byHeight = Math.max(MIN_BOARD_PX, Math.min(height - RESERVED_ABOVE_PX, MAX_BOARD_PX));
+      const next = Math.round(Math.max(1, Math.min(width, byHeight)));
       // A 1px wobble (a scrollbar appearing as the board changes the page
       // height) must not keep re-rendering the board.
       setSize((prev) => (prev !== null && Math.abs(prev - next) < 2 ? prev : next));

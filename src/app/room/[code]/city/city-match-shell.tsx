@@ -673,7 +673,7 @@ export function CityMatchShell() {
           <CityMatchClock startedAt={match.started_at} limitMinutes={match.time_limit_minutes} />
         )}
         <div className="flex flex-wrap items-center gap-3 mb-3">
-          <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
+          <div className="flex flex-wrap gap-1.5 flex-1 min-w-full min-[360px]:min-w-0">
             {seats.map((s) => (
               <SeatBadge
                 key={s.id}
