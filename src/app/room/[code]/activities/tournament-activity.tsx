@@ -20,6 +20,7 @@ import {
   type MatchRef,
   generateBracketForType,
   recordMatchResult,
+  isByePlayer,
   calculateStandings,
 } from "@/lib/tournament-engine";
 
@@ -30,7 +31,7 @@ function MatchCard({
   match: BracketMatch;
   onClick?: () => void;
 }) {
-  const isBye = match.player1 === "__BYE__" || match.player2 === "__BYE__";
+  const isBye = isByePlayer(match.player1) || isByePlayer(match.player2);
   // A match is only interactable when both real players are present and the
   // host provided a click handler. Matches with null/TBD slots must not be
   // editable — saving scores on them corrupts subsequent bracket advancement.
@@ -58,13 +59,14 @@ function MatchCard({
       data-testid="tournament-match"
       data-match-status={match.status}
       data-match-ready={isReady}
+      data-match-bye={isBye}
       className={`rounded-lg border px-3 py-2 text-xs transition-colors text-left w-full ${statusColors[match.status]} ${
         isClickable ? "cursor-pointer hover:border-amber-500/40" : "cursor-default"
       } ${!isReady && !isBye ? "opacity-60" : ""}`}
     >
       <div className="flex items-center justify-between gap-2 mb-1">
         <span className="truncate flex-1 font-medium">
-          {match.player1 || <span className="text-muted-foreground italic">TBD</span>}
+          {isByePlayer(match.player1) ? <span className="text-muted-foreground italic">BYE</span> : match.player1 || <span className="text-muted-foreground italic">TBD</span>}
         </span>
         <span className="font-mono text-muted-foreground tabular-nums">
           {match.score1 !== null ? match.score1 : "-"}
@@ -72,7 +74,7 @@ function MatchCard({
       </div>
       <div className="flex items-center justify-between gap-2">
         <span className="truncate flex-1 font-medium">
-          {match.player2 || <span className="text-muted-foreground italic">TBD</span>}
+          {isByePlayer(match.player2) ? <span className="text-muted-foreground italic">BYE</span> : match.player2 || <span className="text-muted-foreground italic">TBD</span>}
         </span>
         <span className="font-mono text-muted-foreground tabular-nums">
           {match.score2 !== null ? match.score2 : "-"}

@@ -35,6 +35,8 @@ import {
   generateBracketForType,
   recordMatchResult,
   calculateStandings,
+  isByePlayer,
+  playerLabel,
 } from "@/lib/tournament-engine";
 
 const GameIcon = getGameByType("tournament")!.icon;
@@ -157,9 +159,10 @@ function MatchCard({
   onClick?: () => void;
   compact?: boolean;
 }) {
-  const isBye1 = match.player1 === "BYE";
-  const isBye2 = match.player2 === "BYE";
-  const isBye = isBye1 || isBye2;
+  // The engine names a bye "__BYE__" (this used to compare against "BYE", so a bye match looked
+  // like a playable one, showed the raw placeholder and could be re-scored: audit T-14).
+  const isBye = isByePlayer(match.player1) || isByePlayer(match.player2);
+  const isClickable = !!onClick && !isBye;
 
   const statusColors = {
     pending: "border-(--border-hairline) bg-(--surface-sunken)",
@@ -174,23 +177,28 @@ function MatchCard({
   };
 
   return (
-    <motion.div
-      whileHover={onClick && !isBye ? { scale: 1.02 } : undefined}
-      onClick={isBye ? undefined : onClick}
+    // A real <button>, disabled when the match cannot be scored (a bye), so keyboard users can reach
+    // and operate it like the in-room Tournament's match cards (audit T-13).
+    <motion.button
+      type="button"
+      disabled={!isClickable}
+      whileHover={isClickable ? { scale: 1.02 } : undefined}
+      onClick={isClickable ? onClick : undefined}
+      aria-label={isClickable ? `Record score: ${playerLabel(match.player1) ?? "TBD"} vs ${playerLabel(match.player2) ?? "TBD"}` : undefined}
       data-testid="tournament-match"
       data-match-status={match.status}
       data-match-ready={!!(match.player1 && match.player2 && !isBye)}
+      data-match-bye={isBye}
       className={`
-        rounded-lg border px-3 py-2 cursor-pointer transition-colors
+        block w-full text-left rounded-lg border px-3 py-2 transition-colors
         ${statusColors[match.status]}
-        ${onClick && !isBye ? "hover:border-emerald-500/40" : ""}
-        ${isBye ? "cursor-default" : ""}
+        ${isClickable ? "cursor-pointer hover:border-emerald-500/40" : "cursor-default"}
         ${compact ? "text-xs" : "text-sm"}
       `}
     >
       <div className="flex items-center justify-between gap-2 mb-1">
         <span className="truncate flex-1 font-medium">
-          {match.player1 || <span className="text-muted-foreground italic">TBD</span>}
+          {isByePlayer(match.player1) ? <span className="text-muted-foreground italic">BYE</span> : match.player1 || <span className="text-muted-foreground italic">TBD</span>}
         </span>
         <span className="font-mono text-muted-foreground tabular-nums">
           {match.score1 !== null ? match.score1 : "-"}
@@ -198,7 +206,7 @@ function MatchCard({
       </div>
       <div className="flex items-center justify-between gap-2">
         <span className="truncate flex-1 font-medium">
-          {match.player2 || <span className="text-muted-foreground italic">TBD</span>}
+          {isByePlayer(match.player2) ? <span className="text-muted-foreground italic">BYE</span> : match.player2 || <span className="text-muted-foreground italic">TBD</span>}
         </span>
         <span className="font-mono text-muted-foreground tabular-nums">
           {match.score2 !== null ? match.score2 : "-"}
@@ -212,7 +220,7 @@ function MatchCard({
           </span>
         </div>
       )}
-    </motion.div>
+    </motion.button>
   );
 }
 

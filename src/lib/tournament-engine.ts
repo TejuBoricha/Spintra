@@ -30,6 +30,12 @@ export interface Tournament {
   grandFinal?: BracketMatch | null; // Winners-bracket champ vs. losers-bracket champ
 }
 
+/** The placeholder opponent a player with a bye is paired with. It is never shown as a name. */
+export const BYE_PLAYER = "__BYE__";
+export const isByePlayer = (name: string | null | undefined): boolean => name === BYE_PLAYER;
+/** What to show for a slot: "BYE" for the placeholder (audit T-14), the name otherwise. */
+export const playerLabel = (name: string | null | undefined): string | null => (name === BYE_PLAYER ? "BYE" : name ?? null);
+
 export function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
 }
