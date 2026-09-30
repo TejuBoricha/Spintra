@@ -36,6 +36,7 @@ spintra/
 │   ├── AI_RULES.md                 ← Mandatory engineering constitution for every AI assistant
 │   ├── AI_CONTEXT.md               ← Current project state only (update every session)
 │   ├── HANDOFF.md                  ← Session continuity (last/current/next task, blockers)
+│   ├── PENDING_MIGRATIONS_DRAFT.md ← Migrations 0115/0116: written, not yet applied or tested (delete once real)
 │   ├── TASKS.md                    ← Backlog: High/Medium/Low priority, in progress, completed
 │   ├── ARCHITECTURE.md             ← This file
 │   ├── DECISIONS.md                ← Architecture Decision Records (ADRs)
