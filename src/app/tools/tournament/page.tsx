@@ -621,9 +621,10 @@ export default function TournamentPage() {
                 <p className="text-xs text-muted-foreground mb-1.5">
                   Seeds (one per line, top seed first)
                 </p>
-                <Input
+                <Textarea
+                  aria-label="Seeds, one per line, top seed first"
                   placeholder="Alpha&#10;Bravo"
-                  className="font-mono text-sm min-h-[44px]"
+                  className="min-h-[72px] resize-y font-mono text-sm"
                   value={seedInput}
                   onChange={(e) => {
                     setSeedInput(e.target.value);

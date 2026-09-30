@@ -135,7 +135,7 @@ export const TOOL_SEO_CONTENT: Record<string, ToolSeoContent> = {
     howTo: {
       title: "How to make a tournament bracket",
       steps: [
-        "Add your players or teams. The bracket is seeded for you.",
+        "Add your players or teams. List your top seeds first to keep them apart until the later rounds; everyone else is drawn at random.",
         "Choose single elimination, double elimination, round robin, or Swiss.",
         "Record each match result. Winners advance to their next match.",
         "Create a room so players can follow the bracket from their own phones.",
