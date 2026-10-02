@@ -27,9 +27,13 @@ name: Daily Database Backup
 
 on:
   schedule:
-    # 03:00 UTC is when it's queued; GitHub often starts scheduled jobs
-    # hours late (observed 07:45-09:52 UTC).
+    # Twice a day, 12 hours apart, each a complete restore-checked backup:
+    # one failed run (a pooler outage longer than the retries below, a
+    # GitHub or download failure in any step) no longer leaves a day with
+    # no backup. 03:00/15:00 UTC is when they're queued; GitHub often starts
+    # scheduled jobs hours late (observed 07:45-09:52 UTC for 03:00).
     - cron: "0 3 * * *"
+    - cron: "0 15 * * *"
   workflow_dispatch: {}
 
 concurrency:
@@ -50,7 +54,9 @@ env:
 jobs:
   backup:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Room for a dump step slowed by retries (capped at 25 minutes below)
+    # followed by the restore check's `supabase start`.
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
@@ -80,6 +86,7 @@ jobs:
           version: ${{ env.SUPABASE_CLI_VERSION }}
 
       - name: Dump roles, schema, data and extras
+        timeout-minutes: 25
         env:
           DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
@@ -89,40 +96,58 @@ jobs:
           # "(EAUTHQUERY) auth_query secret check timed out" and, with no
           # retry, that day had no backup until the job was re-run by hand.
           # Every command below only reads production and rewrites its own
-          # output file, so running one again is safe. 4 tries, 15s/30s/60s apart.
+          # output file, so running one again is safe: up to 5 tries, 15s,
+          # 30s, 60s and 120s apart. Each try is cut off after 5 minutes (a
+          # whole dump takes well under one), so a connection that stalls
+          # instead of failing is tried again rather than hanging until the
+          # job's timeout. A wrong password or a SQL syntax error stops at
+          # once: waiting can't fix them, and repeated failed logins can get
+          # the runner's address banned by the pooler. A failure that outlasts
+          # all this is covered by the second daily run (see the schedule).
+          export PGCONNECT_TIMEOUT=15
           retry() {
-            local attempt=1 delay=15
-            until "$@"; do
-              if [ "$attempt" -ge 4 ]; then
-                # Not "$*": the arguments include the database URL.
-                echo "::error::A read from the production database failed $attempt times in a row (its own error is above)."
+            local label="$1"; shift
+            local attempt=1 delay=15 rc err
+            err="$(mktemp)"
+            while true; do
+              rc=0
+              timeout --kill-after=30s 300 "$@" 2>"$err" || rc=$?
+              cat "$err" >&2
+              if [ "$rc" -eq 0 ]; then
+                return 0
+              fi
+              # The label, never "$*": the arguments include the database URL.
+              if grep -qiE 'password authentication failed|no pg_hba.conf entry|syntax error at or near' "$err"; then
+                echo "::error::Backup ${label}: failed in a way waiting can't fix (its error is above)."
                 return 1
               fi
-              echo "::warning::Attempt $attempt failed; trying again in ${delay}s."
+              if [ "$attempt" -ge 5 ]; then
+                echo "::error::Backup ${label}: failed $attempt times in a row (the last error is above)."
+                return 1
+              fi
+              echo "::warning::Backup ${label}: attempt $attempt failed; trying again in ${delay}s."
               sleep "$delay"
               attempt=$((attempt + 1))
               delay=$((delay * 2))
             done
           }
-          # Reopens (empties) the output file on every attempt, so a failed
-          # try can't leave partial output in front of a good one.
-          write_to() { local out="$1"; shift; "$@" > "$out"; }
           mkdir -p backup
           echo "BACKUP_TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)" >> "$GITHUB_ENV"
-          # Counted just before the data dump, so the dump can only have the
+          retry roles supabase db dump --db-url "$DATABASE_URL" -f backup/roles.sql --role-only
+          retry schema supabase db dump --db-url "$DATABASE_URL" -f backup/schema.sql
+          # Counted right before the data dump, so the dump can only have the
           # same or more rows (users only grow); the restore check relies on it.
-          retry write_to backup/source-counts.txt psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -c \
+          # (psql -o empties the file on every try.)
+          retry "row counts" psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -o backup/source-counts.txt -c \
             "select (select count(*) from auth.users) || ' ' || (select count(*) from public.trivia_questions)"
-          retry supabase db dump --db-url "$DATABASE_URL" -f backup/roles.sql --role-only
-          retry supabase db dump --db-url "$DATABASE_URL" -f backup/schema.sql
           # Login state stays out of backups: sessions, refresh tokens,
           # one-time (recovery/email) tokens, OAuth flow state and MFA
           # challenge/claim rows (the claims reference sessions).
-          retry supabase db dump --db-url "$DATABASE_URL" -f backup/data.sql --use-copy --data-only \
+          retry data supabase db dump --db-url "$DATABASE_URL" -f backup/data.sql --use-copy --data-only \
             -s public,auth \
             -x auth.sessions -x auth.refresh_tokens -x auth.one_time_tokens \
             -x auth.flow_state -x auth.mfa_challenges -x auth.mfa_amr_claims
-          retry write_to backup/extras.sql psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -f scripts/backup/extras.sql
+          retry extras psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -o backup/extras.sql -f scripts/backup/extras.sql
           # A schema this size is never tiny; a near-empty file means the
           # dump pointed somewhere wrong.
           for f in schema data; do
