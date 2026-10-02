@@ -4,9 +4,9 @@
 > DB schema live in `ARCHITECTURE.md`. Session-to-session handoff lives in `HANDOFF.md`. Backlog
 > and roadmap live in `TASKS.md`. Do not duplicate those here — link to them instead.
 > Always update this file after every significant milestone.
-> Last updated: 2026-09-30
+> Last updated: 2026-10-02
 
-> **Read this first (2026-09-30).** The active thread is a product audit whose fixes ship as small tested PRs (#58 to #66 merged and deployed). The sections "Current Focus" and "Next Recommended Task" below still describe earlier states and are kept as history. For what is done, in progress and pending, read the **State board at the top of `HANDOFF.md`**, then `TASKS.md` (the "Wave 3" bullets). Two migrations (0115, 0116) are drafted, not applied: `PENDING_MIGRATIONS_DRAFT.md`.
+> **Read this first (2026-10-02).** The active thread is a product audit whose fixes ship as small tested PRs (#58 to #66 merged and deployed; #68, the tournament, tools and content fixes plus a test fix and Leave room, and #67, a retry for the daily backup after the 2 Oct run failed on one refused connection, are open). The sections "Current Focus" and "Next Recommended Task" below still describe earlier states and are kept as history. For what is done, in progress and pending, read the **State board at the top of `HANDOFF.md`**, then `TASKS.md` (the "Wave 3" bullets). Two migrations (0115, 0116) are drafted, not applied: `PENDING_MIGRATIONS_DRAFT.md`.
 
 ---
 
