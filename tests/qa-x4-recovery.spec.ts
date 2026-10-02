@@ -1,7 +1,6 @@
 import { test, chromium } from '@playwright/test';
 import { execSync } from 'child_process';
-import { acceptCookieBanner as accept, skipIfDemoMode } from './qa-city-helpers';
-const BASE='http://127.0.0.1:4000';
+import { acceptCookieBanner as accept, BASE, skipIfDemoMode } from './qa-city-helpers';
 const sql=(q:string)=>execSync(`docker exec supabase_db_Spintra-1 psql -U postgres -d postgres -t -A -c "${q.replace(/"/g,'\\"')}"`).toString().trim();
 
 test('TC-REC-05/06/07: offline mid-turn, reconnect, leave and rejoin', async () => {

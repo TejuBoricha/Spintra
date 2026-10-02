@@ -23,9 +23,61 @@ export interface Tournament {
   participants: string[];
   seeds: string[];
   currentRound: number;
+  /** The champion's name, or for a shared first place a display line naming everyone ("Ann, Bo, and Cy"). */
   winner: string | null;
+  /** Everyone level for first place when a round robin or Swiss ends level; the list `winner` is built from. */
+  winners?: string[];
   losersBracket?: BracketMatch[][]; // For double elimination
   grandFinal?: BracketMatch | null; // Winners-bracket champ vs. losers-bracket champ
+}
+
+/** The placeholder opponent a player with a bye is paired with. It is never shown as a name. */
+export const BYE_PLAYER = "__BYE__";
+export const isByePlayer = (name: string | null | undefined): boolean => name === BYE_PLAYER;
+/** What to show for a slot: "BYE" for the placeholder (audit T-14), the name otherwise. */
+export const playerLabel = (name: string | null | undefined): string | null => (name === BYE_PLAYER ? "BYE" : name ?? null);
+
+/** True when the finished tournament's first place is shared (`winner` then names everyone). */
+export const isSharedFirst = (t: Pick<Tournament, "winners">): boolean => (t.winners?.length ?? 0) > 1;
+
+/**
+ * The accessible name of a match card a host can act on. It replaces the card's
+ * visible text for screen readers, so once a match is played it has to carry the
+ * score and the result too ("Change score: Alpha 3, Bravo 1, Alpha won").
+ */
+export function matchActionLabel(match: BracketMatch): string {
+  const p1 = playerLabel(match.player1) ?? "TBD";
+  const p2 = playerLabel(match.player2) ?? "TBD";
+  if (match.status !== "completed" || match.score1 === null || match.score2 === null) {
+    return `Record score: ${p1} vs ${p2}`;
+  }
+  const result = match.winner ? `${playerLabel(match.winner)} won` : "a draw";
+  return `Change score: ${p1} ${match.score1}, ${p2} ${match.score2}, ${result}`;
+}
+
+/**
+ * Every result is recorded by name (points, who won, who advances), so two
+ * entries with the same name can't be told apart: their standings merged, and a
+ * single winner was announced as "Ann and Ann share first place". Later repeats
+ * are numbered ("Ann", "Ann (2)"), skipping a number the list already uses, as
+ * the room's own Tournament does with repeated usernames.
+ */
+export function uniqueParticipantNames(names: string[]): string[] {
+  const typed = new Set(names);
+  // The bye placeholder is taken too: a player called "__BYE__" (a room username
+  // can be anything) was treated as a bye, so their matches could never be played.
+  const used = new Set<string>([BYE_PLAYER]);
+  return names.map((name) => {
+    if (!used.has(name)) {
+      used.add(name);
+      return name;
+    }
+    let n = 2;
+    while (typed.has(`${name} (${n})`) || used.has(`${name} (${n})`)) n++;
+    const numbered = `${name} (${n})`;
+    used.add(numbered);
+    return numbered;
+  });
 }
 
 export function generateId(): string {
@@ -37,7 +89,7 @@ export function padWithByes(participants: string[]): string[] {
   const size = participants.length;
   const nextPow2 = Math.pow(2, Math.ceil(Math.log2(size)));
   if (size === nextPow2) return [...participants];
-  const byes = Array(nextPow2 - size).fill("__BYE__");
+  const byes = Array(nextPow2 - size).fill(BYE_PLAYER);
   return [...participants, ...byes];
 }
 
@@ -153,34 +205,100 @@ export function generateRoundRobin(participants: string[]): BracketMatch[][] {
   return [matches];
 }
 
-export function calculateStandings(rounds: BracketMatch[][], participants: string[]) {
-  const points: Record<string, number> = {};
-  participants.forEach(p => points[p] = 0);
-  
+export interface Standing {
+  player: string;
+  points: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  /** Total of this player's own scores; a tiebreaker after the score difference. */
+  scored: number;
+  /** Own scores minus opponents' scores; the first tiebreaker after points. */
+  diff: number;
+  /** 1 for first place; players level on points, difference and score share a rank. */
+  rank: number;
+}
+
+
+/**
+ * Round robin and Swiss standings: points (3 for a win, 1 for a draw), then score
+ * difference, then total scored (audit T-4: a tie used to be settled by whoever was
+ * typed first). Players still level on all three share a rank.
+ */
+export function calculateStandings(rounds: BracketMatch[][], participants: string[]): Standing[] {
+  // One pass over the matches (it used to scan every match three more times per
+  // player for the win, draw and loss counts).
+  const tally = new Map(
+    participants.map((p) => [p, { points: 0, wins: 0, draws: 0, losses: 0, scored: 0, conceded: 0 }])
+  );
+
   for (const round of rounds) {
     for (const match of round) {
-      if (match.status === "completed" && match.player1 && match.player2) {
-        if (match.score1 !== null && match.score2 !== null) {
-          if (match.score1 > match.score2) {
-            points[match.player1] = (points[match.player1] || 0) + 3;
-          } else if (match.score2 > match.score1) {
-            points[match.player2] = (points[match.player2] || 0) + 3;
-          } else {
-            points[match.player1] = (points[match.player1] || 0) + 1;
-            points[match.player2] = (points[match.player2] || 0) + 1;
+      if (match.status !== "completed") continue;
+      const { player1, player2, score1, score2, winner } = match;
+      const t1 = player1 ? tally.get(player1) : undefined;
+      const t2 = player2 ? tally.get(player2) : undefined;
+      if (winner !== null) {
+        const tw = tally.get(winner);
+        if (tw) tw.wins++;
+      }
+      // A player is counted once per match, even listed in both slots.
+      for (const t of t1 === t2 ? [t1] : [t1, t2]) {
+        if (!t) continue;
+        if (score1 !== null && score1 === score2) t.draws++;
+        if (winner !== null && t !== tally.get(winner)) t.losses++;
+      }
+      if (player1 && player2 && score1 !== null && score2 !== null) {
+        if (score1 > score2) {
+          if (t1) t1.points += 3;
+        } else if (score2 > score1) {
+          if (t2) t2.points += 3;
+        } else {
+          if (t1) t1.points += 1;
+          if (t2) t2.points += 1;
+        }
+        // A bye has no real opponent, so its score says nothing about strength.
+        if (player1 !== BYE_PLAYER && player2 !== BYE_PLAYER) {
+          if (t1) {
+            t1.scored += score1;
+            t1.conceded += score2;
+          }
+          if (t2) {
+            t2.scored += score2;
+            t2.conceded += score1;
           }
         }
       }
     }
   }
 
-  return participants.map(p => ({ 
-    player: p, 
-    points: points[p], 
-    wins: rounds.flat().filter(m => m.status === "completed" && m.winner === p).length,
-    draws: rounds.flat().filter(m => m.status === "completed" && m.score1 === m.score2 && m.score1 !== null && (m.player1 === p || m.player2 === p)).length,
-    losses: rounds.flat().filter(m => m.status === "completed" && m.winner !== p && m.winner !== null && (m.player1 === p || m.player2 === p)).length,
-  })).sort((a, b) => b.points - a.points);
+  const rows: Standing[] = participants.map((p) => {
+    const t = tally.get(p)!;
+    return {
+      player: p,
+      points: t.points,
+      wins: t.wins,
+      draws: t.draws,
+      losses: t.losses,
+      scored: t.scored,
+      diff: t.scored - t.conceded,
+      rank: 0,
+    };
+  });
+  rows.sort((a, b) => b.points - a.points || b.diff - a.diff || b.scored - a.scored);
+
+  let rank = 1;
+  rows.forEach((row, i) => {
+    const prev = rows[i - 1];
+    if (prev && (row.points !== prev.points || row.diff !== prev.diff || row.scored !== prev.scored)) rank = i + 1;
+    row.rank = rank;
+  });
+  return rows;
+}
+
+/** Everyone in first place: one player, or several when the tiebreakers leave them level. */
+export function firstPlace(standings: Standing[]): string[] {
+  return standings.filter((row) => row.rank === 1).map((row) => row.player);
 }
 
 export function generateNextSwissRound(rounds: BracketMatch[][], participants: string[]): BracketMatch[] {
@@ -229,7 +347,7 @@ export function generateNextSwissRound(rounds: BracketMatch[][], participants: s
         round: rounds.length + 1,
         position: nextRound.length,
         player1: available[0],
-        player2: "__BYE__",
+        player2: BYE_PLAYER,
         score1: 1,
         score2: 0,
         winner: available[0],
@@ -267,7 +385,7 @@ export function generateSwiss(
         round: 1,
         position: i / 2,
         player1: shuffled[i],
-        player2: "__BYE__",
+        player2: BYE_PLAYER,
         score1: 1,
         score2: 0,
         winner: shuffled[i],
@@ -397,15 +515,15 @@ export function advanceInLosersBracket(
       updatedNextMatch &&
       updatedNextMatch.player1 &&
       updatedNextMatch.player2 &&
-      (updatedNextMatch.player1 === "__BYE__" || updatedNextMatch.player2 === "__BYE__")
+      (updatedNextMatch.player1 === BYE_PLAYER || updatedNextMatch.player2 === BYE_PLAYER)
     ) {
-      const nonBye = updatedNextMatch.player1 === "__BYE__" ? updatedNextMatch.player2 : updatedNextMatch.player1;
+      const nonBye = updatedNextMatch.player1 === BYE_PLAYER ? updatedNextMatch.player2 : updatedNextMatch.player1;
       lb[nextRoundIdx] = lb[nextRoundIdx].map((m) =>
         m.position === targetPos
           ? {
               ...m,
-              score1: m.player1 === "__BYE__" ? 0 : 1,
-              score2: m.player1 === "__BYE__" ? 1 : 0,
+              score1: m.player1 === BYE_PLAYER ? 0 : 1,
+              score2: m.player1 === BYE_PLAYER ? 1 : 0,
               winner: nonBye,
               status: "completed" as const,
             }
@@ -470,9 +588,9 @@ export function generateBracketForType(
       ];
 
       for (const { match, roundIdx, position, bracketKey } of allMatches) {
-        if (match.status !== "completed" && match.player1 && match.player2 && (match.player1 === "__BYE__" || match.player2 === "__BYE__")) {
-          const s1 = match.player1 === "__BYE__" ? 0 : 1;
-          const s2 = match.player2 === "__BYE__" ? 0 : 1;
+        if (match.status !== "completed" && match.player1 && match.player2 && (match.player1 === BYE_PLAYER || match.player2 === BYE_PLAYER)) {
+          const s1 = match.player1 === BYE_PLAYER ? 0 : 1;
+          const s2 = match.player2 === BYE_PLAYER ? 0 : 1;
           const outcome = recordMatchResult(tournament, { match, roundIdx, position, bracketKey }, s1, s2);
           if (outcome.kind !== "invalid") {
             tournament = outcome.tournament;
@@ -666,12 +784,12 @@ export function recordMatchResult(
 
           // Check if the target match is now fully populated and has a BYE
           const m = lb[targetRound][targetPos];
-          if (m.player1 && m.player2 && (m.player1 === "__BYE__" || m.player2 === "__BYE__")) {
-            const nonBye = m.player1 === "__BYE__" ? m.player2 : m.player1;
+          if (m.player1 && m.player2 && (m.player1 === BYE_PLAYER || m.player2 === BYE_PLAYER)) {
+            const nonBye = m.player1 === BYE_PLAYER ? m.player2 : m.player1;
             lb[targetRound][targetPos] = {
               ...m,
-              score1: m.player1 === "__BYE__" ? 0 : 1,
-              score2: m.player1 === "__BYE__" ? 1 : 0,
+              score1: m.player1 === BYE_PLAYER ? 0 : 1,
+              score2: m.player1 === BYE_PLAYER ? 1 : 0,
               winner: nonBye,
               status: "completed" as const,
             };
@@ -753,12 +871,19 @@ export function recordMatchResult(
         }
       }
 
-      const standings = calculateStandings(updatedBracket, tournament.participants);
-      const champion = standings[0].player;
+      const leaders = firstPlace(calculateStandings(updatedBracket, tournament.participants));
+      // For display only ("Ann, Bo, and Cy"; `winners` is the list). Joined with " & " this
+      // could not be read when a team name has an ampersand: "Sam & Max & Ann & Bo".
+      const champion = new Intl.ListFormat("en", { style: "long", type: "conjunction" }).format(leaders);
       return {
         kind: "champion",
         winner: champion,
-        tournament: { ...tournament, rounds: updatedBracket, winner: champion }
+        tournament: {
+          ...tournament,
+          rounds: updatedBracket,
+          winner: champion,
+          winners: leaders.length > 1 ? leaders : undefined,
+        },
       };
     }
   }

@@ -1,7 +1,6 @@
 import { test, expect, chromium } from '@playwright/test';
-import { acceptCookieBanner as accept, skipIfDemoMode } from './qa-city-helpers';
+import { acceptCookieBanner as accept, BASE, skipIfDemoMode } from './qa-city-helpers';
 
-const BASE = 'http://127.0.0.1:4000';
 
 // BUG-007 round H: this specific scenario (a trade proposed to an
 // unresponsive partner) was the whole reason the server-side 45s escape

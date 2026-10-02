@@ -1,4 +1,5 @@
 import { test, expect, chromium } from '@playwright/test';
+import { skipIfDemoMode, sql } from './qa-city-helpers';
 
 // Covers the core multiplayer loop the Session 41 production-readiness
 // audit found completely untested: two genuinely distinct participants
@@ -546,6 +547,94 @@ test('presence reconciliation settles cleanly as a third participant joins and l
     await expect(guestPage1.getByText(/is now the host|you're the host/i)).not.toBeVisible();
   } finally {
     await guestContext1.close();
+    await browser.close();
+  }
+});
+
+// The Leave room button takes the player home inside the app (no full page
+// load), so the room's unmount clean-up has to do what unloading the page did:
+// stop the heartbeat and ask the server to let this presence expire
+// (room_presence_leave backdates last_seen_at by 20s; it does not delete the
+// row). Everyone else sees the player gone at once, because the participant
+// row is deleted, not after the 30s presence window.
+test('a guest who presses Leave room goes home, drops off the host list, and stops looking present', async ({ page, baseURL }) => {
+  test.setTimeout(120_000);
+  await page.goto('/create?type=trivia');
+  await page.waitForSelector('[data-testid="create-room-button"]', { timeout: 30000 });
+  await page.click('[data-testid="create-room-button"]');
+  await page.waitForURL(/\/room\/[A-Z0-9]+/);
+  const roomCode = page.url().split('/room/')[1];
+  await skipIfDemoMode(page);
+
+  const browser = await chromium.launch();
+  const guest = await (await browser.newContext()).newPage();
+  // The page and its realtime socket stay alive after a soft navigation, so
+  // every channel the room joined has to be left explicitly (TASKS.md: the
+  // reason leaveRoom used a hard navigation). Topics that name the room, seen
+  // in the frames the guest sends ([join_ref, ref, topic, event, payload]); a
+  // closed socket leaves them all, which is how a full page load did it.
+  const joined = new Set<string>();
+  const left = new Set<string>();
+  guest.on('websocket', (ws) => {
+    ws.on('framesent', ({ payload }) => {
+      if (typeof payload !== 'string' || !payload.startsWith('[')) return;
+      try {
+        const [, , topic, event] = JSON.parse(payload) as [unknown, unknown, string, string];
+        if (typeof topic !== 'string' || !topic.includes(roomCode)) return;
+        if (event === 'phx_join') {
+          joined.add(topic);
+          left.delete(topic);
+        } else if (event === 'phx_leave') {
+          left.add(topic);
+        }
+      } catch {
+        // Not a JSON push frame.
+      }
+    });
+    ws.on('close', () => joined.forEach((t) => left.add(t)));
+  });
+  // When the guest's page sends a heartbeat. Watched in the browser because the
+  // server can't show a leftover one: room_heartbeat ignores anyone who is no
+  // longer a participant, and leaving deletes the participant row first.
+  const beatsSentAt: number[] = [];
+  guest.on('request', (req) => {
+    if (req.url().includes('/rest/v1/rpc/room_heartbeat')) beatsSentAt.push(Date.now());
+  });
+  // Presence rows in this room, fresh within the last 19s, of anyone who is no
+  // longer a participant: the guest, once they have left.
+  const freshLeavers = () =>
+    sql(
+      `select count(*) from room_presence rp where rp.room_code = '${roomCode}' and rp.last_seen_at > now() - interval '19 seconds' and not exists (select 1 from room_participants p where p.room_id = rp.room_code and p.user_id = rp.user_id)`
+    );
+  try {
+    await guest.goto(`${baseURL}/room/${roomCode}`);
+    await expect(guest.getByText('Live', { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/People \(2\)/)).toBeVisible({ timeout: 30000 });
+    await expect.poll(() => sql(`select count(*) from room_presence where room_code = '${roomCode}'`), { timeout: 15000 }).toBe('2');
+
+    // One heartbeat just before leaving (the room beats when the browser comes
+    // back online), so the guest's row is fresh: if the leave were never sent it
+    // would stay fresh for 19s, well past the check below.
+    await guest.evaluate(() => window.dispatchEvent(new Event('online')));
+    await guest.click('button[aria-label="Leave room"]');
+    await guest.click('button:has-text("Leave Room")');
+    await guest.waitForURL(`${baseURL}/`, { timeout: 15000 });
+    // A beat already on its way while the page navigated is not a leftover.
+    const settledAt = Date.now() + 1000;
+
+    // Well inside the 30s presence window: this is the deletion, not a timeout.
+    await expect(page.getByText(/People \(1\)/)).toBeVisible({ timeout: 10000 });
+    // No room channel is left joined.
+    expect(joined.size, 'saw the room channels being joined').toBeGreaterThan(0);
+    await expect.poll(() => [...joined].filter((t) => !left.has(t)), { timeout: 10000 }).toEqual([]);
+    // The leave reached the server...
+    await expect.poll(freshLeavers, { timeout: 10000 }).toBe('0');
+    // ...and the tab, still open on the home page, sends no heartbeat for more
+    // than one 10s interval: the room's timers and worker were stopped.
+    expect(beatsSentAt.length, 'saw the guest heartbeat while in the room').toBeGreaterThan(0);
+    await guest.waitForTimeout(13_000);
+    expect(beatsSentAt.filter((t) => t > settledAt), 'heartbeats sent after leaving').toEqual([]);
+  } finally {
     await browser.close();
   }
 });

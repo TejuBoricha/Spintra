@@ -170,10 +170,10 @@ export const TRUTH_OR_DARE_CATEGORIES = [
     ],
     dares: [
       "Do your best impression of another person in the room",
-      "Let someone else post a status on your social media",
+      "Read out a funny status the group writes for you (nobody posts it)",
       "Talk in an accent for the next 3 rounds",
       "Do 10 push-ups right now",
-      "Show the last photo in your camera roll",
+      "Show the funniest photo you're willing to share",
       "Sing the chorus of any song",
     ],
   },
@@ -190,9 +190,9 @@ export const TRUTH_OR_DARE_CATEGORIES = [
     dares: [
       "Do your best dance move",
       "Speak in rhymes for the next 5 minutes",
-      "Let the group choose your phone wallpaper",
+      "Let the group pick a nickname for you for the rest of the game",
       "Do an impression of a celebrity",
-      "Eat a spoonful of a condiment chosen by the group",
+      "Describe your favorite snack like a food critic for 30 seconds",
     ],
   },
   {
@@ -236,9 +236,9 @@ export const TRUTH_OR_DARE_CATEGORIES = [
       "What's the biggest risk you've taken?",
     ],
     dares: [
-      "Call someone and tell them a secret",
-      "Post an embarrassing photo on your story for 1 hour",
-      "Let someone go through your phone for 30 seconds",
+      "Whisper a made-up secret to the person on your left",
+      "Show the group an embarrassing photo, no posting",
+      "Let the group choose a song for you to sing along to",
     ],
   },
 ] as const;

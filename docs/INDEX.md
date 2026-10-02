@@ -31,6 +31,7 @@ Load only what the row tells you to. Don't read every document by default — se
 | `AI_RULES.md` | The engineering constitution — decision priorities, quality gates, security rules, Definition of Done. Rarely changes. |
 | `AI_CONTEXT.md` | Current project state only — milestone, progress, objective, focus, known issues, assumptions, next task. |
 | `HANDOFF.md` | Session continuity only — last completed task, current task, blockers, next recommended task. |
+| `PENDING_MIGRATIONS_DRAFT.md` | Two migrations (0115 trivia awards, 0116 a dare row) that are designed and written but not yet applied or tested; delete once they become real migrations. |
 | `TASKS.md` | The backlog — High/Medium/Low priority, in progress, completed (pointers to `CHANGELOG_AI.md`, not narrative). |
 | `ARCHITECTURE.md` | Why and how the system is built — tech stack, folder structure, DB ER diagram, design patterns, coding standards. |
 | `DECISIONS.md` | Architecture Decision Records — what was decided, why, alternatives considered, trade-offs. Never a changelog. |
