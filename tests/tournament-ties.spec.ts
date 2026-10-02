@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, chromium } from '@playwright/test';
+import { skipIfDemoMode } from './qa-city-helpers';
 import {
   calculateStandings,
   generateBracketForType,
@@ -99,7 +100,9 @@ test('round robin: the result does not depend on the order names were typed in, 
   expect(out.kind).toBe('champion');
   if (out.kind !== 'champion') return;
   expect(out.tournament.winners?.slice().sort()).toEqual(['Ann', 'Bo', 'Cy']);
-  expect(out.winner.split(' & ').sort()).toEqual(['Ann', 'Bo', 'Cy']);
+  // `winner` is the display line, built from `winners` in their order.
+  const [w1, w2, w3] = out.tournament.winners!;
+  expect(out.winner).toBe(`${w1}, ${w2}, and ${w3}`);
   const standings = calculateStandings(out.tournament.rounds, ABC);
   expect(standings.map((s) => s.rank)).toEqual([1, 1, 1]);
 });
@@ -162,4 +165,49 @@ test('the tournament page says first place is shared, ranks tied players alike, 
   // All three are level: three "#1" rows, no "#2" or "#3".
   await expect(page.getByText('#1', { exact: true })).toHaveCount(3);
   await expect(page.getByText('#2', { exact: true })).toHaveCount(0);
+});
+
+test('a shared first place reads clearly even when the names contain "&"', () => {
+  const teams = ['Sam & Max', 'Ann & Bo'];
+  const out = result(start('round-robin', teams), 'Sam & Max', 'Ann & Bo', 1, 1);
+  expect(out.kind).toBe('champion');
+  if (out.kind !== 'champion') return;
+  expect(out.tournament.winners?.slice().sort()).toEqual(['Ann & Bo', 'Sam & Max']);
+  // Joined with " & " this read "Sam & Max & Ann & Bo", four names or two.
+  const [w1, w2] = out.tournament.winners!;
+  expect(out.winner).toBe(`${w1} and ${w2}`);
+});
+
+// In a room the standings are ranked by points, then score difference, then total
+// scored; the table now shows the difference, so a player level on points who is
+// ranked lower can see why (the standalone page already showed it).
+test('in a room, the standings show the score difference that breaks ties', async ({ page, baseURL }) => {
+  test.setTimeout(90_000);
+  await page.goto('/create?type=tournament');
+  await page.waitForSelector('[data-testid="create-room-button"]', { timeout: 30000 });
+  await page.click('[data-testid="create-room-button"]');
+  await page.waitForURL(/\/room\/[A-Z0-9]+/);
+  const roomCode = page.url().split('/room/')[1];
+  await skipIfDemoMode(page);
+
+  const browser = await chromium.launch();
+  const guest = await (await browser.newContext()).newPage();
+  try {
+    await guest.goto(`${baseURL}/room/${roomCode}`);
+    await expect(page.getByText(/People \(2\)/)).toBeVisible({ timeout: 30000 });
+    await page.getByRole('radio', { name: 'Round Robin' }).click();
+    await page.getByRole('button', { name: /generate bracket/i }).click();
+    await page.locator('[data-testid="tournament-match"]').first().click();
+    const scores = page.locator('input[type="number"]');
+    await scores.nth(0).fill('3');
+    await scores.nth(1).fill('1');
+    await page.getByRole('button', { name: 'Save' }).click();
+
+    const table = page.locator('table', { has: page.getByRole('columnheader', { name: '+/-' }) });
+    await expect(table).toBeVisible({ timeout: 15000 });
+    await expect(table.getByRole('cell', { name: '+2', exact: true })).toBeVisible();
+    await expect(table.getByRole('cell', { name: '-2', exact: true })).toBeVisible();
+  } finally {
+    await browser.close();
+  }
 });

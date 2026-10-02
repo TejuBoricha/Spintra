@@ -44,3 +44,44 @@ test('a bye match says BYE, cannot be scored, and the real match can be scored f
   await page.keyboard.press('Enter');
   await expect(page.locator('input[type="number"]').first()).toBeVisible({ timeout: 5000 });
 });
+
+// Code review of PR #68: the Swiss view still blocked scoring with a substring test
+// ("BYE"), so a player named BYE (or any name with those capitals) had a match card
+// that was an enabled button doing nothing, and the Swiss event could never finish.
+test('a player named BYE plays a Swiss match like anyone else', async ({ page }) => {
+  await page.goto('/tools/tournament', { waitUntil: 'networkidle' });
+  await page.getByPlaceholder(/Enter participant names/).fill('BYE\nAlpha\nBravo\nCharlie');
+  await page.getByRole('radio', { name: 'Swiss' }).click();
+  await page.getByRole('button', { name: 'Generate Bracket' }).click();
+
+  const theirs = page.getByRole('button', { name: /^Record score: (BYE vs .+|.+ vs BYE)$/ });
+  await expect(theirs).toHaveCount(1);
+  await expect(theirs).toBeEnabled();
+  await theirs.click();
+  await expect(page.locator('input[type="number"]').first()).toBeVisible({ timeout: 5000 });
+});
+
+// A later-round match still waiting for a player ("Alpha vs TBD") was an enabled
+// button that opened the score editor, and saving it failed with "scores can't be
+// tied". (A round with nobody in it yet is not drawn at all.)
+test('a match still waiting for a player cannot be opened', async ({ page }) => {
+  await page.goto('/tools/tournament', { waitUntil: 'networkidle' });
+  await page.getByPlaceholder(/Enter participant names/).fill('Alpha\nBravo\nCharlie\nDelta');
+  await page.getByRole('radio', { name: 'Single Elim' }).click();
+  await page.getByRole('button', { name: 'Generate Bracket' }).click();
+
+  // Score one semi-final: its winner goes into the final, which still waits for the other.
+  await page.locator('[data-testid="tournament-match"][data-match-ready="true"]').first().click();
+  const scores = page.locator('input[type="number"]');
+  await scores.nth(0).fill('3');
+  await scores.nth(1).fill('1');
+  await page.getByRole('button', { name: 'Save' }).click();
+
+  const waiting = page.locator('[data-testid="tournament-match"][data-match-ready="false"]');
+  await expect(waiting).toHaveCount(1, { timeout: 5000 }); // the final
+  await expect(waiting).toContainText('TBD');
+  await expect(waiting).toBeDisabled();
+  await expect(waiting).not.toHaveAttribute('aria-label', /Record score/);
+  await waiting.click({ force: true });
+  await expect(page.locator('input[type="number"]')).toHaveCount(0);
+});

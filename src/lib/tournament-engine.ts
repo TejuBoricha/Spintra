@@ -45,7 +45,7 @@ export function padWithByes(participants: string[]): string[] {
   const size = participants.length;
   const nextPow2 = Math.pow(2, Math.ceil(Math.log2(size)));
   if (size === nextPow2) return [...participants];
-  const byes = Array(nextPow2 - size).fill("__BYE__");
+  const byes = Array(nextPow2 - size).fill(BYE_PLAYER);
   return [...participants, ...byes];
 }
 
@@ -175,7 +175,6 @@ export interface Standing {
   rank: number;
 }
 
-const BYE_NAME = "__BYE__";
 
 /**
  * Round robin and Swiss standings: points (3 for a win, 1 for a draw), then score
@@ -205,7 +204,7 @@ export function calculateStandings(rounds: BracketMatch[][], participants: strin
             points[match.player2] = (points[match.player2] || 0) + 1;
           }
           // A bye has no real opponent, so its score says nothing about strength.
-          if (match.player1 !== BYE_NAME && match.player2 !== BYE_NAME) {
+          if (match.player1 !== BYE_PLAYER && match.player2 !== BYE_PLAYER) {
             scored[match.player1] = (scored[match.player1] || 0) + match.score1;
             conceded[match.player1] = (conceded[match.player1] || 0) + match.score2;
             scored[match.player2] = (scored[match.player2] || 0) + match.score2;
@@ -288,7 +287,7 @@ export function generateNextSwissRound(rounds: BracketMatch[][], participants: s
         round: rounds.length + 1,
         position: nextRound.length,
         player1: available[0],
-        player2: "__BYE__",
+        player2: BYE_PLAYER,
         score1: 1,
         score2: 0,
         winner: available[0],
@@ -326,7 +325,7 @@ export function generateSwiss(
         round: 1,
         position: i / 2,
         player1: shuffled[i],
-        player2: "__BYE__",
+        player2: BYE_PLAYER,
         score1: 1,
         score2: 0,
         winner: shuffled[i],
@@ -456,15 +455,15 @@ export function advanceInLosersBracket(
       updatedNextMatch &&
       updatedNextMatch.player1 &&
       updatedNextMatch.player2 &&
-      (updatedNextMatch.player1 === "__BYE__" || updatedNextMatch.player2 === "__BYE__")
+      (updatedNextMatch.player1 === BYE_PLAYER || updatedNextMatch.player2 === BYE_PLAYER)
     ) {
-      const nonBye = updatedNextMatch.player1 === "__BYE__" ? updatedNextMatch.player2 : updatedNextMatch.player1;
+      const nonBye = updatedNextMatch.player1 === BYE_PLAYER ? updatedNextMatch.player2 : updatedNextMatch.player1;
       lb[nextRoundIdx] = lb[nextRoundIdx].map((m) =>
         m.position === targetPos
           ? {
               ...m,
-              score1: m.player1 === "__BYE__" ? 0 : 1,
-              score2: m.player1 === "__BYE__" ? 1 : 0,
+              score1: m.player1 === BYE_PLAYER ? 0 : 1,
+              score2: m.player1 === BYE_PLAYER ? 1 : 0,
               winner: nonBye,
               status: "completed" as const,
             }
@@ -529,9 +528,9 @@ export function generateBracketForType(
       ];
 
       for (const { match, roundIdx, position, bracketKey } of allMatches) {
-        if (match.status !== "completed" && match.player1 && match.player2 && (match.player1 === "__BYE__" || match.player2 === "__BYE__")) {
-          const s1 = match.player1 === "__BYE__" ? 0 : 1;
-          const s2 = match.player2 === "__BYE__" ? 0 : 1;
+        if (match.status !== "completed" && match.player1 && match.player2 && (match.player1 === BYE_PLAYER || match.player2 === BYE_PLAYER)) {
+          const s1 = match.player1 === BYE_PLAYER ? 0 : 1;
+          const s2 = match.player2 === BYE_PLAYER ? 0 : 1;
           const outcome = recordMatchResult(tournament, { match, roundIdx, position, bracketKey }, s1, s2);
           if (outcome.kind !== "invalid") {
             tournament = outcome.tournament;
@@ -725,12 +724,12 @@ export function recordMatchResult(
 
           // Check if the target match is now fully populated and has a BYE
           const m = lb[targetRound][targetPos];
-          if (m.player1 && m.player2 && (m.player1 === "__BYE__" || m.player2 === "__BYE__")) {
-            const nonBye = m.player1 === "__BYE__" ? m.player2 : m.player1;
+          if (m.player1 && m.player2 && (m.player1 === BYE_PLAYER || m.player2 === BYE_PLAYER)) {
+            const nonBye = m.player1 === BYE_PLAYER ? m.player2 : m.player1;
             lb[targetRound][targetPos] = {
               ...m,
-              score1: m.player1 === "__BYE__" ? 0 : 1,
-              score2: m.player1 === "__BYE__" ? 1 : 0,
+              score1: m.player1 === BYE_PLAYER ? 0 : 1,
+              score2: m.player1 === BYE_PLAYER ? 1 : 0,
               winner: nonBye,
               status: "completed" as const,
             };
@@ -813,7 +812,9 @@ export function recordMatchResult(
       }
 
       const leaders = firstPlace(calculateStandings(updatedBracket, tournament.participants));
-      const champion = leaders.join(" & ");
+      // For display only ("Ann, Bo, and Cy"; `winners` is the list). Joined with " & " this
+      // could not be read when a team name has an ampersand: "Sam & Max & Ann & Bo".
+      const champion = new Intl.ListFormat("en", { style: "long", type: "conjunction" }).format(leaders);
       return {
         kind: "champion",
         winner: champion,

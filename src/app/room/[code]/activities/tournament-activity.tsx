@@ -491,7 +491,7 @@ export function TournamentActivity() {
                           key={match.id}
                           match={match}
                           onClick={
-                            isHost && match.player1 !== "__BYE__" && match.player2 !== "__BYE__"
+                            isHost && !isByePlayer(match.player1) && !isByePlayer(match.player2)
                               ? () => {
                                   if (!guardMatchEdit(match, "rounds")) return;
                                   setEditingMatch({ match, roundIdx: ri, position: mi, bracketKey: "rounds" });
@@ -518,6 +518,10 @@ export function TournamentActivity() {
                               <th className="pb-2 font-medium text-center">W</th>
                               <th className="pb-2 font-medium text-center">L</th>
                               <th className="pb-2 font-medium text-center">D</th>
+                              {/* Ranks are decided by points, then this difference, then total
+                                  scored; without the column a player level on points ranked
+                                  lower with nothing on screen saying why. */}
+                              <th className="pb-2 font-medium text-center" title="Score difference: the tiebreaker after points">+/-</th>
                               <th className="pb-2 font-medium text-right text-amber-500">Pts</th>
                             </tr>
                           </thead>
@@ -532,6 +536,10 @@ export function TournamentActivity() {
                                 <td className="py-2 text-center text-emerald-500">{row.wins}</td>
                                 <td className="py-2 text-center text-red-500">{row.losses}</td>
                                 <td className="py-2 text-center text-muted-foreground">{row.draws}</td>
+                                <td className="py-2 text-center font-mono text-muted-foreground">
+                                  {row.diff > 0 ? "+" : ""}
+                                  {row.diff}
+                                </td>
                                 <td className="py-2 text-right font-bold text-amber-500">{row.points}</td>
                               </tr>
                             ))}

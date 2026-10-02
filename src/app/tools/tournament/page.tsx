@@ -162,7 +162,11 @@ function MatchCard({
   // The engine names a bye "__BYE__" (this used to compare against "BYE", so a bye match looked
   // like a playable one, showed the raw placeholder and could be re-scored: audit T-14).
   const isBye = isByePlayer(match.player1) || isByePlayer(match.player2);
-  const isClickable = !!onClick && !isBye;
+  // Only a match with both players known can be scored: a later-round match still waiting
+  // for its players ("TBD vs TBD") opened the score editor too, and saving it failed with an
+  // unrelated "scores can't be tied" message. The in-room card has the same rule.
+  const isReady = !!match.player1 && !!match.player2 && !isBye;
+  const isClickable = !!onClick && isReady;
 
   const statusColors = {
     pending: "border-(--border-hairline) bg-(--surface-sunken)",
@@ -177,7 +181,7 @@ function MatchCard({
   };
 
   return (
-    // A real <button>, disabled when the match cannot be scored (a bye), so keyboard users can reach
+    // A real <button>, disabled when the match cannot be scored (a bye, or players not known yet), so keyboard users can reach
     // and operate it like the in-room Tournament's match cards (audit T-13).
     <motion.button
       type="button"
@@ -187,7 +191,7 @@ function MatchCard({
       aria-label={isClickable ? `Record score: ${playerLabel(match.player1) ?? "TBD"} vs ${playerLabel(match.player2) ?? "TBD"}` : undefined}
       data-testid="tournament-match"
       data-match-status={match.status}
-      data-match-ready={!!(match.player1 && match.player2 && !isBye)}
+      data-match-ready={isReady}
       data-match-bye={isBye}
       className={`
         block w-full text-left rounded-lg border px-3 py-2 transition-colors
@@ -505,11 +509,10 @@ export default function TournamentPage() {
                   key={match.id}
                   match={match}
                   compact
-                  onClick={() =>
-                    !match.player1?.includes("BYE") && !match.player2?.includes("BYE")
-                      ? setEditingMatch({ match, roundIdx: ri, position: mi, bracketKey: "rounds" })
-                      : undefined
-                  }
+                  // MatchCard itself disables a bye. The substring test that was here ("BYE")
+                  // left a player named BYE, or any name containing those capitals, with a
+                  // button that did nothing, so their Swiss match could never be scored.
+                  onClick={() => setEditingMatch({ match, roundIdx: ri, position: mi, bracketKey: "rounds" })}
                 />
               ))}
             </div>
