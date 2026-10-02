@@ -6,7 +6,7 @@
 > Always update this file after every significant milestone.
 > Last updated: 2026-10-02
 
-> **Read this first (2026-10-02).** The active thread is a product audit whose fixes ship as small tested PRs (#58 to #66 merged and deployed; #68, the tournament, tools and content fixes plus a test fix and Leave room, and #67, a retry for the daily backup after the 2 Oct run failed on one refused connection, are open). The sections "Current Focus" and "Next Recommended Task" below still describe earlier states and are kept as history. For what is done, in progress and pending, read the **State board at the top of `HANDOFF.md`**, then `TASKS.md` (the "Wave 3" bullets). Two migrations (0115, 0116) are drafted, not applied: `PENDING_MIGRATIONS_DRAFT.md`.
+> **Read this first (2026-10-02).** The active thread is a product audit whose fixes ship as small tested PRs (#58 to #66 merged and deployed; #68, the tournament, tools and content fixes plus a test fix and Leave room, and #67, a retry and a second daily run for the backup after the 2 Oct run failed on one refused connection, are open). **The 2 Oct local session stopped at a safe point at the owner's request: neither PR is merged; #68 has 7 round-3 review findings still open (do not merge it before they are dealt with). Resume from `HANDOFF.md` section 3.** The sections "Current Focus" and "Next Recommended Task" below still describe earlier states and are kept as history. For what is done, in progress and pending, read the **State board at the top of `HANDOFF.md`**, then `TASKS.md` (the "Wave 3" bullets). Two migrations (0115, 0116) are drafted, not applied: `PENDING_MIGRATIONS_DRAFT.md`.
 
 ---
 
