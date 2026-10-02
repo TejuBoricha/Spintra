@@ -3296,3 +3296,18 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 - **`tool-metadata.ts`:** `toolMetadata`'s doc comment is back on it.
 **Evidence:** the seven new or changed tests were run on one build with the `src` fixes stashed and a deliberate heartbeat leak added to the room hook: all seven failed, each for its own reason (the wallpaper line named; the Swiss score editor never opens; "Sam & Max & Ann & Bo"; no "0 of 2 drawn"; "heartbeats sent after leaving"; the waiting match enabled; no +/- column). Restored, rebuilt: the affected spec files 83 passed; full suite 165 passed, 2 skipped (by design), 0 failed; `npm run verify` clean.
 **Not changed:** nothing; the tenth finding is the narrowed one above.
+
+---
+
+## [2026-10-02] — Code review of PR #68, round 2: repeated names, BYE in the copied text, played-match labels
+
+**AI:** Claude Code (local, VS Code)
+**Task:** The review gate on round 1's fixes. `/code-review high` on PR #68 again: 8 findings, each checked against the code.
+**Files Modified:** `src/lib/tournament-engine.ts`, `src/app/tools/tournament/page.tsx`, `src/app/room/[code]/activities/tournament-activity.tsx`, `src/app/room/[code]/hooks/use-room-subscription.ts`, `tests/qa-x37-tournament-byes.spec.ts`, `tests/tournament-ties.spec.ts`, `docs/TASKS.md`, `docs/HANDOFF.md`, `docs/CHANGELOG_AI.md`
+**Confirmed and fixed:**
+- **Repeated names (a regression from T-4):** the engine's standings have one row per entry, so two entries called Ann got identical rows, both ranked first, and a single winner was announced as "Ann and Ann share first place" (the old page's own table, a Map keyed by name, had collapsed them). Every result is recorded by name, so the fix is at the input: `uniqueParticipantNames` numbers repeats when the bracket is made ("Ann (2)", skipping a number already in the list), as the room's Tournament does with repeated usernames; the toast says so.
+- **The copied bracket text** still had the raw placeholder ("Alpha 1 - 0 __BYE__ → Alpha"); it uses `playerLabel` (T-14 class).
+- **Played matches** kept the label "Record score: Alpha vs Bravo", which replaces the card's text for a screen reader; `matchActionLabel` (both cards) gives "Change score: Alpha 3, Bravo 1, Alpha won".
+- **Smaller:** `isSharedFirst` replaces five copies of `(winners?.length ?? 0) > 1` and `Tournament.winner` is documented as the display line; standings are memoized on both surfaces; `playerLabel` is no longer effectively unused; `leaveRoom` logs a failed participant delete (it still leaves; presence expiry covers it, as with the old full page load).
+**Recorded, not done:** one shared MatchCard for the tool page and the room (the two cards drifted once already, which was T-14); they differ in styling, so merging them is its own change with a visual check (`TASKS.md`).
+**Evidence:** the three new browser tests fail on the previous page code with the engine helpers present (the copied text contains `__BYE__`; no numbering and no single champion; the label stays "Record score: Bravo vs Alpha"); the tournament specs 78 passed; full suite 169 passed, 2 skipped (by design), 0 failed; `npm run verify` clean.
