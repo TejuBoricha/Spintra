@@ -27,11 +27,13 @@ name: Daily Database Backup
 
 on:
   schedule:
-    # Twice a day, 12 hours apart, each a complete restore-checked backup:
-    # one failed run (a pooler outage longer than the retries below, a
-    # GitHub or download failure in any step) no longer leaves a day with
-    # no backup. 03:00/15:00 UTC is when they're queued; GitHub often starts
-    # scheduled jobs hours late (observed 07:45-09:52 UTC for 03:00).
+    # Twice a day, each a complete restore-checked backup: one failed run (a
+    # pooler outage longer than the retries below, a stalled dump, a GitHub
+    # or download failure in any step) no longer leaves a day with no
+    # backup. Queued 03:00 and 15:00 UTC, but GitHub often starts scheduled
+    # jobs hours late (observed 07:45-09:52 UTC for 03:00), so the two can
+    # be as little as about 5 hours apart, with up to about 19 hours from
+    # the afternoon one to the next morning's.
     - cron: "0 3 * * *"
     - cron: "0 15 * * *"
   workflow_dispatch: {}
@@ -97,13 +99,16 @@ jobs:
           # retry, that day had no backup until the job was re-run by hand.
           # Every command below only reads production and rewrites its own
           # output file, so running one again is safe: up to 5 tries, 15s,
-          # 30s, 60s and 120s apart. Each try is cut off after 5 minutes (a
-          # whole dump takes well under one), so a connection that stalls
-          # instead of failing is tried again rather than hanging until the
-          # job's timeout. A wrong password or a SQL syntax error stops at
-          # once: waiting can't fix them, and repeated failed logins can get
-          # the runner's address banned by the pooler. A failure that outlasts
-          # all this is covered by the second daily run (see the schedule).
+          # 30s, 60s and 120s apart. The psql reads give up connecting after
+          # 15s (PGCONNECT_TIMEOUT). The dumps can't: `supabase db dump` runs
+          # pg_dump in a container that ignores connect timeouts (tested
+          # 2 Oct: `connect_timeout` in the URL did not stop a stalled
+          # handshake), and killing the CLI leaves that container running and
+          # connected, so a dump is never cut off from here. A stalled dump
+          # runs into this step's 25-minute limit, the run fails, and the
+          # second daily run covers the day (see the schedule). A failure that
+          # waiting can't fix stops at once: retrying a wrong password or user
+          # only risks the pooler banning the runner's address.
           export PGCONNECT_TIMEOUT=15
           retry() {
             local label="$1"; shift
@@ -111,18 +116,22 @@ jobs:
             err="$(mktemp)"
             while true; do
               rc=0
-              timeout --kill-after=30s 300 "$@" 2>"$err" || rc=$?
-              cat "$err" >&2
+              # stderr is shown as it comes and kept to decide whether to retry
+              # (with pipefail, the pipeline fails with the command's status).
+              { "$@" 2>&1 1>&3 3>&- | tee "$err" >&2; } 3>&1 || rc=$?
               if [ "$rc" -eq 0 ]; then
+                rm -f "$err"
                 return 0
               fi
               # The label, never "$*": the arguments include the database URL.
-              if grep -qiE 'password authentication failed|no pg_hba.conf entry|syntax error at or near' "$err"; then
+              if grep -qiE 'password authentication failed|no pg_hba.conf entry|Tenant or user not found|ECIRCUITBREAKER|permission denied|does not exist|syntax error at or near' "$err"; then
                 echo "::error::Backup ${label}: failed in a way waiting can't fix (its error is above)."
+                rm -f "$err"
                 return 1
               fi
               if [ "$attempt" -ge 5 ]; then
                 echo "::error::Backup ${label}: failed $attempt times in a row (the last error is above)."
+                rm -f "$err"
                 return 1
               fi
               echo "::warning::Backup ${label}: attempt $attempt failed; trying again in ${delay}s."
