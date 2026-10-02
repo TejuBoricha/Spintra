@@ -60,15 +60,17 @@ jobs:
           # ubuntu-latest's default apt repos don't carry postgresql-client-17;
           # it needs the official PostgreSQL APT repo.
           set -euo pipefail
-          sudo apt-get install -y -qq curl ca-certificates
+          # Retries: a network blip here would otherwise cost the day's backup.
+          sudo apt-get install -y -qq -o Acquire::Retries=3 curl ca-certificates
           sudo install -d /usr/share/postgresql-common/pgdg
           sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail \
+            --retry 3 --retry-all-errors \
             https://www.postgresql.org/media/keys/ACCC4CF8.asc
           . /etc/os-release
           echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
             | sudo tee /etc/apt/sources.list.d/pgdg.list
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq postgresql-client-${{ env.PG_VERSION }}
+          sudo apt-get update -qq -o Acquire::Retries=3
+          sudo apt-get install -y -qq -o Acquire::Retries=3 postgresql-client-${{ env.PG_VERSION }}
           # Installing the versioned client doesn't repoint /usr/bin/psql.
           echo "/usr/lib/postgresql/${{ env.PG_VERSION }}/bin" >> "$GITHUB_PATH"
 
@@ -82,23 +84,45 @@ jobs:
           DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
+          # Supabase's connection pooler sometimes refuses a connection for a
+          # moment: on 2 Oct 2026 the first connection failed with
+          # "(EAUTHQUERY) auth_query secret check timed out" and, with no
+          # retry, that day had no backup until the job was re-run by hand.
+          # Every command below only reads production and rewrites its own
+          # output file, so running one again is safe. 4 tries, 15s/30s/60s apart.
+          retry() {
+            local attempt=1 delay=15
+            until "$@"; do
+              if [ "$attempt" -ge 4 ]; then
+                # Not "$*": the arguments include the database URL.
+                echo "::error::A read from the production database failed $attempt times in a row (its own error is above)."
+                return 1
+              fi
+              echo "::warning::Attempt $attempt failed; trying again in ${delay}s."
+              sleep "$delay"
+              attempt=$((attempt + 1))
+              delay=$((delay * 2))
+            done
+          }
+          # Reopens (empties) the output file on every attempt, so a failed
+          # try can't leave partial output in front of a good one.
+          write_to() { local out="$1"; shift; "$@" > "$out"; }
           mkdir -p backup
           echo "BACKUP_TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)" >> "$GITHUB_ENV"
           # Counted just before the data dump, so the dump can only have the
           # same or more rows (users only grow); the restore check relies on it.
-          psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -c \
-            "select (select count(*) from auth.users) || ' ' || (select count(*) from public.trivia_questions)" \
-            > backup/source-counts.txt
-          supabase db dump --db-url "$DATABASE_URL" -f backup/roles.sql --role-only
-          supabase db dump --db-url "$DATABASE_URL" -f backup/schema.sql
+          retry write_to backup/source-counts.txt psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -c \
+            "select (select count(*) from auth.users) || ' ' || (select count(*) from public.trivia_questions)"
+          retry supabase db dump --db-url "$DATABASE_URL" -f backup/roles.sql --role-only
+          retry supabase db dump --db-url "$DATABASE_URL" -f backup/schema.sql
           # Login state stays out of backups: sessions, refresh tokens,
           # one-time (recovery/email) tokens, OAuth flow state and MFA
           # challenge/claim rows (the claims reference sessions).
-          supabase db dump --db-url "$DATABASE_URL" -f backup/data.sql --use-copy --data-only \
+          retry supabase db dump --db-url "$DATABASE_URL" -f backup/data.sql --use-copy --data-only \
             -s public,auth \
             -x auth.sessions -x auth.refresh_tokens -x auth.one_time_tokens \
             -x auth.flow_state -x auth.mfa_challenges -x auth.mfa_amr_claims
-          psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -f scripts/backup/extras.sql > backup/extras.sql
+          retry write_to backup/extras.sql psql "$DATABASE_URL" -At -v ON_ERROR_STOP=1 -f scripts/backup/extras.sql
           # A schema this size is never tiny; a near-empty file means the
           # dump pointed somewhere wrong.
           for f in schema data; do
