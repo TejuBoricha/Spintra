@@ -3277,3 +3277,22 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 **Local environment notes (this Windows machine):** Docker restarted, so the local database was reset from 0001 to 0114 (it still had the 27 Sep session's own 0111, superseded by #53). `npm ci` installs Playwright 1.63, which needs `npx playwright install chromium` (headless shell build 1243). npm 11 skips the postinstall scripts of `@sentry/cli` and `unrs-resolver` unless approved; neither matters locally (lint passes, no source-map upload).
 **Verification:** `npm run verify` clean; `npm run build` clean; full Playwright suite before these changes: 159 passed, 2 skipped (by design); on the final code: 160 passed, 2 skipped, 0 failed (the extra one is the Leave room test). Opened as PR #68; CI: see the PR.
 **Not done:** the Vercel preview and the live site were not looked at; the backup retry has its own PR (#67).
+
+---
+
+## [2026-10-02] — Code review of PR #68: nine findings fixed, one narrowed
+
+**AI:** Claude Code (local, VS Code)
+**Task:** The standing review gate on PR #68 (the 30 Sep groups plus today's changes). `/code-review high` returned 10 findings without a verification pass; each was checked against the code before anything was changed.
+**Files Modified:** `src/app/tools/tournament/page.tsx`, `src/app/room/[code]/activities/tournament-activity.tsx`, `src/lib/tournament-engine.ts`, `src/app/tools/name-draw/page.tsx`, `src/lib/utils.ts`, `src/lib/tool-metadata.ts`, `tests/qa-x37-tournament-byes.spec.ts`, `tests/tournament-ties.spec.ts`, `tests/qa-x30-name-draw.spec.ts`, `tests/qa-x31-content-safety.spec.ts`, `tests/multiplayer-loop.spec.ts`, `docs/TASKS.md`, `docs/HANDOFF.md`, `docs/CHANGELOG_AI.md`
+**Confirmed and fixed:**
+- **Tournament (standalone):** the Swiss view guarded scoring with `includes("BYE")`, so a player named BYE had an enabled match button that did nothing (the event could never finish); and a match still waiting for a player opened the score editor, whose save failed with "scores can't be tied" (mouse-clickable before T-13 too; T-13 made it a keyboard-reachable "Record score: Alpha vs TBD" button). MatchCard now needs both players, and the Swiss wrapper is gone (MatchCard already disables a bye).
+- **Shared first place** was joined as "A & B & C", unreadable with ampersands in team names ("Sam & Max & Ann & Bo"); now a list ("Sam & Max and Ann & Bo", "Ann, Bo, and Cy"). The reviewer's wider claim (code comparing `winner` with a name would break) was checked: every use of `tournament.winner` is display only and nothing awards by it, so `winner` stays a display line and `winners` the list.
+- **In-room standings** ranked by score difference without showing it; a +/- column now matches the standalone page.
+- **One bye constant:** `BYE_NAME` and 16 raw `"__BYE__"` strings in the engine, and one in the in-room Swiss view, use `BYE_PLAYER` / `isByePlayer`.
+- **Name Draw:** "N of M drawn" counted names since deleted from the list, and every draw in repeatable mode (a `Math.max` hid "10 of 5"); now the used-up lines of the current list, or "N draws so far". Chips were keyed by name (duplicate keys with two people of the same name). Found while there: the Elimination mode switch had no accessible name (the only unnamed switch on the site).
+- **Content:** "Let the group choose your phone wallpaper" survived the K-3 sweep; replaced with a nickname dare, and `qa-x31` flags any dare mentioning "your phone".
+- **My own Leave room test:** its last check could never fail (`room_heartbeat` ignores non-participants, and leaving deletes the participant row first); it now watches the guest page's `room_heartbeat` requests. Also found: it used an instant demo-mode check that could fail instead of skip in CI's no-database job; it uses `skipIfDemoMode` now.
+- **`tool-metadata.ts`:** `toolMetadata`'s doc comment is back on it.
+**Evidence:** the seven new or changed tests were run on one build with the `src` fixes stashed and a deliberate heartbeat leak added to the room hook: all seven failed, each for its own reason (the wallpaper line named; the Swiss score editor never opens; "Sam & Max & Ann & Bo"; no "0 of 2 drawn"; "heartbeats sent after leaving"; the waiting match enabled; no +/- column). Restored, rebuilt: the affected spec files 83 passed; full suite 165 passed, 2 skipped (by design), 0 failed; `npm run verify` clean.
+**Not changed:** nothing; the tenth finding is the narrowed one above.
