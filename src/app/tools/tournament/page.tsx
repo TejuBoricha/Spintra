@@ -36,7 +36,10 @@ import {
   recordMatchResult,
   calculateStandings,
   isByePlayer,
+  isSharedFirst,
+  matchActionLabel,
   playerLabel,
+  uniqueParticipantNames,
 } from "@/lib/tournament-engine";
 
 const GameIcon = getGameByType("tournament")!.icon;
@@ -188,7 +191,7 @@ function MatchCard({
       disabled={!isClickable}
       whileHover={isClickable ? { scale: 1.02 } : undefined}
       onClick={isClickable ? onClick : undefined}
-      aria-label={isClickable ? `Record score: ${playerLabel(match.player1) ?? "TBD"} vs ${playerLabel(match.player2) ?? "TBD"}` : undefined}
+      aria-label={isClickable ? matchActionLabel(match) : undefined}
       data-testid="tournament-match"
       data-match-status={match.status}
       data-match-ready={isReady}
@@ -267,19 +270,26 @@ export default function TournamentPage() {
     // players) — must use the returned value, not the original UI
     // selection, or recordMatchResult takes the wrong branch against
     // bracket data shaped for a different format.
-    const { type, rounds, losersBracket } = generateBracketForType(tournamentType, participants, seeds);
+    // Results are recorded by name, so a repeated name is numbered ("Ann (2)").
+    const names = uniqueParticipantNames(participants);
+    const { type, rounds, losersBracket } = generateBracketForType(tournamentType, names, seeds);
 
     setTournament({
       type,
       rounds,
-      participants,
+      participants: names,
       seeds,
       currentRound: 1,
       winner: null,
       losersBracket,
     });
 
-    toast.success("Bracket generated!");
+    const renamed = names.filter((n, i) => n !== participants[i]);
+    toast.success(
+      renamed.length > 0
+        ? `Bracket generated! Repeated names are numbered so results can't mix up: ${renamed.join(", ")}`
+        : "Bracket generated!"
+    );
   }, [participants, seeds, tournamentType, soundEnabled]);
 
   const handleScoreSave = useCallback(
@@ -304,7 +314,7 @@ export default function TournamentPage() {
 
       if (outcome.kind === "champion") {
         fireConfetti();
-        const shared = (outcome.tournament.winners?.length ?? 0) > 1;
+        const shared = isSharedFirst(outcome.tournament);
         toast.success(shared ? `${outcome.winner} share first place!` : `${outcome.winner} wins the tournament!`, {
           icon: <Emoji name="trophy" size={18} />,
         });
@@ -350,7 +360,8 @@ export default function TournamentPage() {
           const s1 = m.score1 !== null ? m.score1 : "-";
           const s2 = m.score2 !== null ? m.score2 : "-";
           lines.push(
-            `  ${m.player1 || "TBD"} ${s1} - ${s2} ${m.player2 || "TBD"}${m.winner ? ` → ${m.winner}` : ""}`
+            // playerLabel: the bye placeholder is "BYE" here too, not "__BYE__" (audit T-14).
+            `  ${playerLabel(m.player1) ?? "TBD"} ${s1} - ${s2} ${playerLabel(m.player2) ?? "TBD"}${m.winner ? ` → ${playerLabel(m.winner)}` : ""}`
           );
         }
       });
@@ -358,7 +369,7 @@ export default function TournamentPage() {
     });
 
     if (tournament.winner) {
-      lines.push(`🏆 ${(tournament.winners?.length ?? 0) > 1 ? "Shared first place" : "Champion"}: ${tournament.winner}`);
+      lines.push(`🏆 ${isSharedFirst(tournament) ? "Shared first place" : "Champion"}: ${tournament.winner}`);
     }
 
     lines.push("");
@@ -399,6 +410,11 @@ export default function TournamentPage() {
     }
     return count;
   }, [tournament]);
+
+  const roundRobinStandings = useMemo(
+    () => (tournament?.type === "round-robin" ? calculateStandings(tournament.rounds, tournament.participants) : []),
+    [tournament]
+  );
 
   // ──── Render bracket ────
   const renderSingleEliminationBracket = (rounds: BracketMatch[][], bracketKey: "rounds" | "losersBracket" = "rounds") => {
@@ -444,7 +460,7 @@ export default function TournamentPage() {
     if (allMatches.length === 0) return null;
 
     // Same standings the champion is decided from (points, then score difference, then score).
-    const standings = calculateStandings(rounds, tournament?.participants ?? []);
+    const standings = roundRobinStandings;
 
     return (
       <div className="space-y-6">
@@ -772,7 +788,7 @@ export default function TournamentPage() {
                   <CelebrationBanner
                     icon={<Crown className="w-12 h-12 text-amber-400" />}
                     title={tournament.winner}
-                    subtitle={<><Emoji name="trophy" size={20} pop /> {(tournament.winners?.length ?? 0) > 1 ? "Shared first place" : "Tournament Champion"}</>}
+                    subtitle={<><Emoji name="trophy" size={20} pop /> {isSharedFirst(tournament) ? "Shared first place" : "Tournament Champion"}</>}
                     titleClassName="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400 bg-clip-text text-transparent"
                   />
                 )}

@@ -85,3 +85,36 @@ test('a match still waiting for a player cannot be opened', async ({ page }) => 
   await waiting.click({ force: true });
   await expect(page.locator('input[type="number"]')).toHaveCount(0);
 });
+
+// Code review of PR #68, round 2: the copied bracket text still had the raw
+// placeholder ("Alpha 1 - 0 __BYE__ → Alpha"); and a played match kept the label
+// "Record score: Alpha vs Bravo", which replaces the card's text for a screen
+// reader, so the score and the result were never heard.
+test('the copied bracket says BYE, not the placeholder', async ({ page, context, baseURL }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: baseURL });
+  await page.goto('/tools/tournament', { waitUntil: 'networkidle' });
+  await page.getByPlaceholder(/Enter participant names/).fill('Alpha\nBravo\nCharlie');
+  await page.getByRole('radio', { name: 'Single Elim' }).click();
+  await page.getByRole('button', { name: 'Generate Bracket' }).click();
+  await page.getByRole('button', { name: 'Share' }).click();
+  await expect(page.getByText('Bracket copied to clipboard!')).toBeVisible({ timeout: 5000 });
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toContain('BYE');
+  expect(copied).not.toContain('__BYE__');
+});
+
+test('a played match tells a screen reader its score and result', async ({ page }) => {
+  await page.goto('/tools/tournament', { waitUntil: 'networkidle' });
+  await page.getByPlaceholder(/Enter participant names/).fill('Alpha\nBravo');
+  await page.getByRole('radio', { name: 'Single Elim' }).click();
+  await page.getByRole('button', { name: 'Generate Bracket' }).click();
+  const card = page.locator('[data-testid="tournament-match"]').first();
+  const label = (await card.getAttribute('aria-label'))!;
+  const [, first, second] = label.match(/^Record score: (.+) vs (.+)$/)!;
+  await card.click();
+  const scores = page.locator('input[type="number"]');
+  await scores.nth(0).fill('3');
+  await scores.nth(1).fill('1');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(card).toHaveAttribute('aria-label', `Change score: ${first} 3, ${second} 1, ${first} won`, { timeout: 5000 });
+});

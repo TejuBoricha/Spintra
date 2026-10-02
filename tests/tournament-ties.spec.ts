@@ -4,6 +4,7 @@ import {
   calculateStandings,
   generateBracketForType,
   recordMatchResult,
+  uniqueParticipantNames,
   type BracketMatch,
   type MatchRef,
   type Tournament,
@@ -210,4 +211,43 @@ test('in a room, the standings show the score difference that breaks ties', asyn
   } finally {
     await browser.close();
   }
+});
+
+// Code review of PR #68, round 2: results are recorded by name, so two entries
+// with one name merged in the standings and a single winner was announced as
+// "Ann and Ann share first place". Repeats are numbered when the bracket is made.
+test('repeated names are numbered, skipping a number already in the list', () => {
+  expect(uniqueParticipantNames(['Ann', 'Bo', 'Cy'])).toEqual(['Ann', 'Bo', 'Cy']);
+  expect(uniqueParticipantNames(['Ann', 'Bo', 'Ann'])).toEqual(['Ann', 'Bo', 'Ann (2)']);
+  expect(uniqueParticipantNames(['Ann', 'Ann', 'Ann (2)'])).toEqual(['Ann', 'Ann (3)', 'Ann (2)']);
+  expect(uniqueParticipantNames(['Ann', 'Ann', 'Ann'])).toEqual(['Ann', 'Ann (2)', 'Ann (3)']);
+});
+
+test('the tournament page numbers a repeated name and crowns one champion', async ({ page }) => {
+  await page.goto('/tools/tournament', { waitUntil: 'networkidle' });
+  await page.getByPlaceholder(/Enter participant names/).fill('Ann\nBo\nAnn');
+  await page.getByRole('radio', { name: 'Round Robin' }).click();
+  await page.getByRole('button', { name: 'Generate Bracket' }).click();
+  await expect(page.getByText(/Repeated names are numbered/)).toBeVisible({ timeout: 5000 });
+
+  // Ann beats both; Bo and Ann (2) draw.
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const play = async (a: string, b: string, sa: number, sb: number) => {
+    const card = page.getByRole('button', {
+      name: new RegExp(`^Record score: (${esc(a)} vs ${esc(b)}|${esc(b)} vs ${esc(a)})$`),
+    });
+    const aFirst = ((await card.getAttribute('aria-label')) ?? '').startsWith(`Record score: ${a} vs `);
+    await card.click();
+    const scores = page.locator('input[type="number"]');
+    await scores.nth(0).fill(String(aFirst ? sa : sb));
+    await scores.nth(1).fill(String(aFirst ? sb : sa));
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.locator('input[type="number"]')).toHaveCount(0);
+  };
+  await play('Ann', 'Bo', 2, 0);
+  await play('Ann', 'Ann (2)', 2, 0);
+  await play('Bo', 'Ann (2)', 1, 1);
+
+  await expect(page.getByText('Tournament Champion')).toBeVisible({ timeout: 5000 });
+  await expect(page.getByText('Shared first place')).toHaveCount(0);
 });

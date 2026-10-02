@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import { Swords, Trophy, Crown, RotateCcw, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,8 @@ import {
   generateBracketForType,
   recordMatchResult,
   isByePlayer,
+  isSharedFirst,
+  matchActionLabel,
   calculateStandings,
 } from "@/lib/tournament-engine";
 
@@ -53,9 +55,7 @@ function MatchCard({
       disabled={!isClickable}
       whileHover={isClickable ? { scale: 1.02 } : undefined}
       onClick={isClickable ? onClick : undefined}
-      aria-label={
-        isClickable ? `Record score: ${match.player1} vs ${match.player2}` : undefined
-      }
+      aria-label={isClickable ? matchActionLabel(match) : undefined}
       data-testid="tournament-match"
       data-match-status={match.status}
       data-match-ready={isReady}
@@ -188,6 +188,13 @@ export function TournamentActivity() {
   const [tournamentType, setTournamentType] = useState<TournamentType>("single-elimination");
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [editingMatch, setEditingMatch] = useState<MatchRef | null>(null);
+  const standings = useMemo(
+    () =>
+      tournament && (tournament.type === "round-robin" || tournament.type === "swiss")
+        ? calculateStandings(tournament.rounds, tournament.participants)
+        : [],
+    [tournament]
+  );
 
   // Read by the listener below without being an effect dependency — a
   // frequently-changing dependency (hostUserId changes on every host
@@ -229,7 +236,7 @@ export function TournamentActivity() {
         if (event.outcome === "champion") {
           fireConfetti();
           toast.success(
-            (event.tournament.winners?.length ?? 0) > 1
+            isSharedFirst(event.tournament)
               ? `${event.tournament.winner} share first place!`
               : `${event.tournament.winner} wins the tournament!`,
             { icon: <Emoji name="trophy" size={18} /> }
@@ -392,7 +399,7 @@ export function TournamentActivity() {
             <CelebrationBanner
               icon={<Crown className="w-12 h-12 text-amber-400" />}
               title={tournament.winner}
-              subtitle={<><Emoji name="trophy" size={20} pop /> {(tournament.winners?.length ?? 0) > 1 ? "Shared first place" : "Tournament Champion"}</>}
+              subtitle={<><Emoji name="trophy" size={20} pop /> {isSharedFirst(tournament) ? "Shared first place" : "Tournament Champion"}</>}
               titleClassName="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400 bg-clip-text text-transparent"
             />
           )}
@@ -504,51 +511,46 @@ export function TournamentActivity() {
                   </div>
                 ))}
                 
-                {(() => {
-                  const standings = calculateStandings(tournament.rounds, tournament.participants);
-                  return (
-                    <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 mt-6">
-                      <h3 className="text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground">Standings</h3>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                          <thead>
-                            <tr className="border-b border-(--border-hairline)">
-                              <th className="pb-2 font-medium">Rank</th>
-                              <th className="pb-2 font-medium">Player</th>
-                              <th className="pb-2 font-medium text-center">W</th>
-                              <th className="pb-2 font-medium text-center">L</th>
-                              <th className="pb-2 font-medium text-center">D</th>
-                              {/* Ranks are decided by points, then this difference, then total
-                                  scored; without the column a player level on points ranked
-                                  lower with nothing on screen saying why. */}
-                              <th className="pb-2 font-medium text-center" title="Score difference: the tiebreaker after points">+/-</th>
-                              <th className="pb-2 font-medium text-right text-amber-500">Pts</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {standings.map((row) => (
-                              <tr key={row.player} className="border-b border-(--border-hairline) last:border-0">
-                                <td className="py-2 font-mono text-muted-foreground">{row.rank}</td>
-                                <td className="py-2 font-semibold flex items-center gap-2">
-                                  {row.rank === 1 && row.points > 0 ? <Trophy className="w-4 h-4 text-amber-400" /> : null}
-                                  {row.player}
-                                </td>
-                                <td className="py-2 text-center text-emerald-500">{row.wins}</td>
-                                <td className="py-2 text-center text-red-500">{row.losses}</td>
-                                <td className="py-2 text-center text-muted-foreground">{row.draws}</td>
-                                <td className="py-2 text-center font-mono text-muted-foreground">
-                                  {row.diff > 0 ? "+" : ""}
-                                  {row.diff}
-                                </td>
-                                <td className="py-2 text-right font-bold text-amber-500">{row.points}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  );
-                })()}
+                <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 mt-6">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground">Standings</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead>
+                        <tr className="border-b border-(--border-hairline)">
+                          <th className="pb-2 font-medium">Rank</th>
+                          <th className="pb-2 font-medium">Player</th>
+                          <th className="pb-2 font-medium text-center">W</th>
+                          <th className="pb-2 font-medium text-center">L</th>
+                          <th className="pb-2 font-medium text-center">D</th>
+                          {/* Ranks are decided by points, then this difference, then total
+                              scored; without the column a player level on points ranked
+                              lower with nothing on screen saying why. */}
+                          <th className="pb-2 font-medium text-center" title="Score difference: the tiebreaker after points">+/-</th>
+                          <th className="pb-2 font-medium text-right text-amber-500">Pts</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {standings.map((row) => (
+                          <tr key={row.player} className="border-b border-(--border-hairline) last:border-0">
+                            <td className="py-2 font-mono text-muted-foreground">{row.rank}</td>
+                            <td className="py-2 font-semibold flex items-center gap-2">
+                              {row.rank === 1 && row.points > 0 ? <Trophy className="w-4 h-4 text-amber-400" /> : null}
+                              {row.player}
+                            </td>
+                            <td className="py-2 text-center text-emerald-500">{row.wins}</td>
+                            <td className="py-2 text-center text-red-500">{row.losses}</td>
+                            <td className="py-2 text-center text-muted-foreground">{row.draws}</td>
+                            <td className="py-2 text-center font-mono text-muted-foreground">
+                              {row.diff > 0 ? "+" : ""}
+                              {row.diff}
+                            </td>
+                            <td className="py-2 text-right font-bold text-amber-500">{row.points}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             )}
           </div>

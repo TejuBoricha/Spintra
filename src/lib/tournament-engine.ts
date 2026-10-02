@@ -23,8 +23,9 @@ export interface Tournament {
   participants: string[];
   seeds: string[];
   currentRound: number;
+  /** The champion's name, or for a shared first place a display line naming everyone ("Ann, Bo, and Cy"). */
   winner: string | null;
-  /** Everyone level for first place when a round robin or Swiss ends level (`winner` then names them all). */
+  /** Everyone level for first place when a round robin or Swiss ends level; the list `winner` is built from. */
   winners?: string[];
   losersBracket?: BracketMatch[][]; // For double elimination
   grandFinal?: BracketMatch | null; // Winners-bracket champ vs. losers-bracket champ
@@ -35,6 +36,47 @@ export const BYE_PLAYER = "__BYE__";
 export const isByePlayer = (name: string | null | undefined): boolean => name === BYE_PLAYER;
 /** What to show for a slot: "BYE" for the placeholder (audit T-14), the name otherwise. */
 export const playerLabel = (name: string | null | undefined): string | null => (name === BYE_PLAYER ? "BYE" : name ?? null);
+
+/** True when the finished tournament's first place is shared (`winner` then names everyone). */
+export const isSharedFirst = (t: Pick<Tournament, "winners">): boolean => (t.winners?.length ?? 0) > 1;
+
+/**
+ * The accessible name of a match card a host can act on. It replaces the card's
+ * visible text for screen readers, so once a match is played it has to carry the
+ * score and the result too ("Change score: Alpha 3, Bravo 1, Alpha won").
+ */
+export function matchActionLabel(match: BracketMatch): string {
+  const p1 = playerLabel(match.player1) ?? "TBD";
+  const p2 = playerLabel(match.player2) ?? "TBD";
+  if (match.status !== "completed" || match.score1 === null || match.score2 === null) {
+    return `Record score: ${p1} vs ${p2}`;
+  }
+  const result = match.winner ? `${playerLabel(match.winner)} won` : "a draw";
+  return `Change score: ${p1} ${match.score1}, ${p2} ${match.score2}, ${result}`;
+}
+
+/**
+ * Every result is recorded by name (points, who won, who advances), so two
+ * entries with the same name can't be told apart: their standings merged, and a
+ * single winner was announced as "Ann and Ann share first place". Later repeats
+ * are numbered ("Ann", "Ann (2)"), skipping a number the list already uses, as
+ * the room's own Tournament does with repeated usernames.
+ */
+export function uniqueParticipantNames(names: string[]): string[] {
+  const typed = new Set(names);
+  const used = new Set<string>();
+  return names.map((name) => {
+    if (!used.has(name)) {
+      used.add(name);
+      return name;
+    }
+    let n = 2;
+    while (typed.has(`${name} (${n})`) || used.has(`${name} (${n})`)) n++;
+    const numbered = `${name} (${n})`;
+    used.add(numbered);
+    return numbered;
+  });
+}
 
 export function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
