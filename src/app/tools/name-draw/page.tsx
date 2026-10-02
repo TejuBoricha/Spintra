@@ -397,6 +397,7 @@ export default function NameDrawPage() {
                   </p>
                 </div>
                 <Switch
+                  aria-label="Elimination mode"
                   checked={eliminationMode}
                   onCheckedChange={setEliminationMode}
                 />
@@ -512,7 +513,12 @@ export default function NameDrawPage() {
                       transition={{ delay: 0.5 }}
                       className="text-muted-foreground text-sm"
                     >
-                      {drawnNames.length} of {Math.max(names.length, drawnNames.length)} drawn
+                      {/* Elimination: the lines in the list now that are used up (a drawn name
+                          later deleted from the list no longer counts). Repeatable: nothing is
+                          used up, so it is just the number of draws. */}
+                      {eliminationMode
+                        ? `${names.length - availableNamesList.length} of ${names.length} drawn`
+                        : `${pluralize(drawnNames.length, "draw")} so far`}
                     </motion.p>
                   </motion.div>
                 ) : multiWinners.length > 1 ? (
@@ -529,7 +535,7 @@ export default function NameDrawPage() {
                     <div className="flex flex-wrap justify-center gap-4">
                       {multiWinners.map((name, i) => (
                         <motion.div
-                          key={name}
+                          key={`${i}-${name}`}
                           initial={{ scale: 0, rotate: -5 }}
                           animate={{ scale: 1, rotate: 0 }}
                           transition={{
@@ -658,9 +664,10 @@ export default function NameDrawPage() {
                   )}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {availableNames.map((name) => (
+                  {/* Keyed by line, not name: two people can share a name. */}
+                  {availableNamesList.map(({ id, name }) => (
                     <span
-                      key={name}
+                      key={id}
                       className="text-xs px-2.5 py-1 rounded-full bg-(--surface-sunken) border border-(--border-hairline) text-foreground/70"
                     >
                       {name}

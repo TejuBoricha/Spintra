@@ -69,3 +69,23 @@ test('at phone width every draw button is on screen and the page does not scroll
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
 });
+
+// Code review of PR #68: "N of M drawn" counted names since deleted from the list,
+// and in repeatable mode every draw ("10 of 10 drawn" with 5 names, nothing used up).
+test('the drawn count is about the list as it is now, and repeatable mode counts draws', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.goto('/tools/name-draw', { waitUntil: 'networkidle' });
+  await page.getByPlaceholder(NAMES_PLACEHOLDER).fill('Ann\nBo\nCy');
+  await draw(page, 0);
+  await expect(page.getByText('1 of 3 drawn', { exact: true })).toBeVisible();
+
+  // Delete the drawn name: nobody left in the list has been drawn.
+  const [first] = await history(page);
+  await page.getByPlaceholder(NAMES_PLACEHOLDER).fill(['Ann', 'Bo', 'Cy'].filter((n) => n !== first).join('\n'));
+  await expect(page.getByText('0 of 2 drawn', { exact: true })).toBeVisible();
+
+  // Repeatable: nothing is used up, so it counts draws.
+  await page.getByRole('switch', { name: 'Elimination mode' }).click();
+  await draw(page, 1);
+  await expect(page.getByText('2 draws so far', { exact: true })).toBeVisible();
+});
