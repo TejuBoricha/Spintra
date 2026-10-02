@@ -1,5 +1,30 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { startTwoPlayerCityMatch, setHostTurn } from './qa-city-helpers';
+
+// The board follows a screen change a few frames late: it measures its column,
+// then re-renders at the new size (11 to 47ms on a fast machine, longer on a busy
+// CI runner). Read once, straight after a resize, it can still be the previous
+// screen's board: a CI run on 30 Sep saw 836px, the 1920x1080 size, on an 820px
+// screen. So wait until two reads two frames apart agree and the board fits;
+// a board that never fits still fails, with the reason.
+async function settledBoard(page: Page, stage: Locator, name: string, w: number, h: number) {
+  const problem = async () => {
+    const a = (await stage.boundingBox())!;
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const b = (await stage.boundingBox())!;
+    if (a.x !== b.x || a.y !== b.y || a.width !== b.width || a.height !== b.height) return 'still resizing';
+    if (b.x < 0) return `starts ${Math.round(-b.x)}px left of the screen`;
+    if (b.x + b.width > w) return `runs ${Math.round(b.x + b.width - w)}px past the right edge`;
+    if (Math.abs(b.width - b.height) > 2) return `is not square (${Math.round(b.width)}x${Math.round(b.height)})`;
+    // The WHOLE board is on screen at load (a cut-off bottom row hides Departure,
+    // where everyone starts). Not on the 320px phone, where the header and the
+    // stacked seat row leave less room than the smallest readable board.
+    if (w >= 360 && b.y + b.height > h) return `has its bottom row ${Math.round(b.y + b.height - h)}px below the fold at load`;
+    return '';
+  };
+  await expect.poll(problem, { message: `${name}: the board`, timeout: 10_000 }).toBe('');
+  return (await stage.boundingBox())!;
+}
 
 // Audit wave 4, step 1: the board is scaled to the screen and the roll, dice and
 // buttons live on it (C-3, C-19, C-31, C-17), tapping a tile shows its details
@@ -29,16 +54,8 @@ test('the board fits the screen, the actions are on it, tiles explain themselves
           message: `${name}: the page scrolls sideways`,
         })
         .toBeLessThanOrEqual(0);
-      const box = (await stage.boundingBox())!;
-      expect(box.x, `${name}: board starts left of the screen`).toBeGreaterThanOrEqual(0);
-      expect(box.x + box.width, `${name}: board runs past the right edge`).toBeLessThanOrEqual(w);
-      expect(Math.abs(box.width - box.height), `${name}: board is not square`).toBeLessThanOrEqual(2);
-      // The WHOLE board is on screen at load (a cut-off bottom row hides Departure,
-      // where everyone starts). Not asserted on the 320px phone, where the header
-      // and the stacked seat row leave less room than the smallest readable board.
-      if (w >= 360) {
-        expect(box.y + box.height, `${name}: the board's bottom row is below the fold at load`).toBeLessThanOrEqual(h);
-      }
+      // Inside the screen, square, and whole at load (see settledBoard).
+      await settledBoard(host, stage, name, w, h);
 
       // The seat badges and the turn clock share a row; at 320px they overlapped.
       const clock = host.getByText(/^\d:\d{2}$/).first();
@@ -93,12 +110,14 @@ test('after a roll the dice show on the board, inside its frame', async () => {
   setHostTurn(matchId, 'awaiting_roll');
   for (const [name, w, h] of [SIZES[0], SIZES[3]]) {
     await host.setViewportSize({ width: w, height: h });
-    await expect(host.getByTestId('city-board-stage')).toBeVisible();
+    const stage = host.getByTestId('city-board-stage');
+    await expect(stage).toBeVisible();
     if (name.startsWith('laptop')) await host.getByRole('button', { name: /^roll dice$/i }).click();
     const dice = host.getByTestId('city-dice');
     await expect(dice).toBeVisible({ timeout: 15_000 });
+    // Settled first, so the dice and the board are read from the same layout.
+    const s = await settledBoard(host, stage, name, w, h);
     const d = (await dice.boundingBox())!;
-    const s = (await host.getByTestId('city-board-stage').boundingBox())!;
     expect(d.x, `${name}: dice hang off the left of the board`).toBeGreaterThanOrEqual(s.x);
     expect(d.y).toBeGreaterThanOrEqual(s.y);
     expect(d.x + d.width, `${name}: dice hang off the right of the board`).toBeLessThanOrEqual(s.x + s.width);
