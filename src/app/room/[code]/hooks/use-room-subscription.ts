@@ -598,8 +598,11 @@ export function useRoomSubscription({
         .eq("room_id", roomCode)
         .eq("user_id", currentUser.id);
     }
-    window.location.href = "/";
-  }, [roomCode, currentUser.id]);
+    // In-app navigation, like closing the room and every kick path. Unmounting
+    // the room does what the full page load used to: the heartbeat effect's
+    // clean-up stops the beats and asks the server to let this presence expire.
+    router.push("/");
+  }, [roomCode, currentUser.id, router]);
 
   // Load room details, participants list, and register self in database.
   // Runs in demo mode too — loadRoomDetails() below has its own demo-mode
