@@ -592,11 +592,14 @@ export function useRoomSubscription({
     leavingRoomRef.current = true;
     const supabase = getSupabaseBrowserClient();
     if (supabase) {
-      await supabase
+      const { error } = await supabase
         .from("room_participants")
         .delete()
         .eq("room_id", roomCode)
         .eq("user_id", currentUser.id);
+      // Still leave: the player asked to. Others then see them go offline once
+      // the presence leave below lets the beat expire (about 10s), not at once.
+      if (error) console.error("Leave room: removing the participant row failed:", error.message);
     }
     // In-app navigation, like closing the room and every kick path. Unmounting
     // the room does what the full page load used to: the heartbeat effect's
