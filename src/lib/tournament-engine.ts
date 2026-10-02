@@ -64,7 +64,9 @@ export function matchActionLabel(match: BracketMatch): string {
  */
 export function uniqueParticipantNames(names: string[]): string[] {
   const typed = new Set(names);
-  const used = new Set<string>();
+  // The bye placeholder is taken too: a player called "__BYE__" (a room username
+  // can be anything) was treated as a bye, so their matches could never be played.
+  const used = new Set<string>([BYE_PLAYER]);
   return names.map((name) => {
     if (!used.has(name)) {
       used.add(name);
@@ -224,49 +226,65 @@ export interface Standing {
  * typed first). Players still level on all three share a rank.
  */
 export function calculateStandings(rounds: BracketMatch[][], participants: string[]): Standing[] {
-  const points: Record<string, number> = {};
-  const scored: Record<string, number> = {};
-  const conceded: Record<string, number> = {};
-  participants.forEach((p) => {
-    points[p] = 0;
-    scored[p] = 0;
-    conceded[p] = 0;
-  });
+  // One pass over the matches (it used to scan every match three more times per
+  // player for the win, draw and loss counts).
+  const tally = new Map(
+    participants.map((p) => [p, { points: 0, wins: 0, draws: 0, losses: 0, scored: 0, conceded: 0 }])
+  );
 
   for (const round of rounds) {
     for (const match of round) {
-      if (match.status === "completed" && match.player1 && match.player2) {
-        if (match.score1 !== null && match.score2 !== null) {
-          if (match.score1 > match.score2) {
-            points[match.player1] = (points[match.player1] || 0) + 3;
-          } else if (match.score2 > match.score1) {
-            points[match.player2] = (points[match.player2] || 0) + 3;
-          } else {
-            points[match.player1] = (points[match.player1] || 0) + 1;
-            points[match.player2] = (points[match.player2] || 0) + 1;
+      if (match.status !== "completed") continue;
+      const { player1, player2, score1, score2, winner } = match;
+      const t1 = player1 ? tally.get(player1) : undefined;
+      const t2 = player2 ? tally.get(player2) : undefined;
+      if (winner !== null) {
+        const tw = tally.get(winner);
+        if (tw) tw.wins++;
+      }
+      // A player is counted once per match, even listed in both slots.
+      for (const t of t1 === t2 ? [t1] : [t1, t2]) {
+        if (!t) continue;
+        if (score1 !== null && score1 === score2) t.draws++;
+        if (winner !== null && t !== tally.get(winner)) t.losses++;
+      }
+      if (player1 && player2 && score1 !== null && score2 !== null) {
+        if (score1 > score2) {
+          if (t1) t1.points += 3;
+        } else if (score2 > score1) {
+          if (t2) t2.points += 3;
+        } else {
+          if (t1) t1.points += 1;
+          if (t2) t2.points += 1;
+        }
+        // A bye has no real opponent, so its score says nothing about strength.
+        if (player1 !== BYE_PLAYER && player2 !== BYE_PLAYER) {
+          if (t1) {
+            t1.scored += score1;
+            t1.conceded += score2;
           }
-          // A bye has no real opponent, so its score says nothing about strength.
-          if (match.player1 !== BYE_PLAYER && match.player2 !== BYE_PLAYER) {
-            scored[match.player1] = (scored[match.player1] || 0) + match.score1;
-            conceded[match.player1] = (conceded[match.player1] || 0) + match.score2;
-            scored[match.player2] = (scored[match.player2] || 0) + match.score2;
-            conceded[match.player2] = (conceded[match.player2] || 0) + match.score1;
+          if (t2) {
+            t2.scored += score2;
+            t2.conceded += score1;
           }
         }
       }
     }
   }
 
-  const rows: Standing[] = participants.map((p) => ({
-    player: p,
-    points: points[p],
-    wins: rounds.flat().filter(m => m.status === "completed" && m.winner === p).length,
-    draws: rounds.flat().filter(m => m.status === "completed" && m.score1 === m.score2 && m.score1 !== null && (m.player1 === p || m.player2 === p)).length,
-    losses: rounds.flat().filter(m => m.status === "completed" && m.winner !== p && m.winner !== null && (m.player1 === p || m.player2 === p)).length,
-    scored: scored[p],
-    diff: scored[p] - conceded[p],
-    rank: 0,
-  }));
+  const rows: Standing[] = participants.map((p) => {
+    const t = tally.get(p)!;
+    return {
+      player: p,
+      points: t.points,
+      wins: t.wins,
+      draws: t.draws,
+      losses: t.losses,
+      scored: t.scored,
+      diff: t.scored - t.conceded,
+      rank: 0,
+    };
+  });
   rows.sort((a, b) => b.points - a.points || b.diff - a.diff || b.scored - a.scored);
 
   let rank = 1;

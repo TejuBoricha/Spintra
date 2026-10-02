@@ -5,6 +5,7 @@ import {
   generateBracketForType,
   recordMatchResult,
   uniqueParticipantNames,
+  BYE_PLAYER,
   type BracketMatch,
   type MatchRef,
   type Tournament,
@@ -206,8 +207,10 @@ test('in a room, the standings show the score difference that breaks ties', asyn
 
     const table = page.locator('table', { has: page.getByRole('columnheader', { name: '+/-' }) });
     await expect(table).toBeVisible({ timeout: 15000 });
-    await expect(table.getByRole('cell', { name: '+2', exact: true })).toBeVisible();
-    await expect(table.getByRole('cell', { name: '-2', exact: true })).toBeVisible();
+    // The values arrive when the host's own score update has been through the server and
+    // back, so they get the same allowance as the table (the default 5s failed once, under load).
+    await expect(table.getByRole('cell', { name: '+2', exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(table.getByRole('cell', { name: '-2', exact: true })).toBeVisible({ timeout: 15000 });
   } finally {
     await browser.close();
   }
@@ -250,4 +253,16 @@ test('the tournament page numbers a repeated name and crowns one champion', asyn
 
   await expect(page.getByText('Tournament Champion')).toBeVisible({ timeout: 5000 });
   await expect(page.getByText('Shared first place')).toHaveCount(0);
+});
+
+// Code review of PR #68, round 3: the bye is the string "__BYE__", kept in the same
+// field as names. A participant with that exact name (a room username can be anything)
+// was treated as a bye: their matches were disabled, so the event could never finish.
+test('a participant named like the bye placeholder is numbered, not treated as a bye', () => {
+  expect(uniqueParticipantNames([BYE_PLAYER, 'Ann'])).toEqual([`${BYE_PLAYER} (2)`, 'Ann']);
+  const names = uniqueParticipantNames([BYE_PLAYER, 'Ann', 'Bo']);
+  const t = start('round-robin', names);
+  const real = t.rounds.flat().filter((m) => m.player1 !== BYE_PLAYER && m.player2 !== BYE_PLAYER);
+  expect(real).toHaveLength(3); // all three pairings are real matches, none is a bye
+  expect(t.rounds.flat().some((m) => m.player1 === BYE_PLAYER || m.player2 === BYE_PLAYER)).toBe(false);
 });

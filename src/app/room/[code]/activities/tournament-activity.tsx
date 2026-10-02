@@ -24,6 +24,7 @@ import {
   isSharedFirst,
   matchActionLabel,
   calculateStandings,
+  uniqueParticipantNames,
 } from "@/lib/tournament-engine";
 
 function MatchCard({
@@ -257,7 +258,9 @@ export function TournamentActivity() {
   }, [registerEventListener]);
 
   const generateBracket = useCallback(() => {
-    const names = disambiguatedUsernames(participants.filter((p) => p.is_online));
+    // Repeated usernames get an id suffix; uniqueParticipantNames also keeps a member
+    // whose username is the bye placeholder from being treated as a bye.
+    const names = uniqueParticipantNames(disambiguatedUsernames(participants.filter((p) => p.is_online)));
     if (names.length < 2) {
       toast.error("Need at least 2 online participants!", { id: "tournament-needs-players" });
       return;
@@ -498,7 +501,8 @@ export function TournamentActivity() {
                           key={match.id}
                           match={match}
                           onClick={
-                            isHost && !isByePlayer(match.player1) && !isByePlayer(match.player2)
+                            // MatchCard disables a bye (and a match still waiting for a player) itself.
+                            isHost
                               ? () => {
                                   if (!guardMatchEdit(match, "rounds")) return;
                                   setEditingMatch({ match, roundIdx: ri, position: mi, bracketKey: "rounds" });
