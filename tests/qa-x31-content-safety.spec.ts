@@ -14,6 +14,9 @@ const FLAGGED: RegExp[] = [
   /\bpost\b/i, // "post a status", "post an embarrassing photo ... on your story"
   /\bstory\b/i,
   /go through your phone|hand over your phone|unlock your phone/i,
+  // Any dare about your phone puts it, or what stays on it, in the group's hands
+  // ("Let the group choose your phone wallpaper" outlived the first sweep).
+  /your phone/i,
   /call someone/i,
   /text your crush/i,
   /spoonful of a condiment|eat .*chosen by the group/i,
@@ -26,6 +29,7 @@ test('no truth or dare forces private photos, posting, phone access, calls or ea
   // The replacements from the audit are in.
   expect(TRUTH_OR_DARE_ALL_DARES).toContain("Show the funniest photo you're willing to share");
   expect(TRUTH_OR_DARE_ALL_DARES).toContain('Show the group an embarrassing photo, no posting');
+  expect(TRUTH_OR_DARE_ALL_DARES).toContain('Let the group pick a nickname for you for the rest of the game');
   // Every category still has enough to play with.
   expect(TRUTH_OR_DARE_ALL_DARES.length).toBeGreaterThanOrEqual(15);
 });

@@ -190,7 +190,7 @@ export const TRUTH_OR_DARE_CATEGORIES = [
     dares: [
       "Do your best dance move",
       "Speak in rhymes for the next 5 minutes",
-      "Let the group choose your phone wallpaper",
+      "Let the group pick a nickname for you for the rest of the game",
       "Do an impression of a celebrity",
       "Describe your favorite snack like a food critic for 30 seconds",
     ],
