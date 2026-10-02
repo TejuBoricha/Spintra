@@ -1,5 +1,5 @@
 import { test, expect, chromium } from '@playwright/test';
-import { sql } from './qa-city-helpers';
+import { skipIfDemoMode, sql } from './qa-city-helpers';
 
 // Covers the core multiplayer loop the Session 41 production-readiness
 // audit found completely untested: two genuinely distinct participants
@@ -564,8 +564,7 @@ test('a guest who presses Leave room goes home, drops off the host list, and sto
   await page.click('[data-testid="create-room-button"]');
   await page.waitForURL(/\/room\/[A-Z0-9]+/);
   const roomCode = page.url().split('/room/')[1];
-  const isLocalOnlyMode = await page.getByText(/this device only/i).isVisible().catch(() => false);
-  test.skip(isLocalOnlyMode, 'needs Supabase: a second browser context can never see a local-only room');
+  await skipIfDemoMode(page);
 
   const browser = await chromium.launch();
   const guest = await (await browser.newContext()).newPage();
@@ -594,6 +593,13 @@ test('a guest who presses Leave room goes home, drops off the host list, and sto
     });
     ws.on('close', () => joined.forEach((t) => left.add(t)));
   });
+  // When the guest's page sends a heartbeat. Watched in the browser because the
+  // server can't show a leftover one: room_heartbeat ignores anyone who is no
+  // longer a participant, and leaving deletes the participant row first.
+  const beatsSentAt: number[] = [];
+  guest.on('request', (req) => {
+    if (req.url().includes('/rest/v1/rpc/room_heartbeat')) beatsSentAt.push(Date.now());
+  });
   // Presence rows in this room, fresh within the last 19s, of anyone who is no
   // longer a participant: the guest, once they have left.
   const freshLeavers = () =>
@@ -613,6 +619,8 @@ test('a guest who presses Leave room goes home, drops off the host list, and sto
     await guest.click('button[aria-label="Leave room"]');
     await guest.click('button:has-text("Leave Room")');
     await guest.waitForURL(`${baseURL}/`, { timeout: 15000 });
+    // A beat already on its way while the page navigated is not a leftover.
+    const settledAt = Date.now() + 1000;
 
     // Well inside the 30s presence window: this is the deletion, not a timeout.
     await expect(page.getByText(/People \(1\)/)).toBeVisible({ timeout: 10000 });
@@ -621,10 +629,11 @@ test('a guest who presses Leave room goes home, drops off the host list, and sto
     await expect.poll(() => [...joined].filter((t) => !left.has(t)), { timeout: 10000 }).toEqual([]);
     // The leave reached the server...
     await expect.poll(freshLeavers, { timeout: 10000 }).toBe('0');
-    // ...and the tab, still open on the home page, never beats for the room again
-    // (heartbeats are every 10s).
-    await guest.waitForTimeout(12_000);
-    expect(freshLeavers()).toBe('0');
+    // ...and the tab, still open on the home page, sends no heartbeat for more
+    // than one 10s interval: the room's timers and worker were stopped.
+    expect(beatsSentAt.length, 'saw the guest heartbeat while in the room').toBeGreaterThan(0);
+    await guest.waitForTimeout(13_000);
+    expect(beatsSentAt.filter((t) => t > settledAt), 'heartbeats sent after leaving').toEqual([]);
   } finally {
     await browser.close();
   }

@@ -2,12 +2,6 @@ import type { Metadata } from "next";
 import { GAMES } from "@/lib/games";
 
 /**
- * Build per-tool <head> metadata from the canonical GAMES registry, so tool
- * pages rank as distinct pages (each was previously invisible to search
- * engines behind the one root title). Tool pages are client components and
- * cannot export metadata themselves — each tool's layout.tsx calls this.
- */
-/**
  * The <title> of each tool page. It leads with what people type into a search
  * engine ("random name picker", "team generator", "coin flip") instead of the
  * tool's own label, and stays under about 60 characters so it is not cut off in
@@ -30,6 +24,12 @@ export const TOOL_SEO_TITLES: Record<string, string> = {
   "/tools/word-scramble": "Word Scramble Game: Free Online Puzzle | Spintra",
 };
 
+/**
+ * Build per-tool <head> metadata from the canonical GAMES registry, so tool
+ * pages rank as distinct pages (each was previously invisible to search
+ * engines behind the one root title). Tool pages are client components and
+ * cannot export metadata themselves — each tool's layout.tsx calls this.
+ */
 export function toolMetadata(href: string): Metadata {
   const game = GAMES.find((g) => g.href === href);
   if (!game) throw new Error(`toolMetadata: no GAMES entry with href ${href}`);
