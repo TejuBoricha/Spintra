@@ -1,8 +1,7 @@
 import { test, expect, chromium } from '@playwright/test';
 import { execSync } from 'child_process';
-import { acceptCookieBanner as accept, skipIfDemoMode } from './qa-city-helpers';
+import { acceptCookieBanner as accept, BASE, skipIfDemoMode } from './qa-city-helpers';
 
-const BASE = 'http://127.0.0.1:4000';
 const sql = (q: string) =>
   execSync(`docker exec supabase_db_Spintra-1 psql -U postgres -d postgres -t -A -c "${q.replace(/"/g, '\\"')}"`).toString().trim();
 
