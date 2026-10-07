@@ -109,7 +109,8 @@ export default function TriviaPage() {
               <Badge variant="secondary">Score: {score}</Badge>
             </div>
 
-            <AnimatePresence mode="wait">
+            {/* initial={false}: the first question is in the server HTML and visible; later ones animate in and out. */}
+            <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={index}
                 initial={{ opacity: 0, x: 20 }}
