@@ -4,6 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Terms of Service | Spintra",
   description: "The terms that govern your use of Spintra's rooms, games, and chat features.",
+  alternates: { canonical: "/legal/terms" },
 };
 
 export default function TermsOfServicePage() {
