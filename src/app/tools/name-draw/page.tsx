@@ -289,11 +289,8 @@ export default function NameDrawPage() {
 
       <div className="max-w-5xl mx-auto px-4 py-8 sm:py-12 relative z-10">
         {/* Page Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-10"
+        <motion.div initial={false}
+          className="text-center mb-10 reveal reveal-down"
         >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm mb-4">
             <GameIcon className="w-4 h-4 text-amber-400" />
@@ -310,11 +307,8 @@ export default function NameDrawPage() {
 
         <div className="grid lg:grid-cols-5 gap-6">
           {/* Left Panel: Input */}
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="lg:col-span-2 space-y-4"
+          <motion.div initial={false}
+            className="lg:col-span-2 space-y-4 reveal reveal-left reveal-delay-1"
           >
             {/* Input Card */}
             <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-5 space-y-4">
@@ -441,11 +435,8 @@ export default function NameDrawPage() {
           </motion.div>
 
           {/* Right Panel: Draw Area */}
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="lg:col-span-3 space-y-6"
+          <motion.div initial={false}
+            className="lg:col-span-3 space-y-6 reveal reveal-right reveal-delay-2"
           >
             {/* Winner Spotlight */}
             <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-8 min-h-[280px] flex flex-col items-center justify-center relative overflow-hidden">
@@ -488,11 +479,8 @@ export default function NameDrawPage() {
                     }}
                     className="text-center"
                   >
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
-                      className="mb-4"
+                    <motion.div initial={false}
+                      className="mb-4 reveal reveal-up reveal-delay-2"
                     >
                       <Crown className="w-12 h-12 text-amber-400 mx-auto mb-2" />
                       <p className="text-sm text-amber-400/80 font-medium uppercase tracking-wider">
@@ -507,11 +495,8 @@ export default function NameDrawPage() {
                     >
                       {currentWinner}
                     </motion.div>
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.5 }}
-                      className="text-muted-foreground text-sm"
+                    <motion.p initial={false}
+                      className="text-muted-foreground text-sm reveal reveal-fade reveal-delay-3"
                     >
                       {/* Elimination: the lines in the list now that are used up (a drawn name
                           later deleted from the list no longer counts). Repeatable: nothing is
@@ -522,11 +507,9 @@ export default function NameDrawPage() {
                     </motion.p>
                   </motion.div>
                 ) : multiWinners.length > 1 ? (
-                  <motion.div
+                  <motion.div initial={false}
                     key="multi"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-center w-full"
+                    className="text-center w-full reveal reveal-fade"
                   >
                     <Trophy className="w-10 h-10 text-amber-400 mx-auto mb-3" />
                     <p className="text-sm text-amber-400/80 font-medium uppercase tracking-wider mb-4">
@@ -556,11 +539,9 @@ export default function NameDrawPage() {
                     </div>
                   </motion.div>
                 ) : (
-                  <motion.div
+                  <motion.div initial={false}
                     key="empty"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-center"
+                    className="text-center reveal reveal-fade"
                   >
                     <motion.div
                       animate={{
@@ -679,10 +660,8 @@ export default function NameDrawPage() {
 
             {/* Drawn History */}
             {drawnNames.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4"
+              <motion.div initial={false}
+                className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 reveal reveal-up"
               >
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">

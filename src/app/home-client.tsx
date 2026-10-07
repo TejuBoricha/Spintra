@@ -152,11 +152,8 @@ export default function HomePage() {
           className="relative z-10 max-w-5xl mx-auto px-4 py-20 text-center"
         >
           {/* Badge */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.6 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm mb-8"
+          <motion.div initial={false}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm mb-8 reveal reveal-up reveal-delay-1"
           >
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-muted-foreground">Free games and group tools,</span>
@@ -164,11 +161,8 @@ export default function HomePage() {
           </motion.div>
 
           {/* Main Headline */}
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.8 }}
-            className="font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[1.05] mb-6"
+          <motion.h1 initial={false}
+            className="font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[1.05] mb-6 reveal reveal-up-lg reveal-delay-2"
           >
             Can&apos;t decide?
             <br />
@@ -176,22 +170,16 @@ export default function HomePage() {
           </motion.h1>
 
           {/* Subheadline */}
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
-            className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed"
+          <motion.p initial={false}
+            className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed reveal reveal-up reveal-delay-3"
           >
             Make a room, share the code, and everyone watches the same wheel,
             bracket, or game play out on their own screen.
           </motion.p>
 
           {/* CTAs */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.6 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+          <motion.div initial={false}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 reveal reveal-up reveal-delay-3"
           >
             <Link href="/create">
               <Button variant="brand" size="lg" className="group text-lg">
@@ -208,11 +196,8 @@ export default function HomePage() {
           </motion.div>
 
           {/* Join Room Code Input Widget */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7, duration: 0.6 }}
-            className="max-w-md mx-auto mt-12 p-6 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 space-y-4"
+          <motion.div initial={false}
+            className="max-w-md mx-auto mt-12 p-6 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 space-y-4 reveal reveal-up reveal-delay-3"
           >
             <label
               htmlFor="home-code-input"
@@ -244,11 +229,8 @@ export default function HomePage() {
            </motion.div>
 
            {roomHistory.length > 0 && (
-             <motion.div
-               initial={{ opacity: 0, y: 10 }}
-               animate={{ opacity: 1, y: 0 }}
-               transition={{ delay: 0.8, duration: 0.6 }}
-               className="max-w-md mx-auto mt-6 p-6 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 space-y-3 text-left"
+             <motion.div initial={false}
+               className="max-w-md mx-auto mt-6 p-6 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 space-y-3 text-left reveal reveal-up-sm reveal-delay-3"
              >
                <h3 className="font-body text-xs font-bold text-muted-foreground uppercase tracking-widest">
                  Recently Visited Rooms
@@ -334,11 +316,8 @@ export default function HomePage() {
            )}
 
            {/* Social proof */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1, duration: 0.8 }}
-            className="mt-16 flex items-center justify-center gap-8 text-sm text-muted-foreground"
+          <motion.div initial={false}
+            className="mt-16 flex items-center justify-center gap-8 text-sm text-muted-foreground reveal reveal-fade reveal-delay-3"
           >
             <div className="flex items-center gap-2">
               <div className="flex -space-x-2">
@@ -366,11 +345,8 @@ export default function HomePage() {
           </motion.div>
 
           {/* Scroll indicator */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.5 }}
-            className="absolute bottom-8 left-1/2 -translate-x-1/2"
+          <motion.div initial={false}
+            className="absolute bottom-8 left-1/2 -translate-x-1/2 reveal reveal-fade reveal-delay-3"
           >
             <motion.div
               animate={{ y: [0, 8, 0] }}

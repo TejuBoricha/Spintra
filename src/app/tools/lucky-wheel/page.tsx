@@ -574,11 +574,8 @@ export default function LuckyWheelPage() {
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
         {/* ── Header ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-10"
+        <motion.div initial={false}
+          className="text-center mb-10 reveal reveal-up"
         >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm text-muted-foreground mb-6">
             <GameIcon className="w-4 h-4" />
@@ -595,11 +592,8 @@ export default function LuckyWheelPage() {
         {/* ── Main layout: Wheel | Sidebar ── */}
         <div className="grid lg:grid-cols-3 gap-8 mb-10">
           {/* Wheel column */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1, duration: 0.5 }}
-            className="lg:col-span-2 flex flex-col items-center"
+          <motion.div initial={false}
+            className="lg:col-span-2 flex flex-col items-center reveal reveal-scale reveal-delay-1"
           >
             {/* Winner announcement */}
             <AnimatePresence>
@@ -652,11 +646,8 @@ export default function LuckyWheelPage() {
           </motion.div>
 
           {/* Sidebar: Entries + Templates */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2, duration: 0.4 }}
-            className="space-y-6"
+          <motion.div initial={false}
+            className="space-y-6 reveal reveal-right reveal-delay-2"
           >
             {/* Entries card */}
             <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-5 space-y-4">
@@ -858,11 +849,8 @@ export default function LuckyWheelPage() {
         </div>
 
         {/* ── Create Room CTA ── */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 text-center space-y-4"
+        <motion.div initial={false}
+          className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 text-center space-y-4 reveal reveal-fade reveal-delay-3"
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-300 text-xs font-medium">
             <Sparkles className="w-3.5 h-3.5" />

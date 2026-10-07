@@ -55,7 +55,7 @@ export default function CoinFlipPage() {
   return (
     <div className="min-h-screen pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <motion.div initial={false} className="reveal reveal-up">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-yellow-400" />
             <span className="text-sm text-muted-foreground">50/50 chance</span>
@@ -86,10 +86,8 @@ export default function CoinFlipPage() {
         </motion.div>
 
         {result !== null && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8"
+          <motion.div initial={false}
+            className="mb-8 reveal reveal-up-sm"
             role="status"
             aria-live="polite"
           >
@@ -128,10 +126,8 @@ export default function CoinFlipPage() {
 
         {/* Stats */}
         {history.length > 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 max-w-md mx-auto"
+          <motion.div initial={false}
+            className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 max-w-md mx-auto reveal reveal-fade"
           >
             <h2 className="text-lg font-semibold mb-4 flex items-center justify-between w-full">
               <span className="flex items-center gap-2">

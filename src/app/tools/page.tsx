@@ -27,10 +27,8 @@ export default function ToolsPage() {
     <div className="min-h-screen pt-28 pb-16 px-4">
       <div className="max-w-6xl mx-auto space-y-12">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center space-y-6"
+        <motion.div initial={false}
+          className="text-center space-y-6 reveal reveal-up"
         >
           <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-orange-500/10 text-orange-500 mb-2">
             <Wrench className="w-8 h-8" />

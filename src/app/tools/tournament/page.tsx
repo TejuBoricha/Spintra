@@ -554,11 +554,8 @@ export default function TournamentPage() {
 
       <div className="max-w-6xl mx-auto px-4 py-8 sm:py-12 relative z-10">
         {/* Page Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-10"
+        <motion.div initial={false}
+          className="text-center mb-10 reveal reveal-down"
         >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm mb-4">
             <GameIcon className="w-4 h-4 text-emerald-400" />
@@ -576,11 +573,8 @@ export default function TournamentPage() {
 
         <div className="grid lg:grid-cols-5 gap-6">
           {/* Left Panel: Setup */}
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="lg:col-span-2 space-y-4"
+          <motion.div initial={false}
+            className="lg:col-span-2 space-y-4 reveal reveal-left reveal-delay-1"
           >
             {/* Tournament Type */}
             <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-5 space-y-4">
@@ -710,11 +704,8 @@ export default function TournamentPage() {
           </motion.div>
 
           {/* Right Panel: Bracket View */}
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="lg:col-span-3 space-y-6"
+          <motion.div initial={false}
+            className="lg:col-span-3 space-y-6 reveal reveal-right reveal-delay-2"
           >
             {!tournament ? (
               <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-12 flex flex-col items-center justify-center min-h-[400px]">
@@ -737,10 +728,8 @@ export default function TournamentPage() {
             ) : (
               <>
                 {/* Tournament Header */}
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 flex items-center justify-between flex-wrap gap-3"
+                <motion.div initial={false}
+                  className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 flex items-center justify-between flex-wrap gap-3 reveal reveal-down"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
@@ -803,10 +792,8 @@ export default function TournamentPage() {
                 )}
 
                 {/* Bracket Display */}
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-5 overflow-x-auto"
+                <motion.div initial={false}
+                  className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-5 overflow-x-auto reveal reveal-up-sm"
                 >
                   {tournament.type === "single-elimination" &&
                     renderSingleEliminationBracket(tournament.rounds)}

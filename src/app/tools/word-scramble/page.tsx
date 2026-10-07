@@ -78,7 +78,7 @@ export default function WordScramblePage() {
   return (
     <div className="min-h-screen pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <motion.div initial={false} className="reveal reveal-up">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-lime-400" />
             <span className="text-sm text-muted-foreground">Unscramble the word</span>
@@ -130,7 +130,7 @@ export default function WordScramblePage() {
               </p>
             )}
             {solved ? (
-              <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="mb-4">
+              <motion.div initial={false} className="mb-4 reveal reveal-scale">
                 <p className="flex items-center justify-center gap-2 text-xl font-bold text-emerald-400">
                   <Emoji name="party_popper" size={28} pop /> {word}!
                 </p>

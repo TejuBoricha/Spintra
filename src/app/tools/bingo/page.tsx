@@ -73,7 +73,7 @@ export default function BingoPage() {
   return (
     <div className="min-h-screen pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <motion.div initial={false} className="reveal reveal-up">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-teal-400" />
             <span className="text-sm text-muted-foreground">75-ball bingo</span>
@@ -103,11 +103,9 @@ export default function BingoPage() {
         )}
 
         {lastCalled && !hasBingo && (
-          <motion.p
+          <motion.p initial={false}
             key={lastCalled}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-2xl font-bold text-teal-400 mb-4"
+            className="text-2xl font-bold text-teal-400 mb-4 reveal reveal-scale"
           >
             {columnFor(lastCalled)}-{lastCalled}
           </motion.p>
