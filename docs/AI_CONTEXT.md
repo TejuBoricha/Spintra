@@ -4,9 +4,9 @@
 > DB schema live in `ARCHITECTURE.md`. Session-to-session handoff lives in `HANDOFF.md`. Backlog
 > and roadmap live in `TASKS.md`. Do not duplicate those here — link to them instead.
 > Always update this file after every significant milestone.
-> Last updated: 2026-10-02
+> Last updated: 2026-10-07
 
-> **Read this first (2026-10-02).** The active thread is a product audit whose fixes ship as small tested PRs (#58 to #66 merged and deployed; #68, the tournament, tools and content fixes plus a test fix and Leave room, and #67, a retry and a second daily run for the backup after the 2 Oct run failed on one refused connection, are open). **The 2 Oct local session stopped at a safe point at the owner's request: neither PR is merged; #68 has 7 round-3 review findings still open (do not merge it before they are dealt with). Resume from `HANDOFF.md` section 3.** The sections "Current Focus" and "Next Recommended Task" below still describe earlier states and are kept as history. For what is done, in progress and pending, read the **State board at the top of `HANDOFF.md`**, then `TASKS.md` (the "Wave 3" bullets). Two migrations (0115, 0116) are drafted, not applied: `PENDING_MIGRATIONS_DRAFT.md`.
+> **Read this first (2026-10-07).** The active thread is a product audit whose fixes ship as small tested PRs (#58 to #66 merged and deployed; #68, the tournament, tools and content fixes plus a test fix and Leave room, and #67, a retry and a second daily run for the backup after the 2 Oct run failed on one refused connection, are open). **On 7 Oct the review of #68 was finished (five rounds; every finding fixed or left on purpose, see `TASKS.md`); it merges once its five checks are green on the exact head. #67's third review is next.** Resume from `HANDOFF.md` section 3. The owner's standing rule since 7 Oct: the assistant does not ask him questions; it picks the industry-standard option and says why it fits. The sections "Current Focus" and "Next Recommended Task" below still describe earlier states and are kept as history. For what is done, in progress and pending, read the **State board at the top of `HANDOFF.md`**, then `TASKS.md` (the "Wave 3" bullets). Two migrations (0115, 0116) are drafted, not applied: `PENDING_MIGRATIONS_DRAFT.md`.
 
 ---
 
