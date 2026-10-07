@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_OPEN_GRAPH } from "@/lib/site-metadata";
 import localFont from "next/font/local";
 import Script from "next/script";
 import "./globals.css";
@@ -42,15 +43,7 @@ export const metadata: Metadata = {
     "team generator", "wheel spinner", "tournament bracket", "random name picker",
     "multiplayer games", "party games", "classroom activities", "lucky wheel",
   ],
-  openGraph: {
-    title: "Spintra | Free wheel spinner, team maker, and party games",
-    description: "Can't decide? Spin for it. Free games and group tools you play together in one room.",
-    url: "https://spintra.io",
-    siteName: "Spintra",
-    images: [{ url: "/og-image.png" }],
-    locale: "en_US",
-    type: "website",
-  },
+  openGraph: SITE_OPEN_GRAPH,
   twitter: {
     card: "summary_large_image",
     title: "Spintra",
@@ -68,44 +61,16 @@ export const metadata: Metadata = {
 // 'unsafe-inline' (see next.config.ts's comment — required unconditionally
 // by Next.js's own hydration bootstrap, not something this addition
 // introduces).
-//
-// WebSite and Organization say who "Spintra" is: the name, its address and its
-// logo. The word is also the Latin "spintria" (a Roman token) and search engines
-// have no reason to prefer a new site over it until the site states its own
-// name clearly and consistently; these two entries are how a site does that
-// (Google reads WebSite.name and alternateName for the site name shown in results).
 const structuredData = {
   "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "WebSite",
-      "@id": "https://spintra.io/#website",
-      name: "Spintra",
-      alternateName: "Spintra.io",
-      url: "https://spintra.io",
-      description:
-        "Free online games and group tools: a wheel spinner, team maker, name picker, tournament brackets, dice, and party games you play together in one room.",
-      inLanguage: "en",
-      publisher: { "@id": "https://spintra.io/#organization" },
-    },
-    {
-      "@type": "Organization",
-      "@id": "https://spintra.io/#organization",
-      name: "Spintra",
-      url: "https://spintra.io",
-      logo: { "@type": "ImageObject", url: "https://spintra.io/icon.png", width: 192, height: 192 },
-    },
-    {
-      "@type": "WebApplication",
-      name: "Spintra",
-      url: "https://spintra.io",
-      description:
-        "Spin a wheel, draw names, split into teams, or run a bracket. Open a room and everyone sees the same result on their own screen. Free, in your browser.",
-      applicationCategory: "GameApplication",
-      operatingSystem: "Any (web browser)",
-      offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-    },
-  ],
+  "@type": "WebApplication",
+  name: "Spintra",
+  url: "https://spintra.io",
+  description:
+    "Spin a wheel, draw names, split into teams, or run a bracket. Open a room and everyone sees the same result on their own screen. Free, in your browser.",
+  applicationCategory: "GameApplication",
+  operatingSystem: "Any (web browser)",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
 };
 
 const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;

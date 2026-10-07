@@ -9,14 +9,7 @@ import { GAMES } from '../src/lib/games';
 
 const SITE = 'https://spintra.io';
 const toolPaths = [...new Set(GAMES.map((g) => g.href))].filter((href) => href.startsWith('/tools/'));
-const pages = ['/', '/tools', '/explore', '/create', '/for-teachers', '/spintra-city', '/legal/terms', '/legal/privacy', ...toolPaths];
 
-async function html(request: APIRequestContext, path: string) {
-  const res = await request.get(path);
-  expect(res.status(), `${path} should load`).toBe(200);
-  return res.text();
-}
-const canonicalOf = (h: string) => /<link rel="canonical" href="([^"]+)"/.exec(h)?.[1];
 type LdNode = {
   '@type'?: string;
   '@id'?: string;
@@ -27,55 +20,94 @@ type LdNode = {
   publisher?: { '@id'?: string };
   logo?: { url: string };
 };
-const jsonLd = (h: string): LdNode[] =>
-  [...h.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1]) as LdNode);
-const ldNodes = (h: string): LdNode[] => jsonLd(h).flatMap((block) => block['@graph'] ?? [block]);
 
-test('every indexable page names its own address as canonical, and none inherits the home page\'s', async ({ request }) => {
-  for (const path of pages) {
-    const expected = path === '/' ? SITE : `${SITE}${path}`; // the root has no trailing slash, as in the sitemap
-    expect(canonicalOf(await html(request, path)), `canonical of ${path}`).toBe(expected);
+async function html(request: APIRequestContext, path: string) {
+  const res = await request.get(path);
+  expect(res.status(), `${path} should load`).toBe(200);
+  return res.text();
+}
+const metaContent = (h: string, property: string) =>
+  new RegExp(`<meta property="${property}" content="([^"]*)"`).exec(h)?.[1];
+const canonicalOf = (h: string) => /<link rel="canonical" href="([^"]+)"/.exec(h)?.[1];
+const ldNodes = (h: string): LdNode[] =>
+  [...h.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+    .map((m) => JSON.parse(m[1]) as LdNode)
+    .flatMap((block) => block['@graph'] ?? [block]);
+
+/** The sitemap is the list of pages that should be found; everything else is checked against it. */
+async function sitemapEntries(request: APIRequestContext) {
+  const xml = await (await request.get('/sitemap.xml')).text();
+  return [...xml.matchAll(/<url>([\s\S]*?)<\/url>/g)].map((m) => ({
+    loc: /<loc>([^<]+)<\/loc>/.exec(m[1])?.[1] ?? '',
+    lastmod: /<lastmod>([^<]+)<\/lastmod>/.exec(m[1])?.[1],
+  }));
+}
+const pathOf = (loc: string) => new URL(loc).pathname;
+
+test('the sitemap lists the home page, the tools index and every tool page', async ({ request }) => {
+  const paths = (await sitemapEntries(request)).map((e) => pathOf(e.loc));
+  for (const required of ['/', '/tools', ...toolPaths]) expect(paths, required).toContain(required);
+  expect(new Set(paths).size, 'each page once').toBe(paths.length);
+});
+
+test('every page in the sitemap names its own address as canonical (none inherits the home page\'s) and as its share address', async ({ request }) => {
+  for (const { loc } of await sitemapEntries(request)) {
+    const h = await html(request, pathOf(loc));
+    expect(canonicalOf(h), `canonical of ${loc}`).toBe(loc);
+    // og:url is optional, but when a page has one it must not point at another page.
+    const ogUrl = metaContent(h, 'og:url');
+    if (ogUrl !== undefined) expect(ogUrl, `og:url of ${loc}`).toBe(loc);
   }
 });
 
-test('the site says who Spintra is: a WebSite and an Organization with its name, address and logo', async ({ request }) => {
+test('a lastmod is only given where it is known: the home page and every tool page have one, and no date is in the future', async ({ request }) => {
+  const entries = await sitemapEntries(request);
+  const today = new Date().toISOString().slice(0, 10);
+  for (const e of entries) {
+    if (e.lastmod === undefined) continue;
+    expect(e.lastmod, `lastmod of ${e.loc}`).toMatch(/^20\d\d-\d\d-\d\d/);
+    expect(e.lastmod.slice(0, 10) <= today, `lastmod of ${e.loc} is not in the future`).toBe(true);
+  }
+  for (const required of ['/', ...toolPaths]) {
+    const entry = entries.find((e) => pathOf(e.loc) === required);
+    expect(entry?.lastmod, `lastmod of ${required}`).toBeTruthy();
+  }
+});
+
+test('the home page says who Spintra is: a WebSite and an Organization with its name, address and logo', async ({ request }) => {
   const nodes = ldNodes(await html(request, '/'));
-  const byType = (type: string) => nodes.find((n) => n['@type'] === type)!;
-
-  const site = byType('WebSite');
+  const site = nodes.find((n) => n['@type'] === 'WebSite');
+  const org = nodes.find((n) => n['@type'] === 'Organization');
   expect(site, 'a WebSite entry').toBeTruthy();
-  expect(site.name).toBe('Spintra');
-  expect(site.url).toBe(SITE);
-  expect(site.alternateName).toBe('Spintra.io');
-
-  const org = byType('Organization');
   expect(org, 'an Organization entry').toBeTruthy();
-  expect(org.name).toBe('Spintra');
-  expect(org.logo?.url).toMatch(/^https:\/\/spintra\.io\/.+\.(png|svg|webp|jpg)$/);
-  expect(site.publisher?.['@id']).toBe(org['@id']);
+
+  expect(site?.name).toBe('Spintra');
+  expect(site?.url).toBe(SITE);
+  expect(site?.alternateName).toBe('Spintra.io');
+  expect(org?.name).toBe('Spintra');
+  expect(org?.url).toBe(SITE);
+  expect(org?.logo?.url).toMatch(/^https:\/\/spintra\.io\/.+\.(png|svg|webp|jpg)$/);
+  expect(site?.publisher?.['@id'], 'the site names the organization as its publisher').toBe(org?.['@id']);
 
   // What was already there stays.
-  expect(byType('WebApplication')?.name).toBe('Spintra');
+  expect(nodes.find((n) => n['@type'] === 'WebApplication')?.name).toBe('Spintra');
 });
 
-test('the logo address in the Organization entry really serves an image', async ({ request }) => {
-  const nodes = ldNodes(await html(request, '/'));
-  const logo = new URL(nodes.find((n) => n['@type'] === 'Organization')!.logo!.url);
-  const res = await request.get(logo.pathname); // same app, local address
+test('the Organization logo address serves an image, and a tool page does not repeat the home page entity markup', async ({ request }) => {
+  const org = ldNodes(await html(request, '/')).find((n) => n['@type'] === 'Organization');
+  const res = await request.get(new URL(org?.logo?.url ?? SITE).pathname); // same app, local address
   expect(res.status()).toBe(200);
   expect(res.headers()['content-type']).toMatch(/^image\//);
-});
 
-test('the sitemap lists every page once, each with a lastmod date', async ({ request }) => {
-  const xml = await (await request.get('/sitemap.xml')).text();
-  const entries = [...xml.matchAll(/<url>([\s\S]*?)<\/url>/g)].map((m) => m[1]);
-  const locs = entries.map((e) => /<loc>([^<]+)<\/loc>/.exec(e)?.[1]);
-  expect(locs.sort()).toEqual(pages.map((p) => (p === '/' ? SITE : `${SITE}${p}`)).sort());
-  for (const e of entries) expect(e, 'lastmod').toMatch(/<lastmod>20\d\d-\d\d-\d\d(T[^<]*)?<\/lastmod>/);
+  const tool = ldNodes(await html(request, '/tools/dice')).map((n) => n['@type']);
+  expect(tool, 'the dice page keeps its own markup').toContain('WebApplication');
+  expect(tool).not.toContain('WebSite');
+  expect(tool).not.toContain('Organization');
 });
 
 test('the home page says in plain text what Spintra is', async ({ request }) => {
-  // Search engines and AI summaries take "what is Spintra?" from page text.
+  // Search engines and AI summaries take "what is Spintra?" from page text. The point is
+  // that a plain definition is in the server-rendered page, not its exact wording.
   const text = (await html(request, '/')).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-  expect(text).toContain('Spintra is a free set of games and group tools that run in your browser');
+  expect(text).toMatch(/Spintra is a free [^.]{20,}browser[^.]*\./);
 });

@@ -490,7 +490,7 @@ export default function HomePage() {
         {/* A plain statement of what Spintra is, in the page's own text: search engines
             and AI summaries take the answer to "what is Spintra?" from page text, and the
             word is otherwise read as the Roman "spintria". */}
-        <p className="max-w-2xl mx-auto mt-6 text-center text-xs text-muted-foreground">
+        <p className="max-w-2xl mx-auto mt-6 text-center text-sm text-muted-foreground">
           Spintra is a free set of games and group tools that run in your browser: a wheel spinner,
           team maker, name picker, tournament brackets, dice, and party games you play together in
           one room. No account needed.
