@@ -10,7 +10,8 @@
 // passes on a report it could not read). The rules are in audit-gate-core.mjs and
 // are tested in tests/audit-gate.spec.ts.
 //
-// Usage: node scripts/audit-gate.mjs [--audit-level=info|low|moderate|high|critical]
+// Usage: node scripts/audit-gate.mjs [--audit-level=info|low|moderate|high|critical|none]
+// ("none" never fails on an advisory, like npm audit's own; npm audit still has to run and be readable.)
 
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -42,6 +43,10 @@ function main() {
     for (const line of failures) console.error(`::error::${line}`);
     console.error(`\nnpm audit gate: ${failures.length} advisor${failures.length === 1 ? "y" : "ies"} at ${level} or above. Run "npm audit" for the dependency paths.`);
     process.exit(1);
+  }
+  if (level === "none") {
+    console.log("npm audit gate: --audit-level=none, so no advisory can fail the build (npm audit ran and its report was read).");
+    return;
   }
   console.log(`npm audit gate: no advisory at ${level} or above${allowed.length ? ` besides ${allowed.length} time-boxed exception${allowed.length === 1 ? "" : "s"}` : ""}.`);
 }

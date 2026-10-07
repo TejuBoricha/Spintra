@@ -22,7 +22,9 @@ export async function loadJoinCheck(): Promise<JoinCheck | null> {
       checkCanJoinRoom: check.checkCanJoinRoom,
       ROOM_JOIN_ERROR_MESSAGES: check.ROOM_JOIN_ERROR_MESSAGES,
     };
-  } catch {
+  } catch (error) {
+    // Falls back on purpose, but leaves a trace: a chunk that fails for everyone (after a deploy) would otherwise be invisible.
+    console.warn("The join pre-check could not be loaded; joining without it.", error);
     return null;
   }
 }

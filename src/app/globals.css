@@ -533,9 +533,11 @@ body {
    it starts at 0.3 or only slides, and Lighthouse's model then charges all the JavaScript
    that ran in that half second to the LCP (the live site showed no gain from the first
    version of this change for exactly that reason). At 30% the content is really on screen
-   from the first frame. */
+   from the first frame. That only matters for what is painted first, so items that start
+   late (`reveal-delay-3` and up, 0.3 s or more) keep the old start at 0: they stay hidden
+   until their turn instead of showing as a dim ghost for up to a second. */
 @keyframes reveal-in {
-  from { opacity: 0.3; transform: var(--reveal-from, none); }
+  from { opacity: var(--reveal-start, 0.3); transform: var(--reveal-from, none); }
 }
 @layer components {
   .reveal { animation: reveal-in 0.5s ease-out backwards; }
@@ -549,14 +551,14 @@ body {
   .reveal-scale { --reveal-from: scale(0.95); }
   .reveal-delay-1 { animation-delay: 0.1s; }
   .reveal-delay-2 { animation-delay: 0.2s; }
-  .reveal-delay-3 { animation-delay: 0.3s; }
-  .reveal-delay-4 { animation-delay: 0.4s; }
-  .reveal-delay-5 { animation-delay: 0.5s; }
-  .reveal-delay-6 { animation-delay: 0.6s; }
-  .reveal-delay-7 { animation-delay: 0.7s; }
-  .reveal-delay-8 { animation-delay: 0.8s; }
-  .reveal-delay-9 { animation-delay: 0.9s; }
-  .reveal-delay-10 { animation-delay: 1s; }
+  .reveal-delay-3 { animation-delay: 0.3s; --reveal-start: 0; }
+  .reveal-delay-4 { animation-delay: 0.4s; --reveal-start: 0; }
+  .reveal-delay-5 { animation-delay: 0.5s; --reveal-start: 0; }
+  .reveal-delay-6 { animation-delay: 0.6s; --reveal-start: 0; }
+  .reveal-delay-7 { animation-delay: 0.7s; --reveal-start: 0; }
+  .reveal-delay-8 { animation-delay: 0.8s; --reveal-start: 0; }
+  .reveal-delay-9 { animation-delay: 0.9s; --reveal-start: 0; }
+  .reveal-delay-10 { animation-delay: 1s; --reveal-start: 0; }
   @media (prefers-reduced-motion: reduce) {
     .reveal { animation: none; }
   }

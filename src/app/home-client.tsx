@@ -125,14 +125,15 @@ export default function HomePage() {
     const el = heroSectionRef.current;
     if (!el) return;
 
-    // Start the scene only after the page has loaded and the browser is idle (or after 4 s at
-    // most). Its chunk (three.js, about 900 KB before compression) used to start downloading
-    // and running with the page, in the window where a phone is still painting the headline
-    // and hydrating (search audit S-7).
+    // Start the scene only after the page has loaded and the browser is idle. Its chunk (three.js,
+    // about 900 KB before compression) used to start downloading and running with the page, in the
+    // window where a phone is still painting the headline and hydrating (search audit S-7). `load`
+    // can come late (a hung image or font), so a plain timer starts it after 6 s at the latest.
     let observer: IntersectionObserver | undefined;
     let idleHandle: number | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const start = () => {
+      if (observer) return;
       observer = new IntersectionObserver(
         ([entry]) => setIsHeroVisible(entry.isIntersecting),
         { threshold: 0 }
@@ -145,14 +146,14 @@ export default function HomePage() {
     };
     if (document.readyState === "complete") whenIdle();
     else window.addEventListener("load", whenIdle, { once: true });
+    const fallback = setTimeout(start, 6000);
 
     return () => {
       window.removeEventListener("load", whenIdle);
       if (idleHandle !== undefined) window.cancelIdleCallback(idleHandle);
       if (timer !== undefined) clearTimeout(timer);
+      clearTimeout(fallback);
       observer?.disconnect();
-      // Nothing observes the hero any more, so do not leave the 3D scene running.
-      setIsHeroVisible(false);
     };
   }, [prefersReducedMotion]);
 
