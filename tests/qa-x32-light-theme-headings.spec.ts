@@ -53,3 +53,22 @@ test('dark theme: the highlighted heading word keeps its light lime and still re
   // Unchanged: still the bright lime, not the light theme's dark olive.
   expect(Math.max(...stops.map((s) => s[0]))).toBeGreaterThan(200);
 });
+
+test('a dark block inside a light page keeps the bright lime, not the light theme\'s olive', async ({ page }) => {
+  // No such block exists today; `.dark` used to inherit `.light`'s override of the gradient,
+  // which would put dark olive text on a dark surface the day one was added.
+  await page.addInitScript(() => localStorage.setItem('spintra-theme', 'light'));
+  await page.goto('/tools/name-draw', { waitUntil: 'networkidle' });
+  await expect(page.locator('html')).toHaveClass(/\blight\b/);
+  const stops = await page.evaluate(() => {
+    const box = document.createElement('div');
+    box.className = 'dark';
+    box.innerHTML = '<span class="gradient-text">Dark block</span>';
+    document.body.appendChild(box);
+    const image = getComputedStyle(box.firstElementChild!).backgroundImage;
+    box.remove();
+    return [...image.matchAll(/rgba?\((\d+),\s*(\d+),\s*(\d+)/g)].map((m) => Number(m[1]));
+  });
+  expect(stops.length, 'the highlight is a gradient with colour stops').toBeGreaterThanOrEqual(2);
+  expect(Math.max(...stops), 'red channel of the brightest stop').toBeGreaterThan(200);
+});

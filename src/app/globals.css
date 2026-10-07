@@ -38,6 +38,8 @@
   --lime-600: #a8bb18;
   /* Dark olive for readable brand text on light surfaces (≥4.5:1 on white/cream) */
   --lime-700: #5f7010;
+  /* Darker end of the light theme's heading gradient (7.7:1 on the cream page). */
+  --lime-800: #435209;
 
   /* Base ramp — coral (secondary / energetic accent) */
   --coral-400: #f54452;
@@ -202,6 +204,8 @@
 
 /* Explicit dark scope — mirrors :root so `.dark` is selectable regardless of ancestor scope, same as `.light` below */
 .dark {
+  /* Restated so a `.dark` subtree inside a `.light` page gets the lime, not the light theme's olive it would inherit. */
+  --gradient-brand-text: var(--gradient-brand);
   --surface-app: var(--ink-950);
   --surface-panel: var(--ink-800);
   --surface-panel-soft: var(--ink-650);
@@ -248,7 +252,7 @@
 
 .light {
   /* Dark olive, 4.9:1 to 7.7:1 on the cream page (lime-700 to #435209), instead of lime-400 at 1.07:1. */
-  --gradient-brand-text: linear-gradient(135deg, var(--lime-700), #435209);
+  --gradient-brand-text: linear-gradient(135deg, var(--lime-700), var(--lime-800));
   --surface-app: var(--cream-100);
   --surface-panel: #ffffff;
   --surface-panel-soft: var(--cream-50);

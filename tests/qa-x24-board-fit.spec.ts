@@ -6,8 +6,9 @@ import { startTwoPlayerCityMatch, setHostTurn } from './qa-city-helpers';
 // CI runner). Read once, straight after a resize, it can still be the previous
 // screen's board: a CI run on 30 Sep saw 836px, the 1920x1080 size, on an 820px
 // screen. So wait until two reads two frames apart agree and the board fits;
-// a board that never fits still fails, with the reason.
-async function settledBoard(page: Page, stage: Locator, name: string, w: number, h: number) {
+// a board that never fits still fails, with the reason. `checkFold` ("the whole board
+// is on screen") is a claim about the moment of load, so the after-a-roll test turns it off.
+async function settledBoard(page: Page, stage: Locator, name: string, w: number, h: number, checkFold = true) {
   const problem = async () => {
     const a = (await stage.boundingBox())!;
     await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
@@ -19,7 +20,7 @@ async function settledBoard(page: Page, stage: Locator, name: string, w: number,
     // The WHOLE board is on screen at load (a cut-off bottom row hides Departure,
     // where everyone starts). Not on the 320px phone, where the header and the
     // stacked seat row leave less room than the smallest readable board.
-    if (w >= 360 && b.y + b.height > h) return `has its bottom row ${Math.round(b.y + b.height - h)}px below the fold at load`;
+    if (checkFold && w >= 360 && b.y + b.height > h) return `has its bottom row ${Math.round(b.y + b.height - h)}px below the fold at load`;
     return '';
   };
   await expect.poll(problem, { message: `${name}: the board`, timeout: 10_000 }).toBe('');
@@ -115,8 +116,9 @@ test('after a roll the dice show on the board, inside its frame', async () => {
     if (name.startsWith('laptop')) await host.getByRole('button', { name: /^roll dice$/i }).click();
     const dice = host.getByTestId('city-dice');
     await expect(dice).toBeVisible({ timeout: 15_000 });
-    // Settled first, so the dice and the board are read from the same layout.
-    const s = await settledBoard(host, stage, name, w, h);
+    // Settled first, so the dice and the board are read from the same layout. Not the
+    // "whole board at load" check: this is after a roll, not at load.
+    const s = await settledBoard(host, stage, name, w, h, false);
     const d = (await dice.boundingBox())!;
     expect(d.x, `${name}: dice hang off the left of the board`).toBeGreaterThanOrEqual(s.x);
     expect(d.y).toBeGreaterThanOrEqual(s.y);
