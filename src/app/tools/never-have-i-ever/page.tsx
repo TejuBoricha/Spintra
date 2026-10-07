@@ -121,18 +121,18 @@ export default function NeverHaveIEverPage() {
 
         {/* Decision */}
         {!revealed ? (
-          <div className="flex justify-center items-center gap-4 mb-4">
+          <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-4 mb-4">
             <Button
               size="lg"
               onClick={() => respond(true)}
-              className="px-8 py-4 bg-pink-600 hover:bg-pink-500"
+              className="px-6 sm:px-8 py-4 bg-pink-600 hover:bg-pink-500"
             >
               <CheckCircle className="w-5 h-5 mr-2" /> I Have
             </Button>
             <Button
               size="lg"
               onClick={() => respond(false)}
-              className="px-8 py-4 bg-emerald-600 hover:bg-emerald-500"
+              className="px-6 sm:px-8 py-4 bg-emerald-600 hover:bg-emerald-500"
             >
               <XCircle className="w-5 h-5 mr-2" /> Never Have
             </Button>
