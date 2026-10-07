@@ -1,6 +1,15 @@
 import type { Metadata } from "next";
 
 /**
+ * JSON for an inline `<script type="application/ld+json">`. A "<" inside a string
+ * (a closing script tag in a description, say) would end the script early, so every
+ * "<" is written as its unicode escape, which JSON readers decode back to the same text.
+ */
+export function jsonLdScript(data: unknown): string {
+  return JSON.stringify(data).replace(/</g, "\\u003c");
+}
+
+/**
  * The share preview (Open Graph) every page without its own inherits from the root
  * layout. It has no `url` on purpose: a page that inherits it would otherwise say its
  * address is the home page's, contradicting its own canonical. Next replaces a page's

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SITE_OPEN_GRAPH } from "@/lib/site-metadata";
+import { SITE_OPEN_GRAPH, jsonLdScript } from "@/lib/site-metadata";
 import HomeClient from "./home-client";
 
 // The home page itself is a client component (home-client.tsx), which cannot
@@ -46,7 +46,7 @@ const entity = {
 export default function HomePage() {
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(entity) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(entity) }} />
       <HomeClient />
     </>
   );

@@ -1,5 +1,6 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
 import { GAMES } from '../src/lib/games';
+import { jsonLdScript } from '../src/lib/site-metadata';
 
 // 7 Oct 2026: searching "spintra dice" showed Google correcting "spintra" to "spinner" and
 // an AI overview defining it as a Roman token, so the site was not being found by its own
@@ -26,11 +27,17 @@ async function html(request: APIRequestContext, path: string) {
   expect(res.status(), `${path} should load`).toBe(200);
   return res.text();
 }
-const metaContent = (h: string, property: string) =>
-  new RegExp(`<meta property="${property}" content="([^"]*)"`).exec(h)?.[1];
-const canonicalOf = (h: string) => /<link rel="canonical" href="([^"]+)"/.exec(h)?.[1];
+/** The value of `attr` inside the first tag of `tag` whose attributes include `match`, whatever order the attributes are in. */
+function attrOf(h: string, tag: string, match: RegExp, attr: string): string | undefined {
+  for (const m of h.matchAll(new RegExp(`<${tag}\\b[^>]*>`, 'g'))) {
+    if (match.test(m[0])) return new RegExp(`\\b${attr}="([^"]*)"`).exec(m[0])?.[1];
+  }
+  return undefined;
+}
+const metaContent = (h: string, property: string) => attrOf(h, 'meta', new RegExp(`property="${property}"`), 'content');
+const canonicalOf = (h: string) => attrOf(h, 'link', /rel="canonical"/, 'href');
 const ldNodes = (h: string): LdNode[] =>
-  [...h.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+  [...h.matchAll(/<script\b[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)]
     .map((m) => JSON.parse(m[1]) as LdNode)
     .flatMap((block) => block['@graph'] ?? [block]);
 
@@ -62,11 +69,12 @@ test('every page in the sitemap names its own address as canonical (none inherit
 
 test('a lastmod is only given where it is known: the home page and every tool page have one, and no date is in the future', async ({ request }) => {
   const entries = await sitemapEntries(request);
-  const today = new Date().toISOString().slice(0, 10);
+  // A day of slack: the dates are written in local time and this runs in UTC.
+  const latest = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   for (const e of entries) {
     if (e.lastmod === undefined) continue;
     expect(e.lastmod, `lastmod of ${e.loc}`).toMatch(/^20\d\d-\d\d-\d\d/);
-    expect(e.lastmod.slice(0, 10) <= today, `lastmod of ${e.loc} is not in the future`).toBe(true);
+    expect(e.lastmod.slice(0, 10) <= latest, `lastmod of ${e.loc} is not in the future`).toBe(true);
   }
   for (const required of ['/', ...toolPaths]) {
     const entry = entries.find((e) => pathOf(e.loc) === required);
@@ -110,4 +118,10 @@ test('the home page says in plain text what Spintra is', async ({ request }) => 
   // that a plain definition is in the server-rendered page, not its exact wording.
   const text = (await html(request, '/')).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
   expect(text).toMatch(/Spintra is a free [^.]{20,}browser[^.]*\./);
+});
+
+test('inline JSON-LD cannot end its script early', () => {
+  const out = jsonLdScript({ description: 'a </script><script>alert(1)</script> b' });
+  expect(out).not.toContain('<');
+  expect(JSON.parse(out).description).toBe('a </script><script>alert(1)</script> b'); // decodes back unchanged
 });
