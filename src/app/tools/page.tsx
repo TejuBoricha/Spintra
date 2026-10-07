@@ -1,6 +1,7 @@
 // A server page: it needs no client JavaScript (the card entrance is CSS, see `reveal` in
 // globals.css), so the cards are in the first HTML and visible before anything hydrates.
 import Link from "next/link";
+import { revealStagger } from "@/lib/reveal";
 import { Wrench } from "lucide-react";
 import { GAMES } from "@/lib/games";
 
@@ -32,8 +33,7 @@ export default function ToolsPage() {
           {tools.map((tool, index) => {
             const Icon = tool.icon;
             return (
-              // Two cards per step of a tenth of a second, at most half a second in all.
-              <div key={tool.type} className={`h-full reveal reveal-up reveal-delay-${Math.min(Math.floor(index / 2), 5)}`}>
+              <div key={tool.type} className={`h-full ${revealStagger(index)}`}>
                 <Link href={tool.href} className="block h-full outline-none">
                   <div className="h-full p-6 group cursor-pointer border border-(--border-hairline) bg-(--surface-panel) hover:border-primary/40 rounded-[2rem] shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all flex flex-col items-start gap-4">
                     <div

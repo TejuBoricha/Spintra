@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { ChipGroup } from "@/components/ui/chip-group";
 import { Emoji, type EmojiName } from "@/components/emoji";
 import type { RoomType } from "@/lib/types";
+import { revealStagger } from "@/lib/reveal";
 import { GAMES } from "@/lib/games";
 import { getOrCreateRoomUser } from "@/lib/room-user";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -543,10 +544,9 @@ export default function ExplorePage() {
                 const Icon = t.icon;
                 return (
                   <Link key={t.label} href={t.href}>
-                    {/* Plain element with the CSS entrance, so the cards are in the server HTML and visible
-                        before hydration; two cards per tenth of a second, half a second at most. */}
+                    {/* Plain element with the CSS entrance, so the cards are in the server HTML and visible before hydration. */}
                     <div
-                      className={`p-5 text-center group cursor-pointer rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 hover:border-primary/30 transition-colors reveal reveal-up reveal-delay-${Math.min(Math.floor(i / 2), 5)}`}
+                      className={`p-5 text-center group cursor-pointer rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 hover:border-primary/30 transition-colors ${revealStagger(i)}`}
                     >
                       <div className={`w-12 h-12 rounded-control border-2 border-(--border-strong) bg-gradient-to-br ${t.gradient} flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform`}>
                         <Icon className="w-6 h-6 text-white" />

@@ -41,7 +41,7 @@ async function sample(page: Page) {
       }
       return { opacity, entrance };
     };
-    // Content inside the first screen that is invisible: text of 20 or more characters, or an image,
+    // Content inside the first screen that is invisible: text of 20 or more characters, a button or link with a label, or an image,
     // icon or canvas of at least 40 by 40, whose opacity (or an ancestor's) is 0 or that is scaled to
     // almost nothing (the idle coin on /tools/coin-flip was scale(0) in the server HTML).
     const hiddenContent: string[] = [];
@@ -60,13 +60,16 @@ async function sample(page: Page) {
       const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent ?? '').join(' ').replace(/\s+/g, ' ').trim();
       const visual = ['IMG', 'SVG', 'CANVAS', 'VIDEO'].includes(el.tagName.toUpperCase());
       const laid = el instanceof HTMLElement ? el.offsetWidth * el.offsetHeight : 0;
-      const isText = own.length >= 20;
+      // A button or link with a label is content too, however short the label, if it is big enough to be a
+      // real control (the 12 px hidden create-room button on /create is a test hook, audit X-6).
+      const control = ['A', 'BUTTON'].includes(el.tagName.toUpperCase()) && (el.textContent ?? '').trim().length >= 3 && el instanceof HTMLElement && el.offsetWidth >= 20 && el.offsetHeight >= 20;
+      const isText = own.length >= 20 || control;
       const isVisual = visual && (el instanceof HTMLElement ? el.offsetWidth >= 40 && el.offsetHeight >= 40 : false);
       if (!isText && !isVisual) continue;
       if (el instanceof HTMLElement && laid === 0) continue; // not rendered at all (display: none)
       const r = el.getBoundingClientRect();
       if (r.bottom <= 0 || r.top >= window.innerHeight) continue;
-      if ((look(el)?.opacity ?? 1) === 0 || scaleOf(el) < 0.05) hiddenContent.push(`${el.tagName.toLowerCase()} "${own.slice(0, 40)}"`);
+      if ((look(el)?.opacity ?? 1) < 0.05 || scaleOf(el) < 0.05) hiddenContent.push(`${el.tagName.toLowerCase()} "${own.slice(0, 40)}"`);
     }
     return { nav: look(document.querySelector('nav')), h1: look(document.querySelector('h1')), hiddenContent };
   });
