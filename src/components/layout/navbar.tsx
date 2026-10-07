@@ -7,10 +7,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { checkCanJoinRoom, ROOM_JOIN_ERROR_MESSAGES } from "@/lib/room-join-check";
 import { getOrCreateRoomUser } from "@/lib/room-user";
-import { fireConfetti } from "@/components/celebration";
+// The Supabase client, the join check and the confetti library are loaded when they are used
+// (a room join, a click), not in every page's first load: together about 70 KB of compressed
+// JavaScript on a phone, for features most visits never touch (search audit S-7).
+const loadJoinCheck = () => Promise.all([import("@/lib/supabase/client"), import("@/lib/room-join-check")]);
+const fireConfetti = () => void import("@/components/celebration").then((m) => m.fireConfetti());
 import { useHasMounted } from "@/lib/use-has-mounted";
 import {
   Sun,
@@ -49,6 +51,11 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Fetch the join code while the dialog is open, so the first "Join" press does not wait for it.
+  useEffect(() => {
+    if (isJoinOpen) void loadJoinCheck();
+  }, [isJoinOpen]);
+
 
 
   const handleJoinRoomSubmit = useCallback(async () => {
@@ -56,6 +63,7 @@ export function Navbar() {
     setJoining(true);
 
     try {
+      const [{ getSupabaseBrowserClient }, { checkCanJoinRoom, ROOM_JOIN_ERROR_MESSAGES }] = await loadJoinCheck();
       const supabase = getSupabaseBrowserClient();
       if (supabase) {
         const result = await checkCanJoinRoom(supabase, joinCode, currentUser.id);
