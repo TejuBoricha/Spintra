@@ -4,13 +4,9 @@ import type { Database } from "./database.types";
 
 let browserSupabase: SupabaseClient<Database> | null = null;
 
-// NEXT_PUBLIC_* vars are inlined at build time, so this is a static check —
-// dead-code-eliminated entirely when the app is built with them present.
-export function isSupabaseConfigured(): boolean {
-  return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
-}
+// Lives in ./config so code that only needs the check does not pull this whole module (and the
+// Supabase library) in with it; re-exported here for the existing import path.
+export { isSupabaseConfigured } from "./config";
 
 function createBrowserClient(): SupabaseClient<Database> | null {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

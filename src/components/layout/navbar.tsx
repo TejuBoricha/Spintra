@@ -7,10 +7,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { checkCanJoinRoom, ROOM_JOIN_ERROR_MESSAGES } from "@/lib/room-join-check";
 import { getOrCreateRoomUser } from "@/lib/room-user";
-import { fireConfetti } from "@/components/celebration";
+import { loadJoinCheck } from "@/lib/join-check-loader";
 import { useHasMounted } from "@/lib/use-has-mounted";
 import {
   Sun,
@@ -27,6 +25,11 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useWhatsNew, WhatsNewTrigger, WhatsNewDialog } from "@/components/layout/whats-new-dialog";
 import { cn } from "@/lib/utils";
+
+// The confetti library loads when the page is idle (and on first use if that has not happened
+// yet), not in every page's first load (search audit S-7). A failed fetch just means no confetti.
+const loadConfetti = () => import("@/components/celebration").catch(() => null);
+const fireConfetti = () => void loadConfetti().then((m) => m?.fireConfetti());
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -49,6 +52,25 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Fetch the join code while the dialog is open, so the first "Join" press does not wait for it.
+  // (loadJoinCheck never rejects: a failed fetch resolves to null.)
+  useEffect(() => {
+    if (isJoinOpen) void loadJoinCheck();
+  }, [isJoinOpen]);
+
+  // Fetch the confetti code once the page is idle, so the first click on "Create" fires it at
+  // the click, not after a network round trip.
+  useEffect(() => {
+    let idleHandle: number | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    if ("requestIdleCallback" in window) idleHandle = window.requestIdleCallback(() => void loadConfetti());
+    else timer = setTimeout(() => void loadConfetti(), 2000);
+    return () => {
+      if (idleHandle !== undefined) window.cancelIdleCallback(idleHandle);
+      if (timer !== undefined) clearTimeout(timer);
+    };
+  }, []);
+
 
 
   const handleJoinRoomSubmit = useCallback(async () => {
@@ -56,11 +78,13 @@ export function Navbar() {
     setJoining(true);
 
     try {
-      const supabase = getSupabaseBrowserClient();
-      if (supabase) {
-        const result = await checkCanJoinRoom(supabase, joinCode, currentUser.id);
+      // null when the code could not be fetched: skip the pre-check and go to the room, which checks again.
+      const join = await loadJoinCheck();
+      const supabase = join?.getSupabaseBrowserClient();
+      if (join && supabase) {
+        const result = await join.checkCanJoinRoom(supabase, joinCode, currentUser.id);
         if (!result.ok) {
-          toast.error(ROOM_JOIN_ERROR_MESSAGES[result.reason]);
+          toast.error(join.ROOM_JOIN_ERROR_MESSAGES[result.reason]);
           setJoining(false);
           setCodeDigits(Array(6).fill(""));
           codeInputRefs.current[0]?.focus();

@@ -1,6 +1,6 @@
 "use client";
 
-import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { AlertTriangle } from "lucide-react";
 
 // Renders only if this production build is missing its Supabase env vars —

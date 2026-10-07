@@ -6,12 +6,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { checkCanJoinRoom, ROOM_JOIN_ERROR_MESSAGES } from "@/lib/room-join-check";
 import { ArrowRight, Sparkles, Zap, Globe, MessageCircle, Star, DownloadCloud, Gift, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getOrCreateRoomUser } from "@/lib/room-user";
+import { loadJoinCheck } from "@/lib/join-check-loader";
 import dynamic from "next/dynamic";
 const HeroThreeScene = dynamic(() => import("@/components/landing/hero-scene").then((m) => m.HeroThreeScene), {
   ssr: false,
@@ -65,11 +64,14 @@ export default function HomePage() {
     setHomeJoining(true);
 
     try {
-      const supabase = getSupabaseBrowserClient();
-      if (supabase) {
-        const result = await checkCanJoinRoom(supabase, homeCode, currentUser.id);
+      // Loaded now, not in the page's first load (search audit S-7); null when it could not be
+      // fetched: skip the pre-check and go to the room, which checks again.
+      const join = await loadJoinCheck();
+      const supabase = join?.getSupabaseBrowserClient();
+      if (join && supabase) {
+        const result = await join.checkCanJoinRoom(supabase, homeCode, currentUser.id);
         if (!result.ok) {
-          toast.error(ROOM_JOIN_ERROR_MESSAGES[result.reason]);
+          toast.error(join.ROOM_JOIN_ERROR_MESSAGES[result.reason]);
           setHomeJoining(false);
           return;
         }
@@ -117,15 +119,42 @@ export default function HomePage() {
 
   useEffect(() => {
     if (prefersReducedMotion) return;
+    // Data Saver: the 3D scene is a few hundred KB of JavaScript for decoration.
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+    if (connection?.saveData) return;
     const el = heroSectionRef.current;
     if (!el) return;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsHeroVisible(entry.isIntersecting),
-      { threshold: 0 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
+    // Start the scene only after the page has loaded and the browser is idle. Its chunk (three.js,
+    // about 900 KB before compression) used to start downloading and running with the page, in the
+    // window where a phone is still painting the headline and hydrating (search audit S-7). `load`
+    // can come late (a hung image or font), so a plain timer starts it after 6 s at the latest.
+    let observer: IntersectionObserver | undefined;
+    let idleHandle: number | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const start = () => {
+      if (observer) return;
+      observer = new IntersectionObserver(
+        ([entry]) => setIsHeroVisible(entry.isIntersecting),
+        { threshold: 0 }
+      );
+      observer.observe(el);
+    };
+    const whenIdle = () => {
+      if ("requestIdleCallback" in window) idleHandle = window.requestIdleCallback(start, { timeout: 4000 });
+      else timer = setTimeout(start, 2000);
+    };
+    if (document.readyState === "complete") whenIdle();
+    else window.addEventListener("load", whenIdle, { once: true });
+    const fallback = setTimeout(start, 6000);
+
+    return () => {
+      window.removeEventListener("load", whenIdle);
+      if (idleHandle !== undefined) window.cancelIdleCallback(idleHandle);
+      if (timer !== undefined) clearTimeout(timer);
+      clearTimeout(fallback);
+      observer?.disconnect();
+    };
   }, [prefersReducedMotion]);
 
   return (
@@ -215,6 +244,7 @@ export default function HomePage() {
                 onKeyDown={(e) => e.key === "Enter" && handleHomeJoin()}
                 placeholder="ENTER CODE"
                 aria-label="Enter room code"
+                onFocus={() => void loadJoinCheck()}
                 className="flex-1 h-12 text-center text-lg font-mono font-bold uppercase tracking-widest text-(--brand-primary-strong)"
               />
               <Button

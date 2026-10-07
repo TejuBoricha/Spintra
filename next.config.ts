@@ -99,6 +99,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // NEXT_DIST_DIR builds (and serves, with the same variable set) into another folder, so a
+  // second build can be measured or tested beside a server that is running from `.next`.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   images: { unoptimized: true },
   async headers() {
     return [
