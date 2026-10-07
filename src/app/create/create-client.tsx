@@ -386,10 +386,8 @@ export default function CreateRoomClient() {
                 )}
               </Button>
             ) : (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="space-y-4"
+              <div
+                className="space-y-4 reveal reveal-scale"
               >
                 <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                   <p data-testid="created-room-badge" className="text-sm font-medium text-emerald-400 mb-1">Room Created!</p>
@@ -414,7 +412,7 @@ export default function CreateRoomClient() {
                 >
                   Join Room
                 </Button>
-              </motion.div>
+              </div>
             )}
           </div>
         </div>

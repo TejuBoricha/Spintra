@@ -199,11 +199,8 @@ export default function TeamMakerPage() {
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12">
         {/* ── Header ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-12"
+        <div
+          className="text-center mb-12 reveal reveal-up"
         >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm text-muted-foreground mb-6">
             <GameIcon className="w-4 h-4" />
@@ -215,16 +212,13 @@ export default function TeamMakerPage() {
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Add names, pick how many teams, and shuffle. Copy the result when you&apos;re happy with it.
           </p>
-        </motion.div>
+        </div>
 
         {/* ── Main grid: Input + Controls | Templates ── */}
         <div className="grid lg:grid-cols-3 gap-6 mb-8">
           {/* Input column */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1, duration: 0.4 }}
-            className="lg:col-span-2 border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 space-y-5"
+          <div
+            className="lg:col-span-2 border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 space-y-5 reveal reveal-left reveal-delay-1"
           >
             <div>
               <Label className="text-sm font-medium mb-2 block">
@@ -293,14 +287,11 @@ export default function TeamMakerPage() {
               Generate Teams
               <Sparkles className="w-4 h-4 ml-2 opacity-60" />
             </Button>
-          </motion.div>
+          </div>
 
           {/* Templates column */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2, duration: 0.4 }}
-            className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 space-y-4"
+          <div
+            className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 space-y-4 reveal reveal-right reveal-delay-2"
           >
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
               Quick Templates
@@ -327,7 +318,7 @@ export default function TeamMakerPage() {
                 </button>
               ))}
             </div>
-          </motion.div>
+          </div>
         </div>
 
         {/* ── Teams output ── */}
@@ -507,11 +498,8 @@ export default function TeamMakerPage() {
               </div>
 
               {/* Create Room CTA */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.6 }}
-                className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 text-center space-y-4"
+              <div
+                className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 text-center space-y-4 reveal reveal-fade reveal-delay-6"
               >
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-(--brand-primary-strong) text-xs font-medium">
                   <Sparkles className="w-3.5 h-3.5" />
@@ -529,17 +517,15 @@ export default function TeamMakerPage() {
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 </Link>
-              </motion.div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* Empty state when no names entered yet */}
         {parsedNames.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-16"
+          <div
+            className="text-center py-16 reveal reveal-fade"
           >
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
               <UserPlus className="w-8 h-8 text-(--brand-primary-strong)" />
@@ -547,15 +533,13 @@ export default function TeamMakerPage() {
             <p className="text-muted-foreground">
               Add some names above to start building teams.
             </p>
-          </motion.div>
+          </div>
         )}
 
         {/* Empty state when no teams generated yet */}
         {teams.length === 0 && parsedNames.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-16"
+          <div
+            className="text-center py-16 reveal reveal-fade"
           >
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
               <Shuffle className="w-8 h-8 text-(--brand-primary-strong)" />
@@ -565,7 +549,7 @@ export default function TeamMakerPage() {
               Hit <span className="text-(--brand-primary-strong) font-medium">Generate Teams</span> to
               get started!
             </p>
-          </motion.div>
+          </div>
         )}
       </div>
     </div>

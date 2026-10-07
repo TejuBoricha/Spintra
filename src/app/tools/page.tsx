@@ -1,24 +1,9 @@
-"use client";
-
-import { motion } from "framer-motion";
+// A server page: it needs no client JavaScript (the card entrance is CSS, see `reveal` in
+// globals.css), so the cards are in the first HTML and visible before anything hydrates.
 import Link from "next/link";
+import { revealStagger } from "@/lib/reveal";
 import { Wrench } from "lucide-react";
 import { GAMES } from "@/lib/games";
-
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.05,
-    },
-  },
-};
-
-const item = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0 },
-};
 
 export default function ToolsPage() {
   const tools = GAMES.filter((game) => !game.createOnly);
@@ -27,10 +12,8 @@ export default function ToolsPage() {
     <div className="min-h-screen pt-28 pb-16 px-4">
       <div className="max-w-6xl mx-auto space-y-12">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center space-y-6"
+        <div
+          className="text-center space-y-6 reveal reveal-up"
         >
           <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-orange-500/10 text-orange-500 mb-2">
             <Wrench className="w-8 h-8" />
@@ -43,19 +26,14 @@ export default function ToolsPage() {
               Use any tool on your own, without making a room. Good for when everyone is looking at one screen.
             </p>
           </div>
-        </motion.div>
+        </div>
 
         {/* Tools Grid */}
-        <motion.div
-          variants={container}
-          initial="hidden"
-          animate="show"
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-        >
-          {tools.map((tool) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {tools.map((tool, index) => {
             const Icon = tool.icon;
             return (
-              <motion.div key={tool.type} variants={item} className="h-full">
+              <div key={tool.type} className={`h-full ${revealStagger(index)}`}>
                 <Link href={tool.href} className="block h-full outline-none">
                   <div className="h-full p-6 group cursor-pointer border border-(--border-hairline) bg-(--surface-panel) hover:border-primary/40 rounded-[2rem] shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all flex flex-col items-start gap-4">
                     <div
@@ -73,10 +51,10 @@ export default function ToolsPage() {
                     </div>
                   </div>
                 </Link>
-              </motion.div>
+              </div>
             );
           })}
-        </motion.div>
+        </div>
       </div>
     </div>
   );

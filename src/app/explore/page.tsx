@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { ChipGroup } from "@/components/ui/chip-group";
 import { Emoji, type EmojiName } from "@/components/emoji";
 import type { RoomType } from "@/lib/types";
+import { revealStagger } from "@/lib/reveal";
 import { GAMES } from "@/lib/games";
 import { getOrCreateRoomUser } from "@/lib/room-user";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -350,10 +351,8 @@ export default function ExplorePage() {
     <div className="min-h-screen pb-16 px-4">
       <div className="max-w-6xl mx-auto space-y-12">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center space-y-6"
+        <div
+          className="text-center space-y-6 reveal reveal-up"
         >
           <div className="space-y-2">
             <h1 className="font-display text-4xl sm:text-5xl font-black">
@@ -400,7 +399,7 @@ export default function ExplorePage() {
               </Button>
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Categories Navigation */}
         <ChipGroup
@@ -451,12 +450,10 @@ export default function ExplorePage() {
             </div>
           ) : filteredRooms.length === 0 ? (
             /* Beautiful empty state */
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+            <div
               role="status"
               aria-live="polite"
-              className="p-12 text-center border border-(--border-hairline) bg-(--surface-panel) rounded-2xl flex flex-col items-center justify-center gap-6 max-w-lg mx-auto shadow-1"
+              className="p-12 text-center border border-(--border-hairline) bg-(--surface-panel) rounded-2xl flex flex-col items-center justify-center gap-6 max-w-lg mx-auto shadow-1 reveal reveal-fade"
             >
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
                 <Radar className="w-8 h-8 text-(--brand-primary-strong) animate-pulse" />
@@ -473,7 +470,7 @@ export default function ExplorePage() {
                   Create Public Room
                 </Button>
               </Link>
-            </motion.div>
+            </div>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <AnimatePresence>
@@ -547,11 +544,9 @@ export default function ExplorePage() {
                 const Icon = t.icon;
                 return (
                   <Link key={t.label} href={t.href}>
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      className="p-5 text-center group cursor-pointer rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 hover:border-primary/30 transition-colors"
+                    {/* Plain element with the CSS entrance, so the cards are in the server HTML and visible before hydration. */}
+                    <div
+                      className={`p-5 text-center group cursor-pointer rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 hover:border-primary/30 transition-colors ${revealStagger(i)}`}
                     >
                       <div className={`w-12 h-12 rounded-control border-2 border-(--border-strong) bg-gradient-to-br ${t.gradient} flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform`}>
                         <Icon className="w-6 h-6 text-white" />
@@ -560,7 +555,7 @@ export default function ExplorePage() {
                         {t.label}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-1">{t.tagline}</p>
-                    </motion.div>
+                    </div>
                   </Link>
                 );
               })}

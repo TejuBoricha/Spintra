@@ -61,7 +61,7 @@ export default function RPSPage() {
   return (
     <div className="min-h-screen pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="reveal reveal-up">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-orange-400" />
             <span className="text-sm text-muted-foreground">You against the computer</span>
@@ -98,7 +98,7 @@ export default function RPSPage() {
               <div className="text-xs">Losses</div>
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Battle Area */}
         <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-8 mb-8">

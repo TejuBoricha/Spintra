@@ -55,14 +55,14 @@ export default function CoinFlipPage() {
   return (
     <div className="min-h-screen pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="reveal reveal-up">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-yellow-400" />
             <span className="text-sm text-muted-foreground">50/50 chance</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Coin Flip</h1>
           <p className="text-muted-foreground mb-12">Heads or tails, 50/50.</p>
-        </motion.div>
+        </div>
 
         {/* Coin Display */}
         <motion.div
@@ -72,31 +72,30 @@ export default function CoinFlipPage() {
           style={{ perspective: 800 }}
         >
           <div className={`w-full h-full rounded-full bg-gradient-to-br ${result !== null ? faces[result].color : "from-yellow-500 to-amber-600"} flex items-center justify-center shadow-2xl shadow-yellow-500/20`}>
-            <AnimatePresence mode="wait">
+            {/* initial={false} and no pop for the idle coin: it is in the server HTML and visible; a flip result still pops in. */}
+            <AnimatePresence mode="wait" initial={false}>
               <motion.span
                 key={result !== null ? faces[result].emoji : "flip"}
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0 }}
               >
-                <Emoji name={result !== null ? faces[result].emoji : "coin"} size={80} pop />
+                <Emoji name={result !== null ? faces[result].emoji : "coin"} size={80} pop={result !== null} />
               </motion.span>
             </AnimatePresence>
           </div>
         </motion.div>
 
         {result !== null && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8"
+          <div
+            className="mb-8 reveal reveal-up-sm"
             role="status"
             aria-live="polite"
           >
             <Badge className="text-lg px-6 py-2 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border-yellow-500/30">
               {result === 0 ? customLabels.heads : customLabels.tails}!
             </Badge>
-          </motion.div>
+          </div>
         )}
 
         <div className="flex items-center justify-center gap-4 mb-16">
@@ -128,10 +127,8 @@ export default function CoinFlipPage() {
 
         {/* Stats */}
         {history.length > 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 max-w-md mx-auto"
+          <div
+            className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 max-w-md mx-auto reveal reveal-fade"
           >
             <h2 className="text-lg font-semibold mb-4 flex items-center justify-between w-full">
               <span className="flex items-center gap-2">
@@ -164,7 +161,7 @@ export default function CoinFlipPage() {
                 <Emoji key={i} name={faces[h].emoji} size={22} animated={false} />
               ))}
             </div>
-          </motion.div>
+          </div>
         ) : (
           <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 max-w-md mx-auto text-center text-muted-foreground text-sm flex flex-col items-center gap-2">
             <TrendingUp className="w-6 h-6 text-(--brand-primary-strong)/60" />

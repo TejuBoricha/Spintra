@@ -191,10 +191,8 @@ export default function DicePage() {
 
       <div className="max-w-5xl mx-auto relative z-10">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-10"
+        <div
+          className="text-center mb-10 reveal reveal-down"
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-xs text-muted-foreground mb-4">
             <GameIcon className="w-3.5 h-3.5 text-(--brand-primary-strong)" />
@@ -206,7 +204,7 @@ export default function DicePage() {
           <p className="text-muted-foreground text-sm max-w-md mx-auto">
             Pick your dice, from D4 to D100, choose how many, and roll.
           </p>
-        </motion.div>
+        </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Controls Panel */}

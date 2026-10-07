@@ -78,7 +78,7 @@ export default function WordScramblePage() {
   return (
     <div className="min-h-screen pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="reveal reveal-up">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-lime-400" />
             <span className="text-sm text-muted-foreground">Unscramble the word</span>
@@ -95,14 +95,15 @@ export default function WordScramblePage() {
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
           </div>
-        </motion.div>
+        </div>
 
         <div className="flex items-center justify-center gap-3 mb-6">
           <Badge variant="secondary">Score: {score}</Badge>
           <Badge variant="secondary">Streak: {streak}</Badge>
         </div>
 
-        <AnimatePresence mode="wait">
+        {/* initial={false}: the first card is in the server HTML and visible; later ones still animate in and out. */}
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={index}
             initial={{ opacity: 0, y: 10 }}
@@ -130,11 +131,11 @@ export default function WordScramblePage() {
               </p>
             )}
             {solved ? (
-              <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="mb-4">
+              <div className="mb-4 reveal reveal-scale">
                 <p className="flex items-center justify-center gap-2 text-xl font-bold text-emerald-400">
                   <Emoji name="party_popper" size={28} pop /> {word}!
                 </p>
-              </motion.div>
+              </div>
             ) : (
               <div className="flex gap-2 justify-center">
                 <Input

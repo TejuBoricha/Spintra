@@ -515,3 +515,41 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Entrance animation that needs no JavaScript.
+   framer-motion's `initial={{ opacity: 0 }}` is rendered into the server HTML, so the
+   element stays invisible until the JavaScript bundle has downloaded and run: on a
+   throttled phone the heading, the navbar and the tool appeared about 3.7 s after the
+   first paint, which is what Largest Contentful Paint measured (SEO audit S-2). These
+   classes play the same fade and slide as a CSS animation from the first paint, with
+   the content already in the page. `backwards` keeps the start state during a delay and
+   then hands back to the element's own styles, so hover transforms still work. In
+   `@layer components` so a Tailwind `animate-*` or `motion-reduce:` utility on the same
+   element still wins, as it would anywhere else. `reveal-delay-N` is N tenths of a second (1 to 10). */
+@keyframes reveal-in {
+  from { opacity: 0; transform: var(--reveal-from, none); }
+}
+@layer components {
+  .reveal { animation: reveal-in 0.5s ease-out backwards; }
+  .reveal-fade { --reveal-from: none; }
+  .reveal-up { --reveal-from: translateY(20px); }
+  .reveal-up-sm { --reveal-from: translateY(10px); }
+  .reveal-up-lg { --reveal-from: translateY(30px); }
+  .reveal-down { --reveal-from: translateY(-20px); }
+  .reveal-left { --reveal-from: translateX(-30px); }
+  .reveal-right { --reveal-from: translateX(30px); }
+  .reveal-scale { --reveal-from: scale(0.95); }
+  .reveal-delay-1 { animation-delay: 0.1s; }
+  .reveal-delay-2 { animation-delay: 0.2s; }
+  .reveal-delay-3 { animation-delay: 0.3s; }
+  .reveal-delay-4 { animation-delay: 0.4s; }
+  .reveal-delay-5 { animation-delay: 0.5s; }
+  .reveal-delay-6 { animation-delay: 0.6s; }
+  .reveal-delay-7 { animation-delay: 0.7s; }
+  .reveal-delay-8 { animation-delay: 0.8s; }
+  .reveal-delay-9 { animation-delay: 0.9s; }
+  .reveal-delay-10 { animation-delay: 1s; }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { animation: none; }
+  }
+}

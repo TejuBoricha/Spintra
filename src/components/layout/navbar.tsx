@@ -130,10 +130,9 @@ export function Navbar() {
   );
 
   return (
-    <motion.nav
-      initial={{ y: -20, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+    <nav
+      // A plain element with the CSS `reveal` entrance (globals.css), so the navbar is in
+      // the server HTML and visible, not held at opacity 0 until the JavaScript has loaded.
       // The desktop pill nav (logo + 4 center items + right icons) clipped
       // itself against this panel's own overflow-hidden at exactly 768px —
       // md:'s breakpoint — with no page-level scroll to reveal it (BUG-041).
@@ -141,7 +140,7 @@ export function Navbar() {
       // hamburger (already correct at every width) covers the range where
       // the desktop row doesn't actually fit, instead of redesigning the
       // pill row's spacing to squeeze into 768px.
-      className="fixed top-4 inset-x-4 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 z-50 lg:min-w-[600px] lg:max-w-4xl w-[calc(100%-2rem)] transition-all duration-500"
+      className="fixed top-4 inset-x-4 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 z-50 lg:min-w-[600px] lg:max-w-4xl w-[calc(100%-2rem)] transition-all duration-500 reveal reveal-down"
     >
       <div
         className={cn(
@@ -433,6 +432,6 @@ export function Navbar() {
           opening it also tore it down moments later. See
           whats-new-dialog.tsx's own comment for the full story. */}
       <WhatsNewDialog whatsNew={whatsNew} />
-    </motion.nav>
+    </nav>
   );
 }

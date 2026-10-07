@@ -76,14 +76,14 @@ export default function NeverHaveIEverPage() {
   return (
     <div className="min-h-screen pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="reveal reveal-up">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-pink-400" />
             <span className="text-sm text-muted-foreground">Group confessions</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Never Have I Ever</h1>
           <p className="text-muted-foreground mb-4">Put a finger down if you have.</p>
-        </motion.div>
+        </div>
 
         {/* Score */}
         {total > 0 && (
@@ -95,7 +95,8 @@ export default function NeverHaveIEverPage() {
         )}
 
         {/* Statement Card */}
-        <AnimatePresence mode="wait">
+        {/* initial={false}: the first card is in the server HTML and visible; later ones still animate in and out. */}
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={index}
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
