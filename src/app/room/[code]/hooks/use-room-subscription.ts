@@ -598,8 +598,14 @@ export function useRoomSubscription({
         .eq("room_id", roomCode)
         .eq("user_id", currentUser.id);
       // Still leave: the player asked to. Others then see them go offline once
-      // the presence leave below lets the beat expire (about 10s), not at once.
-      if (error) console.error("Leave room: removing the participant row failed:", error.message);
+      // the presence leave below lets the beat expire (about 10s), not at once, so
+      // say so; the toast outlives the navigation (the Toaster is in the root layout).
+      if (error) {
+        console.error("Leave room: removing the participant row failed:", error.message);
+        toast.warning("You left, but the room may show you as still there for a few seconds.", {
+          id: "leave-failed-toast",
+        });
+      }
     }
     // In-app navigation, like closing the room and every kick path. Unmounting
     // the room does what the full page load used to: the heartbeat effect's

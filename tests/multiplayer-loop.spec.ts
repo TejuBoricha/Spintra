@@ -619,6 +619,8 @@ test('a guest who presses Leave room goes home, drops off the host list, and sto
     await guest.click('button[aria-label="Leave room"]');
     await guest.click('button:has-text("Leave Room")');
     await guest.waitForURL(`${baseURL}/`, { timeout: 15000 });
+    // A leave that worked says nothing about a failed one (see the test below).
+    await expect(guest.getByText(/may show you as still there/)).toHaveCount(0);
     // A beat already on its way while the page navigated is not a leftover.
     const settledAt = Date.now() + 1000;
 
@@ -634,6 +636,43 @@ test('a guest who presses Leave room goes home, drops off the host list, and sto
     expect(beatsSentAt.length, 'saw the guest heartbeat while in the room').toBeGreaterThan(0);
     await guest.waitForTimeout(13_000);
     expect(beatsSentAt.filter((t) => t > settledAt), 'heartbeats sent after leaving').toEqual([]);
+  } finally {
+    await browser.close();
+  }
+});
+
+// Code review of PR #68, round 3: when removing the participant row fails, Leave room
+// still takes the player home (they asked to leave), but it used to only log the
+// failure. The other players keep seeing them until the presence beat expires
+// (about 10s), so the player is told that.
+test('Leave room still goes home when the participant delete fails, and says the room may still show you', async ({ page, baseURL }) => {
+  test.setTimeout(90_000);
+  await page.goto('/create?type=trivia');
+  await page.waitForSelector('[data-testid="create-room-button"]', { timeout: 30000 });
+  await page.click('[data-testid="create-room-button"]');
+  await page.waitForURL(/\/room\/[A-Z0-9]+/);
+  const roomCode = page.url().split('/room/')[1];
+  await skipIfDemoMode(page);
+
+  const browser = await chromium.launch();
+  const guest = await (await browser.newContext()).newPage();
+  try {
+    await guest.goto(`${baseURL}/room/${roomCode}`);
+    await expect(guest.getByText('Live', { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/People \(2\)/)).toBeVisible({ timeout: 30000 });
+
+    // Only the leave's DELETE fails; everything else on the table goes through.
+    let refused = 0;
+    await guest.route(/\/rest\/v1\/room_participants\?/, (route) => {
+      if (route.request().method() !== 'DELETE') return route.fallback();
+      refused++;
+      return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'refused by the test' }) });
+    });
+    await guest.click('button[aria-label="Leave room"]');
+    await guest.click('button:has-text("Leave Room")');
+    await guest.waitForURL(`${baseURL}/`, { timeout: 15000 });
+    await expect(guest.getByText(/You left, but the room may show you as still there/)).toBeVisible({ timeout: 5000 });
+    expect(refused, 'the participant delete was attempted and refused').toBeGreaterThan(0);
   } finally {
     await browser.close();
   }
