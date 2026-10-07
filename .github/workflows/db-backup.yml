@@ -107,39 +107,13 @@ jobs:
           # connected, so a dump is never cut off from here. A stalled dump
           # runs into this step's 25-minute limit, the run fails, and the
           # second daily run covers the day (see the schedule). A failure that
-          # waiting can't fix stops at once: retrying a wrong password or user
-          # only risks the pooler banning the runner's address.
+          # waiting can't fix stops at once: retrying a wrong password only risks
+          # the pooler banning the runner's address. "Tenant or user not found"
+          # (a wrong user, or the pooler reloading) gets three tries.
           export PGCONNECT_TIMEOUT=15
-          retry() {
-            local label="$1"; shift
-            local attempt=1 delay=15 rc err
-            err="$(mktemp)"
-            while true; do
-              rc=0
-              # stderr is shown as it comes and kept to decide whether to retry
-              # (with pipefail, the pipeline fails with the command's status).
-              { "$@" 2>&1 1>&3 3>&- | tee "$err" >&2; } 3>&1 || rc=$?
-              if [ "$rc" -eq 0 ]; then
-                rm -f "$err"
-                return 0
-              fi
-              # The label, never "$*": the arguments include the database URL.
-              if grep -qiE 'password authentication failed|no pg_hba.conf entry|Tenant or user not found|ECIRCUITBREAKER|permission denied|does not exist|syntax error at or near' "$err"; then
-                echo "::error::Backup ${label}: failed in a way waiting can't fix (its error is above)."
-                rm -f "$err"
-                return 1
-              fi
-              if [ "$attempt" -ge 5 ]; then
-                echo "::error::Backup ${label}: failed $attempt times in a row (the last error is above)."
-                rm -f "$err"
-                return 1
-              fi
-              echo "::warning::Backup ${label}: attempt $attempt failed; trying again in ${delay}s."
-              sleep "$delay"
-              attempt=$((attempt + 1))
-              delay=$((delay * 2))
-            done
-          }
+          # retry <label> <command...>: scripts/backup/retry.sh, which
+          # tests/backup-retry.spec.ts checks (what is retried and what is not).
+          source scripts/backup/retry.sh
           mkdir -p backup
           echo "BACKUP_TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)" >> "$GITHUB_ENV"
           retry roles supabase db dump --db-url "$DATABASE_URL" -f backup/roles.sql --role-only
