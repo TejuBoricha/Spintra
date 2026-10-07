@@ -92,7 +92,8 @@ export default function WouldYouRatherPage() {
         </div>
 
         {/* Question Card */}
-        <AnimatePresence mode="wait">
+        {/* initial={false}: the first card is in the server HTML and visible; later ones still animate in and out. */}
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={current}
             initial={{ opacity: 0, x: 50 }}

@@ -72,14 +72,15 @@ export default function CoinFlipPage() {
           style={{ perspective: 800 }}
         >
           <div className={`w-full h-full rounded-full bg-gradient-to-br ${result !== null ? faces[result].color : "from-yellow-500 to-amber-600"} flex items-center justify-center shadow-2xl shadow-yellow-500/20`}>
-            <AnimatePresence mode="wait">
+            {/* initial={false} and no pop for the idle coin: it is in the server HTML and visible; a flip result still pops in. */}
+            <AnimatePresence mode="wait" initial={false}>
               <motion.span
                 key={result !== null ? faces[result].emoji : "flip"}
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0 }}
               >
-                <Emoji name={result !== null ? faces[result].emoji : "coin"} size={80} pop />
+                <Emoji name={result !== null ? faces[result].emoji : "coin"} size={80} pop={result !== null} />
               </motion.span>
             </AnimatePresence>
           </div>

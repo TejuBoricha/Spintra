@@ -543,11 +543,10 @@ export default function ExplorePage() {
                 const Icon = t.icon;
                 return (
                   <Link key={t.label} href={t.href}>
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      className="p-5 text-center group cursor-pointer rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 hover:border-primary/30 transition-colors"
+                    {/* Plain element with the CSS entrance, so the cards are in the server HTML and visible
+                        before hydration; two cards per tenth of a second, half a second at most. */}
+                    <div
+                      className={`p-5 text-center group cursor-pointer rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 hover:border-primary/30 transition-colors reveal reveal-up reveal-delay-${Math.min(Math.floor(i / 2), 5)}`}
                     >
                       <div className={`w-12 h-12 rounded-control border-2 border-(--border-strong) bg-gradient-to-br ${t.gradient} flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform`}>
                         <Icon className="w-6 h-6 text-white" />
@@ -556,7 +555,7 @@ export default function ExplorePage() {
                         {t.label}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-1">{t.tagline}</p>
-                    </motion.div>
+                    </div>
                   </Link>
                 );
               })}

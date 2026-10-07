@@ -102,7 +102,8 @@ export default function WordScramblePage() {
           <Badge variant="secondary">Streak: {streak}</Badge>
         </div>
 
-        <AnimatePresence mode="wait">
+        {/* initial={false}: the first card is in the server HTML and visible; later ones still animate in and out. */}
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={index}
             initial={{ opacity: 0, y: 10 }}

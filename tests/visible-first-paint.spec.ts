@@ -16,7 +16,7 @@ import { GAMES } from '../src/lib/games';
 // and that no block of text above the fold is still hidden.
 
 const toolPaths = [...new Set(GAMES.map((g) => g.href))].filter((href) => href.startsWith('/tools/'));
-const pages = ['/', '/tools', '/explore', ...toolPaths];
+const pages = ['/', '/tools', '/explore', '/create', ...toolPaths];
 const screens = [
   { name: 'phone', width: 390, height: 844 },
   { name: 'desktop', width: 1280, height: 800 },
@@ -26,7 +26,7 @@ const screens = [
 const MAX_HEADING_ENTRANCE_S = 1.2;
 const MAX_NAV_ENTRANCE_S = 1.0;
 
-/** What the user sees: opacity (the product over the element and its ancestors), entrance length, and any hidden text above the fold. */
+/** What the user sees: opacity (the product over the element and its ancestors), entrance length, and any hidden content above the fold. */
 async function sample(page: Page) {
   return page.evaluate(() => {
     const first = (v: string) => parseFloat(v.split(',')[0]) || 0;
@@ -41,22 +41,46 @@ async function sample(page: Page) {
       }
       return { opacity, entrance };
     };
-    // Text of 20 or more characters inside the first screen whose effective opacity is 0.
-    const hiddenText: string[] = [];
+    // Content inside the first screen that is invisible: text of 20 or more characters, or an image,
+    // icon or canvas of at least 40 by 40, whose opacity (or an ancestor's) is 0 or that is scaled to
+    // almost nothing (the idle coin on /tools/coin-flip was scale(0) in the server HTML).
+    const hiddenContent: string[] = [];
+    const scaleOf = (el: Element) => {
+      let scale = 1;
+      for (let n: Element | null = el; n; n = n.parentElement) {
+        const m = /^matrix\(([^)]+)\)/.exec(getComputedStyle(n).transform);
+        if (m) {
+          const [a, b] = m[1].split(',').map(Number);
+          scale *= Math.hypot(a, b);
+        }
+      }
+      return scale;
+    };
     for (const el of document.querySelectorAll('body *')) {
       const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent ?? '').join(' ').replace(/\s+/g, ' ').trim();
-      if (own.length < 20) continue;
+      const visual = ['IMG', 'SVG', 'CANVAS', 'VIDEO'].includes(el.tagName.toUpperCase());
+      const laid = el instanceof HTMLElement ? el.offsetWidth * el.offsetHeight : 0;
+      const isText = own.length >= 20;
+      const isVisual = visual && (el instanceof HTMLElement ? el.offsetWidth >= 40 && el.offsetHeight >= 40 : false);
+      if (!isText && !isVisual) continue;
+      if (el instanceof HTMLElement && laid === 0) continue; // not rendered at all (display: none)
       const r = el.getBoundingClientRect();
-      if (r.width === 0 || r.height === 0 || r.bottom <= 0 || r.top >= window.innerHeight) continue;
-      if ((look(el)?.opacity ?? 1) === 0) hiddenText.push(`${el.tagName.toLowerCase()} "${own.slice(0, 40)}"`);
+      if (r.bottom <= 0 || r.top >= window.innerHeight) continue;
+      if ((look(el)?.opacity ?? 1) === 0 || scaleOf(el) < 0.05) hiddenContent.push(`${el.tagName.toLowerCase()} "${own.slice(0, 40)}"`);
     }
-    return { nav: look(document.querySelector('nav')), h1: look(document.querySelector('h1')), hiddenText };
+    return { nav: look(document.querySelector('nav')), h1: look(document.querySelector('h1')), hiddenContent };
   });
 }
 
+/** Loads a page with the app's script bundles blocked, and returns how many were blocked. */
 async function blockedPage(page: Page, path: string) {
-  await page.route('**/_next/static/**/*.js', (route) => route.abort());
+  let blocked = 0;
+  await page.route('**/_next/static/**/*.js', (route) => {
+    blocked++;
+    return route.abort();
+  });
   await page.goto(path, { waitUntil: 'domcontentloaded' });
+  return () => blocked;
 }
 
 for (const screen of screens) {
@@ -65,14 +89,16 @@ for (const screen of screens) {
 
     for (const path of pages) {
       test(`${path}: the navbar and the heading are there, fully visible, quickly, and nothing above the fold is hidden`, async ({ page }) => {
-        await blockedPage(page, path);
+        const blocked = await blockedPage(page, path);
         await expect.poll(async () => (await sample(page)).nav?.opacity, { message: 'the navbar exists and is visible', timeout: 4000 }).toBe(1);
         await expect.poll(async () => (await sample(page)).h1?.opacity, { message: 'the heading exists and is visible', timeout: 4000 }).toBe(1);
         const s = await sample(page);
         expect(s.h1?.entrance, `the heading's entrance (delay plus duration) takes at most ${MAX_HEADING_ENTRANCE_S}s`).toBeLessThanOrEqual(MAX_HEADING_ENTRANCE_S);
         expect(s.nav?.entrance, `the navbar's entrance takes at most ${MAX_NAV_ENTRANCE_S}s`).toBeLessThanOrEqual(MAX_NAV_ENTRANCE_S);
         // Entrances are over by now (the poll above waited for them), so anything still at opacity 0 is hidden for good.
-        await expect.poll(async () => (await sample(page)).hiddenText, { message: 'no text above the fold is left hidden', timeout: 4000 }).toEqual([]);
+        await expect.poll(async () => (await sample(page)).hiddenContent, { message: 'no text, image or icon above the fold is left hidden', timeout: 4000 }).toEqual([]);
+        // If the block did not match the page's script files, the page hydrated and everything above proves nothing.
+        expect(blocked(), 'the app\'s script bundles were blocked (so the page did not hydrate)').toBeGreaterThan(0);
       });
     }
   });
@@ -83,8 +109,9 @@ test.describe('with reduced motion', () => {
 
   for (const path of ['/', '/tools/dice']) {
     test(`${path}: the heading and navbar are visible at once, with no entrance at all`, async ({ page }) => {
-      await blockedPage(page, path);
+      const blocked = await blockedPage(page, path);
       const s = await sample(page);
+      expect(blocked(), 'the app\'s script bundles were blocked').toBeGreaterThan(0);
       expect(s.nav?.opacity, 'navbar').toBe(1);
       expect(s.h1?.opacity, 'heading').toBe(1);
       expect(s.h1?.entrance, 'no entrance').toBeLessThanOrEqual(0.01);

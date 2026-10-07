@@ -95,7 +95,8 @@ export default function NeverHaveIEverPage() {
         )}
 
         {/* Statement Card */}
-        <AnimatePresence mode="wait">
+        {/* initial={false}: the first card is in the server HTML and visible; later ones still animate in and out. */}
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={index}
             initial={{ opacity: 0, scale: 0.9, y: 20 }}

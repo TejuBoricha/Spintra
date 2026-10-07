@@ -677,7 +677,7 @@ export default function LuckyWheelPage() {
 
               {/* Entry list */}
               <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-                <AnimatePresence mode="popLayout">
+                <AnimatePresence mode="popLayout" initial={false}>
                   {entries.map((entry) => (
                     <motion.div
                       key={entry.id}

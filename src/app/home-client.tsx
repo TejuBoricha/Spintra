@@ -162,7 +162,7 @@ export default function HomePage() {
 
           {/* Main Headline */}
           <h1
-            className="font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[1.05] mb-6 reveal reveal-up-lg reveal-delay-2"
+            className="font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[1.05] mb-6 reveal reveal-up-lg"
           >
             Can&apos;t decide?
             <br />
@@ -171,7 +171,7 @@ export default function HomePage() {
 
           {/* Subheadline */}
           <p
-            className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed reveal reveal-up reveal-delay-4"
+            className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed reveal reveal-up reveal-delay-1"
           >
             Make a room, share the code, and everyone watches the same wheel,
             bracket, or game play out on their own screen.
@@ -179,7 +179,7 @@ export default function HomePage() {
 
           {/* CTAs */}
           <div
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 reveal reveal-up reveal-delay-6"
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 reveal reveal-up reveal-delay-2"
           >
             <Link href="/create">
               <Button variant="brand" size="lg" className="group text-lg">
@@ -197,7 +197,7 @@ export default function HomePage() {
 
           {/* Join Room Code Input Widget */}
           <div
-            className="max-w-md mx-auto mt-12 p-6 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 space-y-4 reveal reveal-up reveal-delay-7"
+            className="max-w-md mx-auto mt-12 p-6 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 space-y-4 reveal reveal-up reveal-delay-3"
           >
             <label
               htmlFor="home-code-input"
@@ -230,7 +230,7 @@ export default function HomePage() {
 
            {roomHistory.length > 0 && (
              <div
-               className="max-w-md mx-auto mt-6 p-6 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 space-y-3 text-left reveal reveal-up-sm reveal-delay-8"
+               className="max-w-md mx-auto mt-6 p-6 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 space-y-3 text-left reveal reveal-up-sm reveal-delay-4"
              >
                <h3 className="font-body text-xs font-bold text-muted-foreground uppercase tracking-widest">
                  Recently Visited Rooms
@@ -317,7 +317,7 @@ export default function HomePage() {
 
            {/* Social proof */}
           <div
-            className="mt-16 flex items-center justify-center gap-8 text-sm text-muted-foreground reveal reveal-fade reveal-delay-10"
+            className="mt-16 flex items-center justify-center gap-8 text-sm text-muted-foreground reveal reveal-fade reveal-delay-5"
           >
             <div className="flex items-center gap-2">
               <div className="flex -space-x-2">
@@ -346,7 +346,7 @@ export default function HomePage() {
 
           {/* Scroll indicator */}
           <div
-            className="absolute bottom-8 left-1/2 -translate-x-1/2 reveal reveal-fade reveal-delay-15"
+            className="absolute bottom-8 left-1/2 -translate-x-1/2 reveal reveal-fade reveal-delay-6"
           >
             <motion.div
               animate={{ y: [0, 8, 0] }}
