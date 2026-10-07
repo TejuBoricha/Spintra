@@ -10,6 +10,7 @@ import { ArrowRight, Sparkles, Zap, Globe, MessageCircle, Star, DownloadCloud, G
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getOrCreateRoomUser } from "@/lib/room-user";
+import { loadJoinCheck } from "@/lib/join-check-loader";
 import dynamic from "next/dynamic";
 const HeroThreeScene = dynamic(() => import("@/components/landing/hero-scene").then((m) => m.HeroThreeScene), {
   ssr: false,
@@ -63,16 +64,14 @@ export default function HomePage() {
     setHomeJoining(true);
 
     try {
-      // Loaded now, not in the page's first load (search audit S-7).
-      const [{ getSupabaseBrowserClient }, { checkCanJoinRoom, ROOM_JOIN_ERROR_MESSAGES }] = await Promise.all([
-        import("@/lib/supabase/client"),
-        import("@/lib/room-join-check"),
-      ]);
-      const supabase = getSupabaseBrowserClient();
-      if (supabase) {
-        const result = await checkCanJoinRoom(supabase, homeCode, currentUser.id);
+      // Loaded now, not in the page's first load (search audit S-7); null when it could not be
+      // fetched: skip the pre-check and go to the room, which checks again.
+      const join = await loadJoinCheck();
+      const supabase = join?.getSupabaseBrowserClient();
+      if (join && supabase) {
+        const result = await join.checkCanJoinRoom(supabase, homeCode, currentUser.id);
         if (!result.ok) {
-          toast.error(ROOM_JOIN_ERROR_MESSAGES[result.reason]);
+          toast.error(join.ROOM_JOIN_ERROR_MESSAGES[result.reason]);
           setHomeJoining(false);
           return;
         }
@@ -152,6 +151,8 @@ export default function HomePage() {
       if (idleHandle !== undefined) window.cancelIdleCallback(idleHandle);
       if (timer !== undefined) clearTimeout(timer);
       observer?.disconnect();
+      // Nothing observes the hero any more, so do not leave the 3D scene running.
+      setIsHeroVisible(false);
     };
   }, [prefersReducedMotion]);
 
@@ -242,6 +243,7 @@ export default function HomePage() {
                 onKeyDown={(e) => e.key === "Enter" && handleHomeJoin()}
                 placeholder="ENTER CODE"
                 aria-label="Enter room code"
+                onFocus={() => void loadJoinCheck()}
                 className="flex-1 h-12 text-center text-lg font-mono font-bold uppercase tracking-widest text-(--brand-primary-strong)"
               />
               <Button

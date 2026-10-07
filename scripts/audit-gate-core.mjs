@@ -1,7 +1,8 @@
 // The decision logic of the dependency security gate (see audit-gate.mjs). Kept apart
 // from the command so tests/audit-gate.spec.ts can load it without running npm.
 
-export const LEVELS = ["info", "low", "moderate", "high", "critical"];
+// "none" is accepted by npm audit and by the docs-drift check: it never fails the gate.
+export const LEVELS = ["info", "low", "moderate", "high", "critical", "none"];
 /** The GHSA id inside an advisory URL, upper-cased, or null. */
 export function ghsaOf(url) {
   const match = /GHSA-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}/i.exec(url ?? "");

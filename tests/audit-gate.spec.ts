@@ -70,6 +70,11 @@ test('an entry npm no longer reports is flagged as stale, and a failed npm audit
   expect(broken.failures[0]).toContain('could not run');
 });
 
+test('the level "none" never fails, as with npm audit, and an unknown level is still rejected', () => {
+  expect(evaluateAudit(report(other, braces), [], 'none', '2026-10-07').failures).toEqual([]);
+  expect(() => evaluateAudit({ vulnerabilities: {} }, [], 'severe', '2026-10-07')).toThrow(/Unknown audit level/);
+});
+
 test('ids are matched case-insensitively and an unknown level is rejected', () => {
   expect(ghsaOf(BRACES_URL)).toBe('GHSA-VFJ7-8CJW-P6XM');
   expect(ghsaOf('https://example.com/no-id')).toBeNull();
