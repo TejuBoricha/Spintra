@@ -1,6 +1,7 @@
 import { test, expect, chromium } from '@playwright/test';
 import { skipIfDemoMode } from './qa-city-helpers';
 import {
+  applySeeds,
   calculateStandings,
   generateBracketForType,
   recordMatchResult,
@@ -301,6 +302,21 @@ test('the tournament page numbers a repeated name and crowns one champion', asyn
 
   await expect(page.getByText('Tournament Champion')).toBeVisible({ timeout: 5000 });
   await expect(page.getByText('Shared first place')).toHaveCount(0);
+});
+
+// Code review of PR #68, round 4: a seed typed twice was placed twice, so the bracket
+// held one player in two slots (facing themselves) and was a player short.
+test('a seed typed twice is placed once, so every player is in the bracket exactly once', () => {
+  const players = ['Ann', 'Bo', 'Cy'];
+  for (let run = 0; run < 20; run++) {
+    const order = applySeeds(players, ['Ann', 'Ann']);
+    expect(order.slice().sort()).toEqual(['Ann', 'Bo', 'Cy']);
+    expect(order[0]).toBe('Ann');
+  }
+  // Seeds still keep their typed order, and a seed that is not playing is ignored.
+  expect(applySeeds(['Ann', 'Bo', 'Cy', 'Di'], ['Cy', 'Zed', 'Ann', 'Cy']).slice(0, 2)).toEqual(['Cy', 'Ann']);
+  const bracket = generateBracketForType('single-elimination', players, ['Ann', 'Ann']).rounds[0];
+  expect(bracket.every((m) => m.player1 !== m.player2 || m.player1 === BYE_PLAYER)).toBe(true);
 });
 
 // Code review of PR #68, round 3: the bye is the string "__BYE__", kept in the same

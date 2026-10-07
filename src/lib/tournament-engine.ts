@@ -124,8 +124,10 @@ export function placeBySeed(padded: string[]): string[] {
 /** Seed sort: put seeded players first in tournament order, then fill rest randomly */
 export function applySeeds(participants: string[], seeds: string[]): string[] {
   if (seeds.length === 0) return shuffleArray(participants);
+  // A seed typed twice is one seed. Kept twice it filled two slots with one player
+  // (who then faced themselves) and left the list a player short.
   const seedSet = new Set(seeds.filter((s) => participants.includes(s)));
-  const seeded = seeds.filter((s) => seedSet.has(s));
+  const seeded = [...seedSet];
   const unseeded = shuffleArray(participants.filter((p) => !seedSet.has(p)));
   return [...seeded, ...unseeded];
 }
