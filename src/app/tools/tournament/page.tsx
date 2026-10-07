@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import type { TournamentType } from "@/lib/types";
 import { Emoji } from "@/components/emoji";
 import { fireConfetti, CelebrationBanner } from "@/components/celebration";
+import { PlayerSlot } from "@/components/tournament-player-slot";
 import { getGameByType } from "@/lib/games";
 import { pluralize } from "@/lib/utils";
 import {
@@ -205,7 +206,7 @@ function MatchCard({
     >
       <div className="flex items-center justify-between gap-2 mb-1">
         <span className="truncate flex-1 font-medium">
-          {isByePlayer(match.player1) ? <span className="text-muted-foreground italic">BYE</span> : match.player1 || <span className="text-muted-foreground italic">TBD</span>}
+          <PlayerSlot name={match.player1} />
         </span>
         <span className="font-mono text-muted-foreground tabular-nums">
           {match.score1 !== null ? match.score1 : "-"}
@@ -213,7 +214,7 @@ function MatchCard({
       </div>
       <div className="flex items-center justify-between gap-2">
         <span className="truncate flex-1 font-medium">
-          {isByePlayer(match.player2) ? <span className="text-muted-foreground italic">BYE</span> : match.player2 || <span className="text-muted-foreground italic">TBD</span>}
+          <PlayerSlot name={match.player2} />
         </span>
         <span className="font-mono text-muted-foreground tabular-nums">
           {match.score2 !== null ? match.score2 : "-"}
