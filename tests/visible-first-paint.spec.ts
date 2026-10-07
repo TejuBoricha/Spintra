@@ -93,6 +93,13 @@ for (const screen of screens) {
     for (const path of pages) {
       test(`${path}: the navbar and the heading are there, fully visible, quickly, and nothing above the fold is hidden`, async ({ page }) => {
         const blocked = await blockedPage(page, path);
+        // The very first sample, as soon as the document is parsed: the heading and the navbar must already be
+        // visibly on screen. A fade that starts from opacity 0 is not counted toward Largest Contentful Paint
+        // until it has finished (measured: 520 to 540 ms for a 0.5 s fade, 20 to 30 ms from 0.3), which is what
+        // kept the first version of this change from showing any gain in Lighthouse.
+        const first = await sample(page);
+        expect(first.h1?.opacity ?? 0, 'the heading is already visible at the first frame (not fading in from opacity 0)').toBeGreaterThanOrEqual(0.2);
+        expect(first.nav?.opacity ?? 0, 'the navbar is already visible at the first frame (not fading in from opacity 0)').toBeGreaterThanOrEqual(0.2);
         await expect.poll(async () => (await sample(page)).nav?.opacity, { message: 'the navbar exists and is visible', timeout: 4000 }).toBe(1);
         await expect.poll(async () => (await sample(page)).h1?.opacity, { message: 'the heading exists and is visible', timeout: 4000 }).toBe(1);
         const s = await sample(page);

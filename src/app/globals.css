@@ -525,9 +525,17 @@ body {
    the content already in the page. `backwards` keeps the start state during a delay and
    then hands back to the element's own styles, so hover transforms still work. In
    `@layer components` so a Tailwind `animate-*` or `motion-reduce:` utility on the same
-   element still wins, as it would anywhere else. `reveal-delay-N` is N tenths of a second (1 to 10). */
+   element still wins, as it would anywhere else. `reveal-delay-N` is N tenths of a second (1 to 10).
+
+   It starts at 30% opacity, not 0, on purpose. Chrome does not count an element toward
+   Largest Contentful Paint while it fades in from opacity 0: measured on a bare page the
+   heading was recorded at 520 to 540 ms (the end of a 0.5 s fade) against 20 to 30 ms when
+   it starts at 0.3 or only slides, and Lighthouse's model then charges all the JavaScript
+   that ran in that half second to the LCP (the live site showed no gain from the first
+   version of this change for exactly that reason). At 30% the content is really on screen
+   from the first frame. */
 @keyframes reveal-in {
-  from { opacity: 0; transform: var(--reveal-from, none); }
+  from { opacity: 0.3; transform: var(--reveal-from, none); }
 }
 @layer components {
   .reveal { animation: reveal-in 0.5s ease-out backwards; }

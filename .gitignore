@@ -22,6 +22,8 @@ create.html
 
 # next.js
 /.next/
+# a second build folder (NEXT_DIST_DIR=.next-b, see next.config.ts)
+/.next-*/
 /out/
 
 # production
