@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import type { TournamentType } from "@/lib/types";
 import { Emoji } from "@/components/emoji";
 import { fireConfetti, CelebrationBanner } from "@/components/celebration";
+import { PlayerSlot } from "@/components/tournament-player-slot";
 import { getGameByType } from "@/lib/games";
 import { pluralize } from "@/lib/utils";
 import {
@@ -34,6 +35,12 @@ import {
   type MatchRef,
   generateBracketForType,
   recordMatchResult,
+  calculateStandings,
+  isByePlayer,
+  isSharedFirst,
+  matchActionLabel,
+  playerLabel,
+  uniqueParticipantNames,
 } from "@/lib/tournament-engine";
 
 const GameIcon = getGameByType("tournament")!.icon;
@@ -156,9 +163,14 @@ function MatchCard({
   onClick?: () => void;
   compact?: boolean;
 }) {
-  const isBye1 = match.player1 === "BYE";
-  const isBye2 = match.player2 === "BYE";
-  const isBye = isBye1 || isBye2;
+  // The engine names a bye "__BYE__" (this used to compare against "BYE", so a bye match looked
+  // like a playable one, showed the raw placeholder and could be re-scored: audit T-14).
+  const isBye = isByePlayer(match.player1) || isByePlayer(match.player2);
+  // Only a match with both players known can be scored: a later-round match still waiting
+  // for its players ("TBD vs TBD") opened the score editor too, and saving it failed with an
+  // unrelated "scores can't be tied" message. The in-room card has the same rule.
+  const isReady = !!match.player1 && !!match.player2 && !isBye;
+  const isClickable = !!onClick && isReady;
 
   const statusColors = {
     pending: "border-(--border-hairline) bg-(--surface-sunken)",
@@ -173,23 +185,28 @@ function MatchCard({
   };
 
   return (
-    <motion.div
-      whileHover={onClick && !isBye ? { scale: 1.02 } : undefined}
-      onClick={isBye ? undefined : onClick}
+    // A real <button>, disabled when the match cannot be scored (a bye, or players not known yet), so keyboard users can reach
+    // and operate it like the in-room Tournament's match cards (audit T-13).
+    <motion.button
+      type="button"
+      disabled={!isClickable}
+      whileHover={isClickable ? { scale: 1.02 } : undefined}
+      onClick={isClickable ? onClick : undefined}
+      aria-label={isClickable ? matchActionLabel(match) : undefined}
       data-testid="tournament-match"
       data-match-status={match.status}
-      data-match-ready={!!(match.player1 && match.player2 && !isBye)}
+      data-match-ready={isReady}
+      data-match-bye={isBye}
       className={`
-        rounded-lg border px-3 py-2 cursor-pointer transition-colors
+        block w-full text-left rounded-lg border px-3 py-2 transition-colors
         ${statusColors[match.status]}
-        ${onClick && !isBye ? "hover:border-emerald-500/40" : ""}
-        ${isBye ? "cursor-default" : ""}
+        ${isClickable ? "cursor-pointer hover:border-emerald-500/40" : "cursor-default"}
         ${compact ? "text-xs" : "text-sm"}
       `}
     >
       <div className="flex items-center justify-between gap-2 mb-1">
         <span className="truncate flex-1 font-medium">
-          {match.player1 || <span className="text-muted-foreground italic">TBD</span>}
+          <PlayerSlot name={match.player1} />
         </span>
         <span className="font-mono text-muted-foreground tabular-nums">
           {match.score1 !== null ? match.score1 : "-"}
@@ -197,7 +214,7 @@ function MatchCard({
       </div>
       <div className="flex items-center justify-between gap-2">
         <span className="truncate flex-1 font-medium">
-          {match.player2 || <span className="text-muted-foreground italic">TBD</span>}
+          <PlayerSlot name={match.player2} />
         </span>
         <span className="font-mono text-muted-foreground tabular-nums">
           {match.score2 !== null ? match.score2 : "-"}
@@ -211,7 +228,7 @@ function MatchCard({
           </span>
         </div>
       )}
-    </motion.div>
+    </motion.button>
   );
 }
 
@@ -254,19 +271,26 @@ export default function TournamentPage() {
     // players) — must use the returned value, not the original UI
     // selection, or recordMatchResult takes the wrong branch against
     // bracket data shaped for a different format.
-    const { type, rounds, losersBracket } = generateBracketForType(tournamentType, participants, seeds);
+    // Results are recorded by name, so a repeated name is numbered ("Ann (2)").
+    const names = uniqueParticipantNames(participants);
+    const { type, rounds, losersBracket } = generateBracketForType(tournamentType, names, seeds);
 
     setTournament({
       type,
       rounds,
-      participants,
+      participants: names,
       seeds,
       currentRound: 1,
       winner: null,
       losersBracket,
     });
 
-    toast.success("Bracket generated!");
+    const renamed = names.filter((n, i) => n !== participants[i]);
+    toast.success(
+      renamed.length > 0
+        ? `Bracket generated! Repeated names are numbered so results can't mix up: ${renamed.join(", ")}`
+        : "Bracket generated!"
+    );
   }, [participants, seeds, tournamentType, soundEnabled]);
 
   const handleScoreSave = useCallback(
@@ -291,7 +315,10 @@ export default function TournamentPage() {
 
       if (outcome.kind === "champion") {
         fireConfetti();
-        toast.success(`${outcome.winner} wins the tournament!`, { icon: <Emoji name="trophy" size={18} /> });
+        const shared = isSharedFirst(outcome.tournament);
+        toast.success(shared ? `${outcome.winner} share first place!` : `${outcome.winner} wins the tournament!`, {
+          icon: <Emoji name="trophy" size={18} />,
+        });
         return;
       }
       if (outcome.kind === "grand-final-set") {
@@ -334,7 +361,8 @@ export default function TournamentPage() {
           const s1 = m.score1 !== null ? m.score1 : "-";
           const s2 = m.score2 !== null ? m.score2 : "-";
           lines.push(
-            `  ${m.player1 || "TBD"} ${s1} - ${s2} ${m.player2 || "TBD"}${m.winner ? ` → ${m.winner}` : ""}`
+            // playerLabel: the bye placeholder is "BYE" here too, not "__BYE__" (audit T-14).
+            `  ${playerLabel(m.player1) ?? "TBD"} ${s1} - ${s2} ${playerLabel(m.player2) ?? "TBD"}${m.winner ? ` → ${playerLabel(m.winner)}` : ""}`
           );
         }
       });
@@ -342,7 +370,7 @@ export default function TournamentPage() {
     });
 
     if (tournament.winner) {
-      lines.push(`🏆 Champion: ${tournament.winner}`);
+      lines.push(`🏆 ${isSharedFirst(tournament) ? "Shared first place" : "Champion"}: ${tournament.winner}`);
     }
 
     lines.push("");
@@ -384,6 +412,16 @@ export default function TournamentPage() {
     return count;
   }, [tournament]);
 
+  // Round robin and Swiss both crown their champion from these (points, then score
+  // difference, then score), so both show them.
+  const standings = useMemo(
+    () =>
+      tournament && (tournament.type === "round-robin" || tournament.type === "swiss")
+        ? calculateStandings(tournament.rounds, tournament.participants)
+        : [],
+    [tournament]
+  );
+
   // ──── Render bracket ────
   const renderSingleEliminationBracket = (rounds: BracketMatch[][], bracketKey: "rounds" | "losersBracket" = "rounds") => {
     return (
@@ -423,62 +461,45 @@ export default function TournamentPage() {
     );
   };
 
+  const renderStandings = () => (
+    <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+        Standings
+      </h3>
+      <div className="space-y-1">
+        {standings.map((row) => (
+          <div
+            key={row.player}
+            className="flex items-center gap-3 px-3 py-2 rounded-xl bg-(--surface-sunken) border border-(--border-hairline)"
+          >
+            <span data-testid="standings-rank" className="text-xs font-mono text-muted-foreground w-6 text-right">
+              {/* Before a player's first result everyone is level, so "#1" for all of them would mean nothing. */}
+              {row.played > 0 ? `#${row.rank}` : "-"}
+            </span>
+            <span className="text-sm font-medium flex-1">{row.player}</span>
+            <span className="text-xs text-muted-foreground">
+              {row.wins}W {row.losses}L {row.draws}D
+              <span className="ml-2" title="Score difference: the tiebreaker after points">
+                {row.diff > 0 ? "+" : ""}
+                {row.diff}
+              </span>
+            </span>
+            <span className="text-xs font-bold text-emerald-400 ml-2">
+              {row.points} pts
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   const renderRoundRobin = (rounds: BracketMatch[][]) => {
     const allMatches = rounds.flat();
     if (allMatches.length === 0) return null;
 
-    // Calculate standings
-    const standings = new Map<string, { wins: number; losses: number; draws: number }>();
-    tournament?.participants.forEach((p) => standings.set(p, { wins: 0, losses: 0, draws: 0 }));
-
-    allMatches.forEach((m) => {
-      if (m.status === "completed" && m.score1 !== null && m.score2 !== null) {
-        const p1 = m.player1!;
-        const p2 = m.player2!;
-        if (m.score1 > m.score2) {
-          standings.get(p1)!.wins++;
-          standings.get(p2)!.losses++;
-        } else if (m.score2 > m.score1) {
-          standings.get(p2)!.wins++;
-          standings.get(p1)!.losses++;
-        } else {
-          standings.get(p1)!.draws++;
-          standings.get(p2)!.draws++;
-        }
-      }
-    });
-
-    const sorted = [...standings.entries()].sort(
-      (a, b) => b[1].wins * 3 + b[1].draws - (a[1].wins * 3 + a[1].draws)
-    );
-
     return (
       <div className="space-y-6">
-        {/* Standings */}
-        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-            Standings
-          </h3>
-          <div className="space-y-1">
-            {sorted.map(([name, record], i) => (
-              <div
-                key={name}
-                className="flex items-center gap-3 px-3 py-2 rounded-xl bg-(--surface-sunken) border border-(--border-hairline)"
-              >
-                <span className="text-xs font-mono text-muted-foreground w-6 text-right">
-                  #{i + 1}
-                </span>
-                <span className="text-sm font-medium flex-1">{name}</span>
-                <span className="text-xs text-muted-foreground">
-                  {record.wins}W {record.losses}L {record.draws}D
-                </span>
-                <span className="text-xs font-bold text-emerald-400 ml-2">
-                  {record.wins * 3 + record.draws} pts
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        {renderStandings()}
 
         {/* Matches grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -500,6 +521,8 @@ export default function TournamentPage() {
   const renderSwiss = (rounds: BracketMatch[][]) => {
     return (
       <div className="space-y-4">
+        {/* The champion is decided from these, so the page that crowns one shows them. */}
+        {renderStandings()}
         {rounds.map((round, ri) => (
           <div key={ri} className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
@@ -511,11 +534,10 @@ export default function TournamentPage() {
                   key={match.id}
                   match={match}
                   compact
-                  onClick={() =>
-                    !match.player1?.includes("BYE") && !match.player2?.includes("BYE")
-                      ? setEditingMatch({ match, roundIdx: ri, position: mi, bracketKey: "rounds" })
-                      : undefined
-                  }
+                  // MatchCard itself disables a bye. The substring test that was here ("BYE")
+                  // left a player named BYE, or any name containing those capitals, with a
+                  // button that did nothing, so their Swiss match could never be scored.
+                  onClick={() => setEditingMatch({ match, roundIdx: ri, position: mi, bracketKey: "rounds" })}
                 />
               ))}
             </div>
@@ -775,7 +797,7 @@ export default function TournamentPage() {
                   <CelebrationBanner
                     icon={<Crown className="w-12 h-12 text-amber-400" />}
                     title={tournament.winner}
-                    subtitle={<><Emoji name="trophy" size={20} pop /> Tournament Champion</>}
+                    subtitle={<><Emoji name="trophy" size={20} pop /> {isSharedFirst(tournament) ? "Shared first place" : "Tournament Champion"}</>}
                     titleClassName="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400 bg-clip-text text-transparent"
                   />
                 )}

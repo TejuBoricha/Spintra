@@ -1,7 +1,6 @@
 import { test, expect, chromium } from '@playwright/test';
-import { acceptCookieBanner as accept, skipIfDemoMode } from './qa-city-helpers';
+import { acceptCookieBanner as accept, BASE, skipIfDemoMode } from './qa-city-helpers';
 
-const BASE = 'http://127.0.0.1:4000';
 
 // BUG-007 round F (FR-33/FR-43): a real cash-only trade proposed and
 // accepted through the actual UI, confirming city_propose_trade and

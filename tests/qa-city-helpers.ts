@@ -5,7 +5,11 @@ import { test, expect, chromium, type Browser, type Page } from '@playwright/tes
 
 export const SCRATCH = 'C:/Users/tejas/AppData/Local/Temp/claude/c--Users-tejas-Desktop-Spintra-1/cec4ff14-1fcd-49b4-a12a-68214422c5ee/scratchpad';
 export const SHOTS = path.join(SCRATCH, 'qa-shots');
-export const BASE = 'http://127.0.0.1:4000';
+// Same port as playwright.config.ts. Windows can reserve a block of ports
+// at boot (Hyper-V / WinNAT; `netsh interface ipv4 show excludedportrange
+// protocol=tcp`), and when 4000 is in it the server can't listen there:
+// PLAYWRIGHT_PORT moves the server and every test together.
+export const BASE = `http://127.0.0.1:${process.env.PLAYWRIGHT_PORT ?? '4000'}`;
 
 export interface LogEntry { who: string; type: string; text: string; }
 export interface NetEntry { who: string; status: number; method: string; url: string; body?: string; }

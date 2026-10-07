@@ -589,17 +589,41 @@ export function useRoomSubscription({
   // its own "You were removed by the host" toast, since a self-row
   // deletion previously only ever meant a kick or room closure.
   const leaveRoom = useCallback(async () => {
+    // The room stays on screen while the delete (and its one retry) is awaited, so a
+    // second press must not send a second delete or a second toast.
+    if (leavingRoomRef.current) return;
     leavingRoomRef.current = true;
     const supabase = getSupabaseBrowserClient();
     if (supabase) {
-      await supabase
-        .from("room_participants")
-        .delete()
-        .eq("room_id", roomCode)
-        .eq("user_id", currentUser.id);
+      const removeRow = () =>
+        supabase
+          .from("room_participants")
+          .delete()
+          .eq("room_id", roomCode)
+          .eq("user_id", currentUser.id);
+      let { error } = await removeRow();
+      if (error) {
+        // One retry: the delete is idempotent and a dropped or refused connection
+        // (the pooler does this now and then) is usually over within a moment.
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        ({ error } = await removeRow());
+      }
+      // Still leave: the player asked to. The row then stays, and the presence sweep
+      // (migration 0109) marks them offline about 10s after the beat expires rather
+      // than removing them, so say so; the toast outlives the navigation (the Toaster
+      // is in the root layout).
+      if (error) {
+        console.error("Leave room: removing the participant row failed:", error.message);
+        toast.warning("You left, but the room may keep listing you as offline for now.", {
+          id: "leave-failed-toast",
+        });
+      }
     }
-    window.location.href = "/";
-  }, [roomCode, currentUser.id]);
+    // In-app navigation, like closing the room and every kick path. Unmounting
+    // the room does what the full page load used to: the heartbeat effect's
+    // clean-up stops the beats and asks the server to let this presence expire.
+    router.push("/");
+  }, [roomCode, currentUser.id, router]);
 
   // Load room details, participants list, and register self in database.
   // Runs in demo mode too — loadRoomDetails() below has its own demo-mode
