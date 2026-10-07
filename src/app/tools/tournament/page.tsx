@@ -471,8 +471,9 @@ export default function TournamentPage() {
             key={row.player}
             className="flex items-center gap-3 px-3 py-2 rounded-xl bg-(--surface-sunken) border border-(--border-hairline)"
           >
-            <span className="text-xs font-mono text-muted-foreground w-6 text-right">
-              #{row.rank}
+            <span data-testid="standings-rank" className="text-xs font-mono text-muted-foreground w-6 text-right">
+              {/* Before a player's first result everyone is level, so "#1" for all of them would mean nothing. */}
+              {row.played > 0 ? `#${row.rank}` : "-"}
             </span>
             <span className="text-sm font-medium flex-1">{row.player}</span>
             <span className="text-xs text-muted-foreground">

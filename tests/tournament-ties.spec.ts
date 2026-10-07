@@ -190,6 +190,28 @@ test('the tournament page lists the standings for Swiss too, and they follow the
   await expect(page.getByText('0 pts', { exact: true })).toHaveCount(3);
 });
 
+// Code review of PR #68, round 3: before any match is played every row is level, so
+// every row used to say "#1". A player has no rank until they have a result.
+test('the tournament page shows "-" instead of "#1" until a player has a result', async ({ page }) => {
+  await page.goto('/tools/tournament', { waitUntil: 'networkidle' });
+  await page.getByPlaceholder(/Enter participant names/).fill('Alpha\nBravo\nCharlie');
+  await page.getByRole('radio', { name: 'Round Robin' }).click();
+  await page.getByRole('button', { name: 'Generate Bracket' }).click();
+  await expect(page.getByRole('heading', { name: 'Standings' })).toBeVisible({ timeout: 5000 });
+  const ranks = page.getByTestId('standings-rank');
+  await expect(ranks).toHaveText(['-', '-', '-']);
+
+  // One match scored: its two players now have a rank, the one left out still has none.
+  await page.locator('[data-testid="tournament-match"]').first().click();
+  const scores = page.locator('input[type="number"]');
+  await scores.nth(0).fill('2');
+  await scores.nth(1).fill('0');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(ranks.filter({ hasText: '#1' })).toHaveCount(1);
+  await expect(ranks.filter({ hasText: '-' })).toHaveCount(1);
+  await expect(ranks.filter({ hasText: /^#\d$/ })).toHaveCount(2);
+});
+
 test('a shared first place reads clearly even when the names contain "&"', () => {
   const teams = ['Sam & Max', 'Ann & Bo'];
   const out = result(start('round-robin', teams), 'Sam & Max', 'Ann & Bo', 1, 1);
@@ -220,6 +242,9 @@ test('in a room, the standings show the score difference that breaks ties', asyn
     await expect(page.getByText(/People \(2\)/)).toBeVisible({ timeout: 30000 });
     await page.getByRole('radio', { name: 'Round Robin' }).click();
     await page.getByRole('button', { name: /generate bracket/i }).click();
+    // Nobody has a result yet, so nobody has a rank.
+    const rankTable = page.locator('table', { has: page.getByRole('columnheader', { name: 'Rank' }) });
+    await expect(rankTable.getByRole('cell', { name: '-', exact: true })).toHaveCount(2, { timeout: 15000 });
     await page.locator('[data-testid="tournament-match"]').first().click();
     const scores = page.locator('input[type="number"]');
     await scores.nth(0).fill('3');
@@ -232,6 +257,8 @@ test('in a room, the standings show the score difference that breaks ties', asyn
     // back, so they get the same allowance as the table (the default 5s failed once, under load).
     await expect(table.getByRole('cell', { name: '+2', exact: true })).toBeVisible({ timeout: 15000 });
     await expect(table.getByRole('cell', { name: '-2', exact: true })).toBeVisible({ timeout: 15000 });
+    // Both players have played, so neither rank cell is a dash any more.
+    await expect(table.getByRole('cell', { name: '-', exact: true })).toHaveCount(0);
   } finally {
     await browser.close();
   }

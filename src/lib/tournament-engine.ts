@@ -217,6 +217,8 @@ export interface Standing {
   diff: number;
   /** 1 for first place; players level on points, difference and score share a rank. */
   rank: number;
+  /** Matches with a result for this player (wins + draws + losses). A player with none has nothing to rank yet. */
+  played: number;
 }
 
 
@@ -283,6 +285,7 @@ export function calculateStandings(rounds: BracketMatch[][], participants: strin
       scored: t.scored,
       diff: t.scored - t.conceded,
       rank: 0,
+      played: t.wins + t.draws + t.losses,
     };
   });
   rows.sort((a, b) => b.points - a.points || b.diff - a.diff || b.scored - a.scored);

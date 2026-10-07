@@ -536,7 +536,8 @@ export function TournamentActivity() {
                       <tbody>
                         {standings.map((row) => (
                           <tr key={row.player} className="border-b border-(--border-hairline) last:border-0">
-                            <td className="py-2 font-mono text-muted-foreground">{row.rank}</td>
+                            {/* No rank before a player's first result: everyone is level, so every row would say 1. */}
+                            <td className="py-2 font-mono text-muted-foreground">{row.played > 0 ? row.rank : "-"}</td>
                             <td className="py-2 font-semibold flex items-center gap-2">
                               {row.rank === 1 && row.points > 0 ? <Trophy className="w-4 h-4 text-amber-400" /> : null}
                               {row.player}
