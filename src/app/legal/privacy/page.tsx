@@ -4,6 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Privacy Policy | Spintra",
   description: "What data Spintra collects, how it's used, how long it's kept, and your choices.",
+  alternates: { canonical: "/legal/privacy" },
 };
 
 // Every statement here should match what the code does. If you change what

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_OPEN_GRAPH } from "@/lib/site-metadata";
 import localFont from "next/font/local";
 import Script from "next/script";
 import "./globals.css";
@@ -42,15 +43,7 @@ export const metadata: Metadata = {
     "team generator", "wheel spinner", "tournament bracket", "random name picker",
     "multiplayer games", "party games", "classroom activities", "lucky wheel",
   ],
-  openGraph: {
-    title: "Spintra | Free wheel spinner, team maker, and party games",
-    description: "Can't decide? Spin for it. Free games and group tools you play together in one room.",
-    url: "https://spintra.io",
-    siteName: "Spintra",
-    images: [{ url: "/og-image.png" }],
-    locale: "en_US",
-    type: "website",
-  },
+  openGraph: SITE_OPEN_GRAPH,
   twitter: {
     card: "summary_large_image",
     title: "Spintra",
