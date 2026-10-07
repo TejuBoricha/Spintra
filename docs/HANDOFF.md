@@ -84,7 +84,7 @@ Look at the live City screen on a laptop and a phone and say what feels off (the
 
 ### 8. Artifacts (private to the owner)
 
-- **Audit report:** https://claude.ai/artifact/FaojgbihT4kv3R46cCa58T (version 17): 155 findings, 54 fixed, 5 partly fixed, 96 open, with a Status filter. To update it, read it with the Artifact tool and edit the `F` array rows (`status`, `stl`, `fix`); the script that generated it lived only in a scratch folder. Findings built but not merged (T-4, T-5, T-6, T-13, T-14, X-4, X-5, K-1, K-2, K-3, K-5, K-6) are still marked open, with a note that they are built on the branch (now in PR #68).
+- **Audit report:** https://claude.ai/artifact/FaojgbihT4kv3R46cCa58T (version 18, 7 Oct): 155 findings, 67 fixed, 5 partly fixed, 83 open, with a Status filter. To update it, read it with the Artifact tool, then edit the `F` array rows (`status`, `stl`, `fix`) in a copy of the saved page source **without** the publish-time wrapper (the first `<!doctype ...><body>` line and the closing `</body></html>`), run `node --check` on the page's `<script>` (version 17 had unescaped quotes in two rows and rendered a blank findings list; always check), render it once in headless Chromium, then publish with `url`. The scratch scripts that did this are not kept. Findings built but not merged are marked as such; as of 7 Oct everything built is merged.
 - **Bulb mockup:** https://claude.ai/artifact/T68yJqhcZH1MSLaGE3K5JG (see section 4).
 
 ---
