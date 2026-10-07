@@ -17,7 +17,8 @@ test('every tool page has its own search-friendly title, distinct and short enou
     const title = TOOL_SEO_TITLES[g.href];
     expect(title, `no SEO title for ${g.href}`).toBeTruthy();
     expect(title.endsWith(' | Spintra'), `${g.href}: ends with the site name`).toBe(true);
-    expect(title.length, `${g.href}: "${title}" is ${title.length} characters`).toBeLessThanOrEqual(62);
+    // The documented limit (tool-metadata.ts): search results cut a title off at about 60.
+    expect(title.length, `${g.href}: "${title}" is ${title.length} characters`).toBeLessThanOrEqual(60);
     expect(title, `${g.href}: not just the tool's own label`).not.toBe(`${g.label} | Spintra`);
     expect(seen.has(title), `${g.href}: duplicate title`).toBe(false);
     seen.add(title);

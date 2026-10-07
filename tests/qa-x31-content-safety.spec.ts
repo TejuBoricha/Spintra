@@ -34,10 +34,14 @@ test('no truth or dare forces private photos, posting, phone access, calls or ea
   expect(TRUTH_OR_DARE_ALL_DARES.length).toBeGreaterThanOrEqual(15);
 });
 
-test('never have I ever no longer has the fake ID and other adult premises', () => {
-  const file = fs.readFileSync(path.join(__dirname, '../src/app/tools/never-have-i-ever/page.tsx'), 'utf-8');
-  for (const gone of [/fake ID/i, /job interview/i, /blind date/i, /talked my way out of a ticket/i, /stalked someone/i]) {
-    expect(gone.test(file), `${gone} should be gone`).toBe(false);
+test('never have I ever no longer has the fake ID and other adult premises, on the tool page or in a room', () => {
+  const page = fs.readFileSync(path.join(__dirname, '../src/app/tools/never-have-i-ever/page.tsx'), 'utf-8');
+  // The in-room game has its own fallback statements (and loads its bank from the database).
+  const room = fs.readFileSync(path.join(__dirname, '../src/app/room/[code]/activities/never-have-i-ever-activity.tsx'), 'utf-8');
+  for (const [where, file] of [['the tool page', page], ['the room activity', room]] as const) {
+    for (const gone of [/fake ID/i, /job interview/i, /blind date/i, /talked my way out of a ticket/i, /stalked someone/i]) {
+      expect(gone.test(file), `${gone} should be gone from ${where}`).toBe(false);
+    }
   }
-  expect(file).toContain('Never have I ever worn a costume when it wasn');
+  expect(page).toContain('Never have I ever worn a costume when it wasn');
 });
