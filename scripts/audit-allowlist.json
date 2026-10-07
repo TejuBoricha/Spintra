@@ -1,0 +1,9 @@
+[
+  {
+    "id": "GHSA-vfj7-8cjw-p6xm",
+    "package": "braces",
+    "reason": "No patched version exists: every release up to the latest, 3.0.3, is affected (stack exhaustion on deeply nested patterns). It is reached only through eslint-config-next and the shadcn CLI, which run at development time on this repository's own files; it is not in the production dependency tree (npm audit --omit=dev does not report it). Re-check when braces publishes a fix, then delete this entry.",
+    "added": "2026-10-07",
+    "expires": "2026-11-07"
+  }
+]
