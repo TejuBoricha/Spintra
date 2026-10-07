@@ -592,17 +592,26 @@ export function useRoomSubscription({
     leavingRoomRef.current = true;
     const supabase = getSupabaseBrowserClient();
     if (supabase) {
-      const { error } = await supabase
-        .from("room_participants")
-        .delete()
-        .eq("room_id", roomCode)
-        .eq("user_id", currentUser.id);
-      // Still leave: the player asked to. Others then see them go offline once
-      // the presence leave below lets the beat expire (about 10s), not at once, so
-      // say so; the toast outlives the navigation (the Toaster is in the root layout).
+      const removeRow = () =>
+        supabase
+          .from("room_participants")
+          .delete()
+          .eq("room_id", roomCode)
+          .eq("user_id", currentUser.id);
+      let { error } = await removeRow();
+      if (error) {
+        // One retry: the delete is idempotent and a dropped or refused connection
+        // (the pooler does this now and then) is usually over within a moment.
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        ({ error } = await removeRow());
+      }
+      // Still leave: the player asked to. The row then stays, and the presence sweep
+      // (migration 0109) marks them offline about 10s after the beat expires rather
+      // than removing them, so say so; the toast outlives the navigation (the Toaster
+      // is in the root layout).
       if (error) {
         console.error("Leave room: removing the participant row failed:", error.message);
-        toast.warning("You left, but the room may show you as still there for a few seconds.", {
+        toast.warning("You left, but the room may keep listing you as offline for now.", {
           id: "leave-failed-toast",
         });
       }

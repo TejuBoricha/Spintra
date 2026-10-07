@@ -620,7 +620,7 @@ test('a guest who presses Leave room goes home, drops off the host list, and sto
     await guest.click('button:has-text("Leave Room")');
     await guest.waitForURL(`${baseURL}/`, { timeout: 15000 });
     // A leave that worked says nothing about a failed one (see the test below).
-    await expect(guest.getByText(/may show you as still there/)).toHaveCount(0);
+    await expect(guest.getByText(/may keep listing you as offline/)).toHaveCount(0);
     // A beat already on its way while the page navigated is not a leftover.
     const settledAt = Date.now() + 1000;
 
@@ -643,8 +643,9 @@ test('a guest who presses Leave room goes home, drops off the host list, and sto
 
 // Code review of PR #68, round 3: when removing the participant row fails, Leave room
 // still takes the player home (they asked to leave), but it used to only log the
-// failure. The other players keep seeing them until the presence beat expires
-// (about 10s), so the player is told that.
+// failure. The row then stays (the presence sweep marks it offline, it does not
+// delete it), so the player is told the room may keep listing them. The delete is
+// retried once first, since a dropped connection is usually brief.
 test('Leave room still goes home when the participant delete fails, and says the room may still show you', async ({ page, baseURL }) => {
   test.setTimeout(90_000);
   await page.goto('/create?type=trivia');
@@ -671,8 +672,8 @@ test('Leave room still goes home when the participant delete fails, and says the
     await guest.click('button[aria-label="Leave room"]');
     await guest.click('button:has-text("Leave Room")');
     await guest.waitForURL(`${baseURL}/`, { timeout: 15000 });
-    await expect(guest.getByText(/You left, but the room may show you as still there/)).toBeVisible({ timeout: 5000 });
-    expect(refused, 'the participant delete was attempted and refused').toBeGreaterThan(0);
+    await expect(guest.getByText(/You left, but the room may keep listing you as offline/)).toBeVisible({ timeout: 5000 });
+    expect(refused, 'the participant delete was tried, then retried once').toBe(2);
   } finally {
     await browser.close();
   }
