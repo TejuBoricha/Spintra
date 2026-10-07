@@ -172,7 +172,7 @@ instead of the demo fallback).
 - Bingo's async host-side win verification has no arbitration between two
   players who achieve a genuinely simultaneous valid win — a narrow,
   code-reviewed (not yet live-reproduced) race.
-- The daily DB backup and automatic migration-deploy workflows
+- The twice-daily DB backup and automatic migration-deploy workflows
   (`.github/workflows/db-backup.yml`, `deploy.yml`) require repo secrets
   that aren't configured yet — see [Deployment](#deployment).
 - Production error monitoring (Sentry) is scaffolded but not wired up
@@ -190,7 +190,7 @@ secrets to function:
 | Workflow | Trigger | Required secrets |
 |---|---|---|
 | `deploy.yml` | Push to `main` touching `supabase/migrations/**` (or manual dispatch) | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_ID` |
-| `db-backup.yml` | Daily at 03:00 UTC (+ manual dispatch) | `SUPABASE_DB_URL`, `AWS_BACKUP_ACCESS_KEY_ID`, `AWS_BACKUP_SECRET_ACCESS_KEY`, `AWS_BACKUP_S3_BUCKET`, `AWS_BACKUP_R2_ENDPOINT` |
+| `db-backup.yml` | Twice a day, 03:00 and 15:00 UTC (+ manual dispatch) | `SUPABASE_DB_URL`, `AWS_BACKUP_ACCESS_KEY_ID`, `AWS_BACKUP_SECRET_ACCESS_KEY`, `AWS_BACKUP_S3_BUCKET`, `AWS_BACKUP_R2_ENDPOINT` |
 
 `db-backup.yml` uploads to Cloudflare R2 (S3-API-compatible, free tier,
 zero egress fees) rather than real AWS S3 — `AWS_BACKUP_R2_ENDPOINT` is the
