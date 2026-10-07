@@ -589,6 +589,9 @@ export function useRoomSubscription({
   // its own "You were removed by the host" toast, since a self-row
   // deletion previously only ever meant a kick or room closure.
   const leaveRoom = useCallback(async () => {
+    // The room stays on screen while the delete (and its one retry) is awaited, so a
+    // second press must not send a second delete or a second toast.
+    if (leavingRoomRef.current) return;
     leavingRoomRef.current = true;
     const supabase = getSupabaseBrowserClient();
     if (supabase) {

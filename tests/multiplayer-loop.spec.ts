@@ -663,17 +663,22 @@ test('Leave room still goes home when the participant delete fails, and says the
     await expect(page.getByText(/People \(2\)/)).toBeVisible({ timeout: 30000 });
 
     // Only the leave's DELETE fails; everything else on the table goes through.
+    // Each refusal takes a second, so the room is still on screen for a second press.
     let refused = 0;
-    await guest.route(/\/rest\/v1\/room_participants\?/, (route) => {
+    await guest.route(/\/rest\/v1\/room_participants\?/, async (route) => {
       if (route.request().method() !== 'DELETE') return route.fallback();
       refused++;
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'refused by the test' }) });
     });
     await guest.click('button[aria-label="Leave room"]');
     await guest.click('button:has-text("Leave Room")');
+    // A second press while the first attempt is in flight must not start another one.
+    await guest.click('button[aria-label="Leave room"]');
+    await guest.click('button:has-text("Leave Room")');
     await guest.waitForURL(`${baseURL}/`, { timeout: 15000 });
     await expect(guest.getByText(/You left, but the room may keep listing you as offline/)).toBeVisible({ timeout: 5000 });
-    expect(refused, 'the participant delete was tried, then retried once').toBe(2);
+    expect(refused, 'one leave: the delete was tried, then retried once (a second press added nothing)').toBe(2);
   } finally {
     await browser.close();
   }
