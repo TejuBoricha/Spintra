@@ -289,7 +289,7 @@ export default function NameDrawPage() {
 
       <div className="max-w-5xl mx-auto px-4 py-8 sm:py-12 relative z-10">
         {/* Page Header */}
-        <motion.div initial={false}
+        <div
           className="text-center mb-10 reveal reveal-down"
         >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm mb-4">
@@ -303,11 +303,11 @@ export default function NameDrawPage() {
             Add names and draw a winner at random. Good for giveaways
             and raffles.
           </p>
-        </motion.div>
+        </div>
 
         <div className="grid lg:grid-cols-5 gap-6">
           {/* Left Panel: Input */}
-          <motion.div initial={false}
+          <div
             className="lg:col-span-2 space-y-4 reveal reveal-left reveal-delay-1"
           >
             {/* Input Card */}
@@ -432,10 +432,10 @@ export default function NameDrawPage() {
                 <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-amber-400 group-hover:translate-x-1 transition-all" />
               </div>
             </Link>
-          </motion.div>
+          </div>
 
           {/* Right Panel: Draw Area */}
-          <motion.div initial={false}
+          <div
             className="lg:col-span-3 space-y-6 reveal reveal-right reveal-delay-2"
           >
             {/* Winner Spotlight */}
@@ -479,14 +479,14 @@ export default function NameDrawPage() {
                     }}
                     className="text-center"
                   >
-                    <motion.div initial={false}
+                    <div
                       className="mb-4 reveal reveal-up reveal-delay-2"
                     >
                       <Crown className="w-12 h-12 text-amber-400 mx-auto mb-2" />
                       <p className="text-sm text-amber-400/80 font-medium uppercase tracking-wider">
                         Winner!
                       </p>
-                    </motion.div>
+                    </div>
                     <motion.div
                       initial={{ scale: 2, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
@@ -495,8 +495,8 @@ export default function NameDrawPage() {
                     >
                       {currentWinner}
                     </motion.div>
-                    <motion.p initial={false}
-                      className="text-muted-foreground text-sm reveal reveal-fade reveal-delay-3"
+                    <p
+                      className="text-muted-foreground text-sm reveal reveal-fade reveal-delay-5"
                     >
                       {/* Elimination: the lines in the list now that are used up (a drawn name
                           later deleted from the list no longer counts). Repeatable: nothing is
@@ -504,10 +504,10 @@ export default function NameDrawPage() {
                       {eliminationMode
                         ? `${names.length - availableNamesList.length} of ${names.length} drawn`
                         : `${pluralize(drawnNames.length, "draw")} so far`}
-                    </motion.p>
+                    </p>
                   </motion.div>
                 ) : multiWinners.length > 1 ? (
-                  <motion.div initial={false}
+                  <div
                     key="multi"
                     className="text-center w-full reveal reveal-fade"
                   >
@@ -537,9 +537,9 @@ export default function NameDrawPage() {
                         </motion.div>
                       ))}
                     </div>
-                  </motion.div>
+                  </div>
                 ) : (
-                  <motion.div initial={false}
+                  <div
                     key="empty"
                     className="text-center reveal reveal-fade"
                   >
@@ -566,7 +566,7 @@ export default function NameDrawPage() {
                         ? `${pluralize(names.length, "name")} loaded. Press Draw.`
                         : "Add some names to get started"}
                     </p>
-                  </motion.div>
+                  </div>
                 )}
               </AnimatePresence>
             </div>
@@ -660,7 +660,7 @@ export default function NameDrawPage() {
 
             {/* Drawn History */}
             {drawnNames.length > 0 && (
-              <motion.div initial={false}
+              <div
                 className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 reveal reveal-up"
               >
                 <div className="flex items-center justify-between mb-3">
@@ -694,9 +694,9 @@ export default function NameDrawPage() {
                     </motion.div>
                   ))}
                 </div>
-              </motion.div>
+              </div>
             )}
-          </motion.div>
+          </div>
         </div>
       </div>
     </div>

@@ -130,10 +130,9 @@ export function Navbar() {
   );
 
   return (
-    <motion.nav
-      // initial={false} plus the CSS `reveal` classes: the navbar is in the server HTML
-      // and visible, not held at opacity 0 until the JavaScript has loaded (globals.css).
-      initial={false}
+    <nav
+      // A plain element with the CSS `reveal` entrance (globals.css), so the navbar is in
+      // the server HTML and visible, not held at opacity 0 until the JavaScript has loaded.
       // The desktop pill nav (logo + 4 center items + right icons) clipped
       // itself against this panel's own overflow-hidden at exactly 768px —
       // md:'s breakpoint — with no page-level scroll to reveal it (BUG-041).
@@ -433,6 +432,6 @@ export function Navbar() {
           opening it also tore it down moments later. See
           whats-new-dialog.tsx's own comment for the full story. */}
       <WhatsNewDialog whatsNew={whatsNew} />
-    </motion.nav>
+    </nav>
   );
 }

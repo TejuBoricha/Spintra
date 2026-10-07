@@ -152,34 +152,34 @@ export default function HomePage() {
           className="relative z-10 max-w-5xl mx-auto px-4 py-20 text-center"
         >
           {/* Badge */}
-          <motion.div initial={false}
+          <div
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm mb-8 reveal reveal-up reveal-delay-1"
           >
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-muted-foreground">Free games and group tools,</span>
             <span className="text-foreground font-medium">played in one shared room</span>
-          </motion.div>
+          </div>
 
           {/* Main Headline */}
-          <motion.h1 initial={false}
+          <h1
             className="font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[1.05] mb-6 reveal reveal-up-lg reveal-delay-2"
           >
             Can&apos;t decide?
             <br />
             <span className="gradient-text">Spin</span> for it.
-          </motion.h1>
+          </h1>
 
           {/* Subheadline */}
-          <motion.p initial={false}
-            className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed reveal reveal-up reveal-delay-3"
+          <p
+            className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed reveal reveal-up reveal-delay-4"
           >
             Make a room, share the code, and everyone watches the same wheel,
             bracket, or game play out on their own screen.
-          </motion.p>
+          </p>
 
           {/* CTAs */}
-          <motion.div initial={false}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 reveal reveal-up reveal-delay-3"
+          <div
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 reveal reveal-up reveal-delay-6"
           >
             <Link href="/create">
               <Button variant="brand" size="lg" className="group text-lg">
@@ -193,11 +193,11 @@ export default function HomePage() {
                 Explore Games
               </Button>
             </Link>
-          </motion.div>
+          </div>
 
           {/* Join Room Code Input Widget */}
-          <motion.div initial={false}
-            className="max-w-md mx-auto mt-12 p-6 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 space-y-4 reveal reveal-up reveal-delay-3"
+          <div
+            className="max-w-md mx-auto mt-12 p-6 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 space-y-4 reveal reveal-up reveal-delay-7"
           >
             <label
               htmlFor="home-code-input"
@@ -226,11 +226,11 @@ export default function HomePage() {
                 {homeJoining ? "Verifying..." : "Join"}
               </Button>
             </div>
-           </motion.div>
+           </div>
 
            {roomHistory.length > 0 && (
-             <motion.div initial={false}
-               className="max-w-md mx-auto mt-6 p-6 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 space-y-3 text-left reveal reveal-up-sm reveal-delay-3"
+             <div
+               className="max-w-md mx-auto mt-6 p-6 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) shadow-1 space-y-3 text-left reveal reveal-up-sm reveal-delay-8"
              >
                <h3 className="font-body text-xs font-bold text-muted-foreground uppercase tracking-widest">
                  Recently Visited Rooms
@@ -312,12 +312,12 @@ export default function HomePage() {
                     );
                  })}
                </div>
-             </motion.div>
+             </div>
            )}
 
            {/* Social proof */}
-          <motion.div initial={false}
-            className="mt-16 flex items-center justify-center gap-8 text-sm text-muted-foreground reveal reveal-fade reveal-delay-3"
+          <div
+            className="mt-16 flex items-center justify-center gap-8 text-sm text-muted-foreground reveal reveal-fade reveal-delay-10"
           >
             <div className="flex items-center gap-2">
               <div className="flex -space-x-2">
@@ -342,11 +342,11 @@ export default function HomePage() {
               <Gift className="w-4 h-4 text-(--brand-primary-strong)" />
               Free to play
             </span>
-          </motion.div>
+          </div>
 
           {/* Scroll indicator */}
-          <motion.div initial={false}
-            className="absolute bottom-8 left-1/2 -translate-x-1/2 reveal reveal-fade reveal-delay-3"
+          <div
+            className="absolute bottom-8 left-1/2 -translate-x-1/2 reveal reveal-fade reveal-delay-15"
           >
             <motion.div
               animate={{ y: [0, 8, 0] }}
@@ -355,7 +355,7 @@ export default function HomePage() {
             >
               <motion.div className="w-1.5 h-3 rounded-full bg-muted-foreground/50" />
             </motion.div>
-          </motion.div>
+          </div>
         </motion.div>
       </section>
 

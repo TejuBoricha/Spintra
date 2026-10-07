@@ -55,14 +55,14 @@ export default function CoinFlipPage() {
   return (
     <div className="min-h-screen pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
-        <motion.div initial={false} className="reveal reveal-up">
+        <div className="reveal reveal-up">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-yellow-400" />
             <span className="text-sm text-muted-foreground">50/50 chance</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Coin Flip</h1>
           <p className="text-muted-foreground mb-12">Heads or tails, 50/50.</p>
-        </motion.div>
+        </div>
 
         {/* Coin Display */}
         <motion.div
@@ -86,7 +86,7 @@ export default function CoinFlipPage() {
         </motion.div>
 
         {result !== null && (
-          <motion.div initial={false}
+          <div
             className="mb-8 reveal reveal-up-sm"
             role="status"
             aria-live="polite"
@@ -94,7 +94,7 @@ export default function CoinFlipPage() {
             <Badge className="text-lg px-6 py-2 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border-yellow-500/30">
               {result === 0 ? customLabels.heads : customLabels.tails}!
             </Badge>
-          </motion.div>
+          </div>
         )}
 
         <div className="flex items-center justify-center gap-4 mb-16">
@@ -126,7 +126,7 @@ export default function CoinFlipPage() {
 
         {/* Stats */}
         {history.length > 0 ? (
-          <motion.div initial={false}
+          <div
             className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 max-w-md mx-auto reveal reveal-fade"
           >
             <h2 className="text-lg font-semibold mb-4 flex items-center justify-between w-full">
@@ -160,7 +160,7 @@ export default function CoinFlipPage() {
                 <Emoji key={i} name={faces[h].emoji} size={22} animated={false} />
               ))}
             </div>
-          </motion.div>
+          </div>
         ) : (
           <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 max-w-md mx-auto text-center text-muted-foreground text-sm flex flex-col items-center gap-2">
             <TrendingUp className="w-6 h-6 text-(--brand-primary-strong)/60" />

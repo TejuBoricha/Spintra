@@ -386,7 +386,7 @@ export default function CreateRoomClient() {
                 )}
               </Button>
             ) : (
-              <motion.div initial={false}
+              <div
                 className="space-y-4 reveal reveal-scale"
               >
                 <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
@@ -412,7 +412,7 @@ export default function CreateRoomClient() {
                 >
                   Join Room
                 </Button>
-              </motion.div>
+              </div>
             )}
           </div>
         </div>

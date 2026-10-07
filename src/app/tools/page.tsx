@@ -27,7 +27,7 @@ export default function ToolsPage() {
     <div className="min-h-screen pt-28 pb-16 px-4">
       <div className="max-w-6xl mx-auto space-y-12">
         {/* Header */}
-        <motion.div initial={false}
+        <div
           className="text-center space-y-6 reveal reveal-up"
         >
           <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-orange-500/10 text-orange-500 mb-2">
@@ -41,7 +41,7 @@ export default function ToolsPage() {
               Use any tool on your own, without making a room. Good for when everyone is looking at one screen.
             </p>
           </div>
-        </motion.div>
+        </div>
 
         {/* Tools Grid */}
         <motion.div

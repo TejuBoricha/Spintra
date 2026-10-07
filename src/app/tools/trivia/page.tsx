@@ -83,7 +83,7 @@ export default function TriviaPage() {
   return (
     <div className="min-h-screen pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
-        <motion.div initial={false} className="reveal reveal-up">
+        <div className="reveal reveal-up">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
             <GameIcon className="w-4 h-4 text-yellow-400" />
             <span className="text-sm text-muted-foreground">Multiple choice</span>
@@ -100,7 +100,7 @@ export default function TriviaPage() {
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
           </div>
-        </motion.div>
+        </div>
 
         {!gameOver ? (
           <>
@@ -146,7 +146,7 @@ export default function TriviaPage() {
             </AnimatePresence>
 
             {selected !== null && (
-              <motion.div initial={false} className="mb-6 reveal reveal-scale">
+              <div className="mb-6 reveal reveal-scale">
                 <p className="flex items-center justify-center gap-2 text-lg font-semibold mb-4">
                   {selected === question.correct ? (
                     <><Emoji name="hundred_points" size={28} pop /> Correct!</>
@@ -160,7 +160,7 @@ export default function TriviaPage() {
                 >
                   {index + 1 >= total ? "See Results" : "Next Question"}
                 </Button>
-              </motion.div>
+              </div>
             )}
           </>
         ) : (
