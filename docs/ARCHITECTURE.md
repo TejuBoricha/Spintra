@@ -36,6 +36,7 @@ spintra/
 │   ├── AI_RULES.md                 ← Mandatory engineering constitution for every AI assistant
 │   ├── AI_CONTEXT.md               ← Current project state only (update every session)
 │   ├── HANDOFF.md                  ← Session continuity (last/current/next task, blockers)
+│   ├── PENDING_MIGRATIONS_DRAFT.md ← Migrations 0115/0116: written, not yet applied or tested (delete once real)
 │   ├── TASKS.md                    ← Backlog: High/Medium/Low priority, in progress, completed
 │   ├── ARCHITECTURE.md             ← This file
 │   ├── DECISIONS.md                ← Architecture Decision Records (ADRs)
@@ -473,7 +474,8 @@ npm run docs:check # scripts/check-docs-drift.mjs — docs/ vs. real filesystem
 npm run verify     # typecheck + lint + docs:check — full local quality gate
 npm run test:smoke # npx playwright test — E2E smoke tests
 npm run test:city-regression # Spintra City release-blocker regression suite (needs the local Supabase stack)
-npm run audit      # npm audit --audit-level=moderate — the one place this threshold is set;
+npm run audit      # node scripts/audit-gate.mjs: npm audit --audit-level=moderate plus the time-boxed allowlist
+                    # in scripts/audit-allowlist.json — the one place this threshold is set;
                     # ci.yml's audit step calls this same script instead of hardcoding its own
 npm run ci         # verify + audit + build + test:smoke — mirrors the CI pipeline locally
 npm run verify:migration [name] # queries the LIVE linked Supabase project to confirm a

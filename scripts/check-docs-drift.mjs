@@ -374,8 +374,8 @@ if (fs.existsSync(ciWorkflowPath) && fs.existsSync(PACKAGE_PATH)) {
   const auditScript = pkg.scripts ? pkg.scripts.audit : null;
   const ciScript = pkg.scripts ? pkg.scripts.ci : null;
 
-  if (!auditScript || !/npm audit --audit-level=(info|low|moderate|high|critical|none)\b/.test(auditScript)) {
-    fail('package.json is missing an "audit" script running `npm audit --audit-level=...`');
+  if (!auditScript || !/(npm audit|node scripts\/audit-gate\.mjs) --audit-level=(info|low|moderate|high|critical|none)\b/.test(auditScript)) {
+    fail('package.json is missing an "audit" script running `npm audit --audit-level=...` (or `node scripts/audit-gate.mjs --audit-level=...`, which wraps it)');
   } else if (!ciScript || !ciScript.includes("npm run audit")) {
     fail('package.json\'s "ci" script should run `npm run audit` (delegating to the "audit" script) rather than hardcoding its own `npm audit --audit-level=...`');
   } else if (!/\brun:\s*npm run audit\b/.test(ciContent)) {

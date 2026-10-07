@@ -288,7 +288,7 @@ test.describe('Tournament UI E2E & Edge Cases Spec', () => {
 
     // Find the matches by what they are, not by position: standard seeding gives the
     // top seed the bye and puts that match first, so its index is not part of the contract.
-    const byeMatch = page.locator('[data-testid="tournament-match"]').filter({ hasText: '__BYE__' });
+    const byeMatch = page.locator('[data-testid="tournament-match"][data-match-bye="true"]');
     await expect(byeMatch).toHaveCount(1);
 
     // Verify BYE match is auto-completed
@@ -404,8 +404,12 @@ test.describe('Tournament UI E2E & Edge Cases Spec', () => {
     await expect(page.getByText('Tournament Champion')).toBeVisible();
   });
 
-  // Test UI 6: Name Collision checking
-  test('E2E: Player named BYE triggers logic collision', async ({ page }) => {
+  // Test UI 6: a player whose name is "BYE"
+  // This used to assert that the match was LOCKED ("the name collides with dummy slot logic"),
+  // but that only happened because the page compared against "BYE" while the engine's own
+  // placeholder is "__BYE__" (audit T-14). A player called BYE is an ordinary participant: their
+  // match is playable and is not a bye match. Only the engine's placeholder is a bye.
+  test('E2E: a player named BYE is an ordinary participant, not a bye', async ({ page }) => {
     await page.goto('/tools/tournament', { waitUntil: 'networkidle' });
 
     await page.getByPlaceholder(/Enter participant names/).fill('BYE\nAlpha');
@@ -413,8 +417,11 @@ test.describe('Tournament UI E2E & Edge Cases Spec', () => {
     await page.getByRole('button', { name: 'Generate Bracket' }).click();
 
     const match = page.locator('[data-testid="tournament-match"]').first();
-    // Should be locked as ready="false" because the name collides with dummy slot logic
-    await expect(match).toHaveAttribute('data-match-ready', 'false');
+    await expect(match).toHaveAttribute('data-match-ready', 'true');
+    await expect(match).toHaveAttribute('data-match-bye', 'false');
+    await expect(match).toBeEnabled();
+    await expect(match).toContainText('BYE');
+    await expect(match).toContainText('Alpha');
   });
 
   // Test UI 7: Validation edge case

@@ -1,5 +1,11 @@
 import { defineConfig } from '@playwright/test';
 
+// Windows can reserve a block of ports at boot (Hyper-V / WinNAT), and when
+// 4000 falls in it `next start` fails with EACCES. PLAYWRIGHT_PORT moves the
+// server and every test (tests/qa-city-helpers.ts reads the same variable).
+const PORT = process.env.PLAYWRIGHT_PORT ?? '4000';
+const BASE_URL = `http://127.0.0.1:${PORT}`;
+
 export default defineConfig({
   testDir: 'tests',
   // Both CI jobs (validate, db-integration) already run an explicit
@@ -21,15 +27,15 @@ export default defineConfig({
   reporter: process.env.CI ? [['html', { open: 'never' }], ['list']] : 'list',
   use: {
     headless: true,
-    baseURL: 'http://127.0.0.1:4000',
+    baseURL: BASE_URL,
     viewport: { width: 1280, height: 800 },
   },
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' } },
   ],
   webServer: {
-    command: process.env.CI ? 'npx next start -p 4000' : 'npm run build && npx next start -p 4000',
-    url: 'http://127.0.0.1:4000/create',
+    command: process.env.CI ? `npx next start -p ${PORT}` : `npm run build && npx next start -p ${PORT}`,
+    url: `${BASE_URL}/create`,
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },

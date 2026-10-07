@@ -35,6 +35,10 @@ jobs:
       # future moderate-severity advisory is similarly unfixable, weekly
       # Dependabot still covers the fixable-bump path for lower severities --
       # only fall back to loosening the threshold if that doesn't resolve it.
+      # 7 Oct 2026 was such a case (braces: no patched release exists): instead of
+      # loosening the threshold for everything, scripts/audit-gate.mjs reads a
+      # short time-boxed allowlist (scripts/audit-allowlist.json), one advisory per
+      # entry, each with a reason and an expiry date.
       - name: Strict Dependency Security Audit
         run: npm run audit # Block build on moderate, high, or critical vulnerability findings
 
