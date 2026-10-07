@@ -11,8 +11,11 @@ import { SITE_PAGES, NOT_FOUND_PATH } from './site-routes';
 //
 // For every page at three phone and tablet widths: the page does not scroll sideways, and no text
 // or control sticks out past the left or right edge of the screen (even when a parent clips it,
-// which would hide the problem from the page-width check). Boxes that scroll on purpose
-// (overflow auto or scroll, such as a wide table) are left alone.
+// which would hide the problem from the page-width check), fixed layers such as the navbar and the
+// cookie notice included. Boxes that scroll on purpose (overflow auto or scroll, such as a wide
+// table) are left alone. The check waits for the entrance animations to finish first: late items
+// start invisible (`reveal-delay-3` and up), and invisible things are skipped, so measuring early
+// could pass on a page that overflows once everything has appeared.
 
 const WIDTHS = [320, 390, 768];
 
@@ -29,7 +32,7 @@ async function overflowProblems(page: Page): Promise<string[]> {
     };
     for (const el of document.body.querySelectorAll('*')) {
       const cs = getComputedStyle(el);
-      if (cs.display === 'none' || cs.visibility === 'hidden' || cs.position === 'fixed') continue;
+      if (cs.display === 'none' || cs.visibility === 'hidden') continue;
       const hasOwnText = Array.from(el.childNodes).some((n) => n.nodeType === 3 && (n.textContent ?? '').trim().length > 0);
       const isControl = /^(A|BUTTON|INPUT|SELECT|TEXTAREA)$/.test(el.tagName);
       if (!hasOwnText && !isControl) continue;
@@ -51,6 +54,19 @@ async function overflowProblems(page: Page): Promise<string[]> {
   });
 }
 
+/**
+ * Waits until every finite, time-driven animation on the page (the entrance fades and slides) has run to the
+ * end. Looping ones never end, and neither do animations tied to scrolling (the home hero's fade-on-scroll is a
+ * ViewTimeline that only moves when the page does), so those are not waited for.
+ */
+async function entrancesDone(page: Page) {
+  await page.waitForFunction(
+    () => document.getAnimations().every((a) => a.timeline !== document.timeline || a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity),
+    undefined,
+    { timeout: 5000 },
+  );
+}
+
 for (const width of WIDTHS) {
   test.describe(`at ${width}px wide`, () => {
     test.use({ viewport: { width, height: 800 } });
@@ -59,6 +75,7 @@ for (const width of WIDTHS) {
       test(`${path}: nothing makes the page scroll sideways or sticks out of the screen`, async ({ page }) => {
         await page.goto(path);
         // Entrances slide elements sideways for half a second; the settled page is what counts.
+        await entrancesDone(page);
         await expect.poll(() => overflowProblems(page), { message: 'nothing is wider than the screen', timeout: 5000 }).toEqual([]);
       });
     }

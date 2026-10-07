@@ -487,15 +487,17 @@ export default function HomePage() {
               {/* A plain statement of what Spintra is, in the page's own text: search engines
                   and AI summaries take the answer to "what is Spintra?" from page text, and the
                   word is otherwise read as the Roman "spintria". Two short sentences: the
-                  definition, then the thing that sets it apart. The tools it names are in the
-                  page's own headings and cards above. */}
+                  definition, then the thing that sets it apart. It names no tool on purpose (it
+                  is the short answer to "what is Spintra?"); the tools are named by the page's
+                  own headings and cards above, and by the meta description. */}
               <p className="leading-relaxed text-pretty">
                 Spintra is a free set of games and group tools that run in your browser. No account needed.
               </p>
             </div>
             {/* Each link is a 44px-tall tap target on a phone (36px with a mouse). The row wraps, so
                 five items fit a phone instead of running off both edges (the old single row was
-                449px wide in a 390px window); the narrow box on a phone wraps them 3 and 2, not 4 and 1. */}
+                449px wide in a 390px window). The narrow box on a phone only balances the wrap (3 and 2,
+                not 4 and 1): it is cosmetic, and a longer label would just wrap differently. */}
             <nav aria-label="Footer" className="flex flex-wrap items-center justify-center md:justify-end gap-x-6 max-w-[17rem] md:max-w-none">
               <Link href="/explore" className="inline-flex items-center min-h-11 md:min-h-9 hover:text-foreground transition-colors">Explore</Link>
               <Link href="/tools" className="inline-flex items-center min-h-11 md:min-h-9 hover:text-foreground transition-colors">Tools</Link>
@@ -507,6 +509,7 @@ export default function HomePage() {
           {/* Copyright and the legal pages in their own bar: the copyright is not a link, and it
               should not sit in the row of links looking like one. */}
           <div className="flex flex-col-reverse items-center gap-1 sm:flex-row sm:justify-between border-t border-border pt-6">
+            {/* The year is the one of the build; the flag stops React flagging a visit in a later year (it keeps the built text). */}
             <span suppressHydrationWarning>© {new Date().getFullYear()} Spintra</span>
             <nav aria-label="Legal" className="flex items-center gap-6">
               <Link href="/legal/terms" className="inline-flex items-center min-h-11 md:min-h-9 hover:text-foreground transition-colors">Terms</Link>
