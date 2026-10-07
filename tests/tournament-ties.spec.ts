@@ -169,6 +169,27 @@ test('the tournament page says first place is shared, ranks tied players alike, 
   await expect(page.getByText('#2', { exact: true })).toHaveCount(0);
 });
 
+// Code review of PR #68, round 3: Swiss crowns its champion from the same standings
+// (points, then difference, then score) but the page only listed them for round robin.
+test('the tournament page lists the standings for Swiss too, and they follow the scores', async ({ page }) => {
+  await page.goto('/tools/tournament', { waitUntil: 'networkidle' });
+  await page.getByPlaceholder(/Enter participant names/).fill('Alpha\nBravo\nCharlie\nDelta');
+  await page.getByRole('radio', { name: 'Swiss' }).click();
+  await page.getByRole('button', { name: 'Generate Bracket' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Standings' })).toBeVisible({ timeout: 5000 });
+  await expect(page.getByText('0 pts', { exact: true })).toHaveCount(4);
+
+  await page.locator('[data-testid="tournament-match"]').first().click();
+  const scores = page.locator('input[type="number"]');
+  await scores.nth(0).fill('2');
+  await scores.nth(1).fill('0');
+  await page.getByRole('button', { name: 'Save' }).click();
+
+  await expect(page.getByText('3 pts', { exact: true })).toHaveCount(1);
+  await expect(page.getByText('0 pts', { exact: true })).toHaveCount(3);
+});
+
 test('a shared first place reads clearly even when the names contain "&"', () => {
   const teams = ['Sam & Max', 'Ann & Bo'];
   const out = result(start('round-robin', teams), 'Sam & Max', 'Ann & Bo', 1, 1);

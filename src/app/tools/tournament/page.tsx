@@ -411,8 +411,13 @@ export default function TournamentPage() {
     return count;
   }, [tournament]);
 
-  const roundRobinStandings = useMemo(
-    () => (tournament?.type === "round-robin" ? calculateStandings(tournament.rounds, tournament.participants) : []),
+  // Round robin and Swiss both crown their champion from these (points, then score
+  // difference, then score), so both show them.
+  const standings = useMemo(
+    () =>
+      tournament && (tournament.type === "round-robin" || tournament.type === "swiss")
+        ? calculateStandings(tournament.rounds, tournament.participants)
+        : [],
     [tournament]
   );
 
@@ -455,44 +460,44 @@ export default function TournamentPage() {
     );
   };
 
+  const renderStandings = () => (
+    <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+        Standings
+      </h3>
+      <div className="space-y-1">
+        {standings.map((row) => (
+          <div
+            key={row.player}
+            className="flex items-center gap-3 px-3 py-2 rounded-xl bg-(--surface-sunken) border border-(--border-hairline)"
+          >
+            <span className="text-xs font-mono text-muted-foreground w-6 text-right">
+              #{row.rank}
+            </span>
+            <span className="text-sm font-medium flex-1">{row.player}</span>
+            <span className="text-xs text-muted-foreground">
+              {row.wins}W {row.losses}L {row.draws}D
+              <span className="ml-2" title="Score difference: the tiebreaker after points">
+                {row.diff > 0 ? "+" : ""}
+                {row.diff}
+              </span>
+            </span>
+            <span className="text-xs font-bold text-emerald-400 ml-2">
+              {row.points} pts
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   const renderRoundRobin = (rounds: BracketMatch[][]) => {
     const allMatches = rounds.flat();
     if (allMatches.length === 0) return null;
 
-    // Same standings the champion is decided from (points, then score difference, then score).
-    const standings = roundRobinStandings;
-
     return (
       <div className="space-y-6">
-        {/* Standings */}
-        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-            Standings
-          </h3>
-          <div className="space-y-1">
-            {standings.map((row) => (
-              <div
-                key={row.player}
-                className="flex items-center gap-3 px-3 py-2 rounded-xl bg-(--surface-sunken) border border-(--border-hairline)"
-              >
-                <span className="text-xs font-mono text-muted-foreground w-6 text-right">
-                  #{row.rank}
-                </span>
-                <span className="text-sm font-medium flex-1">{row.player}</span>
-                <span className="text-xs text-muted-foreground">
-                  {row.wins}W {row.losses}L {row.draws}D
-                  <span className="ml-2" title="Score difference: the tiebreaker after points">
-                    {row.diff > 0 ? "+" : ""}
-                    {row.diff}
-                  </span>
-                </span>
-                <span className="text-xs font-bold text-emerald-400 ml-2">
-                  {row.points} pts
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        {renderStandings()}
 
         {/* Matches grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -514,6 +519,8 @@ export default function TournamentPage() {
   const renderSwiss = (rounds: BracketMatch[][]) => {
     return (
       <div className="space-y-4">
+        {/* The champion is decided from these, so the page that crowns one shows them. */}
+        {renderStandings()}
         {rounds.map((round, ri) => (
           <div key={ri} className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
