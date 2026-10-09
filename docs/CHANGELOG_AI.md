@@ -3456,6 +3456,15 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 
 ---
 
+## [2026-10-10] — CI audit red again: Next.js 16.3.6 to 16.4.0 (five advisories)
+
+**AI:** Claude Code (local, VS Code)
+**Task:** PR #77's `validate` job failed on its third step, "Strict Dependency Security Audit", before type checking, lint or any test ran. Reproduced locally with `npm run audit`: five advisories at moderate or above, all in `next` 16.0.0 to 16.3.7 (GHSA-3W37-WQ28-93X7 a pending `use cache` fill can leak Draft Mode content into regular responses; GHSA-4JQV-MC3X-M676 and GHSA-MCJ8-R9MP-W47P cache poisoning of SSG/ISR pages; GHSA-F87G-XV8R-7P7X information disclosure in metadata image routes through a `dynamicParams` bypass; GHSA-CJQ9-62Q9-8JV4, high, server-side request forgery in image optimization). It fails on every branch and on `main`, not only on PR #77.
+**Changes (branch `fix/deps-next-16-4-0`):** `next` and `eslint-config-next` 16.3.6 to 16.4.0, exact pins as before (`npm install next@16.4.0 eslint-config-next@16.4.0 --save-exact`); `package.json` and `package-lock.json` only. `npm audit` offered exactly this fix and calls it a non-major bump.
+**Why this and not an exception:** the 7 Oct `braces` exception was for a dependency with no patched release and development-only use; here a patched release exists, the SSRF is high severity and in a feature the site uses (images), and the change is one minor version with no code change. An exception would also have hidden the next real advisory behind the same gate.
+**Evidence:** `npm run audit` green (only the dated `braces` exception remains); `npm run verify` clean; production build on 16.4.0; full Playwright suite on that build: 305 passed, 2 skipped (by design), 0 failed.
+**Not verified:** the live site after the deploy (Vercel builds with the new version); `@sentry/nextjs` 10.x with Next 16.4 beyond the build and the suite (no warning was printed).
+
 ## [2026-10-10] — Lean working agreement (ADR-013): CI runs once per pull request, tests where needed, one preview link
 
 **AI:** Claude Code (local, VS Code)
@@ -3464,3 +3473,4 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 **Why:** on 9 and 10 October every push ran the whole pipeline twice, the full suite ran locally after almost every change, seven builds and nine servers existed only to hand over links, and the same findings were written in four places.
 **Evidence:** the script was run in `--list` mode over nine sets of changed files (a tool page, the home page, a shared component, `package.json`, docs only, a test helper, an unknown path): it picks the specs that visit the route, and the full suite for anything shared or unknown. The CI change is shown by this pull request itself: it runs once.
 **Not verified:** the cancellation of a superseded run (it needs a second push to this pull request); that the mapping never misses a spec (CI is the backstop; see the ADR's follow-up).
+**Also (the Next.js 16.4 upgrade, PR #78):** its dev server writes its own instructions block into `AGENTS.md` and restores it when removed, which would dirty the working tree on every `npm run dev` and put a dependency's text into this repo's start-up guide for AI assistants: `agentRules: false` in `next.config.ts` stops it (it removed the block by itself on the next start). Correction to the entry above: its claim that the high-severity SSRF advisory is in "a feature the site uses (images)" is wrong, because `images.unoptimized` is on and the image optimizer is not used here, so that advisory was probably not reachable; the upgrade was still right (a gate that tolerates a `high` advisory is no gate, and the other four were reachable in principle).
