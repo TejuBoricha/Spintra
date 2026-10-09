@@ -25,7 +25,7 @@
     "@base-ui/react": "^1.8.0",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",
-    "@sentry/nextjs": "^10.64.0",
+    "@sentry/nextjs": "^11.4.0",
     "@supabase/supabase-js": "^2.117.2",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",
