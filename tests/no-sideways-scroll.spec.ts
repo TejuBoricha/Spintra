@@ -15,7 +15,8 @@ import { SITE_PAGES, NOT_FOUND_PATH } from './site-routes';
 // of the box it sits in, into its padding (a button 45px wider than its card's content box hugged the
 // card's right edge on a 320px phone, with room to spare on the left, and the page-width check could
 // not see it). Fixed layers such as
-// the navbar and the cookie notice are measured too. Boxes that scroll on purpose (overflow auto or
+// the navbar and the cookie notice are measured too. The box rule is for controls (links, buttons and fields: the
+// things with a fixed label that cannot wrap); text of any kind is held to the screen edges only. Boxes that scroll on purpose (overflow auto or
 // scroll, such as a wide table) are left alone.
 //
 // Invisible things are skipped, so the page is measured at every scroll stop, once the entrances there
@@ -83,7 +84,7 @@ async function overflowProblems(page: Page): Promise<string[]> {
 
 /**
  * Waits until the page is at rest: every finite, time-driven animation has ended, and the opacity that
- * JavaScript-driven entrances set inline has stopped changing for 250ms. Looping animations and animations
+ * JavaScript-driven entrances set inline has stopped changing for 150ms. Looping animations and animations
  * tied to scrolling (the home hero's fade-on-scroll is a ViewTimeline that only moves when the page does) are
  * not waited for. The wait is bounded and never fails: a page with something that keeps changing is measured
  * at the deadline, not reported as broken.
@@ -107,7 +108,7 @@ async function atRest(page: Page) {
     if (now !== last) {
       last = now;
       since = Date.now();
-    } else if (Date.now() - since >= 250) break;
+    } else if (Date.now() - since >= 150) break;
     await page.waitForTimeout(50);
   }
 }
@@ -120,15 +121,18 @@ async function atRest(page: Page) {
 async function problemsWhileScrolling(page: Page): Promise<string[]> {
   const found = new Set<string>();
   const step = Math.floor(page.viewportSize()!.height * 0.8);
-  for (let y = 0, stops = 0; stops < 40; y += step, stops++) {
+  let reachedBottom = false;
+  for (let y = 0, stops = 0; stops < 200 && !reachedBottom; y += step, stops++) {
     const { top, max } = await page.evaluate((want) => {
       window.scrollTo(0, want);
       return { top: window.scrollY, max: document.documentElement.scrollHeight - window.innerHeight };
     }, y);
     await atRest(page);
     for (const problem of await overflowProblems(page)) found.add(problem);
-    if (top >= max - 1) break;
+    reachedBottom = top >= max - 1;
   }
+  // A page that is never finished measuring is a failure, not a pass: the unmeasured part is the blind spot.
+  if (!reachedBottom) found.add('the bottom of the page was never reached while measuring');
   return [...found].slice(0, 6);
 }
 
@@ -162,6 +166,9 @@ test.describe('Never Have I Ever: the two answer buttons share a row on a phone'
       await expect(never).toBeVisible();
       const [a, b] = await Promise.all([have.boundingBox(), never.boundingBox()]);
       expect(Math.abs(a!.y - b!.y), '"I Have" and "Never Have" are on the same row').toBeLessThan(2);
+      // ... and on that row they are on the screen with room to spare, not squeezed past its edges.
+      expect(Math.min(a!.x, b!.x), 'the pair starts clear of the left edge').toBeGreaterThanOrEqual(8);
+      expect(width - Math.max(a!.x + a!.width, b!.x + b!.width), 'the pair ends clear of the right edge').toBeGreaterThanOrEqual(8);
     });
   }
 });

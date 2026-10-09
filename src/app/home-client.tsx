@@ -38,10 +38,11 @@ const perks = [
   { icon: Star, label: "Invite by link or QR", desc: "Handy when everyone is in the same place" },
 ];
 
-// Footer links are 44px tall by default (a phone, any touch device: WCAG 2.5.8 asks for 24px, and 44px is the size
-// a thumb hits reliably) and 36px only where there is both room and a precise pointer (md and up, with a mouse),
-// where the row is compact. The compact size is the one that has to be asked for.
-const FOOTER_LINK = "inline-flex items-center min-h-11 md:pointer-fine:min-h-9 hover:text-foreground transition-colors";
+// Footer links are 44px tall by default (a phone, any device with a touchscreen: WCAG 2.5.8 asks for 24px, and 44px
+// is the size a thumb hits reliably) and 36px only where there is room and no touch input at all (md and up, mouse
+// only), where the row is compact. `any-pointer` rather than `pointer`: a touchscreen laptop or a 2-in-1 with a
+// trackpad reports a fine primary pointer, and a finger still taps those links. The compact size has to be asked for.
+const FOOTER_LINK = "inline-flex items-center min-h-11 md:not-any-pointer-coarse:min-h-9 hover:text-foreground transition-colors";
 
 export default function HomePage() {
   const router = useRouter();
