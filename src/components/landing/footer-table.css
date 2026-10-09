@@ -87,11 +87,10 @@
   overflow: hidden;
 }
 
-/* depth layers: the pointer moves them a little, each by its own --depth */
+/* depth layers: the cursor moves them a little, each by its own data-depth (footer-table.tsx writes their translate) */
 .ft-layer {
   position: absolute;
   inset: 0;
-  translate: calc(var(--px, 0) * var(--depth, 0) * 1px) calc(var(--py, 0) * var(--depth, 0) * 1px);
 }
 
 .ft-svg {

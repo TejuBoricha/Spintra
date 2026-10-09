@@ -298,7 +298,7 @@ export function FooterTable({ className = "" }: { className?: string }) {
       </svg>
 
       {/* far layer: the felt, the table's rim, a second track, dust */}
-      <div className="ft-layer" style={vars({ "--depth": 0.35 })}>
+      <div className="ft-layer" data-depth="0.35">
         {DUST.map((p) => (
           <span key={p.d} className="ft-dust" style={vars({ left: `${p.left}%`, top: `${p.top}%`, "--d": p.d })} />
         ))}
@@ -310,7 +310,7 @@ export function FooterTable({ className = "" }: { className?: string }) {
       </div>
 
       {/* the track, the hub where it crosses, and an orbit inside each loop */}
-      <div className="ft-layer" style={vars({ "--depth": 0.8 })}>
+      <div className="ft-layer" data-depth="0.8">
         <svg className="ft-svg" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false">
           <path className="ft-track" data-track="" d={TRACK_D} />
         </svg>
@@ -358,7 +358,7 @@ export function FooterTable({ className = "" }: { className?: string }) {
       </div>
 
       {/* the pieces: the die and the S chip start half a lap apart, so they meet at the crossing every 5 s */}
-      <div className="ft-layer" style={vars({ "--depth": 1.2 })}>
+      <div className="ft-layer" data-depth="1.2">
         <Piece phase={0} size={10.4} pull="flee" index={0}>
           <Die />
         </Piece>
@@ -380,7 +380,7 @@ export function FooterTable({ className = "" }: { className?: string }) {
       </div>
 
       {/* near layer: sparkles */}
-      <div className="ft-layer" style={vars({ "--depth": 1.8 })}>
+      <div className="ft-layer" data-depth="1.8">
         {SPARKLES.map((p) => (
           <span key={p.d} className="ft-sp" style={vars({ left: `${p.left}%`, top: `${p.top}%`, "--w": `${p.w}%`, "--d": p.d, "--rs": p.rs, "--ro": p.ro })}>
             <svg viewBox="0 0 100 100" focusable="false">
@@ -409,7 +409,10 @@ function followCursor(root: HTMLElement): () => void {
   }));
   const track = root.querySelector<SVGPathElement>("[data-track]");
   let cursor: { x: number; y: number } | null = null;
+  const layers = Array.from(root.querySelectorAll<HTMLElement>("[data-depth]")).map((el) => ({ el, depth: Number(el.dataset.depth) }));
   let amount = 0; // how far the track has given way (0 to 1)
+  let trackBent = false;
+  let ticks = 0;
   let px = 0;
   let py = 0;
   let frame = 0;
@@ -431,7 +434,12 @@ function followCursor(root: HTMLElement): () => void {
 
   function tick() {
     frame = 0;
+    // Read everything first, write everything after. Reading a position between style writes makes the browser
+    // recalculate style and layout again for every read: with the cursor over the scene that measured 60 layouts and
+    // 370 style recalculations a second; this order costs one of each per frame at most.
     const r = root.getBoundingClientRect();
+    const rects = pieces.map((p) => p.sprite.getBoundingClientRect());
+
     const W = r.width;
     const H = r.height;
     const cx = cursor ? cursor.x - r.left : -9999;
@@ -445,12 +453,10 @@ function followCursor(root: HTMLElement): () => void {
     const ny = cursor ? (cy / H - 0.5) * 2 : 0;
     px += (nx * 7 - px) * 0.08;
     py += (ny * 5 - py) * 0.08;
-    root.style.setProperty("--px", px.toFixed(2));
-    root.style.setProperty("--py", py.toFixed(2));
 
     let moving = false;
-    for (const p of pieces) {
-      const b = p.sprite.getBoundingClientRect();
+    pieces.forEach((p, i) => {
+      const b = rects[i];
       const qx = b.left + b.width / 2 - r.left;
       const qy = b.top + b.height / 2 - r.top;
       let tx = 0;
@@ -476,27 +482,39 @@ function followCursor(root: HTMLElement): () => void {
       p.vy = (p.vy + (ty - p.y) * 0.1) * 0.8;
       p.x += p.vx;
       p.y += p.vy;
-      p.el.style.translate = `${p.x.toFixed(2)}px ${p.y.toFixed(2)}px`;
       if (Math.abs(p.x) > 0.05 || Math.abs(p.y) > 0.05 || Math.abs(p.vx) > 0.02 || Math.abs(p.vy) > 0.02) moving = true;
-    }
+    });
 
-    // the track gives way around the cursor
-    if (track) {
-      const bent = TRACK_POINTS.map(([x, y]) => {
-        let X = (x / 100) * W;
-        let Y = (y / 100) * H;
-        const dx = X - cx;
-        const dy = Y - cy;
-        const d = Math.hypot(dx, dy) || 1;
-        if (d < 74 && amount > 0) {
-          const k = 1 - d / 74;
-          const push = k * k * 11 * amount;
-          X += (dx / d) * push;
-          Y += (dy / d) * push;
-        }
-        return [(X / W) * 100, (Y / H) * 100] as [number, number];
-      });
-      track.setAttribute("d", toPath(bent));
+    // write phase. The layers and the pieces get their own translate: moving them through a custom property on the
+    // root made the browser restyle the whole scene (about 150 elements) on every frame.
+    for (const layer of layers) layer.el.style.translate = `${(px * layer.depth).toFixed(2)}px ${(py * layer.depth).toFixed(2)}px`;
+    for (const p of pieces) p.el.style.translate = `${p.x.toFixed(2)}px ${p.y.toFixed(2)}px`;
+
+    // the track gives way around the cursor (and is put back once, when the cursor has gone); a bend changes the
+    // geometry of the path, so it is redrawn every other frame, which is smooth enough for a slight bend
+    ticks++;
+    if (track && (amount > 0 || trackBent) && (ticks % 2 === 0 || amount === 0)) {
+      if (amount > 0) {
+        const bent = TRACK_POINTS.map(([x, y]) => {
+          let X = (x / 100) * W;
+          let Y = (y / 100) * H;
+          const dx = X - cx;
+          const dy = Y - cy;
+          const d = Math.hypot(dx, dy) || 1;
+          if (d < 74) {
+            const k = 1 - d / 74;
+            const push = k * k * 11 * amount;
+            X += (dx / d) * push;
+            Y += (dy / d) * push;
+          }
+          return [(X / W) * 100, (Y / H) * 100] as [number, number];
+        });
+        track.setAttribute("d", toPath(bent));
+        trackBent = true;
+      } else {
+        track.setAttribute("d", TRACK_D);
+        trackBent = false;
+      }
     }
 
     if (moving || cursor || amount > 0 || Math.abs(px) > 0.05 || Math.abs(py) > 0.05) frame = requestAnimationFrame(tick);
@@ -513,8 +531,7 @@ function followCursor(root: HTMLElement): () => void {
     if (frame) cancelAnimationFrame(frame);
     frame = 0;
     for (const p of pieces) p.el.style.translate = "";
-    root.style.removeProperty("--px");
-    root.style.removeProperty("--py");
+    for (const layer of layers) layer.el.style.translate = "";
     track?.setAttribute("d", TRACK_D);
   };
 }
