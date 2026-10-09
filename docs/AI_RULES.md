@@ -128,7 +128,7 @@ In every new session, you MUST execute this workflow (normally completed in a si
    - For every non-trivial feature, bug fix, refactor, database change, API change, infrastructure change, or architectural change, perform a concise impact assessment before modifying any files. See §10 for the required structure.
 
 3. **User-Facing Initialization**
-   - Briefly summarize your understanding of the current project state and present the Pre-Implementation Impact Assessment in your response text before touching any production code.
+   - Briefly summarize your understanding of the current project state, and present the Pre-Implementation Impact Assessment at the depth its risk level calls for (§10): one line for Low risk, a few bullets for Medium (they can live in the pull request description), the full structure for High. It never blocks the work: if the task is clear, go on in the same response.
    - Mention any assumptions or ambiguities.
    - If the task is straightforward and unambiguous, immediately continue with implementation in the same response. Only stop and ask for clarification if the assessment identifies ambiguity, conflicting requirements, architectural uncertainty, or unacceptable risk.
 
@@ -136,11 +136,11 @@ In every new session, you MUST execute this workflow (normally completed in a si
    - Perform the requested work in the same response (no need to wait for another conversational turn unless clarification is required).
 
 5. **Verification**
-   - Run the appropriate quality gates/checks (`npm run verify`).
-   - Synchronize all affected documentation in the `docs/` folder (including backlog checkmarks in `docs/TASKS.md`, milestone logs in `docs/AI_CONTEXT.md`, and stopping points in `docs/HANDOFF.md`).
+   - Run `npm run verify`, then the tests that cover the change (`npm run test:related`). The full suite is CI's job, except for the cases in §11.
+   - Synchronize the documentation the change actually affects, one place per fact (§11).
 
 6. **Completion**
-   - Present the Mandatory Change Report in the conversation (following the exact template in §9).
+   - Present the change report in the conversation (§9: compact by default, the full template for High-risk changes).
    - Confirm that the Definition of Done and all Completion Gates have been satisfied.
 
 ---
@@ -167,15 +167,39 @@ A task is NOT considered complete until ALL of the following conditions have bee
 
 1. The requested implementation has been completed.
 2. Relevant verification has been performed (run the appropriate verification/lint commands like `npm run verify` before considering the task complete).
-3. Relevant documentation has been updated and synchronized (including `docs/TASKS.md`, `docs/AI_CONTEXT.md`, `docs/HANDOFF.md`, and `docs/CHANGELOG_AI.md`).
-4. A Mandatory Change Report has been presented in the conversation.
+3. Relevant documentation has been updated, one place per fact (§11): the changelog entry always, `docs/TASKS.md` when a status changed, `docs/HANDOFF.md` only when the resume point changed (and always when stopping), `docs/AI_CONTEXT.md` only for architecture or milestones.
+4. A change report has been presented in the conversation.
 5. Confirm that all Completion Gates have been satisfied.
 
 If any of the above is missing, the task must be treated as incomplete. Never finish a task without satisfying every completion gate.
 
 ### Mandatory Change Report
 
-Every significant change MUST end with a structured engineering report, displayed directly in the conversation. Updating documentation alone is NOT sufficient — the report must always be presented to the user, using exactly this structure:
+Every significant change ends with an engineering report, displayed directly in the conversation. Updating documentation alone is NOT sufficient. **Use the compact form by default; use the full template below it for High-risk changes (database, security, authentication, architecture, infrastructure) and whenever the owner asks for it.**
+
+Compact form:
+
+```
+# Status
+Fixed / Improved / Added / Refactored / Removed, and the severity, in one line.
+
+# Why
+The problem and its root cause, in plain words.
+
+# What changed
+What was done, with the files that matter.
+
+# Verification
+What was run and what it showed (name the tests). Say what was NOT verified.
+
+# Risk and rollback
+What could still go wrong, and how to revert it.
+
+# Next
+Optional follow-ups.
+```
+
+Full template:
 
 ```
 # Status
@@ -239,11 +263,11 @@ Reports are **OPTIONAL** for: documentation-only edits, formatting-only changes,
 
 ### Engineering Communication
 
-Do not optimize for shorter responses. Prioritize complete engineering communication over response brevity. Assume the recipient is another engineer who must understand what changed, why it changed, how it was verified, what risks remain, and what should happen next. Never simply state "fixed" or "done" — always explain the engineering reasoning behind significant changes.
+Be direct: say each thing once, plainly. Complete does not mean long. Assume the recipient is another engineer who must understand what changed, why it changed, how it was verified, what risks remain, and what should happen next. Never simply state "fixed" or "done": give the reasoning behind significant changes. The pull request description is where the detail belongs; the conversation carries the report.
 
 ### Final Rule
 
-Before ending every task, verify that the Mandatory Change Report has been presented. If it has not been presented, continue the response until it has been fully completed. Treat the report as part of the implementation rather than an optional summary.
+Before ending every task, verify that the change report has been presented. If it has not been presented, continue the response until it has. Treat the report as part of the implementation rather than an optional summary.
 
 ---
 
@@ -251,7 +275,7 @@ Before ending every task, verify that the Mandatory Change Report has been prese
 
 Before modifying any files for any non-trivial feature, bug fix, refactor, database change, API change, infrastructure change, or architectural change, you must perform a concise Pre-Implementation Impact Assessment.
 
-The assessment must be presented in the user-facing initialization and follow this structure:
+Think it through at the depth the risk calls for. It need not be a separate message: Low risk is one line, Medium a few bullets (in the pull request description is fine), High the full structure below, presented in the user-facing initialization:
 
 ### 1. Risk Level
 Classify the task as one of the following:
@@ -299,3 +323,34 @@ Always determine the potential impact before implementation:
 The purpose of the PIIA is to think before coding, not to slow development. It should remain concise (typically 5–15 bullet points total).
 - If the task is clear and unambiguous, **immediately continue with implementation in the same response** after presenting the assessment.
 - **Only stop and ask for clarification** if the assessment identifies ambiguity, conflicting requirements, architectural uncertainty, or unacceptable risk.
+
+---
+
+## 11. Working Agreement: tests, previews, reviews, documentation (ADR-013)
+
+Measured on 9 and 10 October 2026, a large share of the time went into repeating work that CI already does, handing over local links, and writing the same facts in four places. These rules remove that without removing a check that found a real defect (the revert evidence, the review round before the merge and the class sweeps all did).
+
+### Tests: three tiers
+1. **Always: `npm run verify`.** The dependency audit, typecheck, lint and docs drift: the static gates CI starts with, so a red audit shows up before the push instead of ten minutes into CI.
+2. **After each change: `npm run test:related`.** It runs the specs that cover the files changed since `main` and falls back to the full suite for anything it cannot place (shared components, hooks, libraries, configuration, migrations, dependencies). Tests written for a change are first run against the old build to show they fail there (revert evidence), then against the new one.
+3. **The full suite locally: only when the change can reach everything,** such as a framework or dependency upgrade, a shared component or primitive, global CSS or the Playwright configuration, and then once, not after every follow-up. For everything else the full suite runs in CI on the pull request, and that run on the exact head is the evidence.
+
+### Previews: one link per session
+Start one dev server on a fixed port and leave it running: `npm run dev -- -p 3200 -H 127.0.0.1`, then http://127.0.0.1:3200. It follows whichever branch is checked out and reloads on every edit, so the link never changes and nothing needs building. A production build is the final proof for something that depends on one (performance, hydration, the real Playwright run), not a way to hand over a link. A second build beside a running server uses `NEXT_DIST_DIR=.next-x` and is deleted afterwards.
+
+### Reviews
+- Self-review the diff before opening the pull request, then run **one** `/code-review high` on the final diff **before** the merge, never after.
+- A second round only if the first found a defect in the behaviour the change ships. Stop when a round finds none.
+- A finding about code or tests the change does not touch (a wider class of problem, a hardening idea) becomes its own item in `docs/TASKS.md`, not part of this pull request.
+- Merge when the required checks are green on the exact head and the last review round found nothing new.
+
+### Documentation: one place per fact
+- **Pull request description:** the full detail (findings, evidence, alternatives, what was not verified).
+- **`docs/CHANGELOG_AI.md`:** a short entry (about eight lines: task, change, why, evidence, what is not verified) with the pull request number, written once, after the last review round.
+- **`docs/TASKS.md`:** one status line per item.
+- **`docs/HANDOFF.md`:** only the facts that decide where the next session starts (the state of `main`, open pull requests, what is in flight). Update it when stopping, not after every step.
+- **`docs/AI_CONTEXT.md`:** architecture and milestones only.
+Never copy the same finding table into several of these.
+
+### CI
+`ci.yml` runs once per pull request head (it tests the merge of the branch into its base) and once on `main` after a merge, and a newer push to a pull request cancels the older run. A branch without a pull request runs nothing, so push work in progress freely.

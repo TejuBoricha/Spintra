@@ -10,11 +10,12 @@
     "build": "next build",
     "start": "next start",
     "test:smoke": "npx playwright test",
+    "test:related": "node scripts/related-tests.mjs",
     "test:city-regression": "node scripts/city-regression.mjs",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "docs:check": "node scripts/check-docs-drift.mjs",
-    "verify": "npm run typecheck && npm run lint && npm run docs:check",
+    "verify": "npm run audit && npm run typecheck && npm run lint && npm run docs:check",
     "verify:migration": "node scripts/verify-migration.mjs",
     "audit": "node scripts/audit-gate.mjs --audit-level=moderate",
     "ci": "npm run verify && npm run audit && npm run build && npm run test:smoke"
