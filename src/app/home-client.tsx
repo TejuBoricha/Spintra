@@ -38,6 +38,10 @@ const perks = [
   { icon: Star, label: "Invite by link or QR", desc: "Handy when everyone is in the same place" },
 ];
 
+// Footer links are 44px tall on a phone and on any touch device (WCAG 2.5.8 asks for 24px; 44px is the size a
+// thumb hits reliably), and 36px with a mouse from the md breakpoint up, where the row is compact.
+const FOOTER_LINK = "inline-flex items-center min-h-11 md:min-h-9 pointer-coarse:min-h-11 hover:text-foreground transition-colors";
+
 export default function HomePage() {
   const router = useRouter();
   const [currentUser] = useState(getOrCreateRoomUser);
@@ -444,7 +448,7 @@ export default function HomePage() {
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="rounded-2xl border border-(--border-hairline) bg-(--surface-panel) p-12 sm:p-16 relative overflow-hidden shadow-2"
+            className="rounded-2xl border border-(--border-hairline) bg-(--surface-panel) px-5 py-12 sm:p-16 relative overflow-hidden shadow-2"
           >
             {/* Inner glow */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-(--cyan-500)/10" />
@@ -494,16 +498,16 @@ export default function HomePage() {
                 Spintra is a free set of games and group tools that run in your browser. No account needed.
               </p>
             </div>
-            {/* Each link is a 44px-tall tap target on a phone (36px with a mouse). The row wraps, so
+            {/* Each link is a 44px-tall tap target on a phone or any touch device (36px with a mouse; see FOOTER_LINK). The row wraps, so
                 five items fit a phone instead of running off both edges (the old single row was
                 449px wide in a 390px window). The narrow box on a phone only balances the wrap (3 and 2,
                 not 4 and 1): it is cosmetic, and a longer label would just wrap differently. */}
             <nav aria-label="Footer" className="flex flex-wrap items-center justify-center md:justify-end gap-x-6 max-w-[17rem] md:max-w-none">
-              <Link href="/explore" className="inline-flex items-center min-h-11 md:min-h-9 hover:text-foreground transition-colors">Explore</Link>
-              <Link href="/tools" className="inline-flex items-center min-h-11 md:min-h-9 hover:text-foreground transition-colors">Tools</Link>
-              <Link href="/create" className="inline-flex items-center min-h-11 md:min-h-9 hover:text-foreground transition-colors">Create Room</Link>
-              <Link href="/for-teachers" className="inline-flex items-center min-h-11 md:min-h-9 hover:text-foreground transition-colors">For Teachers</Link>
-              <Link href="/spintra-city" className="inline-flex items-center min-h-11 md:min-h-9 hover:text-foreground transition-colors">Spintra City</Link>
+              <Link href="/explore" className={FOOTER_LINK}>Explore</Link>
+              <Link href="/tools" className={FOOTER_LINK}>Tools</Link>
+              <Link href="/create" className={FOOTER_LINK}>Create Room</Link>
+              <Link href="/for-teachers" className={FOOTER_LINK}>For Teachers</Link>
+              <Link href="/spintra-city" className={FOOTER_LINK}>Spintra City</Link>
             </nav>
           </div>
           {/* Copyright and the legal pages in their own bar: the copyright is not a link, and it
@@ -512,8 +516,8 @@ export default function HomePage() {
             {/* The year is the one of the build; the flag stops React flagging a visit in a later year (it keeps the built text). */}
             <span suppressHydrationWarning>© {new Date().getFullYear()} Spintra</span>
             <nav aria-label="Legal" className="flex items-center gap-6">
-              <Link href="/legal/terms" className="inline-flex items-center min-h-11 md:min-h-9 hover:text-foreground transition-colors">Terms</Link>
-              <Link href="/legal/privacy" className="inline-flex items-center min-h-11 md:min-h-9 hover:text-foreground transition-colors">Privacy</Link>
+              <Link href="/legal/terms" className={FOOTER_LINK}>Terms</Link>
+              <Link href="/legal/privacy" className={FOOTER_LINK}>Privacy</Link>
             </nav>
           </div>
         </div>
