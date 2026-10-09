@@ -484,7 +484,7 @@ export default function HomePage() {
           {/* Three parts, in reading order: who we are, the game table that never stops, where to go. One column on a
               phone, the brand and the links side by side with the table in a band below from md, and all three
               in a row from lg, the table in the middle. */}
-          <div className="grid justify-items-center gap-6 md:grid-cols-[1fr_auto] md:items-start md:justify-items-stretch lg:grid-cols-[19rem_minmax(0,1fr)_auto] lg:items-center lg:gap-8">
+          <div className="grid grid-cols-[minmax(0,1fr)] justify-items-center gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:justify-items-stretch lg:grid-cols-[19rem_minmax(0,1fr)_auto] lg:items-center lg:gap-8">
             <div className="flex flex-col items-center md:items-start gap-3 max-w-sm text-center md:text-left">
               {/* The same wordmark as the navbar (only "Spin" is brand-coloured), a size down. */}
               <div className="flex items-center gap-2 md:h-11">

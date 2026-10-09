@@ -40,6 +40,10 @@
   max-width: 36rem;
   margin-inline: auto;
   aspect-ratio: 16 / 5;
+  /* Never wider than the column it is in. Without this a grid item's automatic minimum width is its minimum height
+     times the ratio (7rem x 3.2 = 358px), which widened the whole footer past a 320px screen. A narrower scene is
+     simply a little taller than its ratio. */
+  min-width: 0;
   min-height: 7rem;
   contain: layout paint;
   user-select: none;
