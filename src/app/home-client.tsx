@@ -471,36 +471,52 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-border py-12 px-4">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded overflow-hidden flex-shrink-0">
-              <Image src="/icons/logo.png" alt="" width={24} height={24} className="w-full h-full object-cover" />
+      <footer className="relative z-10 border-t border-border px-4 pt-12 pb-8 text-sm text-muted-foreground">
+        <div className="max-w-6xl mx-auto flex flex-col gap-8">
+          <div className="flex flex-col items-center md:flex-row md:items-start md:justify-between gap-8">
+            <div className="flex flex-col items-center md:items-start gap-3 max-w-sm text-center md:text-left">
+              {/* The same wordmark as the navbar (only "Spin" is brand-coloured), a size down. */}
+              <div className="flex items-center gap-2 md:h-11">
+                <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 border-2 border-(--brand-primary-strong)">
+                  <Image src="/icons/logo.png" alt="" width={28} height={28} className="w-full h-full object-cover" />
+                </div>
+                <span className="font-display text-lg font-black tracking-tight text-foreground">
+                  <span className="text-(--brand-primary-strong)">Spin</span>tra
+                </span>
+              </div>
+              {/* A plain statement of what Spintra is, in the page's own text: search engines
+                  and AI summaries take the answer to "what is Spintra?" from page text, and the
+                  word is otherwise read as the Roman "spintria". Two short sentences: the
+                  definition, then the thing that sets it apart. It names no tool on purpose (it
+                  is the short answer to "what is Spintra?"); the tools are named by the page's
+                  own headings and cards above, and by the meta description. */}
+              <p className="leading-relaxed text-pretty">
+                Spintra is a free set of games and group tools that run in your browser. No account needed.
+              </p>
             </div>
-            <span className="font-semibold">
-              <span className="gradient-text">Spin</span>tra
-            </span>
+            {/* Each link is a 44px-tall tap target on a phone (36px with a mouse). The row wraps, so
+                five items fit a phone instead of running off both edges (the old single row was
+                449px wide in a 390px window). The narrow box on a phone only balances the wrap (3 and 2,
+                not 4 and 1): it is cosmetic, and a longer label would just wrap differently. */}
+            <nav aria-label="Footer" className="flex flex-wrap items-center justify-center md:justify-end gap-x-6 max-w-[17rem] md:max-w-none">
+              <Link href="/explore" className="inline-flex items-center min-h-11 md:min-h-9 hover:text-foreground transition-colors">Explore</Link>
+              <Link href="/tools" className="inline-flex items-center min-h-11 md:min-h-9 hover:text-foreground transition-colors">Tools</Link>
+              <Link href="/create" className="inline-flex items-center min-h-11 md:min-h-9 hover:text-foreground transition-colors">Create Room</Link>
+              <Link href="/for-teachers" className="inline-flex items-center min-h-11 md:min-h-9 hover:text-foreground transition-colors">For Teachers</Link>
+              <Link href="/spintra-city" className="inline-flex items-center min-h-11 md:min-h-9 hover:text-foreground transition-colors">Spintra City</Link>
+            </nav>
           </div>
-          {/* inline-flex + py-2 brings each link to a ~36px tap target —
-              bare text at text-sm was ~20px tall, under the 24px minimum. */}
-          <div className="flex items-center gap-6">
-            <Link href="/explore" className="inline-flex items-center py-2 hover:text-foreground transition-colors">Explore</Link>
-            <Link href="/create" className="inline-flex items-center py-2 hover:text-foreground transition-colors">Create Room</Link>
-            <Link href="/for-teachers" className="inline-flex items-center py-2 hover:text-foreground transition-colors">For Teachers</Link>
-            <Link href="/spintra-city" className="inline-flex items-center py-2 hover:text-foreground transition-colors">Spintra City</Link>
-            <Link href="/legal/terms" className="inline-flex items-center py-2 hover:text-foreground transition-colors">Terms</Link>
-            <Link href="/legal/privacy" className="inline-flex items-center py-2 hover:text-foreground transition-colors">Privacy</Link>
-            <span>© 2026 Spintra</span>
+          {/* Copyright and the legal pages in their own bar: the copyright is not a link, and it
+              should not sit in the row of links looking like one. */}
+          <div className="flex flex-col-reverse items-center gap-1 sm:flex-row sm:justify-between border-t border-border pt-6">
+            {/* The year is the one of the build; the flag stops React flagging a visit in a later year (it keeps the built text). */}
+            <span suppressHydrationWarning>© {new Date().getFullYear()} Spintra</span>
+            <nav aria-label="Legal" className="flex items-center gap-6">
+              <Link href="/legal/terms" className="inline-flex items-center min-h-11 md:min-h-9 hover:text-foreground transition-colors">Terms</Link>
+              <Link href="/legal/privacy" className="inline-flex items-center min-h-11 md:min-h-9 hover:text-foreground transition-colors">Privacy</Link>
+            </nav>
           </div>
         </div>
-        {/* A plain statement of what Spintra is, in the page's own text: search engines
-            and AI summaries take the answer to "what is Spintra?" from page text, and the
-            word is otherwise read as the Roman "spintria". */}
-        <p className="max-w-2xl mx-auto mt-6 text-center text-sm text-muted-foreground">
-          Spintra is a free set of games and group tools that run in your browser: a wheel spinner,
-          team maker, name picker, tournament brackets, dice, and party games you play together in
-          one room. No account needed.
-        </p>
       </footer>
     </div>
   );
