@@ -18,7 +18,7 @@
     "verify": "npm run audit && npm run typecheck && npm run lint && npm run docs:check",
     "verify:migration": "node scripts/verify-migration.mjs",
     "audit": "node scripts/audit-gate.mjs --audit-level=moderate",
-    "ci": "npm run verify && npm run audit && npm run build && npm run test:smoke"
+    "ci": "npm run verify && npm run build && npm run test:smoke"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

@@ -332,7 +332,7 @@ Measured on 9 and 10 October 2026, a large share of the time went into repeating
 
 ### Tests: three tiers
 1. **Always: `npm run verify`.** The dependency audit, typecheck, lint and docs drift: the static gates CI starts with, so a red audit shows up before the push instead of ten minutes into CI.
-2. **After each change: `npm run test:related`.** It runs the specs that cover the files changed since `main` and falls back to the full suite for anything it cannot place (shared components, hooks, libraries, configuration, migrations, dependencies). Tests written for a change are first run against the old build to show they fail there (revert evidence), then against the new one.
+2. **After each change: `npm run test:related`.** It runs the specs that cover the files changed since `main`, finding them by the routes they visit (following their imports, so a spec that reaches a page through a helper counts), and runs the full suite for anything it cannot place (shared components, hooks, libraries, configuration, migrations, dependencies). A spec that reaches a page some other way can be missed: CI is the backstop. Tests written for a change are first run against the old build to show they fail there (revert evidence), then against the new one.
 3. **The full suite locally: only when the change can reach everything,** such as a framework or dependency upgrade, a shared component or primitive, global CSS or the Playwright configuration, and then once, not after every follow-up. For everything else the full suite runs in CI on the pull request, and that run on the exact head is the evidence.
 
 ### Previews: one link per session
@@ -353,4 +353,4 @@ Start one dev server on a fixed port and leave it running: `npm run dev -- -p 32
 Never copy the same finding table into several of these.
 
 ### CI
-`ci.yml` runs once per pull request head (it tests the merge of the branch into its base) and once on `main` after a merge, and a newer push to a pull request cancels the older run. A branch without a pull request runs nothing, so push work in progress freely.
+`ci.yml` runs once per pull request head (it tests the merge of the branch into its base) and once for every push to `main`, and a newer push to a pull request cancels the older run. A branch without a pull request runs nothing, so push work in progress freely. A pull request with merge conflicts runs nothing either (GitHub does not start `pull_request` workflows for it), so merge `main` into the branch to get a run.

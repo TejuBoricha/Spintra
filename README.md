@@ -123,7 +123,7 @@ built on top of it.
 | `npm run test:related` | Only the Playwright specs that cover the files changed since `main` (the whole suite for anything it cannot place: shared code, configuration, migrations, dependencies). `-- --list` shows the plan, `-- --full` forces everything. CI runs the whole suite on every pull request |
 | `npm run test:city-regression` | Spintra City release-blocker regression suite — asserts the fixed behaviour for each open blocker, so it stays red until the fix lands. Requires the local Supabase stack. |
 | `npm run audit` | `node scripts/audit-gate.mjs --audit-level=moderate`: `npm audit` at that threshold, plus a short time-boxed allowlist (`scripts/audit-allowlist.json`) for advisories that have no fix yet — the one place this threshold is set; `.github/workflows/ci.yml`'s CI gate calls this same script rather than hardcoding its own |
-| `npm run ci` | verify + audit + build + test:smoke (full CI gate, locally) |
+| `npm run ci` | verify (which includes the audit) + build + test:smoke (the full CI gate, locally) |
 
 ## Project structure
 
@@ -161,7 +161,7 @@ participants — join, activity sync, moderation), `comprehensive-tournament-aud
 and `tournament-double-elimination.spec.ts` (bracket generation and scoring
 across all formats).
 
-`.github/workflows/ci.yml` runs two jobs on every push: `validate` (dependency
+`.github/workflows/ci.yml` runs two jobs once per pull request head (and once on `main` after a merge; a newer push to a pull request cancels the older run, and a branch without a pull request runs nothing): `validate` (dependency
 security audit, typecheck, lint, docs drift check, build, and the Playwright
 suite against the demo/`BroadcastChannel` fallback — no Supabase needed) and
 `db-integration` (spins up an ephemeral local Supabase via Docker, applies

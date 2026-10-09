@@ -5,16 +5,17 @@
 //   npm run test:related -- --list             only say which specs it would run, and why
 //   npm run test:related -- --full             the whole suite (the same as npm run test:smoke)
 //   npm run test:related -- --files a.ts,b.ts  pretend these files changed (to see what a change would run)
-//   npm run test:related -- -- --headed        everything after a second `--` goes to Playwright
+//   npm run test:related -- -- --headed        everything after a second `--` goes to Playwright, unchanged
 //
 // Why it exists: CI runs the whole suite on every pull request, so a full local run after each small edit repeats it
-// (about four minutes). The rule is conservative on purpose: a file this script cannot place as local to one page
-// or one component area runs the FULL suite. Only changes it can place (a tool page, a top-level page, the home
-// page's landing components, a spec itself) run a handful of specs. See docs/DECISIONS.md (ADR-013) and
-// docs/AI_RULES.md section 11.
+// (about four minutes). A change is placed by the routes the specs visit, following the specs' own imports (a spec that
+// reaches a page through a helper counts), and any file this script cannot place as local to one page or one
+// component area runs the FULL suite. It finds specs by the routes they mention, so a spec that reaches a page some
+// other way can be missed: CI is the backstop. See docs/DECISIONS.md (ADR-013) and docs/AI_RULES.md section 11.
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { createRequire } from "node:module";
 
 const argv = process.argv.slice(2);
 const split = argv.indexOf("--");
@@ -46,12 +47,62 @@ function changedFiles() {
 }
 
 const norm = (file) => file.replace(/\\/g, "/");
-const specDir = "tests";
-const specs = fs.existsSync(specDir) ? fs.readdirSync(specDir).filter((f) => f.endsWith(".spec.ts")).map((f) => `${specDir}/${f}`) : [];
-const text = new Map(specs.map((s) => [s, fs.readFileSync(s, "utf8")]));
 
-// Documentation and housekeeping: no browser test can fail because of them (npm run verify covers the docs).
-const DOCS = [/^docs\//, /\.md$/, /^\.claude\//, /^\.gitignore$/, /^LICENSE/];
+// The import graph of the test folder: which local files each test file pulls in, followed all the way down.
+function walk(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    if (entry.isDirectory()) return entry.name === "node_modules" ? [] : walk(`${dir}/${entry.name}`);
+    return [`${dir}/${entry.name}`];
+  });
+}
+const testFiles = fs.existsSync("tests") ? walk("tests").filter((f) => /\.(ts|tsx|js|mjs)$/.test(f)) : [];
+const specs = testFiles.filter((f) => f.endsWith(".spec.ts"));
+const EXTENSIONS = [".ts", ".tsx", ".mts", ".js", ".mjs"];
+const read = (file) => (fs.existsSync(file) && fs.statSync(file).isFile() ? fs.readFileSync(file, "utf8") : "");
+
+function resolveImport(from, specifier) {
+  const base = path.posix.normalize(path.posix.join(path.posix.dirname(from), specifier));
+  for (const candidate of [base, ...EXTENSIONS.map((e) => base + e), ...EXTENSIONS.map((e) => `${base}/index${e}`)]) {
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
+  }
+  return null;
+}
+const importCache = new Map();
+function importsOf(file) {
+  if (!importCache.has(file)) {
+    const found = new Set();
+    for (const m of read(file).matchAll(/(?:from|import)\s*\(?\s*['"](\.{1,2}\/[^'"]+)['"]/g)) {
+      const target = resolveImport(file, m[1]);
+      if (target) found.add(target);
+    }
+    importCache.set(file, found);
+  }
+  return importCache.get(file);
+}
+const closureCache = new Map();
+/** The file and everything it imports, transitively. */
+function closure(file) {
+  if (!closureCache.has(file)) {
+    const seen = new Set();
+    const stack = [file];
+    while (stack.length) {
+      const next = stack.pop();
+      if (seen.has(next)) continue;
+      seen.add(next);
+      for (const imported of importsOf(next)) stack.push(imported);
+    }
+    closureCache.set(file, seen);
+  }
+  return closureCache.get(file);
+}
+const textCache = new Map();
+const textOf = (spec) => {
+  if (!textCache.has(spec)) textCache.set(spec, [...closure(spec)].map(read).join("\n"));
+  return textCache.get(spec);
+};
+
+// Documentation and housekeeping: no browser test can fail because of them (npm run verify checks the docs).
+const DOCS = [/^docs\//, /^[^/]+\.md$/, /^\.claude\//, /^\.gitignore$/, /^LICENSE/];
 // Shared code and configuration: any page can break, so the whole suite is the only honest answer.
 const SHARED = [
   /^package(-lock)?\.json$/,
@@ -63,18 +114,16 @@ const SHARED = [
   /^(public|supabase|scripts|\.github)\//,
 ];
 
-/** Does a spec visit this route? The route followed by a quote, a slash, a query or a template hole. */
+/** Does a spec (with the helpers and lists it imports) visit this route? The route followed by a quote, slash, query... */
 function visits(spec, route) {
-  const body = text.get(spec) ?? "";
+  const body = textOf(spec);
   if (route === "/") return /goto\(\s*(?:`\$\{[^}]+\}\/`|['"]\/['"])/.test(body);
   return ["'", '"', "`", "?", "/", "#"].some((end) => body.includes(route + end));
 }
 
-/** Specs for one route, plus the specs that walk every page (they catch layout and overflow problems anywhere). */
-const EVERY_PAGE = ["tests/no-sideways-scroll.spec.ts"].filter((s) => text.has(s));
-function forRoute(route) {
-  return new Set([...EVERY_PAGE, ...specs.filter((s) => visits(s, route))]);
-}
+/** Specs for one route, plus the specs that walk every page of the site (they catch layout and overflow problems anywhere). */
+const EVERY_PAGE = specs.filter((s) => [...closure(s)].includes("tests/site-routes.ts"));
+const forRoute = (route) => new Set([...EVERY_PAGE, ...specs.filter((s) => visits(s, route))]);
 
 function plan(files) {
   const chosen = new Set();
@@ -91,11 +140,10 @@ function plan(files) {
         notes.push(`${file}: the spec itself`);
       }
     } else if (/^tests\//.test(file)) {
-      const name = path.basename(file).replace(/\.[tj]s$/, "");
-      const users = specs.filter((s) => new RegExp(`from ['"]\\.{1,2}/(?:helpers/)?${name}['"]`).test(text.get(s)));
-      if (users.length === 0 || users.length > 6) return full(`${file}: a test helper used by ${users.length} specs`);
+      const users = specs.filter((s) => closure(s).has(file));
+      if (users.length === 0 || users.length > 10) return full(`${file}: a test helper that ${users.length} specs import`);
       users.forEach((s) => chosen.add(s));
-      notes.push(`${file}: the ${users.length} specs that import it`);
+      notes.push(`${file}: the ${users.length} spec(s) that import it, directly or through another helper`);
     } else if (SHARED.some((r) => r.test(file))) {
       return full(`${file}: shared code or configuration, any page can break`);
     } else if ((m = file.match(/^src\/app\/tools\/([^/]+)\//))) {
@@ -137,8 +185,8 @@ if (result.full) {
 }
 if (flag("--list")) process.exit(0);
 
-const run = spawnSync("npx", ["playwright", "test", ...(result.full ? [] : [...result.specs].sort()), ...passthrough], {
-  stdio: "inherit",
-  shell: process.platform === "win32",
-});
+// Playwright's own entry point, started with this Node and no shell: arguments reach it exactly as given
+// (a --grep with spaces survives on Windows).
+const cli = createRequire(import.meta.url).resolve("@playwright/test/cli");
+const run = spawnSync(process.execPath, [cli, "test", ...(result.full ? [] : [...result.specs].sort()), ...passthrough], { stdio: "inherit" });
 process.exit(run.status ?? 1);

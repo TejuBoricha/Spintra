@@ -10,10 +10,11 @@ on:
   pull_request:
     branches: [ "**" ]
 
-# A newer push to a pull request replaces the run in progress, since nobody reads the older result. Runs on main
-# always finish.
+# A newer push to a pull request replaces the run in progress, since nobody reads the older result. Every push to
+# main is its own group (its commit), so a quick series of merges is never collapsed: GitHub also cancels a run that
+# is only queued when a newer one joins the same group, which would leave a merge commit on main without a result.
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
