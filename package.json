@@ -10,14 +10,16 @@
     "build": "next build",
     "start": "next start",
     "test:smoke": "npx playwright test",
+    "test:related": "node scripts/related-tests.mjs",
     "test:city-regression": "node scripts/city-regression.mjs",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "docs:check": "node scripts/check-docs-drift.mjs",
-    "verify": "npm run typecheck && npm run lint && npm run docs:check",
+    "verify:static": "npm run typecheck && npm run lint && npm run docs:check",
+    "verify": "npm run verify:static && npm run audit",
     "verify:migration": "node scripts/verify-migration.mjs",
     "audit": "node scripts/audit-gate.mjs --audit-level=moderate",
-    "ci": "npm run verify && npm run audit && npm run build && npm run test:smoke"
+    "ci": "npm run verify && npm run build && npm run test:smoke"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -30,7 +32,7 @@
     "clsx": "^2.1.1",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.48.0",
-    "next": "16.3.6",
+    "next": "16.4.0",
     "next-themes": "^0.4.6",
     "qrcode": "^1.5.4",
     "react": "19.3.0",
@@ -52,7 +54,7 @@
     "@types/react-dom": "^19",
     "@types/three": "^0.186.0",
     "eslint": "^9",
-    "eslint-config-next": "16.3.6",
+    "eslint-config-next": "16.4.0",
     "shadcn": "^4.21.0",
     "tailwindcss": "^4",
     "typescript": "^6"
