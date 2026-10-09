@@ -8,7 +8,7 @@ import {
   Users,
   ArrowRight,
 } from "lucide-react";
-import { Button, buttonWrap } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { GAMES } from "@/lib/games";
 
 export const metadata: Metadata = {
@@ -108,7 +108,7 @@ export default function ForTeachersPage() {
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <Link href="/create?type=classroom">
-              <Button variant="brand" size="lg" className={`rounded-full font-bold ${buttonWrap}`}>
+              <Button variant="brand" size="lg" wrap className="rounded-full font-bold">
                 Start a Classroom Room
                 <ArrowRight className="w-4 h-4" />
               </Button>
@@ -236,7 +236,7 @@ export default function ForTeachersPage() {
             Open a room, put the code on the board, and your students can join.
           </p>
           <Link href="/create?type=classroom" className="inline-block">
-            <Button variant="brand" size="lg" className={`rounded-full font-bold ${buttonWrap}`}>
+            <Button variant="brand" size="lg" wrap className="rounded-full font-bold">
               Start a Classroom Room
               <ArrowRight className="w-4 h-4" />
             </Button>

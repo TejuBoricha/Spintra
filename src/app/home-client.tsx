@@ -7,7 +7,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowRight, Sparkles, Zap, Globe, MessageCircle, Star, DownloadCloud, Gift, X } from "lucide-react";
-import { Button, buttonWrap } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getOrCreateRoomUser } from "@/lib/room-user";
 import { loadJoinCheck } from "@/lib/join-check-loader";
@@ -38,9 +38,10 @@ const perks = [
   { icon: Star, label: "Invite by link or QR", desc: "Handy when everyone is in the same place" },
 ];
 
-// Footer links are 44px tall on a phone and on any touch device (WCAG 2.5.8 asks for 24px; 44px is the size a
-// thumb hits reliably), and 36px with a mouse from the md breakpoint up, where the row is compact.
-const FOOTER_LINK = "inline-flex items-center min-h-11 md:min-h-9 pointer-coarse:min-h-11 hover:text-foreground transition-colors";
+// Footer links are 44px tall by default (a phone, any touch device: WCAG 2.5.8 asks for 24px, and 44px is the size
+// a thumb hits reliably) and 36px only where there is both room and a precise pointer (md and up, with a mouse),
+// where the row is compact. The compact size is the one that has to be asked for.
+const FOOTER_LINK = "inline-flex items-center min-h-11 md:pointer-fine:min-h-9 hover:text-foreground transition-colors";
 
 export default function HomePage() {
   const router = useRouter();
@@ -448,6 +449,7 @@ export default function HomePage() {
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
+            data-testid="closing-card"
             className="rounded-2xl border border-(--border-hairline) bg-(--surface-panel) px-5 py-12 min-[380px]:px-12 sm:p-16 relative overflow-hidden shadow-2"
           >
             {/* Inner glow */}
@@ -463,7 +465,7 @@ export default function HomePage() {
                 It&apos;s free, and nobody needs an account, including the people you invite.
               </p>
               <Link href="/create">
-                <Button variant="brand" size="lg" className={`text-lg ${buttonWrap}`}>
+                <Button variant="brand" size="lg" wrap className="text-lg">
                   <Sparkles className="w-5 h-5" />
                   Create a room
                   <ArrowRight className="w-5 h-5" />

@@ -11,10 +11,10 @@ import { SITE_PAGES, NOT_FOUND_PATH } from './site-routes';
 //
 // For every page at three phone and tablet widths: the page does not scroll sideways, no text or
 // control sticks out past the left or right edge of the screen (even when a parent clips it, which
-// would hide the problem from the page-width check), and no control crowds the edge of the box it sits
-// in by reaching into most of that box's padding (a button 45px wider than its card's content box hugged
-// the card's right edge on a 320px phone, with room to spare on the left, and the page-width check
-// could not see it). Fixed layers such as
+// would hide the problem from the page-width check), and no control sticks out of the content box
+// of the box it sits in, into its padding (a button 45px wider than its card's content box hugged the
+// card's right edge on a 320px phone, with room to spare on the left, and the page-width check could
+// not see it). Fixed layers such as
 // the navbar and the cookie notice are measured too. Boxes that scroll on purpose (overflow auto or
 // scroll, such as a wide table) are left alone.
 //
@@ -68,12 +68,11 @@ async function overflowProblems(page: Page): Promise<string[]> {
           const pr = p.getBoundingClientRect();
           const padL = parseFloat(ps.paddingLeft) + parseFloat(ps.borderLeftWidth);
           const padR = parseFloat(ps.paddingRight) + parseFloat(ps.borderRightWidth);
-          const spillL = Math.max(0, pr.left + padL - r.left);
-          const spillR = Math.max(0, r.right - (pr.right - padR));
-          // Reaching a few pixels into generous padding is harmless (a centred 199px button in a 190px box inside
-          // 48px of padding); reaching into most of it crowds the edge (the 235px home button, 4px from the card).
-          if ((spillL > 2 && spillL > 0.6 * padL) || (spillR > 2 && spillR > 0.6 * padR)) {
-            out.push(`${label(el)} is ${Math.round(r.width)}px wide in a ${Math.round(pr.width - padL - padR)}px box and reaches ${Math.round(Math.max(spillL, spillR))}px into its padding`);
+          const spill = Math.max(pr.left + padL - r.left, r.right - (pr.right - padR));
+          // Whatever the padding is, a control belongs inside the content box (2px for rounding): padding is what
+          // keeps a control off the edge, so a control in it is crowding the edge or sits off-centre.
+          if (spill > 2) {
+            out.push(`${label(el)} is ${Math.round(r.width)}px wide in a ${Math.round(pr.width - padL - padR)}px box and sticks out ${Math.round(spill)}px into its padding`);
           }
         }
       }
@@ -113,15 +112,22 @@ async function atRest(page: Page) {
   }
 }
 
-/** Measures at every scroll stop (one viewport apart, so every part of the page is on screen at one of them). */
+/**
+ * Measures at every scroll stop. The stops are 0.8 of a viewport apart, so they overlap (an item that straddles one
+ * boundary is whole on screen at the next), the page height is read again at every stop (lazy chunks and the cookie
+ * notice change it after load), and the last stop is the real bottom.
+ */
 async function problemsWhileScrolling(page: Page): Promise<string[]> {
   const found = new Set<string>();
-  const height = await page.evaluate(() => document.documentElement.scrollHeight);
-  const step = page.viewportSize()!.height;
-  for (let y = 0; y <= height; y += step) {
-    await page.evaluate((top) => window.scrollTo(0, top), y);
+  const step = Math.floor(page.viewportSize()!.height * 0.8);
+  for (let y = 0, stops = 0; stops < 40; y += step, stops++) {
+    const { top, max } = await page.evaluate((want) => {
+      window.scrollTo(0, want);
+      return { top: window.scrollY, max: document.documentElement.scrollHeight - window.innerHeight };
+    }, y);
     await atRest(page);
     for (const problem of await overflowProblems(page)) found.add(problem);
+    if (top >= max - 1) break;
   }
   return [...found].slice(0, 6);
 }
@@ -169,16 +175,16 @@ test.describe('home page: the closing "Create a room" button stays inside its ca
       await page.setViewportSize({ width, height: 800 });
       await page.goto('/');
       await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
-      const button = page.getByRole('link', { name: 'Create a room', exact: true });
+      const card = page.getByTestId('closing-card');
+      const button = card.getByRole('link', { name: 'Create a room', exact: true });
       await button.scrollIntoViewIfNeeded();
       await atRest(page);
-      const { box, card } = await button.evaluate((a) => {
-        const c = a.closest('.overflow-hidden')!.getBoundingClientRect();
-        const r = a.getBoundingClientRect();
-        return { box: { left: r.left, right: r.right }, card: { left: c.left, right: c.right } };
-      });
-      expect(box.left, 'the button starts inside the card').toBeGreaterThanOrEqual(card.left - 0.5);
-      expect(box.right, 'the button ends inside the card').toBeLessThanOrEqual(card.right + 0.5);
+      const [b, c] = [await button.boundingBox(), await card.boundingBox()];
+      expect(b, 'the button is on the page').not.toBeNull();
+      expect(c, 'the card is on the page').not.toBeNull();
+      // Inside the card, and clear of its edge by a thumb's worth of the card's own padding.
+      expect(b!.x - c!.x, 'space between the button and the card edge, left').toBeGreaterThanOrEqual(8);
+      expect(c!.x + c!.width - (b!.x + b!.width), 'space between the button and the card edge, right').toBeGreaterThanOrEqual(8);
     });
   }
 });

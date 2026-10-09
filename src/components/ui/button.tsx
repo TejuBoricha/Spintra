@@ -47,10 +47,24 @@ const buttonVariants = cva(
         "icon-sm": "size-8 [&_svg:not([class*='size-'])]:size-3.5",
         "icon-lg": "size-12",
       },
+      // A button is one line at a fixed height. `wrap` lets a long label wrap and the button shrink to its box,
+      // on a 320px phone or when the person has made the text larger (the button grows with the text, the screen
+      // does not). It keeps the size's own height as a minimum (see compoundVariants).
+      wrap: {
+        true: "max-w-full h-auto whitespace-normal text-center",
+        false: "",
+      },
     },
+    compoundVariants: [
+      { wrap: true, size: "default", className: "min-h-10 py-2" },
+      { wrap: true, size: "xs", className: "min-h-7 py-1" },
+      { wrap: true, size: "sm", className: "min-h-8 py-1.5" },
+      { wrap: true, size: "lg", className: "min-h-13 py-3" },
+    ],
     defaultVariants: {
       variant: "default",
       size: "default",
+      wrap: false,
     },
   }
 )
@@ -59,6 +73,7 @@ function Button({
   className,
   variant = "default",
   size = "default",
+  wrap,
   icon,
   iconPosition = "start",
   children,
@@ -71,7 +86,7 @@ function Button({
   return (
     <ButtonPrimitive
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(buttonVariants({ variant, size, wrap, className }))}
       {...props}
     >
       {icon && iconPosition === "start" ? (
@@ -85,11 +100,4 @@ function Button({
   )
 }
 
-/**
- * A button is one line (`whitespace-nowrap`) at a fixed height. Add this to the className of a large button with
- * a long label so that it may wrap and shrink to its box instead of spilling out of it: on a 320px phone, or when
- * the person has made the text larger (the button grows with the text, the screen does not).
- */
-const buttonWrap = "max-w-full whitespace-normal h-auto min-h-13 py-3 text-center"
-
-export { Button, buttonVariants, buttonWrap }
+export { Button, buttonVariants }
