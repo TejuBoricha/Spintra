@@ -8,23 +8,41 @@
 //   npm run test:related -- -- --headed        everything after a second `--` goes to Playwright, unchanged
 //
 // Why it exists: CI runs the whole suite on every pull request, so a full local run after each small edit repeats it
-// (about four minutes). A change is placed by the routes the specs visit, following the specs' own imports (a spec that
-// reaches a page through a helper counts), and any file this script cannot place as local to one page or one
-// component area runs the FULL suite. It finds specs by the routes they mention, so a spec that reaches a page some
-// other way can be missed: CI is the backstop. See docs/DECISIONS.md (ADR-013) and docs/AI_RULES.md section 11.
+// (about four minutes). A change is placed by the routes the specs visit, following the specs' own imports inside
+// tests/ (a spec that reaches a page through a helper counts), and by specs that name the changed file. Any file
+// this script cannot place as local to one page or one component area runs the FULL suite. It finds specs by the
+// routes they mention, so a spec that reaches a page some other way can be missed: CI is the backstop.
+//
+// Server: if a preview server answers on port 3200 (npm run dev -- -p 3200 -H 127.0.0.1) and PLAYWRIGHT_PORT is not
+// set, the specs run against it; otherwise Playwright builds and starts its own, which takes minutes.
+// See docs/DECISIONS.md (ADR-013) and docs/AI_RULES.md section 11.
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 
+const fail = (message) => {
+  console.error(message);
+  process.exit(2);
+};
+
 const argv = process.argv.slice(2);
 const split = argv.indexOf("--");
 const own = split === -1 ? argv : argv.slice(0, split);
 const passthrough = split === -1 ? [] : argv.slice(split + 1);
+const KNOWN = new Set(["--list", "--full", "--files"]);
+for (let i = 0; i < own.length; i++) {
+  if (own[i] === "--files") {
+    if (!own[i + 1] || own[i + 1].startsWith("--")) fail("--files needs a comma-separated list of paths");
+    i++;
+  } else if (!KNOWN.has(own[i])) {
+    fail(`Unknown option ${own[i]}. Playwright's own options go after a second --, for example: npm run test:related -- -- --headed`);
+  }
+}
 const flag = (name) => own.includes(name);
 const option = (name) => {
   const i = own.indexOf(name);
-  return i === -1 ? null : (own[i + 1] ?? null);
+  return i === -1 ? null : own[i + 1];
 };
 
 const git = (...args) =>
@@ -33,45 +51,48 @@ const git = (...args) =>
     .map((line) => line.trim())
     .filter(Boolean);
 
-/** The files changed relative to main: committed, uncommitted and new. null when that cannot be told. */
+/** The files changed relative to main: committed, uncommitted and new; a rename counts as both paths. null when unknown. */
 function changedFiles() {
   const given = option("--files");
   if (given) return given.split(",").map((s) => s.trim()).filter(Boolean);
   try {
     const base = git("merge-base", "HEAD", "origin/main")[0];
     if (!base) return null;
-    return [...new Set([...git("diff", "--name-only", base), ...git("ls-files", "--others", "--exclude-standard")])];
+    return [...new Set([...git("diff", "--name-only", "--no-renames", base), ...git("ls-files", "--others", "--exclude-standard")])];
   } catch {
     return null;
   }
 }
 
 const norm = (file) => file.replace(/\\/g, "/");
-
-// The import graph of the test folder: which local files each test file pulls in, followed all the way down.
+const EXTENSIONS = [".ts", ".tsx", ".mts", ".js", ".mjs"];
+const read = (file) => (fs.existsSync(file) && fs.statSync(file).isFile() ? fs.readFileSync(file, "utf8") : "");
 function walk(dir) {
+  if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     if (entry.isDirectory()) return entry.name === "node_modules" ? [] : walk(`${dir}/${entry.name}`);
     return [`${dir}/${entry.name}`];
   });
 }
-const testFiles = fs.existsSync("tests") ? walk("tests").filter((f) => /\.(ts|tsx|js|mjs)$/.test(f)) : [];
+const isCode = (f) => /\.(ts|tsx|js|mjs)$/.test(f);
+const testFiles = walk("tests").filter(isCode);
 const specs = testFiles.filter((f) => f.endsWith(".spec.ts"));
-const EXTENSIONS = [".ts", ".tsx", ".mts", ".js", ".mjs"];
-const read = (file) => (fs.existsSync(file) && fs.statSync(file).isFile() ? fs.readFileSync(file, "utf8") : "");
+const sourceFiles = walk("src").filter(isCode);
 
+/** Resolve an import written in `from` to a file: relative, or the `@/` alias for src/. null for packages. */
 function resolveImport(from, specifier) {
-  const base = path.posix.normalize(path.posix.join(path.posix.dirname(from), specifier));
+  const base = specifier.startsWith("@/") ? `src/${specifier.slice(2)}` : path.posix.normalize(path.posix.join(path.posix.dirname(from), specifier));
   for (const candidate of [base, ...EXTENSIONS.map((e) => base + e), ...EXTENSIONS.map((e) => `${base}/index${e}`)]) {
     if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
   }
   return null;
 }
+const IMPORT = /(?:from|import)\s*\(?\s*['"]((?:\.{1,2}\/|@\/)[^'"]+)['"]/g;
 const importCache = new Map();
 function importsOf(file) {
   if (!importCache.has(file)) {
     const found = new Set();
-    for (const m of read(file).matchAll(/(?:from|import)\s*\(?\s*['"](\.{1,2}\/[^'"]+)['"]/g)) {
+    for (const m of read(file).matchAll(IMPORT)) {
       const target = resolveImport(file, m[1]);
       if (target) found.add(target);
     }
@@ -79,15 +100,17 @@ function importsOf(file) {
   }
   return importCache.get(file);
 }
+
+// Test side: what a spec pulls in from tests/, followed all the way down (src/ is left out on purpose: a library
+// that a helper happens to import must not make a spec "visit" every route that library mentions).
 const closureCache = new Map();
-/** The file and everything it imports, transitively. */
 function closure(file) {
   if (!closureCache.has(file)) {
     const seen = new Set();
     const stack = [file];
     while (stack.length) {
       const next = stack.pop();
-      if (seen.has(next)) continue;
+      if (seen.has(next) || !next.startsWith("tests/")) continue;
       seen.add(next);
       for (const imported of importsOf(next)) stack.push(imported);
     }
@@ -100,6 +123,26 @@ const textOf = (spec) => {
   if (!textCache.has(spec)) textCache.set(spec, [...closure(spec)].map(read).join("\n"));
   return textCache.get(spec);
 };
+
+// Source side: who imports a source file (used to tell a component only the home page uses from a shared one).
+let importerIndex = null;
+function importersOf(file) {
+  if (!importerIndex) {
+    importerIndex = new Map();
+    for (const source of sourceFiles) {
+      for (const target of importsOf(source)) importerIndex.set(target, [...(importerIndex.get(target) ?? []), source]);
+    }
+  }
+  return importerIndex.get(file) ?? [];
+}
+const HOME_ENTRIES = new Set(["src/app/page.tsx", "src/app/home-client.tsx"]);
+function onlyHome(file, seen = new Set()) {
+  if (seen.has(file)) return true;
+  seen.add(file);
+  if (HOME_ENTRIES.has(file)) return true;
+  const users = importersOf(file);
+  return users.length > 0 && users.every((user) => onlyHome(user, seen));
+}
 
 // Documentation and housekeeping: no browser test can fail because of them (npm run verify checks the docs).
 const DOCS = [/^docs\//, /^[^/]+\.md$/, /^\.claude\//, /^\.gitignore$/, /^LICENSE/];
@@ -114,21 +157,28 @@ const SHARED = [
   /^(public|supabase|scripts|\.github)\//,
 ];
 
-/** Does a spec (with the helpers and lists it imports) visit this route? The route followed by a quote, slash, query... */
+/** Does a spec (with the helpers and lists it imports from tests/) visit this route? */
 function visits(spec, route) {
   const body = textOf(spec);
-  if (route === "/") return /goto\(\s*(?:`\$\{[^}]+\}\/`|['"]\/['"])/.test(body);
+  if (route === "/") return /(?:goto|get|fetch)\(\s*(?:`\$\{[^}]+\}\/`|['"]\/['"])|\[\s*['"]\/['"]\s*[,\]]/.test(body);
   return ["'", '"', "`", "?", "/", "#"].some((end) => body.includes(route + end));
 }
+/** Specs that name a changed file by its path (a test that reads a page's source, for example). */
+const naming = (file) => specs.filter((s) => textOf(s).includes(file));
 
-/** Specs for one route, plus the specs that walk every page of the site (they catch layout and overflow problems anywhere). */
-const EVERY_PAGE = specs.filter((s) => [...closure(s)].includes("tests/site-routes.ts"));
+/** The specs that walk every page of the site: they catch layout and overflow problems anywhere. */
+const EVERY_PAGE = specs.filter((s) => closure(s).has("tests/site-routes.ts"));
 const forRoute = (route) => new Set([...EVERY_PAGE, ...specs.filter((s) => visits(s, route))]);
 
 function plan(files) {
   const chosen = new Set();
   const notes = [];
   const full = (why) => ({ full: true, specs: chosen, notes: [...notes, why] });
+  const place = (file, route, what) => {
+    forRoute(route).forEach((s) => chosen.add(s));
+    naming(file).forEach((s) => chosen.add(s));
+    notes.push(`${file}: ${what}`);
+  };
   for (const raw of files) {
     const file = norm(raw);
     let m;
@@ -146,20 +196,16 @@ function plan(files) {
       notes.push(`${file}: the ${users.length} spec(s) that import it, directly or through another helper`);
     } else if (SHARED.some((r) => r.test(file))) {
       return full(`${file}: shared code or configuration, any page can break`);
-    } else if ((m = file.match(/^src\/app\/tools\/([^/]+)\//))) {
-      forRoute(`/tools/${m[1]}`).forEach((s) => chosen.add(s));
-      notes.push(`${file}: the /tools/${m[1]} page`);
+    } else if ((m = file.match(/^src\/app\/tools\/([a-z0-9][a-z0-9-]*)\//))) {
+      place(file, `/tools/${m[1]}`, `the /tools/${m[1]} page`);
     } else if (/^src\/app\/tools\/(page|layout)\.tsx$/.test(file)) {
-      forRoute("/tools").forEach((s) => chosen.add(s));
-      notes.push(`${file}: the /tools hub`);
+      place(file, "/tools", "the /tools hub");
     } else if ((m = file.match(/^src\/app\/(explore|create|for-teachers|settings|spintra-city|legal)\//))) {
-      forRoute(`/${m[1]}`).forEach((s) => chosen.add(s));
-      notes.push(`${file}: the /${m[1]} page`);
-    } else if (file === "src/app/page.tsx" || file === "src/app/home-client.tsx" || /^src\/components\/landing\//.test(file)) {
-      forRoute("/").forEach((s) => chosen.add(s));
-      notes.push(`${file}: the home page`);
+      place(file, `/${m[1]}`, `the /${m[1]} page`);
+    } else if (HOME_ENTRIES.has(file) || (/^src\/components\/landing\//.test(file) && onlyHome(file))) {
+      place(file, "/", "the home page");
     } else {
-      return full(`${file}: not a file this script can place`);
+      return full(`${file}: not a file this script can place (or shared by several pages)`);
     }
   }
   return { full: false, specs: chosen, notes };
@@ -185,8 +231,22 @@ if (result.full) {
 }
 if (flag("--list")) process.exit(0);
 
+// Use the preview server when there is one: otherwise Playwright builds the app and starts its own (minutes).
+let env = process.env;
+if (!process.env.PLAYWRIGHT_PORT) {
+  try {
+    const answer = await fetch("http://127.0.0.1:3200/", { signal: AbortSignal.timeout(8000) });
+    if (answer.status < 500) {
+      env = { ...process.env, PLAYWRIGHT_PORT: "3200" };
+      console.log("Using the preview server on port 3200 (set PLAYWRIGHT_PORT to use another).");
+    }
+  } catch {
+    console.log("No preview server on port 3200: Playwright will build the app and start its own (slow). Start one with: npm run dev -- -p 3200 -H 127.0.0.1");
+  }
+}
+
 // Playwright's own entry point, started with this Node and no shell: arguments reach it exactly as given
 // (a --grep with spaces survives on Windows).
 const cli = createRequire(import.meta.url).resolve("@playwright/test/cli");
-const run = spawnSync(process.execPath, [cli, "test", ...(result.full ? [] : [...result.specs].sort()), ...passthrough], { stdio: "inherit" });
+const run = spawnSync(process.execPath, [cli, "test", ...(result.full ? [] : [...result.specs].sort()), ...passthrough], { stdio: "inherit", env });
 process.exit(run.status ?? 1);

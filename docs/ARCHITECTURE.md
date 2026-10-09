@@ -471,7 +471,7 @@ npm run start      # next start — starts production server locally
 npm run typecheck  # tsc --noEmit — TypeScript only
 npm run lint       # eslint — linting only
 npm run docs:check # scripts/check-docs-drift.mjs — docs/ vs. real filesystem
-npm run verify     # audit + typecheck + lint + docs:check — the static gates CI starts with
+npm run verify     # typecheck + lint + docs:check + audit — the static gates CI runs first (audit last: it needs the network)
 npm run test:smoke # npx playwright test — E2E smoke tests (the whole suite)
 npm run test:related # scripts/related-tests.mjs — only the specs that cover the files changed since main; the
                     # whole suite for anything it cannot place (ADR-013)

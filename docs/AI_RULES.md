@@ -107,7 +107,7 @@ If any check fails, do not proceed. Revert or repair the changes immediately.
 ## 6. Documentation Policies
 
 - **Synchronized Reality:** Documentation is a first-class citizen of the codebase. All updates to features or database schemas must be mirrored in their respective documentation files immediately.
-- **Mandatory Change Report:** Every significant refactor, bug fix, or feature update must end with a structured engineering report, displayed directly in the conversation — updating documentation alone is not sufficient. See Section 9 for the mandatory completion gate, the exact report template, and when a report is required vs. optional.
+- **Change report:** Every significant refactor, bug fix, or feature update ends with an engineering report, displayed directly in the conversation — updating documentation alone is not sufficient. See Section 9 for the completion gate, the compact report (and the full template for High-risk changes), and when a report is required vs. optional.
 
 ---
 
@@ -331,12 +331,12 @@ The purpose of the PIIA is to think before coding, not to slow development. It s
 Measured on 9 and 10 October 2026, a large share of the time went into repeating work that CI already does, handing over local links, and writing the same facts in four places. These rules remove that without removing a check that found a real defect (the revert evidence, the review round before the merge and the class sweeps all did).
 
 ### Tests: three tiers
-1. **Always: `npm run verify`.** The dependency audit, typecheck, lint and docs drift: the static gates CI starts with, so a red audit shows up before the push instead of ten minutes into CI.
+1. **Always: `npm run verify`.** Typecheck, lint, docs drift and the dependency audit: the static gates CI runs first, so a red audit shows up before the push instead of ten minutes into CI. The audit needs the network, so it is the last step (offline, `verify` fails there, after the useful checks).
 2. **After each change: `npm run test:related`.** It runs the specs that cover the files changed since `main`, finding them by the routes they visit (following their imports, so a spec that reaches a page through a helper counts), and runs the full suite for anything it cannot place (shared components, hooks, libraries, configuration, migrations, dependencies). A spec that reaches a page some other way can be missed: CI is the backstop. Tests written for a change are first run against the old build to show they fail there (revert evidence), then against the new one.
 3. **The full suite locally: only when the change can reach everything,** such as a framework or dependency upgrade, a shared component or primitive, global CSS or the Playwright configuration, and then once, not after every follow-up. For everything else the full suite runs in CI on the pull request, and that run on the exact head is the evidence.
 
 ### Previews: one link per session
-Start one dev server on a fixed port and leave it running: `npm run dev -- -p 3200 -H 127.0.0.1`, then http://127.0.0.1:3200. It follows whichever branch is checked out and reloads on every edit, so the link never changes and nothing needs building. A production build is the final proof for something that depends on one (performance, hydration, the real Playwright run), not a way to hand over a link. A second build beside a running server uses `NEXT_DIST_DIR=.next-x` and is deleted afterwards.
+Start one dev server on a fixed port and leave it running: `npm run dev -- -p 3200 -H 127.0.0.1`, then http://127.0.0.1:3200. It follows whichever branch is checked out and reloads on every edit, so the link never changes and nothing needs building. `npm run test:related` runs against it automatically (a dev server is slower on the first visit to each page, and it is not production, so the final proof of something production-sensitive is the CI run on the pull request); with no preview server on 3200 Playwright builds and starts its own, which takes minutes. A production build is the final proof for something that depends on one (performance, hydration, the real Playwright run), not a way to hand over a link. A second build beside a running server uses `NEXT_DIST_DIR=.next-x` and is deleted afterwards.
 
 ### Reviews
 - Self-review the diff before opening the pull request, then run **one** `/code-review high` on the final diff **before** the merge, never after.
