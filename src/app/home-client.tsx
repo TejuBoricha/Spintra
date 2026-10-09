@@ -18,6 +18,7 @@ const HeroThreeScene = dynamic(() => import("@/components/landing/hero-scene").t
 });
 import { FeatureCard } from "@/components/landing/feature-card";
 import { AuroraBackground } from "@/components/landing/aurora-bg";
+import { FooterTable } from "@/components/landing/footer-table";
 import { GAMES } from "@/lib/games";
 
 const heroFeatures = GAMES.map((game) => ({
@@ -480,7 +481,10 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="relative z-10 border-t border-border px-4 pt-12 pb-8 text-sm text-muted-foreground">
         <div className="max-w-6xl mx-auto flex flex-col gap-8">
-          <div className="flex flex-col items-center md:flex-row md:items-start md:justify-between gap-8">
+          {/* Three parts, in reading order: who we are, the game table that never stops, where to go. One column on a
+              phone, the brand and the links side by side with the table in a band below from md, and all three
+              in a row from lg, the table in the middle. */}
+          <div className="grid justify-items-center gap-6 md:grid-cols-[1fr_auto] md:items-start md:justify-items-stretch lg:grid-cols-[19rem_minmax(0,1fr)_auto] lg:items-center lg:gap-8">
             <div className="flex flex-col items-center md:items-start gap-3 max-w-sm text-center md:text-left">
               {/* The same wordmark as the navbar (only "Spin" is brand-coloured), a size down. */}
               <div className="flex items-center gap-2 md:h-11">
@@ -501,11 +505,16 @@ export default function HomePage() {
                 Spintra is a free set of games and group tools that run in your browser. No account needed.
               </p>
             </div>
-            {/* Each link is a 44px-tall tap target on a phone or any touch device (36px with a mouse; see FOOTER_LINK). The row wraps, so
-                five items fit a phone instead of running off both edges (the old single row was
-                449px wide in a 390px window). The narrow box on a phone only balances the wrap (3 and 2,
-                not 4 and 1): it is cosmetic, and a longer label would just wrap differently. */}
-            <nav aria-label="Footer" className="flex flex-wrap items-center justify-center md:justify-end gap-x-6 max-w-[17rem] md:max-w-none">
+            <FooterTable className="md:col-span-2 md:col-start-1 md:row-start-2 lg:col-span-1 lg:col-start-2 lg:row-start-1" />
+            {/* Each link is a 44px-tall tap target on a phone or any touch device (36px with a mouse only; see
+                FOOTER_LINK). The row wraps, so five items fit a phone instead of running off both edges (the old
+                single row was 449px wide in a 390px window). The narrow box only balances the wrap (3 and 2, not 4
+                and 1) and, from lg, leaves the middle of the footer to the table: it is cosmetic, and a longer label
+                would just wrap differently. */}
+            <nav
+              aria-label="Footer"
+              className="flex flex-wrap items-center justify-center md:justify-end gap-x-6 max-w-[17rem] md:col-start-2 md:row-start-1 md:max-w-none lg:col-start-3 lg:max-w-[15rem]"
+            >
               <Link href="/explore" className={FOOTER_LINK}>Explore</Link>
               <Link href="/tools" className={FOOTER_LINK}>Tools</Link>
               <Link href="/create" className={FOOTER_LINK}>Create Room</Link>

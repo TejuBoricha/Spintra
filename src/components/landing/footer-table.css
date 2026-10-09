@@ -1,0 +1,748 @@
+/*
+ * The footer's "endless game table": a figure-of-eight track with game pieces circulating on it, in the empty middle
+ * of the home footer. Markup and behaviour: footer-table.tsx.
+ *
+ * Everything that moves is a CSS animation of transform or opacity (the individual `translate`, `rotate` and `scale`
+ * properties, so one element can run several at once) on small elements, so the browser composites it on the GPU.
+ * Every duration divides the 10 s loop, so the loop has no seam.
+ *
+ * The track is x = -A cos(2 pi s), y = B sin(4 pi s), s = t/10 s + phase: a piece's horizontal and vertical motion are
+ * two sine eases on two nested full-size boxes (.ft-lx, .ft-ly), so it travels the figure of eight exactly. The drawn
+ * track (footer-table.tsx) is the same curve. Two pieces half a lap apart meet at the crossing every 5 s.
+ *
+ * Both themes use the site's colour tokens (globals.css). Dark: bright lime and orange with a little violet, light
+ * outlines on the dark felt, a restrained glow. Light: the same lime identity with ink outlines and no glow.
+ * Reduced motion: the same scene, held still at 6.3 s into the loop (--ft-shift), a moment where the pieces are well spread.
+ */
+
+.ft-scene {
+  /* dark theme */
+  --ft-track: rgba(238, 251, 110, 0.62); /* lime-300 */
+  --ft-track-2: rgba(176, 128, 236, 0.42); /* violet-300 */
+  --ft-felt: rgba(109, 62, 224, 0.2); /* violet-500 */
+  --ft-rim: rgba(246, 241, 239, 0.62); /* cream-100: the light outline around each piece */
+  --ft-ink: #0c0d05;
+  --ft-paper: #f6f1ef;
+  --ft-lime: #e2f72a; /* lime-400 */
+  --ft-violet: #9d63e8; /* violet-400 */
+  --ft-cyan: #5ce1e6; /* cyan-400 */
+  --ft-orange: #ff6a00; /* the logo's orange */
+  --ft-spark: #eefb6e; /* lime-300 */
+  --ft-halo: 0.45;
+  --ft-shadow: rgba(0, 0, 0, 0.55);
+  --ft-shift: 0s;
+
+  position: relative;
+  width: 100%;
+  max-width: 36rem;
+  margin-inline: auto;
+  aspect-ratio: 16 / 5;
+  min-height: 7rem;
+  contain: layout paint;
+  user-select: none;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+}
+
+.light .ft-scene {
+  --ft-track: rgba(20, 18, 15, 0.55);
+  --ft-track-2: rgba(76, 37, 191, 0.42); /* violet-600 */
+  --ft-felt: rgba(226, 247, 42, 0.34); /* lime-400 */
+  --ft-rim: transparent;
+  --ft-ink: #14120f;
+  --ft-paper: #ffffff;
+  --ft-lime: #e2f72a;
+  --ft-violet: #6d3ee0; /* violet-500 */
+  --ft-cyan: #3ddaee; /* cyan-500 */
+  --ft-spark: #e2f72a;
+  --ft-halo: 0;
+  --ft-shadow: rgba(20, 18, 15, 0.9);
+}
+
+@media (min-width: 1024px) {
+  .ft-scene {
+    max-width: none;
+  }
+}
+
+.ft-scene *,
+.ft-scene *::before,
+.ft-scene *::after {
+  box-sizing: border-box;
+}
+
+.ft-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* depth layers: the pointer moves them a little, each by its own --depth */
+.ft-layer {
+  position: absolute;
+  inset: 0;
+  translate: calc(var(--px, 0) * var(--depth, 0) * 1px) calc(var(--py, 0) * var(--depth, 0) * 1px);
+}
+
+.ft-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.ft-felt {
+  fill: url(#ft-felt-g);
+}
+
+.ft-rimline {
+  fill: none;
+  stroke: var(--ft-track-2);
+  stroke-width: 1.5;
+  stroke-dasharray: 1 7;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.ft-track {
+  fill: none;
+  stroke: var(--ft-track);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-dasharray: 0.1 9;
+  vector-effect: non-scaling-stroke;
+  animation: ft-march 10s linear infinite;
+  animation-delay: var(--ft-shift);
+}
+
+.ft-track2 {
+  fill: none;
+  stroke: var(--ft-track-2);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 0.1 11;
+  vector-effect: non-scaling-stroke;
+  animation: ft-march2 10s linear infinite;
+  animation-delay: var(--ft-shift);
+}
+
+.ft-orbit-line {
+  fill: none;
+  stroke: var(--ft-track-2);
+  stroke-width: 1.5;
+  stroke-dasharray: 0.1 7;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* lanes: one full-size box per axis, each running a sine ease */
+.ft-lx,
+.ft-ly {
+  position: absolute;
+  inset: 0;
+}
+
+.ft-lx {
+  animation: ft-x 5s cubic-bezier(0.37, 0, 0.63, 1) infinite alternate;
+  animation-delay: calc(var(--ph) * -10s + var(--ft-shift));
+}
+
+.ft-ly {
+  animation: ft-y 2.5s cubic-bezier(0.37, 0, 0.63, 1) infinite alternate;
+  animation-delay: calc(var(--ph) * -10s - 1.25s + var(--ft-shift));
+}
+
+/* a piece: sized in percent of the scene width, centred on the lane's origin */
+.ft-pc {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--w);
+  aspect-ratio: var(--ar, 1);
+  margin-left: calc(var(--w) / -2);
+  margin-top: calc(var(--w) / var(--ar, 1) / -2);
+}
+
+.ft-in {
+  position: absolute;
+  inset: 0;
+}
+
+.ft-spr {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* the coordinated moment: near the end of each loop every piece hops once, one after another */
+.ft-hop {
+  animation: ft-hop 10s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.16s + var(--ft-shift));
+}
+
+/* sprite paint */
+.ft-s {
+  stroke: var(--ft-ink);
+  stroke-width: 6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.ft-rim {
+  fill: none;
+  stroke: var(--ft-rim);
+  stroke-width: 13;
+  stroke-linejoin: round;
+}
+
+.ft-sh {
+  fill: var(--ft-shadow);
+}
+
+.ft-halo {
+  opacity: var(--ft-halo);
+}
+
+.ft-pip {
+  fill: var(--ft-ink);
+}
+
+.ft-shine {
+  fill: none;
+  stroke: #fff;
+  stroke-opacity: 0.6;
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+
+.ft-lime {
+  fill: var(--ft-lime);
+}
+
+.ft-orange {
+  fill: var(--ft-orange);
+}
+
+.ft-violet {
+  fill: var(--ft-violet);
+}
+
+.ft-cyan {
+  fill: var(--ft-cyan);
+}
+
+.ft-paper {
+  fill: var(--ft-paper);
+}
+
+.ft-dash {
+  fill: none;
+  stroke: var(--ft-paper);
+  stroke-width: 4.5;
+  stroke-dasharray: 8 7;
+}
+
+/* the die rolls half a turn and changes face each time it meets the chip (2.5 s and 7.5 s into the loop) */
+.ft-bn-up {
+  animation: ft-recoil-up 5s ease-in-out infinite;
+  animation-delay: var(--ft-shift);
+}
+
+.ft-bn-down {
+  animation: ft-recoil-down 5s ease-in-out infinite;
+  animation-delay: var(--ft-shift);
+}
+
+.ft-die-fx {
+  animation:
+    ft-bump 5s ease-in-out infinite,
+    ft-roll 5s ease-in-out infinite;
+  animation-delay: var(--ft-shift);
+}
+
+.ft-chip-fx {
+  animation:
+    ft-bump 5s ease-in-out infinite,
+    ft-flip 5s ease-in-out infinite;
+  animation-delay: var(--ft-shift);
+}
+
+.ft-fa {
+  animation: ft-face-a 10s steps(1, end) infinite;
+  animation-delay: var(--ft-shift);
+}
+
+.ft-fb {
+  animation: ft-face-b 10s steps(1, end) infinite;
+  animation-delay: var(--ft-shift);
+}
+
+/* the card turns over twice a loop */
+.ft-card-fx {
+  animation: ft-cardflip 5s ease-in-out infinite;
+  animation-delay: var(--ft-shift);
+}
+
+.ft-cf {
+  animation: ft-cf 5s steps(1, end) infinite;
+  animation-delay: var(--ft-shift);
+}
+
+.ft-cb {
+  animation: ft-cb 5s steps(1, end) infinite;
+  animation-delay: var(--ft-shift);
+}
+
+/* the pawn walks, the spark spins and breathes, the violet chip turns */
+.ft-pawn-fx {
+  animation: ft-walk 1.25s ease-in-out infinite;
+  animation-delay: var(--ft-shift);
+  transform-origin: 50% 90%;
+}
+
+.ft-star-fx {
+  animation:
+    ft-spin 10s linear infinite,
+    ft-pulse 2.5s ease-in-out infinite;
+  animation-delay: var(--ft-shift);
+}
+
+.ft-vchip-fx {
+  animation: ft-spin 10s linear infinite reverse;
+  animation-delay: var(--ft-shift);
+}
+
+/* the hub, where the two loops cross: a ring and a burst of rays whenever the die meets the chip */
+.ft-hub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+}
+
+.ft-hub-ring,
+.ft-hub-rays {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 20%;
+  aspect-ratio: 1;
+  margin-left: -10%;
+  margin-top: -10%;
+  opacity: 0;
+}
+
+.ft-hub-ring {
+  animation: ft-ring 5s ease-out infinite;
+  animation-delay: calc(-2.5s + var(--ft-shift));
+}
+
+.ft-hub-rays {
+  animation: ft-rays 5s ease-out infinite;
+  animation-delay: calc(-2.5s + var(--ft-shift));
+}
+
+.ft-hub-ring circle {
+  fill: none;
+  stroke: var(--ft-spark);
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.ft-hub-rays line {
+  stroke: var(--ft-spark);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.light .ft-hub-ring circle,
+.light .ft-hub-rays line {
+  stroke: var(--ft-ink);
+}
+
+/* an orbit inside each loop of the track */
+.ft-orb {
+  position: absolute;
+  width: 17%;
+  aspect-ratio: 1;
+  margin-left: -8.5%;
+  margin-top: -8.5%;
+}
+
+.ft-orb-spin {
+  position: absolute;
+  inset: 0;
+  animation: ft-spin 10s linear infinite;
+  animation-delay: var(--ft-shift);
+}
+
+.ft-orb-spin.ft-rev {
+  animation-duration: 5s;
+  animation-direction: reverse;
+}
+
+.ft-sat {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 17%;
+  aspect-ratio: 1;
+  margin-left: -8.5%;
+  margin-top: -8.5%;
+  animation: ft-spin 10s linear infinite reverse;
+  animation-delay: var(--ft-shift);
+}
+
+.ft-orb-spin.ft-rev .ft-sat {
+  animation-duration: 5s;
+  animation-direction: normal;
+}
+
+/* sparkles and far dust */
+.ft-sp {
+  position: absolute;
+  width: var(--w);
+  aspect-ratio: 1;
+  margin-left: calc(var(--w) / -2);
+  margin-top: calc(var(--w) / -2);
+  animation: ft-twinkle 5s ease-in-out infinite;
+  animation-delay: calc(var(--d) * -1s + var(--ft-shift));
+}
+
+.ft-sp svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.ft-sp path {
+  fill: var(--ft-spark);
+}
+
+.light .ft-sp path {
+  stroke: var(--ft-ink);
+  stroke-width: 7;
+  stroke-linejoin: round;
+}
+
+.ft-dust {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--ft-track);
+  animation: ft-rise 10s linear infinite;
+  animation-delay: calc(var(--d) * -1s + var(--ft-shift));
+}
+
+@keyframes ft-x {
+  from {
+    translate: -33% 0;
+  }
+  to {
+    translate: 33% 0;
+  }
+}
+
+@keyframes ft-y {
+  from {
+    translate: 0 -31%;
+  }
+  to {
+    translate: 0 31%;
+  }
+}
+
+@keyframes ft-march {
+  to {
+    stroke-dashoffset: -91;
+  }
+}
+
+@keyframes ft-march2 {
+  to {
+    stroke-dashoffset: 110;
+  }
+}
+
+@keyframes ft-hop {
+  0%,
+  80%,
+  100% {
+    translate: 0 0;
+  }
+  85% {
+    translate: 0 -34%;
+  }
+  90% {
+    translate: 0 0;
+  }
+  93% {
+    translate: 0 -9%;
+  }
+  96% {
+    translate: 0 0;
+  }
+}
+
+@keyframes ft-recoil-up {
+  0%,
+  42%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: -10% -52%;
+  }
+  60% {
+    translate: -4% -8%;
+  }
+  67% {
+    translate: 0 0;
+  }
+}
+
+@keyframes ft-recoil-down {
+  0%,
+  42%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 10% 26%;
+  }
+  60% {
+    translate: 4% 5%;
+  }
+  67% {
+    translate: 0 0;
+  }
+}
+
+@keyframes ft-bump {
+  0%,
+  40%,
+  100% {
+    scale: 1 1;
+  }
+  45% {
+    scale: 1.16 0.84;
+  }
+  50% {
+    scale: 0.86 1.16;
+  }
+  56% {
+    scale: 1.07 0.94;
+  }
+  62% {
+    scale: 1 1;
+  }
+}
+
+/* a die is the same after a half turn, so the 5 s loop of a 180 degree roll has no visible seam */
+@keyframes ft-roll {
+  0%,
+  44% {
+    rotate: 0deg;
+  }
+  58%,
+  100% {
+    rotate: 180deg;
+  }
+}
+
+@keyframes ft-flip {
+  0%,
+  44% {
+    rotate: 0deg;
+  }
+  58%,
+  100% {
+    rotate: 360deg;
+  }
+}
+
+@keyframes ft-face-a {
+  0% {
+    opacity: 1;
+  }
+  25% {
+    opacity: 0;
+  }
+  75% {
+    opacity: 1;
+  }
+}
+
+@keyframes ft-face-b {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 0;
+  }
+}
+
+@keyframes ft-cardflip {
+  0%,
+  30% {
+    scale: 1 1;
+    rotate: -12deg;
+  }
+  40% {
+    scale: 0.05 1;
+    rotate: -4deg;
+  }
+  50%,
+  80% {
+    scale: 1 1;
+    rotate: 8deg;
+  }
+  90% {
+    scale: 1 1;
+    rotate: -4deg;
+  }
+  100% {
+    scale: 1 1;
+    rotate: -12deg;
+  }
+}
+
+@keyframes ft-cf {
+  0% {
+    opacity: 1;
+  }
+  40%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes ft-cb {
+  0% {
+    opacity: 0;
+  }
+  40%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes ft-walk {
+  0%,
+  100% {
+    translate: 0 0;
+    rotate: -6deg;
+  }
+  50% {
+    translate: 0 -14%;
+    rotate: 6deg;
+  }
+}
+
+@keyframes ft-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes ft-pulse {
+  0%,
+  100% {
+    scale: 0.82;
+  }
+  50% {
+    scale: 1.12;
+  }
+}
+
+@keyframes ft-ring {
+  0%,
+  49% {
+    opacity: 0;
+    scale: 0.3;
+  }
+  50% {
+    opacity: 0.9;
+    scale: 0.35;
+  }
+  64%,
+  100% {
+    opacity: 0;
+    scale: 1.9;
+  }
+}
+
+@keyframes ft-rays {
+  0%,
+  49% {
+    opacity: 0;
+    scale: 0.35;
+  }
+  51% {
+    opacity: 1;
+    scale: 0.55;
+  }
+  60%,
+  100% {
+    opacity: 0;
+    scale: 1.25;
+  }
+}
+
+@keyframes ft-twinkle {
+  0%,
+  100% {
+    scale: 0.25;
+    rotate: 0deg;
+    opacity: 0.1;
+  }
+  50% {
+    scale: 1;
+    rotate: 45deg;
+    opacity: 1;
+  }
+}
+
+@keyframes ft-rise {
+  0% {
+    translate: 0 0;
+    opacity: 0;
+  }
+  15%,
+  80% {
+    opacity: 0.75;
+  }
+  100% {
+    translate: 0 -34px;
+    opacity: 0;
+  }
+}
+
+/* off screen (footer-table.tsx sets data-live): nothing runs */
+.ft-scene[data-live="false"] *,
+.ft-scene[data-live="false"] *::before {
+  animation-play-state: paused !important;
+}
+
+/* reduced motion: the same scene, held still at a moment where the pieces are well spread */
+@media (prefers-reduced-motion: reduce) {
+  .ft-scene {
+    --ft-shift: -6.3s;
+  }
+
+  .ft-scene *,
+  .ft-scene *::before {
+    animation-play-state: paused !important;
+  }
+}
