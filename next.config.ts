@@ -102,6 +102,10 @@ const nextConfig: NextConfig = {
   // NEXT_DIST_DIR builds (and serves, with the same variable set) into another folder, so a
   // second build can be measured or tested beside a server that is running from `.next`.
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  // Since 16.4 `next dev` writes a block of its own instructions into AGENTS.md and puts it back if it is removed.
+  // AGENTS.md is this repo's own start-up guide for AI assistants (see CLAUDE.md), so a dependency does not get to
+  // edit it: every `npm run dev` would otherwise leave the working tree dirty.
+  agentRules: false,
   images: { unoptimized: true },
   async headers() {
     return [

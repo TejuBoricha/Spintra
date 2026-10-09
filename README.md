@@ -111,18 +111,20 @@ built on top of it.
 
 | Command | Description |
 |---|---|
-| `npm run dev` | Start the dev server |
+| `npm run dev` | Start the dev server. For the one preview link of a session use `npm run dev -- -p 3200 -H 127.0.0.1` (http://127.0.0.1:3200): it follows the checked-out branch and reloads on every edit |
 | `npm run build` | Production build |
 | `npm run start` | Serve the production build |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run docs:check` | Verify `docs/` hasn't drifted from the real filesystem |
-| `npm run verify` | typecheck + lint + docs:check |
+| `npm run verify:static` | typecheck + lint + docs:check: the static checks that need no network |
+| `npm run verify` | `verify:static` + audit (the static gates CI runs first, so a red dependency audit shows up before the push; the audit needs the network, so it comes last; offline use `verify:static` and say the audit was not run) |
 | `npm run verify:migration [name]` | Confirms a migration's objects actually exist live in the linked Supabase project (not just tracked as "applied") — run after every `supabase db push` |
-| `npm run test:smoke` | Playwright smoke test (room create/join flow) |
+| `npm run test:smoke` | Playwright smoke test (room create/join flow): the whole suite |
+| `npm run test:related` | Only the Playwright specs that cover the files changed since `main` (the whole suite for anything it cannot place: shared code, configuration, migrations, dependencies). `-- --list` shows the plan, `-- --full` forces everything, Playwright options go after a second `--`. It runs against this checkout's own preview server if one is running (found through `.next/dev/lock`), otherwise Playwright builds and starts its own. CI runs the whole suite on every pull request |
 | `npm run test:city-regression` | Spintra City release-blocker regression suite — asserts the fixed behaviour for each open blocker, so it stays red until the fix lands. Requires the local Supabase stack. |
 | `npm run audit` | `node scripts/audit-gate.mjs --audit-level=moderate`: `npm audit` at that threshold, plus a short time-boxed allowlist (`scripts/audit-allowlist.json`) for advisories that have no fix yet — the one place this threshold is set; `.github/workflows/ci.yml`'s CI gate calls this same script rather than hardcoding its own |
-| `npm run ci` | verify + audit + build + test:smoke (full CI gate, locally) |
+| `npm run ci` | verify (which includes the audit) + build + test:smoke (the full CI gate, locally) |
 
 ## Project structure
 
@@ -160,7 +162,7 @@ participants — join, activity sync, moderation), `comprehensive-tournament-aud
 and `tournament-double-elimination.spec.ts` (bracket generation and scoring
 across all formats).
 
-`.github/workflows/ci.yml` runs two jobs on every push: `validate` (dependency
+`.github/workflows/ci.yml` runs two jobs once per pull request head (and once on `main` after a merge; a newer push to a pull request cancels the older run, and a branch without a pull request runs nothing): `validate` (dependency
 security audit, typecheck, lint, docs drift check, build, and the Playwright
 suite against the demo/`BroadcastChannel` fallback — no Supabase needed) and
 `db-integration` (spins up an ephemeral local Supabase via Docker, applies
