@@ -101,10 +101,6 @@
   overflow: visible;
 }
 
-.ft-felt {
-  fill: url(#ft-felt-g);
-}
-
 .ft-rimline {
   fill: none;
   stroke: var(--ft-track-2);

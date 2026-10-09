@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useId, useRef, type CSSProperties, type ReactNode } from "react";
+import { AX, AY, REST, TRACK_D, TRACK_WIDE_D, curve, toPath } from "./footer-table-geometry";
 import "./footer-table.css";
 
 /*
@@ -13,36 +14,12 @@ import "./footer-table.css";
  *     little. Touch and reduced motion get none of it. The scene never takes pointer events itself.
  */
 
-/** The track is a figure of eight: x = 50 - AX cos t, y = 50 + AY sin 2t, in percent of the scene box. */
-const AX = 33;
-const AY = 28.7; // in percent of the scene height: about 52px at the desktop size, the same track as before the box got taller
-const STEPS = 96;
-
-function curve(ax: number, ay: number, turn = 0, tilt = 0): [number, number][] {
-  const points: [number, number][] = [];
-  for (let i = 0; i <= STEPS; i++) {
-    const t = (i / STEPS) * Math.PI * 2;
-    points.push([50 - ax * Math.cos(t + turn), 50 + ay * Math.sin(2 * t + tilt)]);
-  }
-  return points;
-}
-
-function toPath(points: [number, number][]): string {
-  return points.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(2)} ${y.toFixed(2)}`).join("") + "Z";
-}
-
 const TRACK_POINTS = curve(AX, AY);
-const TRACK_D = toPath(TRACK_POINTS);
-const TRACK_WIDE_D = toPath(curve(AX + 6, AY + 7, 0.35, 0.7));
 
 const vars = (o: Record<string, string | number>) => o as CSSProperties;
 
-/** Where a piece with this phase is, in percent of the scene, this many seconds into the 10 s loop. */
-const REST_SECONDS = 6.3; // the moment the still composition (reduced motion) shows: the pieces are well spread
-function rest(phase: number) {
-  const s = REST_SECONDS / 10 + phase;
-  return { x: -AX * Math.cos(2 * Math.PI * s), y: AY * Math.sin(4 * Math.PI * s) };
-}
+/** Names an id of this instance's gradients and patterns: two scenes on one page must not share them. */
+type Ids = (name: string) => string;
 
 /** One piece on the track: two lanes (one per axis) carry it, a wrapper the cursor can push, a wrapper for the hop. */
 function Piece({
@@ -60,9 +37,9 @@ function Piece({
   index: number;
   children: ReactNode;
 }) {
-  const at = rest(phase);
+  const at = REST[String(phase)];
   return (
-    <div className="ft-lx" style={vars({ "--ph": phase, "--sx": `${at.x.toFixed(2)}%`, "--sy": `${at.y.toFixed(2)}%` })}>
+    <div className="ft-lx" style={vars({ "--ph": phase, "--sx": at.x, "--sy": at.y })}>
       <div className="ft-ly">
         <div className="ft-pc" data-pull={pull} style={vars({ "--w": `${size}%`, ...(ratio ? { "--ar": ratio } : {}) })}>
           <div className="ft-in ft-hop" style={vars({ "--i": index })}>
@@ -76,12 +53,12 @@ function Piece({
 
 const STAR = "M50 6 C 55 36 66 46 94 50 C 66 54 55 64 50 94 C 45 64 34 54 6 50 C 34 46 45 36 50 6 Z";
 
-function Die() {
+function Die({ k }: { k: Ids }) {
   return (
     <div className="ft-in ft-bn-up">
       <div className="ft-in ft-die-fx">
         <svg viewBox="0 0 100 100" className="ft-spr" focusable="false">
-          <circle className="ft-halo" cx="50" cy="50" r="64" fill="url(#ft-halo-lime)" />
+          <circle className="ft-halo" cx="50" cy="50" r="64" fill={`url(#${k("halo-lime")})`} />
           <rect className="ft-sh" x="16" y="17" width="80" height="80" rx="20" />
           <rect className="ft-rim" x="10" y="10" width="80" height="80" rx="20" />
           <rect className="ft-s ft-lime" x="10" y="10" width="80" height="80" rx="20" />
@@ -108,12 +85,12 @@ function Die() {
 }
 
 /** The logo as a game token: the orange disc and the lime ring; it shows the S, then turns over to a star. */
-function SChip() {
+function SChip({ k }: { k: Ids }) {
   return (
     <div className="ft-in ft-bn-down">
       <div className="ft-in ft-chip-fx">
         <svg viewBox="0 0 100 100" className="ft-spr" focusable="false">
-          <circle className="ft-halo" cx="50" cy="50" r="64" fill="url(#ft-halo-orange)" />
+          <circle className="ft-halo" cx="50" cy="50" r="64" fill={`url(#${k("halo-orange")})`} />
           <circle className="ft-sh" cx="55" cy="56" r="42" />
           <circle className="ft-rim" cx="50" cy="50" r="42" />
           <circle className="ft-s ft-lime" cx="50" cy="50" r="42" />
@@ -135,7 +112,7 @@ function SChip() {
 }
 
 /** A card that turns over twice a loop: a star on its face, a violet lattice on its back. */
-function Card() {
+function Card({ k }: { k: Ids }) {
   return (
     <div className="ft-in ft-card-fx">
       <svg viewBox="0 0 70 100" className="ft-spr" focusable="false">
@@ -152,7 +129,7 @@ function Card() {
           <circle className="ft-violet" cx="53" cy="81" r="4" />
         </g>
         <g className="ft-cb">
-          <rect x="10" y="10" width="50" height="80" rx="7" fill="url(#ft-lattice)" />
+          <rect x="10" y="10" width="50" height="80" rx="7" fill={`url(#${k("lattice")})`} />
           <rect x="10" y="10" width="50" height="80" rx="7" fill="none" stroke="var(--ft-ink)" strokeWidth="3" />
         </g>
       </svg>
@@ -160,12 +137,12 @@ function Card() {
   );
 }
 
-function Pawn() {
+function Pawn({ k }: { k: Ids }) {
   const body = "M33 86 C 36 66 43 54 50 49 C 57 54 64 66 67 86 Z";
   return (
     <div className="ft-in ft-pawn-fx">
       <svg viewBox="0 0 100 100" className="ft-spr" focusable="false">
-        <circle className="ft-halo" cx="50" cy="52" r="60" fill="url(#ft-halo-violet)" />
+        <circle className="ft-halo" cx="50" cy="52" r="60" fill={`url(#${k("halo-violet")})`} />
         <ellipse className="ft-sh" cx="55" cy="92" rx="27" ry="9" />
         <g className="ft-rim">
           <circle cx="50" cy="27" r="17" />
@@ -182,11 +159,11 @@ function Pawn() {
   );
 }
 
-function VioletChip() {
+function VioletChip({ k }: { k: Ids }) {
   return (
     <div className="ft-in ft-vchip-fx">
       <svg viewBox="0 0 100 100" className="ft-spr" focusable="false">
-        <circle className="ft-halo" cx="50" cy="50" r="64" fill="url(#ft-halo-violet)" />
+        <circle className="ft-halo" cx="50" cy="50" r="64" fill={`url(#${k("halo-violet")})`} />
         <circle className="ft-sh" cx="55" cy="56" r="42" />
         <circle className="ft-rim" cx="50" cy="50" r="42" />
         <circle className="ft-s ft-violet" cx="50" cy="50" r="42" />
@@ -201,11 +178,11 @@ function VioletChip() {
   );
 }
 
-function SparkPiece() {
+function SparkPiece({ k }: { k: Ids }) {
   return (
     <div className="ft-in ft-star-fx">
       <svg viewBox="0 0 100 100" className="ft-spr" focusable="false">
-        <circle className="ft-halo" cx="50" cy="50" r="62" fill="url(#ft-halo-lime)" />
+        <circle className="ft-halo" cx="50" cy="50" r="62" fill={`url(#${k("halo-lime")})`} />
         <path className="ft-rim" d={STAR} />
         <path className="ft-s ft-lime" d={STAR} />
       </svg>
@@ -236,6 +213,8 @@ const SPARKLE_PATH = "M50 0 C 54 38 62 46 100 50 C 62 54 54 62 50 100 C 46 62 38
 
 export function FooterTable({ className = "" }: { className?: string }) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
+  const k: Ids = (name) => `ft${uid}-${name}`;
 
   useEffect(() => {
     const root = rootRef.current;
@@ -243,8 +222,9 @@ export function FooterTable({ className = "" }: { className?: string }) {
 
     // Off screen, nothing runs.
     const watcher = new IntersectionObserver(
-      ([entry]) => {
-        root.dataset.live = entry.isIntersecting ? "true" : "false";
+      (entries) => {
+        // several can be queued when the footer scrolls in and out quickly: the last one is the current state
+        root.dataset.live = entries[entries.length - 1].isIntersecting ? "true" : "false";
       },
       { rootMargin: "80px" },
     );
@@ -274,23 +254,23 @@ export function FooterTable({ className = "" }: { className?: string }) {
     <div ref={rootRef} className={`ft-scene ${className}`.trim()} aria-hidden="true" data-live="true" data-testid="footer-table">
       <svg className="ft-defs" width="0" height="0" focusable="false">
         <defs>
-          <radialGradient id="ft-halo-lime">
+          <radialGradient id={k("halo-lime")}>
             <stop offset="0" stopColor="#e2f72a" stopOpacity=".5" />
             <stop offset="1" stopColor="#e2f72a" stopOpacity="0" />
           </radialGradient>
-          <radialGradient id="ft-halo-orange">
+          <radialGradient id={k("halo-orange")}>
             <stop offset="0" stopColor="#ff6a00" stopOpacity=".5" />
             <stop offset="1" stopColor="#ff6a00" stopOpacity="0" />
           </radialGradient>
-          <radialGradient id="ft-halo-violet">
+          <radialGradient id={k("halo-violet")}>
             <stop offset="0" stopColor="#9d63e8" stopOpacity=".55" />
             <stop offset="1" stopColor="#9d63e8" stopOpacity="0" />
           </radialGradient>
-          <radialGradient id="ft-felt-g" cx="50%" cy="50%" r="50%">
+          <radialGradient id={k("felt-g")} cx="50%" cy="50%" r="50%">
             <stop offset="0" style={{ stopColor: "var(--ft-felt)" }} />
             <stop offset="1" style={{ stopColor: "var(--ft-felt)", stopOpacity: 0 }} />
           </radialGradient>
-          <pattern id="ft-lattice" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <pattern id={k("lattice")} width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
             <rect width="14" height="14" fill="var(--ft-violet)" />
             <path d="M0 0H14" stroke="var(--ft-lime)" strokeOpacity=".7" strokeWidth="3" />
           </pattern>
@@ -303,7 +283,7 @@ export function FooterTable({ className = "" }: { className?: string }) {
           <span key={p.d} className="ft-dust" style={vars({ left: `${p.left}%`, top: `${p.top}%`, "--d": p.d })} />
         ))}
         <svg className="ft-svg" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false">
-          <ellipse className="ft-felt" cx="50" cy="50" rx="46" ry="46" />
+          <ellipse className="ft-felt" cx="50" cy="50" rx="46" ry="46" fill={`url(#${k("felt-g")})`} />
           <ellipse className="ft-rimline" cx="50" cy="50" rx="47.5" ry="45" />
           <path className="ft-track2" d={TRACK_WIDE_D} />
         </svg>
@@ -336,7 +316,7 @@ export function FooterTable({ className = "" }: { className?: string }) {
           <div className="ft-orb-spin">
             <div className="ft-sat">
               <svg viewBox="0 0 100 100" className="ft-spr" focusable="false">
-                <circle className="ft-halo" cx="50" cy="50" r="62" fill="url(#ft-halo-lime)" />
+                <circle className="ft-halo" cx="50" cy="50" r="62" fill={`url(#${k("halo-lime")})`} />
                 <path className="ft-s ft-lime" d={STAR} />
               </svg>
             </div>
@@ -349,7 +329,7 @@ export function FooterTable({ className = "" }: { className?: string }) {
           <div className="ft-orb-spin ft-rev">
             <div className="ft-sat">
               <svg viewBox="0 0 100 100" className="ft-spr" focusable="false">
-                <circle className="ft-halo" cx="50" cy="50" r="62" fill="url(#ft-halo-violet)" />
+                <circle className="ft-halo" cx="50" cy="50" r="62" fill={`url(#${k("halo-violet")})`} />
                 <circle className="ft-s ft-violet" cx="50" cy="50" r="38" />
               </svg>
             </div>
@@ -360,22 +340,22 @@ export function FooterTable({ className = "" }: { className?: string }) {
       {/* the pieces: the die and the S chip start half a lap apart, so they meet at the crossing every 5 s */}
       <div className="ft-layer" data-depth="1.2">
         <Piece phase={0} size={10.4} pull="flee" index={0}>
-          <Die />
+          <Die k={k} />
         </Piece>
         <Piece phase={0.5} size={10.4} pull="flee" index={1}>
-          <SChip />
+          <SChip k={k} />
         </Piece>
         <Piece phase={0.125} size={7.4} ratio={0.7} pull="flee" index={2}>
-          <Card />
+          <Card k={k} />
         </Piece>
         <Piece phase={0.375} size={8} pull="follow" index={3}>
-          <Pawn />
+          <Pawn k={k} />
         </Piece>
         <Piece phase={0.25} size={6.6} pull="follow" index={4}>
-          <VioletChip />
+          <VioletChip k={k} />
         </Piece>
         <Piece phase={0.4375} size={5.8} pull="flee" index={5}>
-          <SparkPiece />
+          <SparkPiece k={k} />
         </Piece>
       </div>
 
@@ -420,10 +400,15 @@ function followCursor(root: HTMLElement): () => void {
   const wake = () => {
     if (!frame) frame = requestAnimationFrame(tick);
   };
+  /** Is this point within reach of the scene (a margin around it)? */
+  const nearScene = (x: number, y: number, r: DOMRect) => x > r.left - 60 && x < r.right + 60 && y > r.top - 50 && y < r.bottom + 50;
   const onMove = (e: PointerEvent) => {
     if (e.pointerType === "touch") return;
+    // A mouse moves over the whole page: do nothing while the scene is off screen and at rest.
+    if (root.dataset.live === "false" && !cursor && !frame) return;
     const r = root.getBoundingClientRect();
-    const near = e.clientX > r.left - 60 && e.clientX < r.right + 60 && e.clientY > r.top - 50 && e.clientY < r.bottom + 50;
+    const near = nearScene(e.clientX, e.clientY, r);
+    if (!near && !cursor) return; // the cursor is elsewhere and the scene has nothing to settle
     cursor = near ? { x: e.clientX, y: e.clientY } : null;
     wake();
   };
@@ -439,6 +424,8 @@ function followCursor(root: HTMLElement): () => void {
     // 370 style recalculations a second; this order costs one of each per frame at most.
     const r = root.getBoundingClientRect();
     const rects = pieces.map((p) => p.sprite.getBoundingClientRect());
+    // The page can scroll under a stationary mouse, so the cursor is checked against the scene every frame.
+    if (cursor && !nearScene(cursor.x, cursor.y, r)) cursor = null;
 
     const W = r.width;
     const H = r.height;
@@ -457,8 +444,10 @@ function followCursor(root: HTMLElement): () => void {
     let moving = false;
     pieces.forEach((p, i) => {
       const b = rects[i];
-      const qx = b.left + b.width / 2 - r.left;
-      const qy = b.top + b.height / 2 - r.top;
+      // Where the piece is on its track: the box includes the offset this loop applied last frame, and a force that
+      // depended on that offset would feed back on itself and jitter at the edge of its reach.
+      const qx = b.left + b.width / 2 - r.left - p.x;
+      const qy = b.top + b.height / 2 - r.top - p.y;
       let tx = 0;
       let ty = 0;
       if (cursor) {
@@ -472,7 +461,8 @@ function followCursor(root: HTMLElement): () => void {
             ty = (dy / d) * k * k * 34;
           }
         } else if (d < 150) {
-          const k = 1 - d / 150;
+          // the pull fades to nothing right at the cursor, where its direction is undefined
+          const k = (1 - d / 150) * Math.min(1, d / 24);
           tx = (-dx / d) * k * 22;
           ty = (-dy / d) * k * 22;
         }

@@ -95,6 +95,21 @@ for (const [name, viewport] of [
   });
 }
 
+test('every gradient and pattern the scene refers to is defined inside it, under a name of its own', async ({ page }) => {
+  const scene = await openHome(page);
+  const report = await scene.evaluate((el) => {
+    const ids = Array.from(el.querySelectorAll('[id]')).map((n) => n.id);
+    const refs = Array.from(el.querySelectorAll('[fill]'))
+      .map((n) => n.getAttribute('fill') ?? '')
+      .filter((f) => f.startsWith('url(#'))
+      .map((f) => f.slice(5, -1));
+    return { ids, refs, missing: refs.filter((r) => !ids.includes(r)), fixed: ids.filter((i) => /^ft-(halo|felt|lattice)/.test(i)) };
+  });
+  expect(report.refs.length, 'the scene refers to its gradients').toBeGreaterThan(5);
+  expect(report.missing, 'references with no definition').toEqual([]);
+  expect(report.fixed, 'ids that two scenes on one page would share').toEqual([]);
+});
+
 test.describe('motion', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
@@ -186,6 +201,48 @@ test.describe('the cursor easter egg', () => {
     await expect.poll(() => track.getAttribute('d'), { message: 'the track straightens', timeout: 4000 }).toBe(baseTrack);
   });
 
+  test('a mouse moving over the rest of the page makes the scene do no work while it is off screen', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('spintra-cookie-consent', 'denied'));
+    await page.goto('/');
+    const scene = page.locator(SCENE);
+    await expect(scene).toHaveAttribute('data-live', 'false'); // the footer is thousands of pixels down
+    await scene.evaluate((el) => {
+      (window as unknown as { __writes: number }).__writes = 0;
+      new MutationObserver((records) => {
+        (window as unknown as { __writes: number }).__writes += records.length;
+      }).observe(el, { attributes: true, subtree: true });
+    });
+    for (let i = 0; i < 30; i++) {
+      await page.mouse.move(100 + i * 30, 200 + (i % 5) * 40);
+      await page.waitForTimeout(15);
+    }
+    expect(await page.evaluate(() => (window as unknown as { __writes: number }).__writes), 'attribute writes inside the scene').toBe(0);
+  });
+
+  test('when the page scrolls away from a mouse that stays still, the scene settles and goes quiet', async ({ page }) => {
+    const scene = await openHome(page);
+    const { centres } = await pieceCentres(page);
+    const box = (await scene.boundingBox())!;
+    await page.mouse.move(box.x + centres[0].x + 6, box.y + centres[0].y + 6);
+    await expect.poll(() => offset(page, 'flee'), { message: 'the die is pushed', timeout: 3000 }).toBeGreaterThan(3);
+    // the mouse does not move; the page does
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect.poll(() => offset(page, 'flee'), { message: 'the die settles back', timeout: 4000 }).toBeLessThan(1.5);
+    await scene.evaluate((el) => {
+      (window as unknown as { __writes: number }).__writes = 0;
+      new MutationObserver((records) => {
+        (window as unknown as { __writes: number }).__writes += records.length;
+      }).observe(el, { attributes: true, subtree: true, attributeFilter: ['style', 'd'] });
+    });
+    // The layers' drift takes a moment longer than the die to settle; then the loop must have ended by itself.
+    const writesIn = async (ms: number) => {
+      const before = await page.evaluate(() => (window as unknown as { __writes: number }).__writes);
+      await page.waitForTimeout(ms);
+      return (await page.evaluate(() => (window as unknown as { __writes: number }).__writes)) - before;
+    };
+    await expect.poll(() => writesIn(300), { message: 'style and path writes in a 300ms window', timeout: 5000, intervals: [0] }).toBe(0);
+  });
+
   test.describe('on a touch device', () => {
     test.use({ hasTouch: true });
     test('nothing reacts: no pushing, no bending', async ({ page }) => {
@@ -238,19 +295,27 @@ for (const theme of ['dark', 'light'] as const) {
       const read = (name: string) => cs.getPropertyValue(name).trim();
       return {
         background: getComputedStyle(document.body).backgroundColor,
-        tokens: Object.fromEntries(['--ft-lime', '--ft-orange', '--ft-violet', '--ft-cyan', '--ft-paper', '--ft-ink', '--ft-rim', '--ft-track'].map((n) => [n, read(n)])),
+        tokens: Object.fromEntries(['--ft-lime', '--ft-orange', '--ft-violet', '--ft-cyan', '--ft-paper', '--ft-ink', '--ft-rim', '--ft-track', '--ft-spark'].map((n) => [n, read(n)])),
       };
     }, SCENE);
     const bg = parse(background);
-    const seen = (fill: string) => Math.max(contrast(parse(tokens[fill]), bg), contrast(parse(tokens['--ft-rim']), bg), contrast(parse(tokens['--ft-ink']), bg));
-    const pieces: [string, string][] = [
-      ['die and spark (lime)', '--ft-lime'],
-      ['S chip (orange)', '--ft-orange'],
-      ['card (paper)', '--ft-paper'],
-      ['pawn (cyan)', '--ft-cyan'],
-      ['violet chip', '--ft-violet'],
-    ];
-    for (const [what, fill] of pieces) expect(seen(fill), `${what} against the ${theme} footer`).toBeGreaterThanOrEqual(3);
-    expect(contrast(parse(tokens['--ft-track']), bg), `the track against the ${theme} footer`).toBeGreaterThanOrEqual(3);
+    const dark = theme === 'dark';
+    const c = (token: string) => contrast(parse(tokens[token]), bg);
+    // The silhouette of every piece is its outline: the light rim in the dark theme, the ink outline in the light one.
+    expect(c(dark ? '--ft-rim' : '--ft-ink'), `the outline of every piece against the ${theme} footer`).toBeGreaterThanOrEqual(3);
+    // On the dark theme the ink outline cannot be seen, so there the fills carry the shapes as well; on the light theme
+    // the fills (lime, white, cyan) are pale on purpose and the ink outline is what is seen.
+    if (dark) {
+      const fills: [string, string][] = [
+        ['die and spark (lime)', '--ft-lime'],
+        ['S chip (orange)', '--ft-orange'],
+        ['card (paper)', '--ft-paper'],
+        ['pawn (cyan)', '--ft-cyan'],
+        ['violet chip', '--ft-violet'],
+      ];
+      for (const [what, token] of fills) expect(c(token), `${what} fill against the dark footer`).toBeGreaterThanOrEqual(3);
+    }
+    expect(c(dark ? '--ft-spark' : '--ft-ink'), `the sparkles against the ${theme} footer`).toBeGreaterThanOrEqual(3);
+    expect(c('--ft-track'), `the track against the ${theme} footer`).toBeGreaterThanOrEqual(3);
   });
 }
