@@ -20,6 +20,14 @@ import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
+import net from "node:net";
+
+// Paths from git are relative to the repository root, so work from there whatever the current directory is.
+try {
+  process.chdir(execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim());
+} catch {
+  // not a git checkout: changedFiles() reports "unknown" and the full suite runs
+}
 
 const fail = (message) => {
   console.error(message);
@@ -78,6 +86,7 @@ const isCode = (f) => /\.(ts|tsx|js|mjs)$/.test(f);
 const testFiles = walk("tests").filter(isCode);
 const specs = testFiles.filter((f) => f.endsWith(".spec.ts"));
 const sourceFiles = walk("src").filter(isCode);
+if (specs.length === 0) fail("No *.spec.ts files found under tests/: run this from a checkout of the repository.");
 
 /** Resolve an import written in `from` to a file: relative, or the `@/` alias for src/. null for packages. */
 function resolveImport(from, specifier) {
@@ -174,10 +183,14 @@ function plan(files) {
   const chosen = new Set();
   const notes = [];
   const full = (why) => ({ full: true, specs: chosen, notes: [...notes, why] });
-  const place = (file, route, what) => {
+  // A file inside one route's folder is local to that route only if nothing outside the folder imports it.
+  const place = (file, route, what, dir) => {
+    const outside = dir ? importersOf(file).filter((user) => !user.startsWith(dir)) : [];
+    if (outside.length) return full(`${file}: also imported by ${outside[0]}`);
     forRoute(route).forEach((s) => chosen.add(s));
     naming(file).forEach((s) => chosen.add(s));
     notes.push(`${file}: ${what}`);
+    return null;
   };
   for (const raw of files) {
     const file = norm(raw);
@@ -197,13 +210,15 @@ function plan(files) {
     } else if (SHARED.some((r) => r.test(file))) {
       return full(`${file}: shared code or configuration, any page can break`);
     } else if ((m = file.match(/^src\/app\/tools\/([a-z0-9][a-z0-9-]*)\//))) {
-      place(file, `/tools/${m[1]}`, `the /tools/${m[1]} page`);
+      const verdict = place(file, `/tools/${m[1]}`, `the /tools/${m[1]} page`, `src/app/tools/${m[1]}/`);
+      if (verdict) return verdict;
     } else if (/^src\/app\/tools\/(page|layout)\.tsx$/.test(file)) {
-      place(file, "/tools", "the /tools hub");
+      place(file, "/tools", "the /tools hub", null);
     } else if ((m = file.match(/^src\/app\/(explore|create|for-teachers|settings|spintra-city|legal)\//))) {
-      place(file, `/${m[1]}`, `the /${m[1]} page`);
+      const verdict = place(file, `/${m[1]}`, `the /${m[1]} page`, `src/app/${m[1]}/`);
+      if (verdict) return verdict;
     } else if (HOME_ENTRIES.has(file) || (/^src\/components\/landing\//.test(file) && onlyHome(file))) {
-      place(file, "/", "the home page");
+      place(file, "/", "the home page", null);
     } else {
       return full(`${file}: not a file this script can place (or shared by several pages)`);
     }
@@ -221,26 +236,35 @@ console.log(`Changed since main: ${files === null ? "unknown" : files.length} fi
 for (const note of result.notes.slice(0, 12)) console.log(`  ${note}`);
 if (result.notes.length > 12) console.log(`  ... and ${result.notes.length - 12} more`);
 
+const verb = flag("--list") ? "Would run" : "Running";
 if (result.full) {
-  console.log("\nRunning the FULL suite.");
+  console.log(`\n${verb} the FULL suite.`);
 } else if (result.specs.size === 0) {
   console.log("\nNothing to run in a browser. Run npm run verify. CI runs the full suite on the pull request.");
   process.exit(0);
 } else {
-  console.log(`\nRunning ${result.specs.size} spec file(s):\n  ${[...result.specs].sort().join("\n  ")}\nCI runs the full suite on the pull request.`);
+  console.log(`\n${verb} ${result.specs.size} spec file(s):\n  ${[...result.specs].sort().join("\n  ")}\nCI runs the full suite on the pull request.`);
 }
 if (flag("--list")) process.exit(0);
 
-// Use the preview server when there is one: otherwise Playwright builds the app and starts its own (minutes).
+// Use the preview server when there is one: otherwise Playwright builds the app and starts its own (minutes). Whether
+// something is listening on the port is asked with a connection, not a page request: a dev server that has not yet
+// compiled its first page would answer too slowly.
+const listening = (port) =>
+  new Promise((resolve) => {
+    const socket = net.connect({ port, host: "127.0.0.1" });
+    socket.setTimeout(1500);
+    socket.once("connect", () => (socket.destroy(), resolve(true)));
+    socket.once("timeout", () => (socket.destroy(), resolve(false)));
+    socket.once("error", () => resolve(false));
+  });
 let env = process.env;
 if (!process.env.PLAYWRIGHT_PORT) {
-  try {
-    const answer = await fetch("http://127.0.0.1:3200/", { signal: AbortSignal.timeout(8000) });
-    if (answer.status < 500) {
-      env = { ...process.env, PLAYWRIGHT_PORT: "3200" };
-      console.log("Using the preview server on port 3200 (set PLAYWRIGHT_PORT to use another).");
-    }
-  } catch {
+  if (await listening(3200)) {
+    env = { ...process.env, PLAYWRIGHT_PORT: "3200" };
+    console.log("Using the preview server on port 3200 (set PLAYWRIGHT_PORT to use another).");
+    console.log("It is a dev server, not production: a spec about server-rendered HTML, caching headers or first paint can differ there. CI is the proof for those.");
+  } else {
     console.log("No preview server on port 3200: Playwright will build the app and start its own (slow). Start one with: npm run dev -- -p 3200 -H 127.0.0.1");
   }
 }

@@ -15,8 +15,8 @@ Workflow:
 
 2. **Pre-Implementation Impact Assessment**
    - For every non-trivial feature, bug fix, refactor, database change, API change, infrastructure change, or architectural change, perform a concise impact assessment before modifying any files.
-   - The assessment must include: Risk Level (Low/Medium/High), Objective, Why, Affected Areas, Dependency Analysis, Blast Radius (Mandatory), Risk Assessment, Architecture Alignment, Alternative Approaches, Implementation Plan, Validation Plan, and Documentation Impact.
-   - Keep it concise (typically 5–15 bullet points).
+   - Start with the Risk Level (Low/Medium/High); the rest scales with it. Low: one line (what, why, what could break). Medium: a few bullets covering Affected Areas, Blast Radius and the Validation Plan (the pull request description is fine). High: all of Objective, Why, Affected Areas, Dependency Analysis, Blast Radius, Risk Assessment, Architecture Alignment, Alternative Approaches, Implementation Plan, Validation Plan and Documentation Impact.
+   - Keep it concise: a line for Low, 3–5 bullets for Medium, 5–15 for High.
 
 3. **User-Facing Initialization**
    - In your response text, briefly summarize your understanding of the current project state and present the Pre-Implementation Impact Assessment at the depth its risk calls for: one line for Low risk, a few bullets for Medium (they can live in the pull request description), the full structure for High (`docs/AI_RULES.md` §10).
