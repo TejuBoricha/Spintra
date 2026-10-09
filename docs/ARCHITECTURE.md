@@ -471,13 +471,16 @@ npm run start      # next start — starts production server locally
 npm run typecheck  # tsc --noEmit — TypeScript only
 npm run lint       # eslint — linting only
 npm run docs:check # scripts/check-docs-drift.mjs — docs/ vs. real filesystem
-npm run verify     # typecheck + lint + docs:check — full local quality gate
-npm run test:smoke # npx playwright test — E2E smoke tests
+npm run verify:static # typecheck + lint + docs:check — the static checks that need no network
+npm run verify     # verify:static + audit — the static gates CI runs first (audit last: it needs the network)
+npm run test:smoke # npx playwright test — E2E smoke tests (the whole suite)
+npm run test:related # scripts/related-tests.mjs — only the specs that cover the files changed since main; the
+                    # whole suite for anything it cannot place (ADR-013)
 npm run test:city-regression # Spintra City release-blocker regression suite (needs the local Supabase stack)
 npm run audit      # node scripts/audit-gate.mjs: npm audit --audit-level=moderate plus the time-boxed allowlist
                     # in scripts/audit-allowlist.json — the one place this threshold is set;
                     # ci.yml's audit step calls this same script instead of hardcoding its own
-npm run ci         # verify + audit + build + test:smoke — mirrors the CI pipeline locally
+npm run ci         # verify (includes the audit) + build + test:smoke — mirrors the CI pipeline locally
 npm run verify:migration [name] # queries the LIVE linked Supabase project to confirm a
                     # migration's functions/triggers/policies/tables/indexes/extensions/
                     # columns actually exist — not just that `supabase migration list`
@@ -490,7 +493,7 @@ npm run verify:migration [name] # queries the LIVE linked Supabase project to co
 
 **Node requirement:** >=20.9.0 (see `package.json` engines field)
 
-**CI (`.github/workflows/ci.yml`) has two jobs:**
+**CI (`.github/workflows/ci.yml`) runs once per pull request head and once on `main` after a merge (a newer push to a pull request cancels the older run; a branch without a pull request runs nothing), and has two jobs:**
 1. `validate` — typecheck, lint, docs:check, `npm audit`, production build, Playwright smoke tests. Runs the app **without** Supabase configured (no secrets in CI), so it exercises the demo-mode `BroadcastChannel` fallback, not real RLS/triggers/realtime. Its build/test steps set `SKIP_ENV_VALIDATION=true` to opt out of `next.config.ts`'s build-time env var check — that check exists to fail-fast on an *accidentally* misconfigured production build, but this job's missing vars are intentional, so it needs an explicit opt-out rather than tripping the same guard. (This conflict silently broke `validate` on every commit from `752295f` through `5ddd24c` until caught and fixed post-push — see `docs/CHANGELOG_AI.md`.)
 2. `db-integration` (added Session 41) — spins up an ephemeral, local Supabase stack via the Supabase CLI (`supabase start`, Docker-based, no secrets, never touches the live project), applies every migration fresh with `supabase db reset` (exactly the check that would have caught migration `0010`'s SQL syntax bug at PR time instead of it silently never running in production), then builds and runs the same Playwright suite **against that real instance** — so `tests/multiplayer-loop.spec.ts` actually exercises real anonymous auth, real RLS policies, and real triggers end-to-end, not just the demo-mode fallback.
 

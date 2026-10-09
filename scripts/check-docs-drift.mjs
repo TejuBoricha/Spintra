@@ -366,18 +366,23 @@ if (fs.existsSync(ciWorkflowPath) && fs.existsSync(PACKAGE_PATH)) {
 // `moderate`, "ci" script silently left at `high`). Fixed at the root instead
 // of just detecting it: both now call the same package.json "audit" script.
 // This check guards that structure -- that ci.yml delegates rather than
-// reintroducing a second hardcoded threshold of its own.
+// reintroducing a second hardcoded threshold of its own. The "ci" script
+// delegates either directly or through "verify" (which includes the audit).
 
 if (fs.existsSync(ciWorkflowPath) && fs.existsSync(PACKAGE_PATH)) {
   const ciContent = fs.readFileSync(ciWorkflowPath, "utf8");
   const pkg = JSON.parse(fs.readFileSync(PACKAGE_PATH, "utf8"));
   const auditScript = pkg.scripts ? pkg.scripts.audit : null;
   const ciScript = pkg.scripts ? pkg.scripts.ci : null;
+  const verifyScript = pkg.scripts ? pkg.scripts.verify : null;
+  const ciRunsAudit =
+    !!ciScript &&
+    (ciScript.includes("npm run audit") || (/npm run verify(?![:\w-])/.test(ciScript) && !!verifyScript && verifyScript.includes("npm run audit")));
 
   if (!auditScript || !/(npm audit|node scripts\/audit-gate\.mjs) --audit-level=(info|low|moderate|high|critical|none)\b/.test(auditScript)) {
     fail('package.json is missing an "audit" script running `npm audit --audit-level=...` (or `node scripts/audit-gate.mjs --audit-level=...`, which wraps it)');
-  } else if (!ciScript || !ciScript.includes("npm run audit")) {
-    fail('package.json\'s "ci" script should run `npm run audit` (delegating to the "audit" script) rather than hardcoding its own `npm audit --audit-level=...`');
+  } else if (!ciRunsAudit) {
+    fail('package.json\'s "ci" script should run the audit through `npm run audit` (directly, or through `npm run verify`, which includes it) rather than hardcoding its own `npm audit --audit-level=...`');
   } else if (!/\brun:\s*npm run audit\b/.test(ciContent)) {
     fail('.github/workflows/ci.yml should run `npm run audit` (delegating to package.json\'s "audit" script) rather than hardcoding its own `npm audit --audit-level=...`');
   } else {

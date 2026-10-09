@@ -1,10 +1,21 @@
 name: Spintra Continuous Integration
 
 on:
+  # One run per pull request head. A pull_request run tests the merge of the branch into its base (that merge is
+  # what lands), so a push run on the same branch only added a second, less accurate copy of the whole pipeline
+  # (validate about 10 minutes, db-integration about 20) to every push. `main` still runs after each merge. A branch
+  # without a pull request runs nothing: push work in progress freely. (ADR-013)
   push:
-    branches: [ "**" ]
+    branches: [ "main" ]
   pull_request:
     branches: [ "**" ]
+
+# A newer push to a pull request replaces the run in progress, since nobody reads the older result. Every push to
+# main is its own group (its commit), so a quick series of merges is never collapsed: GitHub also cancels a run that
+# is only queued when a newer one joins the same group, which would leave a merge commit on main without a result.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   validate:

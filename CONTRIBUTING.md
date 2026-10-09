@@ -58,16 +58,17 @@ npm run build
 
 To run the automated smoke testing suite:
 ```bash
-npm run test:smoke
+npm run test:related   # while you work: only the specs that cover the files you changed
+npm run test:smoke     # the whole suite (CI runs it on your pull request)
 ```
-*Note: Make sure your local server is running at http://localhost:3000 before executing the tests.*
+*Note: Playwright starts its own production server on port 4000 (`PLAYWRIGHT_PORT` moves it) unless one is already answering there; `npm run test:related` also reuses this checkout's own preview server if one is running (`npm run dev -- -p 3200 -H 127.0.0.1`).*
 
 ---
 
 ## 4. Documentation Compliance
 
 Documentation is considered part of the project code. Every significant change must update the corresponding living document file:
-- **Major refactors or bug fixes:** File a Mandatory Change Report inside `docs/CHANGELOG_AI.md`.
+- **Major refactors or bug fixes:** Add a short entry to `docs/CHANGELOG_AI.md` (task, change, why, evidence, what is not verified); the full detail belongs in the pull request description. The conversation report is compact, with the full template for High-risk changes (`docs/AI_RULES.md` section 9).
 - **Roadmap updates:** Update tasks checklists inside `docs/TASKS.md`.
 - **Architectural updates:** Document design justifications as a new Architecture Decision Record (ADR) in `docs/DECISIONS.md`.
 - **Context changes:** Align active objective notes inside `docs/AI_CONTEXT.md`.
