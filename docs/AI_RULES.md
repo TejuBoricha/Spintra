@@ -257,9 +257,9 @@ List optional future improvements.
 
 ### Reporting Requirements
 
-Mandatory Change Reports are **REQUIRED** for: bug fixes, new features, refactoring, database changes, API changes, UI changes, security improvements, performance optimizations, configuration changes, dependency updates, infrastructure changes, and architecture changes.
+A change report (compact by default, §9) is **REQUIRED** for: bug fixes, new features, refactoring, database changes, API changes, UI changes, security improvements, performance optimizations, configuration changes, dependency updates, infrastructure changes, and architecture changes.
 
-Reports are **OPTIONAL** for: documentation-only edits, formatting-only changes, typo corrections, and comment-only updates.
+A report is **OPTIONAL** for: documentation-only edits, formatting-only changes, typo corrections, and comment-only updates.
 
 ### Engineering Communication
 
@@ -320,7 +320,7 @@ Always determine the potential impact before implementation:
 
 ### PIIA Engineering Principle
 
-The purpose of the PIIA is to think before coding, not to slow development. It should remain concise (typically 5–15 bullet points total).
+The purpose of the PIIA is to think before coding, not to slow development. It stays concise and scales with the risk: one line for Low, 3–5 bullets for Medium, 5–15 for High.
 - If the task is clear and unambiguous, **immediately continue with implementation in the same response** after presenting the assessment.
 - **Only stop and ask for clarification** if the assessment identifies ambiguity, conflicting requirements, architectural uncertainty, or unacceptable risk.
 
@@ -336,12 +336,12 @@ Measured on 9 and 10 October 2026, a large share of the time went into repeating
 3. **The full suite locally: only when the change can reach everything,** such as a framework or dependency upgrade, a shared component or primitive, global CSS or the Playwright configuration, and then once, not after every follow-up. For everything else the full suite runs in CI on the pull request, and that run on the exact head is the evidence.
 
 ### Previews: one link per session
-Start one dev server on a fixed port and leave it running: `npm run dev -- -p 3200 -H 127.0.0.1`, then http://127.0.0.1:3200. It follows whichever branch is checked out and reloads on every edit, so the link never changes and nothing needs building. `npm run test:related` runs against it automatically (a dev server is slower on the first visit to each page, and it is not production, so the final proof of something production-sensitive is the CI run on the pull request); with no preview server on 3200 Playwright builds and starts its own, which takes minutes. A production build is the final proof for something that depends on one (performance, hydration, the real Playwright run), not a way to hand over a link. A second build beside a running server uses `NEXT_DIST_DIR=.next-x` and is deleted afterwards.
+Start one dev server on a fixed port and leave it running: `npm run dev -- -p 3200 -H 127.0.0.1`, then http://127.0.0.1:3200. It follows whichever branch is checked out and reloads on every edit, so the link never changes and nothing needs building. `npm run test:related` runs against this checkout's own preview server automatically (it finds it through `.next/dev/lock`, which `next dev` writes, so another checkout's server is never used; a dev server is slower on the first visit to each page, and it is not production, so for specs that read server-rendered output the result is only indicative and the proof is the CI run on the pull request); with no preview server for this checkout Playwright builds and starts its own, which takes minutes. A production build is the final proof for something that depends on one (performance, hydration, the real Playwright run), not a way to hand over a link. A second build beside a running server uses `NEXT_DIST_DIR=.next-x` and is deleted afterwards.
 
 ### Reviews
 - Self-review the diff before opening the pull request, then run **one** `/code-review high` on the final diff **before** the merge, never after.
 - A second round only if the first found a defect in the behaviour the change ships. Stop when a round finds none.
-- A finding about code or tests the change does not touch (a wider class of problem, a hardening idea) becomes its own item in `docs/TASKS.md`, not part of this pull request.
+- Siblings of the bug being fixed (the same defect elsewhere) are swept and fixed in the same pull request, with a test that would have caught them. A different class of problem found on the way (a hardening idea, a new audit finding) is reported as its own item in `docs/TASKS.md` and fixed in its own pull request.
 - Merge when the required checks are green on the exact head and the last review round found nothing new.
 
 ### Documentation: one place per fact

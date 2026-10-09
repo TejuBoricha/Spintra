@@ -31,7 +31,7 @@ Do not stop after writing code. Finish every task with an engineering change rep
 ## Before you end a session
 
 Documentation must reflect reality by the time you stop, not just the code. One place per fact (`docs/AI_RULES.md` §11). At minimum:
-- Append a short entry to `docs/CHANGELOG_AI.md` (append-only: never edit entries of merged work), with the pull request number.
+- Append a short entry to `docs/CHANGELOG_AI.md` (append-only: once its pull request is merged an entry is never edited; correct it in a new entry), with the pull request number.
 - Update `docs/TASKS.md` if a status changed or you discovered work items.
 - Leave `docs/HANDOFF.md` pointing at wherever you actually stopped.
 - Update `docs/AI_CONTEXT.md` only if the architecture or a milestone changed.

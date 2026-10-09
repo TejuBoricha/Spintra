@@ -13,7 +13,8 @@
 // this script cannot place as local to one page or one component area runs the FULL suite. It finds specs by the
 // routes they mention, so a spec that reaches a page some other way can be missed: CI is the backstop.
 //
-// Server: if a preview server answers on port 3200 (npm run dev -- -p 3200 -H 127.0.0.1) and PLAYWRIGHT_PORT is not
+// Server: if THIS checkout has a preview server running (npm run dev -- -p 3200 -H 127.0.0.1 writes its port into
+// .next/dev/lock, so a server of another checkout or worktree is never mistaken for it) and PLAYWRIGHT_PORT is not
 // set, the specs run against it; otherwise Playwright builds and starts its own, which takes minutes.
 // See docs/DECISIONS.md (ADR-013) and docs/AI_RULES.md section 11.
 import { execFileSync, spawnSync } from "node:child_process";
@@ -169,7 +170,7 @@ const SHARED = [
 /** Does a spec (with the helpers and lists it imports from tests/) visit this route? */
 function visits(spec, route) {
   const body = textOf(spec);
-  if (route === "/") return /(?:goto|get|fetch)\(\s*(?:`\$\{[^}]+\}\/`|['"]\/['"])|\[\s*['"]\/['"]\s*[,\]]/.test(body);
+  if (route === "/") return /(?:goto|get|fetch)\(\s*(?:`\$\{[^}]+\}\/`|baseURL\s*[,)]|['"`]\/(?:[?#][^'"`]*)?['"`])|\[\s*['"]\/['"]\s*[,\]]/.test(body);
   return ["'", '"', "`", "?", "/", "#"].some((end) => body.includes(route + end));
 }
 /** Specs that name a changed file by its path (a test that reads a page's source, for example). */
@@ -258,14 +259,29 @@ const listening = (port) =>
     socket.once("timeout", () => (socket.destroy(), resolve(false)));
     socket.once("error", () => resolve(false));
   });
+/** The port of the dev server running from THIS checkout: next dev records itself in <distDir>/dev/lock. */
+function previewPort() {
+  try {
+    const lock = JSON.parse(fs.readFileSync(`${process.env.NEXT_DIST_DIR || ".next"}/dev/lock`, "utf8"));
+    return Number.isInteger(lock.port) ? lock.port : null;
+  } catch {
+    return null;
+  }
+}
+// Specs that read server-rendered HTML, headers or first paint say little against a dev server.
+const READS_SERVER_OUTPUT = /request\.(?:get|fetch)\(|\.headers\(\)|response\.(?:headers|text)\(|first-paint|view-source/;
 let env = process.env;
 if (!process.env.PLAYWRIGHT_PORT) {
-  if (await listening(3200)) {
-    env = { ...process.env, PLAYWRIGHT_PORT: "3200" };
-    console.log("Using the preview server on port 3200 (set PLAYWRIGHT_PORT to use another).");
-    console.log("It is a dev server, not production: a spec about server-rendered HTML, caching headers or first paint can differ there. CI is the proof for those.");
+  const port = previewPort();
+  if (port && (await listening(port))) {
+    env = { ...process.env, PLAYWRIGHT_PORT: String(port) };
+    console.log(`Using this checkout's preview server on port ${port} (set PLAYWRIGHT_PORT to use another).`);
+    const indicative = (result.full ? specs : [...result.specs]).filter((s) => READS_SERVER_OUTPUT.test(textOf(s)));
+    if (indicative.length) {
+      console.log(`It is a dev server, not production: a result is only indicative for the specs that read server-rendered output (${indicative.map((s) => path.posix.basename(s)).join(", ")}). CI is the proof for those.`);
+    }
   } else {
-    console.log("No preview server on port 3200: Playwright will build the app and start its own (slow). Start one with: npm run dev -- -p 3200 -H 127.0.0.1");
+    console.log("No preview server for this checkout (npm run dev writes .next/dev/lock): Playwright will build the app and start its own (slow). Start one with: npm run dev -- -p 3200 -H 127.0.0.1");
   }
 }
 

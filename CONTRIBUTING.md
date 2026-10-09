@@ -61,7 +61,7 @@ To run the automated smoke testing suite:
 npm run test:related   # while you work: only the specs that cover the files you changed
 npm run test:smoke     # the whole suite (CI runs it on your pull request)
 ```
-*Note: Playwright starts its own production server on port 4000 (`PLAYWRIGHT_PORT` moves it) unless one is already answering there; `npm run test:related` also reuses a preview server on port 3200 (`npm run dev -- -p 3200 -H 127.0.0.1`).*
+*Note: Playwright starts its own production server on port 4000 (`PLAYWRIGHT_PORT` moves it) unless one is already answering there; `npm run test:related` also reuses this checkout's own preview server if one is running (`npm run dev -- -p 3200 -H 127.0.0.1`).*
 
 ---
 
