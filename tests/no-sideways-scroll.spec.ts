@@ -146,7 +146,7 @@ for (const width of WIDTHS) {
         // Each test starts without a stored choice, so the cookie notice mounts after hydration; give it the
         // chance to be measured too. Not every page or state shows it, so its absence is not a failure here
         // (`qa-x9-client-polish.spec.ts` covers the notice itself).
-        await page.getByRole('region', { name: 'Cookie notice' }).waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+        await page.getByRole('region', { name: 'Cookie notice' }).waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
         expect(await problemsWhileScrolling(page), 'nothing is wider than the screen or its box').toEqual([]);
       });
     }

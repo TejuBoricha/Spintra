@@ -47,9 +47,11 @@ const buttonVariants = cva(
         "icon-sm": "size-8 [&_svg:not([class*='size-'])]:size-3.5",
         "icon-lg": "size-12",
       },
-      // A button is one line at a fixed height. `wrap` lets a long label wrap and the button shrink to its box,
-      // on a 320px phone or when the person has made the text larger (the button grows with the text, the screen
-      // does not). It keeps the size's own height as a minimum (see compoundVariants).
+      // A button is one line at a fixed height. `wrap` lets a long label wrap, so the button no longer has to be as
+      // wide as its whole label (on a 320px phone, or when the person has made the text larger: the button grows with
+      // the text, the screen does not). It does not make the button narrower than its longest word plus its padding,
+      // and it cannot hold a button to a parent that shrinks to fit it (an inline link): the box has to have room for
+      // that. It keeps the size's own height as a minimum (see compoundVariants).
       wrap: {
         true: "",
         false: "",
@@ -62,7 +64,7 @@ const buttonVariants = cva(
       { wrap: true, size: "xs", className: "min-h-7 py-1" },
       { wrap: true, size: "sm", className: "min-h-8 py-1.5" },
       { wrap: true, size: "lg", className: "min-h-13 py-3" },
-      { wrap: true, variant: "link", className: "min-h-0 py-0" },
+      { wrap: true, variant: "link", size: ["default", "xs", "sm", "lg"], className: "min-h-0 py-0" },
     ],
     defaultVariants: {
       variant: "default",
