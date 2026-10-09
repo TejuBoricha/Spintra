@@ -367,7 +367,7 @@ if (fs.existsSync(ciWorkflowPath) && fs.existsSync(PACKAGE_PATH)) {
 // of just detecting it: both now call the same package.json "audit" script.
 // This check guards that structure -- that ci.yml delegates rather than
 // reintroducing a second hardcoded threshold of its own. The "ci" script
-// delegates either directly or through "verify" (which starts with the audit).
+// delegates either directly or through "verify" (which includes the audit).
 
 if (fs.existsSync(ciWorkflowPath) && fs.existsSync(PACKAGE_PATH)) {
   const ciContent = fs.readFileSync(ciWorkflowPath, "utf8");
@@ -377,7 +377,7 @@ if (fs.existsSync(ciWorkflowPath) && fs.existsSync(PACKAGE_PATH)) {
   const verifyScript = pkg.scripts ? pkg.scripts.verify : null;
   const ciRunsAudit =
     !!ciScript &&
-    (ciScript.includes("npm run audit") || (ciScript.includes("npm run verify") && !!verifyScript && verifyScript.includes("npm run audit")));
+    (ciScript.includes("npm run audit") || (/npm run verify(?![:\w-])/.test(ciScript) && !!verifyScript && verifyScript.includes("npm run audit")));
 
   if (!auditScript || !/(npm audit|node scripts\/audit-gate\.mjs) --audit-level=(info|low|moderate|high|critical|none)\b/.test(auditScript)) {
     fail('package.json is missing an "audit" script running `npm audit --audit-level=...` (or `node scripts/audit-gate.mjs --audit-level=...`, which wraps it)');

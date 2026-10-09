@@ -117,7 +117,8 @@ built on top of it.
 | `npm run lint` | ESLint |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run docs:check` | Verify `docs/` hasn't drifted from the real filesystem |
-| `npm run verify` | typecheck + lint + docs:check + audit (the static gates CI runs first, so a red dependency audit shows up before the push; the audit needs the network, so it comes last) |
+| `npm run verify:static` | typecheck + lint + docs:check: the static checks that need no network |
+| `npm run verify` | `verify:static` + audit (the static gates CI runs first, so a red dependency audit shows up before the push; the audit needs the network, so it comes last; offline use `verify:static` and say the audit was not run) |
 | `npm run verify:migration [name]` | Confirms a migration's objects actually exist live in the linked Supabase project (not just tracked as "applied") — run after every `supabase db push` |
 | `npm run test:smoke` | Playwright smoke test (room create/join flow): the whole suite |
 | `npm run test:related` | Only the Playwright specs that cover the files changed since `main` (the whole suite for anything it cannot place: shared code, configuration, migrations, dependencies). `-- --list` shows the plan, `-- --full` forces everything, Playwright options go after a second `--`. It runs against this checkout's own preview server if one is running (found through `.next/dev/lock`), otherwise Playwright builds and starts its own. CI runs the whole suite on every pull request |

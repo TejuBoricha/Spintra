@@ -27,7 +27,7 @@ Workflow:
    - Perform the requested work in the same response. There is no need to wait for another conversational turn unless clarification is required.
 
 5. **Verification**
-   - Run `npm run verify`, then the tests that cover the change (`npm run test:related`). The full suite runs in CI; run it locally only for the cases in `docs/AI_RULES.md` §11.
+   - Run `npm run verify` (offline: `npm run verify:static`, and say the audit was not run), then the tests that cover the change (`npm run test:related`). The full suite runs in CI; run it locally only for the cases in `docs/AI_RULES.md` §11.
    - Synchronize the documentation the change actually affects, one place per fact (`docs/AI_RULES.md` §11).
 
 6. **Completion**

@@ -145,6 +145,17 @@ function importersOf(file) {
   }
   return importerIndex.get(file) ?? [];
 }
+/** The first importer outside `dir` that reaches `file`, directly or through files inside `dir`; null if none does. */
+function escapes(file, dir, seen = new Set()) {
+  if (seen.has(file)) return null;
+  seen.add(file);
+  for (const user of importersOf(file)) {
+    if (!user.startsWith(dir)) return user;
+    const further = escapes(user, dir, seen);
+    if (further) return further;
+  }
+  return null;
+}
 const HOME_ENTRIES = new Set(["src/app/page.tsx", "src/app/home-client.tsx"]);
 function onlyHome(file, seen = new Set()) {
   if (seen.has(file)) return true;
@@ -184,10 +195,11 @@ function plan(files) {
   const chosen = new Set();
   const notes = [];
   const full = (why) => ({ full: true, specs: chosen, notes: [...notes, why] });
-  // A file inside one route's folder is local to that route only if nothing outside the folder imports it.
+  // A file inside one route's folder is local to that route only if nothing outside the folder imports it, directly
+  // or through another file of the folder.
   const place = (file, route, what, dir) => {
-    const outside = dir ? importersOf(file).filter((user) => !user.startsWith(dir)) : [];
-    if (outside.length) return full(`${file}: also imported by ${outside[0]}`);
+    const outside = dir ? escapes(file, dir) : null;
+    if (outside) return full(`${file}: also reached from ${outside}`);
     forRoute(route).forEach((s) => chosen.add(s));
     naming(file).forEach((s) => chosen.add(s));
     notes.push(`${file}: ${what}`);
@@ -263,7 +275,10 @@ const listening = (port) =>
 function previewPort() {
   try {
     const lock = JSON.parse(fs.readFileSync(`${process.env.NEXT_DIST_DIR || ".next"}/dev/lock`, "utf8"));
-    return Number.isInteger(lock.port) ? lock.port : null;
+    if (!Number.isInteger(lock.port)) return null;
+    // The lock file is not removed when a dev server stops, so a stale one is normal: the process must be alive.
+    if (Number.isInteger(lock.pid)) process.kill(lock.pid, 0);
+    return lock.port;
   } catch {
     return null;
   }
@@ -271,7 +286,9 @@ function previewPort() {
 // Specs that read server-rendered HTML, headers or first paint say little against a dev server.
 const READS_SERVER_OUTPUT = /request\.(?:get|fetch)\(|\.headers\(\)|response\.(?:headers|text)\(|first-paint|view-source/;
 let env = process.env;
-if (!process.env.PLAYWRIGHT_PORT) {
+if (!process.env.PLAYWRIGHT_PORT && result.full) {
+  console.log("The full suite is for changes that can reach everything (shared code, dependencies, configuration), so it runs against a production build that Playwright starts itself, not the dev server. Set PLAYWRIGHT_PORT to run it against a server you started.");
+} else if (!process.env.PLAYWRIGHT_PORT) {
   const port = previewPort();
   if (port && (await listening(port))) {
     env = { ...process.env, PLAYWRIGHT_PORT: String(port) };
@@ -288,5 +305,7 @@ if (!process.env.PLAYWRIGHT_PORT) {
 // Playwright's own entry point, started with this Node and no shell: arguments reach it exactly as given
 // (a --grep with spaces survives on Windows).
 const cli = createRequire(import.meta.url).resolve("@playwright/test/cli");
-const run = spawnSync(process.execPath, [cli, "test", ...(result.full ? [] : [...result.specs].sort()), ...passthrough], { stdio: "inherit", env });
+// Playwright takes file arguments as regular expressions on the path: escape the dots and anchor the end.
+const asFilter = (file) => `${file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`;
+const run = spawnSync(process.execPath, [cli, "test", ...(result.full ? [] : [...result.specs].sort().map(asFilter)), ...passthrough], { stdio: "inherit", env });
 process.exit(run.status ?? 1);
