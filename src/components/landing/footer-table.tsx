@@ -15,7 +15,7 @@ import "./footer-table.css";
 
 /** The track is a figure of eight: x = 50 - AX cos t, y = 50 + AY sin 2t, in percent of the scene box. */
 const AX = 33;
-const AY = 31;
+const AY = 28.7; // in percent of the scene height: about 52px at the desktop size, the same track as before the box got taller
 const STEPS = 96;
 
 function curve(ax: number, ay: number, turn = 0, tilt = 0): [number, number][] {

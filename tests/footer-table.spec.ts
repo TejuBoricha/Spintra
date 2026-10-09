@@ -89,8 +89,8 @@ for (const [name, viewport] of [
       await page.waitForTimeout(1500);
       expect(await page.evaluate(() => (window as unknown as { __footerShift: number }).__footerShift), 'layout shift inside the footer').toBeLessThan(0.001);
       const box = (await scene.boundingBox())!;
-      expect(box.width / box.height, 'the scene keeps its 16:5 shape').toBeGreaterThan(2.9);
-      expect(box.width / box.height).toBeLessThan(3.5);
+      expect(box.width / box.height, 'the scene keeps its 16:5.4 shape').toBeGreaterThan(2.8);
+      expect(box.width / box.height).toBeLessThan(3.2);
     });
   });
 }

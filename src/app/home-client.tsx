@@ -479,7 +479,7 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-border px-4 pt-12 pb-8 text-sm text-muted-foreground">
+      <footer id="footer" className="relative z-10 border-t border-border px-4 pt-12 pb-8 text-sm text-muted-foreground">
         <div className="max-w-6xl mx-auto flex flex-col gap-8">
           {/* Three parts, in reading order: who we are, the game table that never stops, where to go. One column on a
               phone, the brand and the links side by side with the table in a band below from md, and all three

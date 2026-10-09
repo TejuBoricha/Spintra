@@ -39,7 +39,8 @@
   width: 100%;
   max-width: 36rem;
   margin-inline: auto;
-  aspect-ratio: 16 / 5;
+  /* A little taller than the track needs: the pieces hop at the end of the loop and must not be cut off by the box. */
+  aspect-ratio: 16 / 5.4;
   /* Never wider than the column it is in. Without this a grid item's automatic minimum width is its minimum height
      times the ratio (7rem x 3.2 = 358px), which widened the whole footer past a 320px screen. A narrower scene is
      simply a little taller than its ratio. */
@@ -460,10 +461,10 @@
 
 @keyframes ft-y {
   from {
-    translate: 0 -31%;
+    translate: 0 -28.7%;
   }
   to {
-    translate: 0 31%;
+    translate: 0 28.7%;
   }
 }
 
@@ -486,13 +487,13 @@
     translate: 0 0;
   }
   85% {
-    translate: 0 -34%;
+    translate: 0 -20%;
   }
   90% {
     translate: 0 0;
   }
   93% {
-    translate: 0 -9%;
+    translate: 0 -8%;
   }
   96% {
     translate: 0 0;
