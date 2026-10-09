@@ -12,7 +12,10 @@
  *
  * Both themes use the site's colour tokens (globals.css). Dark: bright lime and orange with a little violet, light
  * outlines on the dark felt, a restrained glow. Light: the same lime identity with ink outlines and no glow.
- * Reduced motion: the same scene, held still at 6.3 s into the loop (--ft-shift), a moment where the pieces are well spread.
+ * Reduced motion: no animation at all, the same scene as a still composition (the pieces where they are 6.3 s into the
+ * loop, from footer-table.tsx). It is explicit rather than a paused loop because globals.css sets every animation to
+ * 0.01 ms for one iteration under reduced motion, which would collapse a paused loop to its start and pile the pieces
+ * in the middle.
  */
 
 .ft-scene {
@@ -735,14 +738,59 @@
   animation-play-state: paused !important;
 }
 
-/* reduced motion: the same scene, held still at a moment where the pieces are well spread */
+/* reduced motion: nothing animates; the scene is a composed still (the pieces sit where footer-table.tsx puts them 6.3 s
+   into the loop: --sx and --sy) */
 @media (prefers-reduced-motion: reduce) {
-  .ft-scene {
-    --ft-shift: -6.3s;
-  }
-
   .ft-scene *,
   .ft-scene *::before {
-    animation-play-state: paused !important;
+    animation: none !important;
+  }
+
+  .ft-lx {
+    translate: var(--sx, 0%) 0;
+  }
+
+  .ft-ly {
+    translate: 0 var(--sy, 0%);
+  }
+
+  /* the die shows five pips, the chip its S, the card its face */
+  .ft-fb,
+  .ft-cb {
+    opacity: 0;
+  }
+
+  .ft-card-fx {
+    rotate: 8deg;
+  }
+
+  .ft-star-fx {
+    rotate: 20deg;
+  }
+
+  .ft-orb-spin {
+    rotate: 40deg;
+  }
+
+  .ft-orb-spin.ft-rev {
+    rotate: -130deg;
+  }
+
+  .ft-sat {
+    rotate: -40deg;
+  }
+
+  .ft-orb-spin.ft-rev .ft-sat {
+    rotate: 130deg;
+  }
+
+  .ft-sp {
+    scale: var(--rs, 1);
+    opacity: var(--ro, 1);
+    rotate: 20deg;
+  }
+
+  .ft-dust {
+    opacity: 0.55;
   }
 }

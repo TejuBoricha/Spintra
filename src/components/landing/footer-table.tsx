@@ -37,6 +37,13 @@ const TRACK_WIDE_D = toPath(curve(AX + 6, AY + 7, 0.35, 0.7));
 
 const vars = (o: Record<string, string | number>) => o as CSSProperties;
 
+/** Where a piece with this phase is, in percent of the scene, this many seconds into the 10 s loop. */
+const REST_SECONDS = 6.3; // the moment the still composition (reduced motion) shows: the pieces are well spread
+function rest(phase: number) {
+  const s = REST_SECONDS / 10 + phase;
+  return { x: -AX * Math.cos(2 * Math.PI * s), y: AY * Math.sin(4 * Math.PI * s) };
+}
+
 /** One piece on the track: two lanes (one per axis) carry it, a wrapper the cursor can push, a wrapper for the hop. */
 function Piece({
   phase,
@@ -53,8 +60,9 @@ function Piece({
   index: number;
   children: ReactNode;
 }) {
+  const at = rest(phase);
   return (
-    <div className="ft-lx" style={vars({ "--ph": phase })}>
+    <div className="ft-lx" style={vars({ "--ph": phase, "--sx": `${at.x.toFixed(2)}%`, "--sy": `${at.y.toFixed(2)}%` })}>
       <div className="ft-ly">
         <div className="ft-pc" data-pull={pull} style={vars({ "--w": `${size}%`, ...(ratio ? { "--ar": ratio } : {}) })}>
           <div className="ft-in ft-hop" style={vars({ "--i": index })}>
@@ -207,12 +215,12 @@ function SparkPiece() {
 
 /** Small star twinkles around the table, each with its own place, size and moment in the loop. */
 const SPARKLES = [
-  { left: 7, top: 26, w: 2.6, d: 0 },
-  { left: 93, top: 70, w: 2.2, d: 1.6 },
-  { left: 39, top: 11, w: 2, d: 3.1 },
-  { left: 63, top: 90, w: 2.4, d: 2.2 },
-  { left: 19, top: 85, w: 1.8, d: 4.1 },
-  { left: 82, top: 16, w: 2.3, d: 0.9 },
+  { left: 7, top: 26, w: 2.6, d: 0, rs: 0.9, ro: 1 },
+  { left: 93, top: 70, w: 2.2, d: 1.6, rs: 0.6, ro: 0.7 },
+  { left: 39, top: 11, w: 2, d: 3.1, rs: 1, ro: 0.95 },
+  { left: 63, top: 90, w: 2.4, d: 2.2, rs: 0.75, ro: 0.8 },
+  { left: 19, top: 85, w: 1.8, d: 4.1, rs: 0.55, ro: 0.6 },
+  { left: 82, top: 16, w: 2.3, d: 0.9, rs: 0.95, ro: 1 },
 ];
 
 const DUST = [
@@ -374,7 +382,7 @@ export function FooterTable({ className = "" }: { className?: string }) {
       {/* near layer: sparkles */}
       <div className="ft-layer" style={vars({ "--depth": 1.8 })}>
         {SPARKLES.map((p) => (
-          <span key={p.d} className="ft-sp" style={vars({ left: `${p.left}%`, top: `${p.top}%`, "--w": `${p.w}%`, "--d": p.d })}>
+          <span key={p.d} className="ft-sp" style={vars({ left: `${p.left}%`, top: `${p.top}%`, "--w": `${p.w}%`, "--d": p.d, "--rs": p.rs, "--ro": p.ro })}>
             <svg viewBox="0 0 100 100" focusable="false">
               <path d={SPARKLE_PATH} />
             </svg>
