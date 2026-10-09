@@ -11,15 +11,18 @@ import { SITE_PAGES, NOT_FOUND_PATH } from './site-routes';
 //
 // For every page at three phone and tablet widths: the page does not scroll sideways, no text or
 // control sticks out past the left or right edge of the screen (even when a parent clips it, which
-// would hide the problem from the page-width check), and no control is wider than the block it sits
-// in (a button 45px wider than its card's content box hugged the card's right edge on a 320px phone,
-// with room to spare on the left, and the page-width check could not see it). Fixed layers such as
+// would hide the problem from the page-width check), and no control crowds the edge of the box it sits
+// in by reaching into most of that box's padding (a button 45px wider than its card's content box hugged
+// the card's right edge on a 320px phone, with room to spare on the left, and the page-width check
+// could not see it). Fixed layers such as
 // the navbar and the cookie notice are measured too. Boxes that scroll on purpose (overflow auto or
 // scroll, such as a wide table) are left alone.
 //
-// Invisible things are skipped, so the page must be at rest first (see `settle`): the review of the
-// first version (9 Oct 2026) found that it never scrolled, so the home page's perks, tool grid and final
-// call to action, which appear when they scroll into view, stayed invisible and were never measured.
+// Invisible things are skipped, so the page is measured at every scroll stop, once the entrances there
+// have finished: items that appear when they scroll into view (the home page's perks, tool grid and
+// final call to action) are measured while they are visible, even if a later component hides them
+// again after they leave the screen. The first version never scrolled, so those stayed invisible and
+// were never measured (review of PR #76, 9 Oct 2026).
 
 const WIDTHS = [320, 390, 768];
 
@@ -53,17 +56,25 @@ async function overflowProblems(page: Page): Promise<string[]> {
       const r = el.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) continue;
       if (r.right > vw + 1 || r.left < -1) out.push(`${label(el)} spans ${Math.round(r.left)} to ${Math.round(r.right)}px in a ${vw}px window`);
-      // A control wider than the content box of the block it sits in spills into that block's padding
-      // (or past it), and centred text no longer centres it. Flex and grid parents size to their children.
-      if (isControl && el.parentElement) {
-        const p = el.parentElement;
-        const ps = getComputedStyle(p);
-        if (/^(block|flow-root|list-item)$/.test(ps.display)) {
-          const room =
-            p.getBoundingClientRect().width -
-            parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight) -
-            parseFloat(ps.borderLeftWidth) - parseFloat(ps.borderRightWidth);
-          if (r.width > room + 2) out.push(`${label(el)} is ${Math.round(r.width)}px wide in a ${Math.round(room)}px box`);
+      // A control wider than the content box of the box it sits in spills into that box's padding (or past
+      // it), and centred text no longer centres it. The box is the nearest ancestor that makes one (an
+      // inline element does not); a control placed with position absolute or fixed answers to another box.
+      // Any display type counts: a flex or grid parent does not shrink a label that cannot wrap.
+      if (isControl && cs.position !== 'absolute' && cs.position !== 'fixed') {
+        let p = el.parentElement;
+        while (p && /^(inline|contents)$/.test(getComputedStyle(p).display)) p = p.parentElement;
+        if (p) {
+          const ps = getComputedStyle(p);
+          const pr = p.getBoundingClientRect();
+          const padL = parseFloat(ps.paddingLeft) + parseFloat(ps.borderLeftWidth);
+          const padR = parseFloat(ps.paddingRight) + parseFloat(ps.borderRightWidth);
+          const spillL = Math.max(0, pr.left + padL - r.left);
+          const spillR = Math.max(0, r.right - (pr.right - padR));
+          // Reaching a few pixels into generous padding is harmless (a centred 199px button in a 190px box inside
+          // 48px of padding); reaching into most of it crowds the edge (the 235px home button, 4px from the card).
+          if ((spillL > 2 && spillL > 0.6 * padL) || (spillR > 2 && spillR > 0.6 * padR)) {
+            out.push(`${label(el)} is ${Math.round(r.width)}px wide in a ${Math.round(pr.width - padL - padR)}px box and reaches ${Math.round(Math.max(spillL, spillR))}px into its padding`);
+          }
         }
       }
     }
@@ -72,45 +83,47 @@ async function overflowProblems(page: Page): Promise<string[]> {
 }
 
 /**
- * Brings the page to rest before it is measured: scrolls through it once (items that appear when they
- * scroll into view are invisible until then, and invisible things are skipped), waits for every finite
- * time-driven animation to end, then waits until the number of invisible elements has stopped changing
- * for 600ms (the entrances that JavaScript drives, which the animation list does not show). Looping
- * animations and animations tied to scrolling (the home hero's fade-on-scroll is a ViewTimeline that only
- * moves when the page does) are not waited for.
+ * Waits until the page is at rest: every finite, time-driven animation has ended, and the opacity that
+ * JavaScript-driven entrances set inline has stopped changing for 250ms. Looping animations and animations
+ * tied to scrolling (the home hero's fade-on-scroll is a ViewTimeline that only moves when the page does) are
+ * not waited for. The wait is bounded and never fails: a page with something that keeps changing is measured
+ * at the deadline, not reported as broken.
  */
-async function settle(page: Page) {
-  await page.evaluate(async () => {
-    const step = Math.max(200, Math.floor(window.innerHeight / 2));
-    for (let y = 0; y <= document.documentElement.scrollHeight; y += step) {
-      window.scrollTo(0, y);
-      await new Promise((r) => setTimeout(r, 100));
-    }
-    window.scrollTo(0, 0);
-  });
-  await page.waitForFunction(
-    () =>
-      document
-        .getAnimations()
-        .every((a) => !a.effect || a.timeline !== document.timeline || a.playState !== 'running' || a.effect.getComputedTiming().iterations === Infinity),
-    undefined,
-    { timeout: 5000 },
-  );
-  let hidden = -1;
-  let since = Date.now();
-  await expect
-    .poll(
-      async () => {
-        const n = await page.evaluate(() => Array.from(document.body.querySelectorAll('*')).filter((el) => Number(getComputedStyle(el).opacity) < 0.05).length);
-        if (n !== hidden) {
-          hidden = n;
-          since = Date.now();
-        }
-        return Date.now() - since >= 600;
-      },
-      { message: 'the page stopped changing', timeout: 8000, intervals: [100] },
+async function atRest(page: Page) {
+  await page
+    .waitForFunction(
+      () =>
+        document
+          .getAnimations()
+          .every((a) => !a.effect || a.timeline !== document.timeline || a.playState !== 'running' || a.effect.getComputedTiming().iterations === Infinity),
+      undefined,
+      { timeout: 3000 },
     )
-    .toBe(true);
+    .catch(() => {});
+  const deadline = Date.now() + 1000;
+  let last = '';
+  let since = Date.now();
+  while (Date.now() < deadline) {
+    const now = await page.evaluate(() => Array.from(document.querySelectorAll<HTMLElement>('[style*="opacity"]')).map((el) => el.style.opacity).join(','));
+    if (now !== last) {
+      last = now;
+      since = Date.now();
+    } else if (Date.now() - since >= 250) break;
+    await page.waitForTimeout(50);
+  }
+}
+
+/** Measures at every scroll stop (one viewport apart, so every part of the page is on screen at one of them). */
+async function problemsWhileScrolling(page: Page): Promise<string[]> {
+  const found = new Set<string>();
+  const height = await page.evaluate(() => document.documentElement.scrollHeight);
+  const step = page.viewportSize()!.height;
+  for (let y = 0; y <= height; y += step) {
+    await page.evaluate((top) => window.scrollTo(0, top), y);
+    await atRest(page);
+    for (const problem of await overflowProblems(page)) found.add(problem);
+  }
+  return [...found].slice(0, 6);
 }
 
 for (const width of WIDTHS) {
@@ -120,10 +133,11 @@ for (const width of WIDTHS) {
     for (const path of [...SITE_PAGES, NOT_FOUND_PATH]) {
       test(`${path}: nothing makes the page scroll sideways or sticks out of the screen`, async ({ page }) => {
         await page.goto(path);
-        // Each test starts without a stored choice, so the cookie notice mounts after hydration; measure it too.
-        await expect(page.getByRole('region', { name: 'Cookie notice' })).toBeVisible();
-        await settle(page);
-        await expect.poll(() => overflowProblems(page), { message: 'nothing is wider than the screen or its box', timeout: 5000 }).toEqual([]);
+        // Each test starts without a stored choice, so the cookie notice mounts after hydration; give it the
+        // chance to be measured too. Not every page or state shows it, so its absence is not a failure here
+        // (`qa-x9-client-polish.spec.ts` covers the notice itself).
+        await page.getByRole('region', { name: 'Cookie notice' }).waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+        expect(await problemsWhileScrolling(page), 'nothing is wider than the screen or its box').toEqual([]);
       });
     }
   });
@@ -142,6 +156,29 @@ test.describe('Never Have I Ever: the two answer buttons share a row on a phone'
       await expect(never).toBeVisible();
       const [a, b] = await Promise.all([have.boundingBox(), never.boundingBox()]);
       expect(Math.abs(a!.y - b!.y), '"I Have" and "Never Have" are on the same row').toBeLessThan(2);
+    });
+  }
+});
+
+// The home page's closing call to action is a nowrap button inside a padded card. With bigger text (the
+// operating system's text size, or a browser's "text only" zoom) the button grows while the screen does not,
+// so it has to wrap its label instead of spilling out of the card.
+test.describe('home page: the closing "Create a room" button stays inside its card', () => {
+  for (const width of [320, 390]) {
+    test(`at ${width}px wide with the text twice as large`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto('/');
+      await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+      const button = page.getByRole('link', { name: 'Create a room', exact: true });
+      await button.scrollIntoViewIfNeeded();
+      await atRest(page);
+      const { box, card } = await button.evaluate((a) => {
+        const c = a.closest('.overflow-hidden')!.getBoundingClientRect();
+        const r = a.getBoundingClientRect();
+        return { box: { left: r.left, right: r.right }, card: { left: c.left, right: c.right } };
+      });
+      expect(box.left, 'the button starts inside the card').toBeGreaterThanOrEqual(card.left - 0.5);
+      expect(box.right, 'the button ends inside the card').toBeLessThanOrEqual(card.right + 0.5);
     });
   }
 });

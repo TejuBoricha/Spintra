@@ -7,7 +7,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowRight, Sparkles, Zap, Globe, MessageCircle, Star, DownloadCloud, Gift, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonWrap } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getOrCreateRoomUser } from "@/lib/room-user";
 import { loadJoinCheck } from "@/lib/join-check-loader";
@@ -448,7 +448,7 @@ export default function HomePage() {
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="rounded-2xl border border-(--border-hairline) bg-(--surface-panel) px-5 py-12 sm:p-16 relative overflow-hidden shadow-2"
+            className="rounded-2xl border border-(--border-hairline) bg-(--surface-panel) px-5 py-12 min-[380px]:px-12 sm:p-16 relative overflow-hidden shadow-2"
           >
             {/* Inner glow */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-(--cyan-500)/10" />
@@ -463,7 +463,7 @@ export default function HomePage() {
                 It&apos;s free, and nobody needs an account, including the people you invite.
               </p>
               <Link href="/create">
-                <Button variant="brand" size="lg" className="text-lg">
+                <Button variant="brand" size="lg" className={`text-lg ${buttonWrap}`}>
                   <Sparkles className="w-5 h-5" />
                   Create a room
                   <ArrowRight className="w-5 h-5" />

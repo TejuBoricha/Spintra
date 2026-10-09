@@ -85,4 +85,11 @@ function Button({
   )
 }
 
-export { Button, buttonVariants }
+/**
+ * A button is one line (`whitespace-nowrap`) at a fixed height. Add this to the className of a large button with
+ * a long label so that it may wrap and shrink to its box instead of spilling out of it: on a 320px phone, or when
+ * the person has made the text larger (the button grows with the text, the screen does not).
+ */
+const buttonWrap = "max-w-full whitespace-normal h-auto min-h-13 py-3 text-center"
+
+export { Button, buttonVariants, buttonWrap }

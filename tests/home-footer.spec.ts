@@ -13,6 +13,8 @@ async function footerLinkHeights(page: Page): Promise<Record<string, number>> {
   );
 }
 
+const coarse = (page: Page) => page.evaluate(() => matchMedia('(pointer: coarse)').matches);
+
 test.describe('footer links: tap targets follow the pointer', () => {
   test.describe('a phone', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
@@ -27,7 +29,21 @@ test.describe('footer links: tap targets follow the pointer', () => {
     test.use({ viewport: { width: 768, height: 1024 }, hasTouch: true });
     test('every link is at least 44px tall', async ({ page }) => {
       const heights = await footerLinkHeights(page);
+      // Without this the test would say "36 instead of 44" if the browser stopped reporting a coarse pointer.
+      expect(await coarse(page), 'the browser reports a coarse pointer for this device').toBe(true);
       for (const [name, h] of Object.entries(heights)) expect(h, `${name}`).toBeGreaterThanOrEqual(44);
+    });
+  });
+
+  test.describe('a tablet-width window with a mouse, 768px wide', () => {
+    test.use({ viewport: { width: 768, height: 1024 } });
+    test('the links stay compact (36px): only a coarse pointer makes them taller', async ({ page }) => {
+      const heights = await footerLinkHeights(page);
+      expect(await coarse(page), 'the browser reports a fine pointer').toBe(false);
+      for (const [name, h] of Object.entries(heights)) {
+        expect(h, `${name}`).toBeGreaterThanOrEqual(24);
+        expect(h, `${name} is not bigger than it needs to be`).toBeLessThanOrEqual(40);
+      }
     });
   });
 
