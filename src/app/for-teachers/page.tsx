@@ -11,9 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { GAMES } from "@/lib/games";
 
-// "Start a Classroom Room" is a nowrap lg button 274px wide, wider than a 320px phone; it may wrap and shrink to the screen.
-const CTA_WRAP = "max-w-full whitespace-normal h-auto min-h-13 py-3 text-center";
-
 export const metadata: Metadata = {
   title: "Free Classroom Tools for Teachers | Spintra",
   description:
@@ -111,7 +108,7 @@ export default function ForTeachersPage() {
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <Link href="/create?type=classroom">
-              <Button variant="brand" size="lg" className={`rounded-full font-bold ${CTA_WRAP}`}>
+              <Button variant="brand" size="lg" wrap className="rounded-full font-bold">
                 Start a Classroom Room
                 <ArrowRight className="w-4 h-4" />
               </Button>
@@ -239,7 +236,7 @@ export default function ForTeachersPage() {
             Open a room, put the code on the board, and your students can join.
           </p>
           <Link href="/create?type=classroom" className="inline-block">
-            <Button variant="brand" size="lg" className={`rounded-full font-bold ${CTA_WRAP}`}>
+            <Button variant="brand" size="lg" wrap className="rounded-full font-bold">
               Start a Classroom Room
               <ArrowRight className="w-4 h-4" />
             </Button>

@@ -453,7 +453,7 @@ export default function ExplorePage() {
             <div
               role="status"
               aria-live="polite"
-              className="p-12 text-center border border-(--border-hairline) bg-(--surface-panel) rounded-2xl flex flex-col items-center justify-center gap-6 max-w-lg mx-auto shadow-1 reveal reveal-fade"
+              className="p-6 sm:p-12 text-center border border-(--border-hairline) bg-(--surface-panel) rounded-2xl flex flex-col items-center justify-center gap-6 max-w-lg mx-auto shadow-1 reveal reveal-fade"
             >
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
                 <Radar className="w-8 h-8 text-(--brand-primary-strong) animate-pulse" />

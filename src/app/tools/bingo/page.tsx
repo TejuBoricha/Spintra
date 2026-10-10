@@ -148,7 +148,7 @@ export default function BingoPage() {
           )}
         </div>
 
-        <div className="flex justify-center gap-3">
+        <div className="flex flex-wrap justify-center gap-3">
           <Button
             onClick={callNumber}
             disabled={!card || hasBingo || called.length >= 75}
