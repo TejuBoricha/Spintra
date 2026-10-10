@@ -3486,3 +3486,15 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 **Why:** the second review found real defects after the merge (the button 45 px past its card's content box at 320 px, the pair of buttons split over two rows, footer links 36 px on touch tablets) and gaps in the overflow test (it never scrolled, so items that appear on scroll were never measured).
 **Evidence:** on the previous build the new tests fail with clear messages (the home button "is 235px wide in a 190px box and reaches 45px into its padding", the pair on two rows at 320 px, the button 499 px wide at twice the text size, footer links 36 px on a touch tablet, the hybrid laptop at 36 px); on the final code the full suite was 316 passed, 2 skipped, 0 failed; `npm run verify` clean.
 **Left on purpose:** the SEO and copyright-year findings (decided in round 1), Never Have I Ever's 360 px step (two rows is the right reflow at larger text), the test id on the closing card. **Logged, not fixed here:** U-41, large text breaks the other nowrap large buttons (`TASKS.md`). **Process note:** the second review round belongs before the merge, not after (ADR-013).
+
+---
+
+## [2026-10-10] — The footer's "Endless Game Table"
+
+**AI:** Claude Code (local, VS Code)
+**Task:** The owner asked (brief of 7 Oct) for the home footer's empty middle to hold a living motion graphic, so that reaching the bottom of the page still feels like Spintra is being played. The design, the bugs found on the way, the test list and the cost numbers are in the pull request description.
+**Change:** `src/components/landing/footer-table.tsx` and `footer-table.css`: a figure-of-eight track with a die, the S-logo chip, a card, a pawn, a violet chip and sparks; SVG and CSS transforms only, no new dependency; a cursor easter egg for a mouse; paused while off screen; a still composition under reduced motion; both themes from the site's tokens. Mounted in the footer grid of `home-client.tsx` (brand, table, links in a row from lg; the table as a band from md; one column on a phone; the footer has `id="footer"`). `tests/footer-table.spec.ts` (new).
+**Why:** the footer's middle was empty, and the owner wanted the site to feel alive to the last pixel.
+**Evidence:** 31 targeted tests pass against the live app (the scene's 20, the geometry's 2, 6 footer tap-target tests and the home overflow check at three widths) and the new scene tests fail where the scene does not exist; captures at 1280, 1024, 768, 390 and 320 px in both themes and eight moments of the loop; A/B cost on a dev server with software rendering: idle +2 to 4 points of main-thread time (noise about ±3), cursor over the scene +11 (it was +32 before the loop was fixed).
+**Found on the way and fixed:** the footer was 374 px wide on a 320 px screen, reduced motion piled the pieces up, the end-of-loop hop was clipped, the cursor loop thrashed layout.
+**Not verified:** real phones and a real GPU; production first-paint numbers.
