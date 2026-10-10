@@ -1,10 +1,11 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
+import Link from "next/link"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center gap-2 rounded-pill font-body font-semibold whitespace-nowrap transition-[transform,filter] duration-fast ease-standard outline-none select-none active:not-aria-[haspopup]:translate-y-px active:not-aria-[haspopup]:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 disabled:grayscale-[60%] focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:ring-3 aria-invalid:ring-destructive/30 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center gap-2 rounded-pill font-body font-semibold whitespace-nowrap transition-[transform,filter] duration-fast ease-standard outline-none select-none active:not-aria-[haspopup]:translate-y-px active:not-aria-[haspopup]:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 disabled:grayscale-[60%] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background aria-invalid:ring-3 aria-invalid:ring-destructive/30 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -33,7 +34,7 @@ const buttonVariants = cva(
         ghost:
           "border border-transparent bg-transparent text-foreground hover:bg-muted aria-expanded:bg-muted",
         destructive:
-          "border border-transparent bg-destructive/10 text-(--destructive-strong) hover:bg-destructive/20 focus-visible:ring-destructive/30",
+          "border border-transparent bg-destructive/10 text-(--destructive-strong) hover:bg-destructive/20 focus-visible:ring-destructive",
         link: "border-none bg-transparent p-0 text-[var(--text-accent)] underline-offset-4 hover:underline",
       },
       size: {
@@ -105,4 +106,40 @@ function Button({
   )
 }
 
-export { Button, buttonVariants }
+/**
+ * A link that looks like a button. One element, one Tab stop, valid HTML. Use this instead of a Button inside a
+ * Link: a button inside a link is invalid (interactive content inside an anchor), takes two Tab presses, and is
+ * announced as a link and then a button (UX audit U-03).
+ */
+function ButtonLink({
+  className,
+  variant = "default",
+  size = "default",
+  wrap,
+  icon,
+  iconPosition = "start",
+  children,
+  ...props
+}: React.ComponentProps<typeof Link> &
+  VariantProps<typeof buttonVariants> & {
+    icon?: React.ReactNode
+    iconPosition?: "start" | "end"
+  }) {
+  return (
+    <Link
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, wrap, className }))}
+      {...props}
+    >
+      {icon && iconPosition === "start" ? (
+        <span data-icon="inline-start">{icon}</span>
+      ) : null}
+      {children}
+      {icon && iconPosition === "end" ? (
+        <span data-icon="inline-end">{icon}</span>
+      ) : null}
+    </Link>
+  )
+}
+
+export { Button, ButtonLink, buttonVariants }

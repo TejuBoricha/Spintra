@@ -80,6 +80,8 @@ export function Emoji({ name, size = 24, animated = true, pop = false, className
       role="img"
       aria-label={label ?? EMOJI_UNICODE[name]}
       draggable={false}
+      // whileTap makes framer-motion add tabindex=0, which would make every decorative emoji a Tab stop
+      tabIndex={-1}
       width={size}
       height={size}
       style={{ width: size, height: size }}

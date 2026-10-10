@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
 import {
   Users,
   UserPlus,
@@ -18,7 +17,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -402,6 +401,8 @@ export default function TeamMakerPage() {
                         </div>
                         <button
                           onClick={() => toggleCollapse(teamIdx)}
+                          aria-label={`${isCollapsed ? "Show" : "Hide"} ${team.name}`}
+                          aria-expanded={!isCollapsed}
                           className="p-1 rounded hover:bg-muted transition-colors"
                         >
                           {isCollapsed ? (
@@ -434,7 +435,7 @@ export default function TeamMakerPage() {
                                   {member}
                                 </span>
                                 {/* Move to other teams */}
-                                <div className="flex items-center gap-0.5 opacity-0 group-hover/member:opacity-100 transition-opacity">
+                                <div className="flex items-center gap-0.5 opacity-0 group-hover/member:opacity-100 group-focus-within/member:opacity-100 transition-opacity">
                                   {teams
                                     .filter((_, i) => i !== teamIdx)
                                     .slice(0, 3)
@@ -447,6 +448,7 @@ export default function TeamMakerPage() {
                                           TEAM_COLORS[targetTeam.colorIdx % TEAM_COLORS.length].text
                                         )}
                                         title={`Move to ${targetTeam.name}`}
+                                        aria-label={`Move ${member} to ${targetTeam.name}`}
                                       >
                                         <ArrowLeftRight className="w-3.5 h-3.5" />
                                       </button>
@@ -455,6 +457,7 @@ export default function TeamMakerPage() {
                                     onClick={() => removeMember(teamIdx, memberIdx)}
                                     className="p-1 rounded text-xs text-red-400 hover:bg-red-500/10 transition-colors"
                                     title="Remove"
+                                    aria-label={`Remove ${member} from ${team.name}`}
                                   >
                                     <Minus className="w-3.5 h-3.5" />
                                   </button>
@@ -471,6 +474,7 @@ export default function TeamMakerPage() {
                           <Input
                             type="text"
                             placeholder="Add player..."
+                            aria-label={`Add a player to ${team.name}`}
                             value={newMemberInput[teamIdx] || ""}
                             onChange={(e) =>
                               setNewMemberInput((prev) => ({
@@ -487,6 +491,7 @@ export default function TeamMakerPage() {
                             size="icon-sm"
                             variant="outline"
                             onClick={() => addMember(teamIdx)}
+                            aria-label={`Add player to ${team.name}`}
                           >
                             <Plus className="w-3.5 h-3.5" />
                           </Button>
@@ -510,13 +515,11 @@ export default function TeamMakerPage() {
                   Create a room and share the code. Each person sees the teams on their own
                   phone, and any reshuffle shows up for everyone.
                 </p>
-                <Link href="/create?type=team-maker">
-                  <Button className="gap-2 bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">
-                    <Users className="w-4 h-4" />
-                    Create Room
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </Link>
+                <ButtonLink href="/create?type=team-maker" className="gap-2 bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">
+                  <Users className="w-4 h-4" />
+                  Create Room
+                  <ArrowRight className="w-4 h-4" />
+                </ButtonLink>
               </div>
             </motion.div>
           )}

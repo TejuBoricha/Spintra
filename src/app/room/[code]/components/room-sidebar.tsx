@@ -113,7 +113,7 @@ const ChatMessageItem = memo(function ChatMessageItem({
                 render={
                   <button
                     onClick={() => onReport(msg)}
-                    className="ml-auto rounded opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [@media(hover:none)]:opacity-100 text-muted-foreground hover:text-red-400 transition-opacity"
+                    className="ml-auto rounded opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(hover:none)]:opacity-100 text-muted-foreground hover:text-red-400 transition-opacity"
                     aria-label="Report message"
                   />
                 }
@@ -428,7 +428,7 @@ export function RoomSidebar({
                               // Still blocks control characters and emoji.
                               onChange={(e) => setEditValue(e.target.value.replace(/[^\p{L}\p{N} _.'-]/gu, ""))}
                               maxLength={15}
-                              className="text-xs bg-black/5 dark:bg-(--surface-sunken) border border-black/10 dark:border-(--border-hairline) rounded px-1.5 py-0.5 font-medium text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/50 w-24"
+                              className="text-xs bg-black/5 dark:bg-(--surface-sunken) border border-black/10 dark:border-(--border-hairline) rounded px-1.5 py-0.5 font-medium text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring w-24"
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") handleSaveUsername();
                                 if (e.key === "Escape") setIsEditingUsername(false);

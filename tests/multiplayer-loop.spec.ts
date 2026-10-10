@@ -619,8 +619,10 @@ test('a guest who presses Leave room goes home, drops off the host list, and sto
     await guest.click('button[aria-label="Leave room"]');
     await guest.click('button:has-text("Leave Room")');
     await guest.waitForURL(`${baseURL}/`, { timeout: 15000 });
-    // A leave that worked says nothing about a failed one (see the test below).
-    await expect(guest.getByText(/may keep listing you as offline/)).toHaveCount(0);
+    // A leave that worked says nothing about a failed one (see the test below). The toast, when the
+    // delete fails, is raised before the navigation, so it is up by now: read it at one instant. A
+    // retrying toHaveCount(0) would pass once the toast timed itself out.
+    expect(await guest.getByText(/may keep listing you as offline/).count(), 'no leave-failed toast').toBe(0);
     // A beat already on its way while the page navigated is not a leftover.
     const settledAt = Date.now() + 1000;
 

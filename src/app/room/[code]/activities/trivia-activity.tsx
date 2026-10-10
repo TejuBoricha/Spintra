@@ -220,11 +220,12 @@ export function TriviaActivity() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground font-semibold">Category</label>
+              <label htmlFor="trivia-category" className="text-xs text-muted-foreground font-semibold">Category</label>
               <select
+                id="trivia-category"
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-sm text-foreground focus-visible:border-yellow-500/50 focus-visible:ring-2 focus-visible:ring-yellow-500/20 focus-visible:outline-none w-full"
+                className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-sm text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none w-full"
               >
                 <option value="All" className="bg-neutral-950 text-white">All Categories</option>
                 <option value="General Knowledge" className="bg-neutral-950 text-white">General Knowledge</option>
@@ -237,11 +238,12 @@ export function TriviaActivity() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground font-semibold">Difficulty</label>
+              <label htmlFor="trivia-difficulty" className="text-xs text-muted-foreground font-semibold">Difficulty</label>
               <select
+                id="trivia-difficulty"
                 value={selectedDifficulty}
                 onChange={(e) => setSelectedDifficulty(e.target.value)}
-                className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-sm text-foreground focus-visible:border-yellow-500/50 focus-visible:ring-2 focus-visible:ring-yellow-500/20 focus-visible:outline-none w-full"
+                className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-sm text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none w-full"
               >
                 <option value="All" className="bg-neutral-950 text-white">All Difficulties</option>
                 <option value="easy" className="bg-neutral-950 text-white">Easy</option>
