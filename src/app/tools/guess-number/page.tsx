@@ -124,7 +124,7 @@ export default function GuessNumberPage() {
               onChange={(e) => setGuess(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && makeGuess()}
               placeholder={`Enter 1-${mode.range}`}
-              className="w-32 min-w-0 px-4 py-3 rounded-xl bg-(--surface-sunken) border border-(--border-hairline) text-center text-lg font-bold focus:border-primary outline-none"
+              className="w-32 min-w-0 px-4 py-3 rounded-xl bg-(--surface-sunken) border border-(--border-hairline) text-center text-lg font-bold focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring outline-none"
             />
             <Button onClick={makeGuess} className="bg-primary text-primary-foreground hover:brightness-95">
               <Target className="w-4 h-4 mr-2" /> Guess

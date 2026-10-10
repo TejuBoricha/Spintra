@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import {
   Building2,
   ArrowRight,
@@ -8,7 +7,7 @@ import {
   Sparkles,
   Globe2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { buildFaqSchema, FaqAccordion } from "@/components/faq-accordion";
 
 export const metadata: Metadata = {
@@ -78,14 +77,12 @@ const FAQS = [
   },
 ];
 
-function StartMatchButton({ className }: { className?: string }) {
+function StartMatchButton() {
   return (
-    <Link href="/create?type=city" className={className}>
-      <Button variant="brand" size="lg" className="rounded-full font-bold">
-        Start a Match
-        <ArrowRight className="w-4 h-4" />
-      </Button>
-    </Link>
+    <ButtonLink href="/create?type=city" variant="brand" size="lg" className="rounded-full font-bold">
+      Start a Match
+      <ArrowRight className="w-4 h-4" />
+    </ButtonLink>
   );
 }
 
@@ -115,11 +112,9 @@ export default function SpintraCityPage() {
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <StartMatchButton />
-            <Link href="#faq">
-              <Button variant="outline" size="lg" className="rounded-full font-bold">
-                How It Works
-              </Button>
-            </Link>
+            <ButtonLink href="#faq" variant="outline" size="lg" className="rounded-full font-bold">
+              How It Works
+            </ButtonLink>
           </div>
 
           {/* Trust points */}
@@ -158,7 +153,7 @@ export default function SpintraCityPage() {
         </div>
 
         {/* FAQ */}
-        <div id="faq" className="scroll-mt-24 max-w-3xl mx-auto w-full space-y-6">
+        <div id="faq" className="max-w-3xl mx-auto w-full space-y-6">
           <h2 className="font-display text-2xl sm:text-3xl font-black text-center">
             Frequently asked questions
           </h2>
@@ -171,7 +166,7 @@ export default function SpintraCityPage() {
           <p className="text-muted-foreground">
             Open a room, send the code to your friends, and take a seat.
           </p>
-          <StartMatchButton className="inline-block" />
+          <StartMatchButton />
         </div>
       </div>
     </div>

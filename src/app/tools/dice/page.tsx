@@ -255,6 +255,7 @@ export default function DicePage() {
                   </Button>
                   <input
                     type="range"
+                    aria-label="Number of dice"
                     min="1"
                     max="10"
                     value={count}

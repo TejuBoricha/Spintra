@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
 import {
   Disc3,
   Play,
@@ -15,7 +14,7 @@ import {
   Save,
   Sparkles,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -161,6 +160,16 @@ export default function LuckyWheelPage() {
   const lastSegmentIndexRef = useRef<number>(-1);
   const tickerWobbleRef = useRef<number>(0);
   const friction = 0.985;
+  // The entry whose rename ended with Enter or Escape: its button takes focus back, so a keyboard user is not
+  // dropped at the top of the page. Leaving by Tab or a click is not recorded: focus has gone where they sent it.
+  const refocusRenameRef = useRef<string | null>(null);
+  // Set by Escape: the field is about to be removed, and a browser that reports that as a blur must not save the text.
+  const cancelRenameRef = useRef(false);
+  useEffect(() => {
+    if (editingId !== null || refocusRenameRef.current === null) return;
+    document.getElementById(`wheel-rename-${refocusRenameRef.current}`)?.focus();
+    refocusRenameRef.current = null;
+  }, [editingId]);
 
   const totalWeight = entries.reduce((s, e) => s + e.weight, 0);
 
@@ -661,6 +670,7 @@ export default function LuckyWheelPage() {
                     size="icon-xs"
                     onClick={resetToDefault}
                     title="Reset to default"
+                    aria-label="Reset to default"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                   </Button>
@@ -669,6 +679,7 @@ export default function LuckyWheelPage() {
                     size="icon-xs"
                     onClick={saveWheel}
                     title="Save to browser"
+                    aria-label="Save to browser"
                   >
                     <Save className="w-3.5 h-3.5" />
                   </Button>
@@ -694,10 +705,10 @@ export default function LuckyWheelPage() {
                           value={entry.color}
                           onChange={(e) => updateEntryColor(entry.id, e.target.value)}
                           aria-label={`Change color for ${entry.label}`}
-                          className="absolute inset-0 w-5 h-5 opacity-0 cursor-pointer z-10"
+                          className="peer absolute inset-0 w-5 h-5 opacity-0 cursor-pointer z-10"
                         />
                         <div
-                          className="w-5 h-5 rounded-full ring-1 ring-white/10 shrink-0 group-focus-within/entry:ring-2 group-focus-within/entry:ring-primary"
+                          className="w-5 h-5 rounded-full ring-1 ring-white/10 shrink-0 peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-(--surface-sunken)"
                           style={{ backgroundColor: entry.color }}
                         />
                       </div>
@@ -709,6 +720,10 @@ export default function LuckyWheelPage() {
                           value={editingText}
                           onChange={(e) => setEditingText(e.target.value)}
                           onBlur={() => {
+                            if (cancelRenameRef.current) {
+                              cancelRenameRef.current = false;
+                              return;
+                            }
                             const trimmed = editingText.trim();
                             if (trimmed && trimmed !== entry.label) {
                               updateEntryLabel(entry.id, trimmed);
@@ -716,34 +731,45 @@ export default function LuckyWheelPage() {
                             setEditingId(null);
                           }}
                           onKeyDown={(e) => {
+                            if (e.nativeEvent.isComposing) return; // Enter confirms an IME composition here, it does not save
                             if (e.key === "Enter") {
+                              // Without this the same key press, now on the entry's button (focus moves back to it
+                              // below), would press that button and open the editor again.
+                              e.preventDefault();
                               const trimmed = editingText.trim();
                               if (trimmed && trimmed !== entry.label) {
                                 updateEntryLabel(entry.id, trimmed);
                               }
+                              refocusRenameRef.current = entry.id;
                               setEditingId(null);
                             } else if (e.key === "Escape") {
+                              cancelRenameRef.current = true;
+                              refocusRenameRef.current = entry.id;
                               setEditingId(null);
                             }
                           }}
                           autoFocus
                           maxLength={40}
                           disabled={spinning}
-                          className="flex-1 h-6 px-1.5 text-xs bg-primary/10 border border-primary/40 text-(--brand-primary-strong) rounded-lg shrink-0 outline-none"
+                          className="flex-1 h-6 px-1.5 text-xs bg-primary/10 border border-primary/40 text-(--brand-primary-strong) rounded-lg shrink-0"
                         />
                       ) : (
-                        <span
+                        <button
+                          type="button"
+                          id={`wheel-rename-${entry.id}`}
                           onClick={() => {
-                            if (!spinning) {
-                              setEditingId(entry.id);
-                              setEditingText(entry.label);
-                            }
+                            if (spinning) return;
+                            cancelRenameRef.current = false; // a cancel the browser never reported as a blur must not outlive its editor
+                            setEditingId(entry.id);
+                            setEditingText(entry.label);
                           }}
-                          title="Click to edit"
-                          className="flex-1 text-sm truncate cursor-pointer hover:text-(--brand-primary-strong) transition-colors"
+                          aria-disabled={spinning}
+                          title="Click to rename"
+                          aria-label={`Rename ${entry.label}`}
+                          className="flex-1 min-w-0 text-left text-sm truncate cursor-pointer hover:text-(--brand-primary-strong) transition-colors aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
                         >
                           {entry.label}
-                        </span>
+                        </button>
                       )}
 
                       {/* Weight slider */}
@@ -861,13 +887,11 @@ export default function LuckyWheelPage() {
             Create a room and everyone watches the same spin on their own screen.
             Useful for giveaways, where people want to see the draw for themselves.
           </p>
-          <Link href="/create?type=lucky-wheel">
-            <Button className="gap-2 bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">
-              <Disc3 className="w-4 h-4" />
-              Create Room
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-          </Link>
+          <ButtonLink href="/create?type=lucky-wheel" className="gap-2 bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">
+            <Disc3 className="w-4 h-4" />
+            Create Room
+            <ArrowRight className="w-4 h-4" />
+          </ButtonLink>
         </div>
       </div>
 

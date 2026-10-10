@@ -90,12 +90,13 @@ export default function RootLayout({
             NEXT_PUBLIC_GA_MEASUREMENT_ID set; next.config.ts's
             googletagmanager.com script-src entry is gated on the same var. */}
         {gaMeasurementId && <AnalyticsScripts measurementId={gaMeasurementId} />}
-        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[60] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-pill focus:outline-none">
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[60] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-pill">
           Skip to content
         </a>
         <Providers>
           <Navbar />
-          <main id="main-content" className="min-h-screen pt-[6rem]">{children}</main>
+          {/* tabIndex -1: the skip link's target takes focus when it is used; not a Tab stop, so no ring is drawn */}
+          <main id="main-content" tabIndex={-1} className="min-h-screen pt-[6rem] outline-none">{children}</main>
           <Toaster position="bottom-center" />
         </Providers>
         {/* E2E test bridge: catches clicks on the hidden server-rendered
