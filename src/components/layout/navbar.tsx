@@ -21,8 +21,8 @@ import {
   Gamepad2,
   Settings,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useWhatsNew, WhatsNewTrigger, WhatsNewDialog } from "@/components/layout/whats-new-dialog";
 import { cn } from "@/lib/utils";
 
@@ -181,6 +181,7 @@ export function Navbar() {
             <motion.div
               whileHover={{ scale: 1.1, rotate: 8 }}
               whileTap={{ scale: 0.95 }}
+              tabIndex={-1}
               transition={{ type: "spring", stiffness: 400, damping: 10 }}
               className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-(--brand-primary-strong) shadow-[0_0_15px_-3px_var(--color-brand-primary-strong)] relative"
             >
@@ -201,26 +202,24 @@ export function Navbar() {
 
           {/* Center: Main Navigation (Desktop Only) */}
           <div className="hidden lg:flex items-center p-1 rounded-[1.5rem] bg-gradient-to-b from-(--surface-sunken)/80 to-transparent border border-(--border-hairline) shadow-inner gap-1 backdrop-blur-md">
-            <Link href="/explore">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="rounded-full px-5 font-bold tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
-              >
-                <Globe className="w-3.5 h-3.5 mr-2 text-blue-400" />
-                LIVE ROOMS
-              </Button>
-            </Link>
-            <Link href="/tools">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="rounded-full px-5 font-bold tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
-              >
-                <Wrench className="w-3.5 h-3.5 mr-2 text-orange-400" />
-                TOOLS
-              </Button>
-            </Link>
+            <ButtonLink
+              href="/explore"
+              variant="ghost"
+              size="sm"
+              className="rounded-full px-5 font-bold tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
+            >
+              <Globe className="w-3.5 h-3.5 mr-2 text-blue-400" />
+              LIVE ROOMS
+            </ButtonLink>
+            <ButtonLink
+              href="/tools"
+              variant="ghost"
+              size="sm"
+              className="rounded-full px-5 font-bold tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
+            >
+              <Wrench className="w-3.5 h-3.5 mr-2 text-orange-400" />
+              TOOLS
+            </ButtonLink>
             <div className="w-px h-5 bg-(--border-glass) mx-1" />
             <Button
               variant="ghost"
@@ -230,19 +229,19 @@ export function Navbar() {
             >
               JOIN
             </Button>
-            <Link href="/create" onClick={() => fireConfetti()}>
-              <Button
-                variant="brand"
-                size="sm"
-                className="rounded-full px-6 font-bold tracking-widest text-xs shadow-lg shadow-primary/25 relative overflow-hidden group border border-white/20 h-9"
-              >
-                <span className="relative z-10 flex items-center gap-2">
-                  HOST
-                  <Sparkles className="w-3.5 h-3.5 group-hover:animate-spin-slow" />
-                </span>
-                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-shimmer" />
-              </Button>
-            </Link>
+            <ButtonLink
+              href="/create"
+              onClick={() => fireConfetti()}
+              variant="brand"
+              size="sm"
+              className="rounded-full px-6 font-bold tracking-widest text-xs shadow-lg shadow-primary/25 relative overflow-hidden group border border-white/20 h-9"
+            >
+              <span className="relative z-10 flex items-center gap-2">
+                HOST
+                <Sparkles className="w-3.5 h-3.5 group-hover:animate-spin-slow" />
+              </span>
+              <span aria-hidden="true" className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-shimmer" />
+            </ButtonLink>
           </div>
 
           {/* Right: Icons & Menus */}
@@ -251,16 +250,15 @@ export function Navbar() {
               <WhatsNewTrigger variant="icon" whatsNew={whatsNew} />
             </div>
 
-            <Link href="/settings" className="hidden sm:block">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full text-muted-foreground hover:text-foreground hover:bg-(--surface-sunken) transition-colors h-10 w-10"
-                aria-label="Settings"
-              >
-                <Settings className="w-5 h-5" />
-              </Button>
-            </Link>
+            <ButtonLink
+              href="/settings"
+              variant="ghost"
+              size="icon"
+              className="hidden sm:inline-flex rounded-full text-muted-foreground hover:text-foreground hover:bg-(--surface-sunken) transition-colors h-10 w-10"
+              aria-label="Settings"
+            >
+              <Settings className="w-5 h-5" />
+            </ButtonLink>
 
             {mounted && (
               <Button
@@ -307,33 +305,28 @@ export function Navbar() {
                   JOIN ROOM
                 </Button>
 
-                <Link
+                <ButtonLink
                   href="/create"
                   onClick={() => {
                     setMobileOpen(false);
                     fireConfetti();
                   }}
-                  className="w-full"
+                  variant="brand"
+                  className="w-full rounded-full h-12 font-bold tracking-widest text-sm shadow-lg shadow-primary/25"
                 >
-                  <Button variant="brand" className="w-full rounded-full h-12 font-bold tracking-widest text-sm shadow-lg shadow-primary/25">
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    HOST GAME
-                  </Button>
-                </Link>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  HOST GAME
+                </ButtonLink>
 
                 <div className="grid grid-cols-2 gap-2 mt-2">
-                  <Link href="/explore" onClick={() => setMobileOpen(false)}>
-                    <Button variant="ghost" className="w-full rounded-2xl h-12 bg-(--surface-sunken)/50">
-                      <Globe className="w-4 h-4 mr-2 text-blue-400" />
-                      Live Rooms
-                    </Button>
-                  </Link>
-                  <Link href="/tools" onClick={() => setMobileOpen(false)}>
-                    <Button variant="ghost" className="w-full rounded-2xl h-12 bg-(--surface-sunken)/50">
-                      <Wrench className="w-4 h-4 mr-2 text-orange-400" />
-                      Quick Tools
-                    </Button>
-                  </Link>
+                  <ButtonLink href="/explore" onClick={() => setMobileOpen(false)} variant="ghost" className="w-full rounded-2xl h-12 bg-(--surface-sunken)/50">
+                    <Globe className="w-4 h-4 mr-2 text-blue-400" />
+                    Live Rooms
+                  </ButtonLink>
+                  <ButtonLink href="/tools" onClick={() => setMobileOpen(false)} variant="ghost" className="w-full rounded-2xl h-12 bg-(--surface-sunken)/50">
+                    <Wrench className="w-4 h-4 mr-2 text-orange-400" />
+                    Quick Tools
+                  </ButtonLink>
                 </div>
 
                 {/* Settings and What's Next are already reachable via the
@@ -353,12 +346,10 @@ export function Navbar() {
                     replacing it, doubling the row-to-row gap versus the
                     single combined grid this replaced. */}
                 <div className="sm:hidden grid grid-cols-2 gap-2">
-                  <Link href="/settings" onClick={() => setMobileOpen(false)}>
-                    <Button variant="ghost" className="w-full rounded-2xl h-12 bg-(--surface-sunken)/50">
-                      <Settings className="w-4 h-4 mr-2" />
-                      Settings
-                    </Button>
-                  </Link>
+                  <ButtonLink href="/settings" onClick={() => setMobileOpen(false)} variant="ghost" className="w-full rounded-2xl h-12 bg-(--surface-sunken)/50">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Settings
+                  </ButtonLink>
                   <WhatsNewTrigger variant="full" whatsNew={whatsNew} />
                 </div>
               </div>
@@ -393,12 +384,12 @@ export function Navbar() {
                   <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                   <Gamepad2 className="w-8 h-8 text-(--brand-primary-strong) drop-shadow-sm" />
                 </div>
-                <h2 className="text-3xl font-display font-black tracking-widest text-foreground uppercase">
+                <DialogTitle className="text-3xl font-display font-black tracking-widest text-foreground uppercase leading-tight">
                   Join Room
-                </h2>
-                <p className="text-xs font-mono text-muted-foreground uppercase tracking-[0.3em] mt-3">
+                </DialogTitle>
+                <DialogDescription className="text-xs font-mono text-muted-foreground uppercase tracking-[0.3em] mt-3">
                   Enter the 6-character code
-                </p>
+                </DialogDescription>
               </div>
 
               {/* Inputs */}
@@ -409,12 +400,16 @@ export function Navbar() {
                       ref={(el) => { codeInputRefs.current[index] = el; }}
                       type="text"
                       inputMode="text"
+                      aria-label={`Room code, character ${index + 1} of 6`}
+                      autoComplete="off"
+                      autoCapitalize="characters"
+                      spellCheck={false}
                       maxLength={6}
                       value={digit}
                       onChange={(e) => handleDigitChange(index, e.target.value)}
                       onKeyDown={(e) => handleDigitKeyDown(index, e)}
                       onFocus={(e) => e.target.select()}
-                      className="peer w-10 h-14 sm:w-12 sm:h-16 p-0 bg-(--surface-sunken) border border-(--border-strong) rounded-xl text-center text-2xl font-mono font-bold uppercase text-foreground outline-none transition-all focus:bg-background focus:border-(--brand-primary-strong) focus:shadow-[0_0_20px_rgba(125,187,37,0.2)] focus:-translate-y-1 placeholder:text-muted-foreground/30"
+                      className="peer w-10 h-14 sm:w-12 sm:h-16 p-0 bg-(--surface-sunken) border border-(--border-strong) rounded-xl text-center text-2xl font-mono font-bold uppercase text-foreground transition-all focus:bg-background focus:border-(--brand-primary-strong) focus:shadow-[0_0_20px_rgba(125,187,37,0.2)] focus:-translate-y-1 placeholder:text-muted-foreground/30"
                       placeholder="-"
                       autoFocus={index === 0}
                     />

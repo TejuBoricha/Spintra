@@ -7,7 +7,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowRight, Sparkles, Zap, Globe, MessageCircle, Star, DownloadCloud, Gift, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getOrCreateRoomUser } from "@/lib/room-user";
 import { loadJoinCheck } from "@/lib/join-check-loader";
@@ -217,18 +217,14 @@ export default function HomePage() {
           <div
             className="flex flex-col sm:flex-row items-center justify-center gap-4 reveal reveal-up reveal-delay-2"
           >
-            <Link href="/create">
-              <Button variant="brand" size="lg" className="group text-lg">
-                <Sparkles className="w-5 h-5 group-hover:animate-spin" />
-                Create Room
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </Link>
-            <Link href="/explore">
-              <Button variant="secondary" size="lg" className="text-lg">
-                Explore Games
-              </Button>
-            </Link>
+            <ButtonLink href="/create" variant="brand" size="lg" className="group text-lg">
+              <Sparkles className="w-5 h-5 group-hover:animate-spin" />
+              Create Room
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </ButtonLink>
+            <ButtonLink href="/explore" variant="secondary" size="lg" className="text-lg">
+              Explore Games
+            </ButtonLink>
           </div>
 
           {/* Join Room Code Input Widget */}
@@ -324,6 +320,7 @@ export default function HomePage() {
                               }
                             }}
                             title="Remove from history"
+                            aria-label="Remove from history"
                           >
                             <X className="w-4 h-4" />
                           </Button>
@@ -341,6 +338,7 @@ export default function HomePage() {
                               }
                             }}
                             title="Remove from history"
+                            aria-label="Remove from history"
                           >
                             <X className="w-4 h-4" />
                           </Button>
@@ -466,13 +464,11 @@ export default function HomePage() {
               <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
                 It&apos;s free, and nobody needs an account, including the people you invite.
               </p>
-              <Link href="/create">
-                <Button variant="brand" size="lg" wrap className="text-lg">
-                  <Sparkles className="w-5 h-5" />
-                  Create a room
-                  <ArrowRight className="w-5 h-5" />
-                </Button>
-              </Link>
+              <ButtonLink href="/create" variant="brand" size="lg" wrap className="text-lg">
+                <Sparkles className="w-5 h-5" />
+                Create a room
+                <ArrowRight className="w-5 h-5" />
+              </ButtonLink>
             </div>
           </motion.div>
         </div>

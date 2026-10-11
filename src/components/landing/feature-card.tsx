@@ -23,7 +23,8 @@ export function FeatureCard({ title, description, icon: Icon, href, gradient, ta
       viewport={{ once: true, margin: "-50px" }}
       whileHover={{ y: -6, scale: 1.02 }}
     >
-      <Link href={href}>
+      {/* block + the card's radius: an inline link around a block child draws no solid focus outline around the card */}
+      <Link href={href} className="block rounded-xl">
         <div className="rounded-xl border border-(--border-hairline) bg-(--surface-panel) p-8 h-full group cursor-pointer relative overflow-hidden shadow-1 hover:border-primary/30 transition-colors">
           {/* Hover gradient glow */}
           <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />

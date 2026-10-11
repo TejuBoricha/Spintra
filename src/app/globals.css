@@ -206,6 +206,7 @@
 .dark {
   /* Restated so a `.dark` subtree inside a `.light` page gets the lime, not the light theme's olive it would inherit. */
   --gradient-brand-text: var(--gradient-brand);
+  --ring: var(--lime-400);
   --surface-app: var(--ink-950);
   --surface-panel: var(--ink-800);
   --surface-panel-soft: var(--ink-650);
@@ -301,7 +302,9 @@
   --destructive-foreground: #ffffff;
   --border: var(--border-hairline);
   --input: var(--border-hairline);
-  --ring: var(--lime-500);
+  /* The keyboard focus colour. lime-500 at half opacity measured 1.07 to 1.2 : 1 on cream (WCAG asks for 3 : 1);
+     the dark olive is 7.7 : 1 on the page and already the readable brand colour on cream (UX audit U-01). */
+  --ring: var(--lime-800);
 
   --chart-1: var(--lime-500);
   --chart-2: var(--cyan-500);
@@ -417,6 +420,19 @@
 @layer base {
   * {
     border-color: var(--border);
+  }
+  /* One focus indicator for everything that can be focused and does not draw its own: links, cards that
+     are links, summaries, plain buttons. Components that set `outline-none` draw a ring of the same colour
+     instead (see components/ui). The colour passes 3 : 1 in both themes (UX audit U-01, U-02). */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  /* The navbar is fixed and 5rem tall. Without this, tabbing to a field further down the page scrolled it
+     to the top edge, behind the navbar (WCAG 2.4.11, focus not obscured). Anchor links get the same offset,
+     so they no longer need a scroll-margin of their own. */
+  html {
+    scroll-padding-top: 6rem;
   }
 }
 

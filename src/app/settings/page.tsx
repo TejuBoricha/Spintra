@@ -66,6 +66,12 @@ export default function SettingsPage() {
       setDisplayName(getOrCreateRoomUser().username);
       return;
     }
+    // Leaving the field without changing the name saves nothing and announces nothing.
+    const saved = getOrCreateRoomUser().username;
+    if (trimmed === saved) {
+      setDisplayName(saved);
+      return;
+    }
     const updated = updateRoomUsername(trimmed);
     setDisplayName(updated.username);
     toast.success("Display name updated!", { id: "settings-username" });

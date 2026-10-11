@@ -140,7 +140,7 @@ export function WouldYouRatherActivity() {
                   // outline-none + the app's shared focus-visible ring —
                   // this raw motion.button otherwise fell back to the
                   // browser default outline, unlike every shared Button.
-                  className={`relative flex flex-col p-6 h-48 rounded-3xl border text-left transition-all duration-300 shadow-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${optStyle.bg} ${optStyle.border}`}
+                  className={`relative flex flex-col p-6 h-48 rounded-3xl border text-left transition-all duration-300 shadow-lg outline-none focus-visible:ring-2 focus-visible:ring-ring ${optStyle.bg} ${optStyle.border}`}
                 >
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <Badge

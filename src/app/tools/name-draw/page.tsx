@@ -399,8 +399,9 @@ export default function NameDrawPage() {
 
               {/* Draw count */}
               <div>
-                <p className="text-sm font-medium mb-1.5">Draw Count</p>
+                <label htmlFor="draw-count" className="block text-sm font-medium mb-1.5">Draw Count</label>
                 <Input
+                  id="draw-count"
                   type="number"
                   min={1}
                   max={Math.max(availableNames.length, 1)}
@@ -416,7 +417,7 @@ export default function NameDrawPage() {
             </div>
 
             {/* Create Room CTA */}
-            <Link href="/create?type=name-draw">
+            <Link href="/create?type=name-draw" className="block rounded-2xl">
               <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 flex items-center justify-between group cursor-pointer hover:border-amber-500/30 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">

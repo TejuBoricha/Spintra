@@ -168,7 +168,9 @@ test('city: reloading right after a match finishes keeps the player in the room'
 
   // Must still be on the room page, not redirected to /explore.
   expect(host.url()).toContain(`/room/${code}`);
-  await expect(host.getByText(/unable to join room/i)).toHaveCount(0);
+  // Read at one instant: the error toast lasts about 4 s, so the 2.5 s wait above shows it if it came,
+  // whereas a retrying toHaveCount(0) would pass once it had timed itself out.
+  expect(await host.getByText(/unable to join room/i).count(), 'no join-failed toast').toBe(0);
 
   await browser.close();
 });

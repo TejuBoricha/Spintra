@@ -8,7 +8,7 @@ import {
   Users,
   ArrowRight,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { GAMES } from "@/lib/games";
 
 export const metadata: Metadata = {
@@ -107,17 +107,13 @@ export default function ForTeachersPage() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-            <Link href="/create?type=classroom">
-              <Button variant="brand" size="lg" wrap className="rounded-full font-bold">
-                Start a Classroom Room
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-            <Link href="#tools">
-              <Button variant="outline" size="lg" className="rounded-full font-bold">
-                Browse the Tools
-              </Button>
-            </Link>
+            <ButtonLink href="/create?type=classroom" variant="brand" size="lg" wrap className="rounded-full font-bold">
+              Start a Classroom Room
+              <ArrowRight className="w-4 h-4" />
+            </ButtonLink>
+            <ButtonLink href="#tools" variant="outline" size="lg" className="rounded-full font-bold">
+              Browse the Tools
+            </ButtonLink>
           </div>
 
           {/* Trust points */}
@@ -150,7 +146,7 @@ export default function ForTeachersPage() {
               if (!game) return null;
               const Icon = game.icon;
               return (
-                <Link key={idea.href} href={idea.href} className="block h-full outline-none group">
+                <Link key={idea.href} href={idea.href} className="block h-full rounded-2xl group">
                   <div className="h-full rounded-2xl border border-(--border-hairline) bg-(--surface-sunken) p-5 hover:border-sky-500/40 transition-colors">
                     <div
                       className={`w-10 h-10 rounded-xl bg-gradient-to-br ${game.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}
@@ -171,7 +167,7 @@ export default function ForTeachersPage() {
         </div>
 
         {/* Full tools grid */}
-        <div id="tools" className="scroll-mt-24 space-y-6">
+        <div id="tools" className="space-y-6">
           <div className="text-center space-y-2">
             <h2 className="font-display text-2xl sm:text-3xl font-black">
               All classroom-safe tools
@@ -185,7 +181,7 @@ export default function ForTeachersPage() {
             {classroomTools.map((tool) => {
               const Icon = tool.icon;
               return (
-                <Link key={tool.type} href={tool.href} className="block h-full outline-none">
+                <Link key={tool.type} href={tool.href} className="block h-full rounded-[2rem]">
                   <div className="h-full p-6 group cursor-pointer border border-(--border-hairline) bg-(--surface-panel) hover:border-primary/40 rounded-[2rem] shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all flex flex-col items-start gap-4">
                     <div
                       className={`w-14 h-14 rounded-[1.25rem] border-2 border-(--border-strong) bg-gradient-to-br ${tool.color} flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-transform shadow-inner`}
@@ -235,12 +231,10 @@ export default function ForTeachersPage() {
           <p className="text-muted-foreground">
             Open a room, put the code on the board, and your students can join.
           </p>
-          <Link href="/create?type=classroom" className="inline-block">
-            <Button variant="brand" size="lg" wrap className="rounded-full font-bold">
-              Start a Classroom Room
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-          </Link>
+          <ButtonLink href="/create?type=classroom" variant="brand" size="lg" wrap className="rounded-full font-bold">
+            Start a Classroom Room
+            <ArrowRight className="w-4 h-4" />
+          </ButtonLink>
         </div>
       </div>
     </div>

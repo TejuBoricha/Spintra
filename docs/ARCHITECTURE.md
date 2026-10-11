@@ -19,10 +19,10 @@
 | 3D | Three.js + React Three Fiber | ^0.184 / ^9.6 | Physics-based lucky wheel rendering |
 | Confetti | canvas-confetti | ^1.9.4 | Win celebrations; wrapped in `src/components/celebration.tsx` |
 | QR Codes | qrcode | ^1.5 | Client-side room-invite QR generation in `room-header.tsx`, dynamically imported — replaced a third-party API call that sent every viewed room's URL (including private/locked ones) to an external service |
-| UI Components | shadcn/ui (Radix-based) | various | Accessible primitives: Button, Dialog, Sheet, Badge, Input, ScrollArea, Tooltip, Avatar |
+| UI Components | shadcn/ui (Radix-based) | various | Accessible primitives: Button, Dialog, Sheet, Badge, Input, ScrollArea, Tooltip, Avatar. A link that looks like a button is `ButtonLink` (`components/ui/button.tsx`), never a `Button` inside a `Link` (invalid HTML, two Tab stops). Keyboard focus is one global `:focus-visible` outline from `--ring` (`globals.css`); a component that sets `outline-none` must draw its own `focus-visible:ring-*` (guarded by `tests/focus-outline-guard.spec.ts`) |
 | Icons | lucide-react | ^1.21.0 | Consistent icon set |
 | State (global) | Zustand | ^5.0.14 | Installed; not yet used in room. Available for future game state if needed. |
-| E2E Tests | Playwright | ^1.40.0 | Smoke tests; config in `playwright.config.ts` |
+| E2E Tests | Playwright | ^1.40.0 | Smoke tests; config in `playwright.config.ts`. Accessibility gates (dev dependency `axe-core`): `tests/ux-axe.spec.ts` (critical and serious findings plus `heading-order` fail), `tests/ux-keyboard.spec.ts` (a real Tab traversal, focus ring measured from pixels) |
 
 ---
 

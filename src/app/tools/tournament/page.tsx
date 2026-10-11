@@ -685,7 +685,7 @@ export default function TournamentPage() {
             </div>
 
             {/* Create Room CTA */}
-            <Link href="/create?type=tournament">
+            <Link href="/create?type=tournament" className="block rounded-2xl">
               <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 flex items-center justify-between group cursor-pointer hover:border-emerald-500/30 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
@@ -775,6 +775,8 @@ export default function TournamentPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setTournament(null)}
+                      aria-label="Start over"
+                      title="Start over"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                     </Button>

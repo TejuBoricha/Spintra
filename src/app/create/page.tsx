@@ -19,12 +19,13 @@ export default function Page() {
           <h1 className="font-display text-4xl sm:text-5xl font-black mb-4">Create a <span className="gradient-text">Room</span></h1>
           <p className="text-muted-foreground text-lg mb-8">Pick a game, set up your room, and invite people with the code.</p>
 
-          {/* Server-rendered button so production builds expose it for E2E tests.
-              The click-bridge script that catches pre-hydration clicks on this
+          {/* Server-rendered button so production builds expose it for E2E tests. It is a test hook, not
+              a control: hidden from assistive technology and the Tab order on purpose, found by its test id
+              (a role query skips it). The click-bridge script that catches pre-hydration clicks on this
               button lives in the root layout (see app/layout.tsx) since
               next/script's beforeInteractive strategy must be placed there. */}
-          <div className="absolute top-48 left-4 w-3 h-3 overflow-hidden opacity-0 z-50">
-            <button data-testid="create-room-button" className="w-full h-full">Create Room</button>
+          <div className="absolute top-48 left-4 w-3 h-3 overflow-hidden opacity-0 z-50" aria-hidden="true">
+            <button data-testid="create-room-button" tabIndex={-1} className="w-full h-full">Create Room</button>
           </div>
 
           {/* Client interactive UI mounts here - wrapped in Suspense for CSR hooks */}

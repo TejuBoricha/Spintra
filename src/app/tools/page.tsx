@@ -34,7 +34,7 @@ export default function ToolsPage() {
             const Icon = tool.icon;
             return (
               <div key={tool.type} className={`h-full ${revealStagger(index)}`}>
-                <Link href={tool.href} className="block h-full outline-none">
+                <Link href={tool.href} className="block h-full rounded-[2rem]">
                   <div className="h-full p-6 group cursor-pointer border border-(--border-hairline) bg-(--surface-panel) hover:border-primary/40 rounded-[2rem] shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all flex flex-col items-start gap-4">
                     <div
                       className={`w-14 h-14 rounded-[1.25rem] border-2 border-(--border-strong) bg-gradient-to-br ${tool.color} flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-transform shadow-inner`}
@@ -42,9 +42,9 @@ export default function ToolsPage() {
                       <Icon className="w-7 h-7 text-white" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-foreground text-lg group-hover:text-(--brand-primary-strong) transition-colors">
+                      <h2 className="font-bold text-foreground text-lg group-hover:text-(--brand-primary-strong) transition-colors">
                         {tool.label}
-                      </h3>
+                      </h2>
                       <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                         {tool.desc}
                       </p>

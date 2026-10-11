@@ -16,6 +16,7 @@ export function ProductionConfigWarningBanner() {
   return (
     <div
       role="alert"
+      data-testid="production-config-warning"
       className="fixed inset-x-0 top-0 z-[200] bg-red-600 text-white px-4 py-2.5 text-sm font-medium flex items-center justify-center gap-2 text-center"
     >
       <AlertTriangle className="w-4 h-4 flex-shrink-0" />

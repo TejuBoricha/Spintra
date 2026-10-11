@@ -10,7 +10,7 @@ import {
   Sparkle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { safeStorageGet, safeStorageSet } from "@/lib/utils";
 import { useHasMounted } from "@/lib/use-has-mounted";
 
@@ -210,10 +210,10 @@ export function WhatsNewDialog({ whatsNew }: { whatsNew: WhatsNewState }) {
                 <Rocket className="w-5 h-5 text-(--brand-primary-strong)" aria-hidden="true" />
               </div>
               <div>
-                <h2 className="text-lg font-display font-black tracking-tight text-foreground">
+                <DialogTitle className="text-lg font-display font-black tracking-tight text-foreground">
                   What&apos;s next
-                </h2>
-                <p className="text-xs text-muted-foreground">What&apos;s new, and what you might have missed</p>
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">What&apos;s new, and what you might have missed</DialogDescription>
               </div>
             </div>
 

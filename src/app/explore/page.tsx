@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { ChipGroup } from "@/components/ui/chip-group";
 import { Emoji, type EmojiName } from "@/components/emoji";
 import type { RoomType } from "@/lib/types";
@@ -464,12 +464,10 @@ export default function ExplorePage() {
                   No public rooms match this filter right now. Make one public and it will show up here for others to join.
                 </p>
               </div>
-              <Link href="/create">
-                <Button variant="brand">
-                  <Plus className="w-4 h-4" />
-                  Create Public Room
-                </Button>
-              </Link>
+              <ButtonLink href="/create" variant="brand">
+                <Plus className="w-4 h-4" />
+                Create Public Room
+              </ButtonLink>
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
