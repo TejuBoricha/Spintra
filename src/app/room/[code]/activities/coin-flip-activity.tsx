@@ -127,7 +127,7 @@ export function CoinFlipActivity() {
               const result = Math.random() < 0.5 ? "Heads" : "Tails";
               sendActivityEvent({ kind: "coin_flipping", result });
             }}
-            className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-white border-0 w-full"
+            className="bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-primary-foreground border-0 w-full"
           >
             {coinFlipping ? "Flipping…" : "Flip Coin"}
           </Button>

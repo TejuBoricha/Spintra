@@ -132,9 +132,9 @@ export default function TriviaPage() {
                           selected === null
                             ? "border-(--border-hairline) hover:border-yellow-500/50 hover:bg-yellow-500/10"
                             : isCorrect
-                            ? "border-emerald-500 bg-emerald-500/20 text-emerald-300"
+                            ? "border-emerald-500 bg-emerald-500/20 text-emerald-800 dark:text-emerald-300"
                             : isPicked
-                            ? "border-red-500 bg-red-500/20 text-red-300"
+                            ? "border-red-500 bg-red-500/20 text-red-800 dark:text-red-300"
                             : "border-(--border-hairline) opacity-50"
                         }`}
                       >
@@ -157,7 +157,7 @@ export default function TriviaPage() {
                 </p>
                 <Button
                   onClick={next}
-                  className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-white border-0"
+                  className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-300 hover:to-orange-400 text-primary-foreground border-0"
                 >
                   {index + 1 >= total ? "See Results" : "Next Question"}
                 </Button>

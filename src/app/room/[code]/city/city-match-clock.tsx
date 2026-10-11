@@ -45,7 +45,7 @@ export function CityMatchClock({
       className={
         "mb-3 flex items-center justify-center gap-2 rounded-xl border px-3 py-1.5 text-sm " +
         (over
-          ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
+          ? "border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200"
           : "border-(--border-hairline) bg-(--surface-panel) text-muted-foreground")
       }
       role="timer"

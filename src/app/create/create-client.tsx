@@ -270,7 +270,7 @@ export default function CreateRoomClient() {
         <div className="flex items-center gap-2 mb-4">
           <h2 className="font-body text-sm font-medium text-muted-foreground uppercase tracking-wider">Choose Game Type</h2>
           {isClassroom && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-sky-400">
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-sky-700 dark:text-sky-400">
               <GraduationCap className="w-3.5 h-3.5" />
               Classroom mode: party games are hidden
             </span>
@@ -390,7 +390,7 @@ export default function CreateRoomClient() {
                 className="space-y-4 reveal reveal-scale"
               >
                 <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                  <p data-testid="created-room-badge" className="text-sm font-medium text-emerald-400 mb-1">Room Created!</p>
+                  <p data-testid="created-room-badge" className="text-sm font-medium text-emerald-700 dark:text-emerald-400 mb-1">Room Created!</p>
                   <p className="font-mono text-2xl font-bold tracking-wider text-foreground">{createdRoom.code}</p>
                 </div>
 

@@ -14,7 +14,7 @@ import { loadJoinCheck } from "@/lib/join-check-loader";
 import dynamic from "next/dynamic";
 const HeroThreeScene = dynamic(() => import("@/components/landing/hero-scene").then((m) => m.HeroThreeScene), {
   ssr: false,
-  loading: () => <div className="h-full w-full bg-gradient-to-b from-(--violet-800)/40 to-background" />,
+  loading: () => <div className="h-full w-full bg-gradient-to-b from-(--violet-800)/10 dark:from-(--violet-800)/40 to-background" />,
 });
 import { FeatureCard } from "@/components/landing/feature-card";
 import { AuroraBackground } from "@/components/landing/aurora-bg";
@@ -176,7 +176,7 @@ export default function HomePage() {
           {!prefersReducedMotion && isHeroVisible ? (
             <HeroThreeScene />
           ) : (
-            <div className="h-full w-full bg-gradient-to-b from-(--violet-800)/40 to-background" />
+            <div className="h-full w-full bg-gradient-to-b from-(--violet-800)/10 dark:from-(--violet-800)/40 to-background" />
           )}
         </div>
 
@@ -207,7 +207,7 @@ export default function HomePage() {
 
           {/* Subheadline */}
           <p
-            className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed reveal reveal-up reveal-delay-1"
+            className="text-lg sm:text-xl text-foreground/80 dark:text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed reveal reveal-up reveal-delay-1"
           >
             Make a room, share the code, and everyone watches the same wheel,
             bracket, or game play out on their own screen.
@@ -304,7 +304,7 @@ export default function HomePage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs font-bold text-(--brand-primary-strong) group-hover:text-primary bg-primary/10 px-2.5 py-1 rounded-control">
+                          <span className="font-mono text-xs font-bold text-(--brand-primary-strong) group-hover:text-(--text-accent) bg-primary/10 px-2.5 py-1 rounded-control">
                             {room.code}
                           </span>
                           <Button
@@ -395,7 +395,7 @@ export default function HomePage() {
       </section>
 
       {/* Perks Bar */}
-      <section className="relative z-10 py-12 border-y border-border bg-black/20 backdrop-blur-sm">
+      <section className="relative z-10 py-12 border-y border-border bg-(--surface-sunken)">
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {perks.map((perk, i) => (
@@ -409,7 +409,7 @@ export default function HomePage() {
               >
                 <perk.icon className="w-6 h-6 text-(--brand-primary-strong) mx-auto mb-3" />
                 <div className="font-semibold text-sm">{perk.label}</div>
-                <div className="text-xs text-muted-foreground mt-1">{perk.desc}</div>
+                <div className="text-sm text-muted-foreground mt-1">{perk.desc}</div>
               </motion.div>
             ))}
           </div>

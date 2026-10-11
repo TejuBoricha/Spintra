@@ -1974,10 +1974,10 @@ export function useRoomSubscription({
     : "Connecting...";
 
   const realtimeStatusClass = realtimeError
-    ? "bg-red-500/10 text-red-300"
+    ? "bg-red-500/10 text-red-800 dark:text-red-300"
     : isRealtimeReady
-    ? "bg-emerald-500/10 text-emerald-300"
-    : "bg-amber-500/10 text-amber-300";
+    ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
+    : "bg-amber-500/10 text-amber-800 dark:text-amber-300";
 
   return {
     participants,

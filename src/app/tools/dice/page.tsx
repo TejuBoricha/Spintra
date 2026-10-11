@@ -408,7 +408,7 @@ export default function DicePage() {
                     <div className="relative w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                       <PolyhedralSvg sides={selectedDice} className="w-full h-full text-foreground/5" />
                     </div>
-                    <span className="text-sm font-semibold opacity-30">Drop dice in the tray to roll</span>
+                    <span className="text-sm font-semibold">Drop dice in the tray to roll</span>
                   </div>
                 )}
               </div>
@@ -450,7 +450,7 @@ export default function DicePage() {
                     size="sm"
                     onClick={clearHistory}
                     disabled={rolling}
-                    className="text-xs text-muted-foreground hover:text-red-400 h-8 gap-1.5"
+                    className="text-xs text-muted-foreground hover:text-red-700 dark:hover:text-red-400 h-8 gap-1.5"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                     Clear

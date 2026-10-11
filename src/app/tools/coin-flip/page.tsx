@@ -92,7 +92,7 @@ export default function CoinFlipPage() {
             role="status"
             aria-live="polite"
           >
-            <Badge className="text-lg px-6 py-2 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border-yellow-500/30">
+            <Badge className="text-lg px-6 py-2 text-foreground bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border-yellow-500/30">
               {result === 0 ? customLabels.heads : customLabels.tails}!
             </Badge>
           </div>
@@ -103,7 +103,7 @@ export default function CoinFlipPage() {
             size="lg"
             onClick={flip}
             disabled={flipping}
-            className="text-lg px-10 py-6 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-white border-0 shadow-xl shadow-yellow-500/25"
+            className="text-lg px-10 py-6 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-primary-foreground border-0 shadow-xl shadow-yellow-500/25"
           >
             <Coins className={`w-5 h-5 mr-2 ${flipping ? "animate-spin" : ""}`} />
             {flipping ? "Flipping..." : "Flip Coin"}
@@ -140,7 +140,7 @@ export default function CoinFlipPage() {
                 size="sm"
                 onClick={resetStats}
                 disabled={flipping}
-                className="text-xs text-muted-foreground hover:text-red-400 h-8 gap-1.5"
+                className="text-xs text-muted-foreground hover:text-red-700 dark:hover:text-red-400 h-8 gap-1.5"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 Reset
@@ -148,11 +148,11 @@ export default function CoinFlipPage() {
             </h2>
             <div className="grid grid-cols-2 gap-4">
               <div className="p-3 rounded-lg bg-yellow-500/10">
-                <div className="text-2xl font-bold text-yellow-400">{stats.headsPercent}%</div>
+                <div className="text-2xl font-bold text-yellow-700 dark:text-yellow-400">{stats.headsPercent}%</div>
                 <div className="text-sm text-muted-foreground">{customLabels.heads} ({stats.heads})</div>
               </div>
               <div className="p-3 rounded-lg bg-slate-500/10">
-                <div className="text-2xl font-bold text-slate-400">{stats.tailsPercent}%</div>
+                <div className="text-2xl font-bold text-slate-600 dark:text-slate-400">{stats.tailsPercent}%</div>
                 <div className="text-sm text-muted-foreground">{customLabels.tails} ({stats.tails})</div>
               </div>
             </div>

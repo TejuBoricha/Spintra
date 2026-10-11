@@ -273,7 +273,7 @@ export function ModerationDashboard({
             <TabsList variant="line" className="h-auto justify-start bg-transparent p-0 gap-4 border-b border-(--border-hairline)">
               <TabsTrigger value="reports" className="px-0 pb-2 text-sm font-semibold">
                 Reports
-                {unreviewedCount > 0 && <span className="ml-1 text-rose-400">({unreviewedCount})</span>}
+                {unreviewedCount > 0 && <span className="ml-1 text-rose-700 dark:text-rose-400">({unreviewedCount})</span>}
               </TabsTrigger>
               <TabsTrigger value="bans" className="px-0 pb-2 text-sm font-semibold">
                 Banned

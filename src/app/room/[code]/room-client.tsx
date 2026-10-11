@@ -117,7 +117,7 @@ const RoomGameArea = memo(function RoomGameArea({
                   key={activeActivity.type}
                   fallback={
                     <div className="bg-(--surface-panel) p-8 rounded-2xl text-center border border-red-500/20 max-w-md mx-auto mt-8">
-                      <p className="text-xl font-bold text-red-400 mb-2">Something went wrong</p>
+                      <p className="text-xl font-bold text-red-700 dark:text-red-400 mb-2">Something went wrong</p>
                       <p className="text-sm text-muted-foreground">
                         The activity crashed or failed to load. Try picking a different activity.
                       </p>
@@ -147,7 +147,7 @@ const RoomGameArea = memo(function RoomGameArea({
                 key="city"
                 fallback={
                   <div className="bg-(--surface-panel) p-8 rounded-2xl text-center border border-red-500/20 max-w-md mx-auto mt-8">
-                    <p className="text-xl font-bold text-red-400 mb-2">Something went wrong</p>
+                    <p className="text-xl font-bold text-red-700 dark:text-red-400 mb-2">Something went wrong</p>
                     <p className="text-sm text-muted-foreground">
                       The match failed to load. Try refreshing the page. Your seat is saved.
                     </p>

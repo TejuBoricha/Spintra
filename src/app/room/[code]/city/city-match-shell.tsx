@@ -120,7 +120,7 @@ const SeatBadge = memo(function SeatBadge({
       )}
       {away && (
         <span
-          className="flex items-center text-amber-300"
+          className="flex items-center text-amber-800 dark:text-amber-300"
           title="Disconnected. The server plays this seat's turns until they come back."
         >
           <WifiOff className="w-3 h-3" aria-hidden="true" />
@@ -128,7 +128,7 @@ const SeatBadge = memo(function SeatBadge({
       )}
       {!terminal && s.consecutive_autopilot_turns > 0 && (
         <span
-          className="font-mono text-[10px] text-amber-300"
+          className="font-mono text-[10px] text-amber-800 dark:text-amber-300"
           title={`${pluralize(s.consecutive_autopilot_turns, "turn")} auto-played in a row. Two in a row retires the seat.`}
         >
           auto×{s.consecutive_autopilot_turns}
@@ -675,7 +675,7 @@ export function CityMatchShell() {
             role="status"
           >
             <Clock className="w-4 h-4 text-amber-300 shrink-0" aria-hidden="true" />
-            <p className="text-sm text-amber-200">
+            <p className="text-sm text-amber-900 dark:text-amber-200">
               Match paused because everyone left. It carries on as soon as someone comes back.
             </p>
           </div>
@@ -1144,7 +1144,7 @@ function IconBadge() {
 function ErrorNote({ message }: { message: string }) {
   return (
     <p
-      className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2"
+      className="text-sm text-red-700 dark:text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2"
       role="alert"
     >
       {message}

@@ -22,7 +22,7 @@
 | UI Components | shadcn/ui (Radix-based) | various | Accessible primitives: Button, Dialog, Sheet, Badge, Input, ScrollArea, Tooltip, Avatar. A link that looks like a button is `ButtonLink` (`components/ui/button.tsx`), never a `Button` inside a `Link` (invalid HTML, two Tab stops). Keyboard focus is one global `:focus-visible` outline from `--ring` (`globals.css`); a component that sets `outline-none` must draw its own `focus-visible:ring-*` (guarded by `tests/focus-outline-guard.spec.ts`) |
 | Icons | lucide-react | ^1.21.0 | Consistent icon set |
 | State (global) | Zustand | ^5.0.14 | Installed; not yet used in room. Available for future game state if needed. |
-| E2E Tests | Playwright | ^1.40.0 | Smoke tests; config in `playwright.config.ts`. Accessibility gates (dev dependency `axe-core`): `tests/ux-axe.spec.ts` (critical and serious findings plus `heading-order` fail), `tests/ux-keyboard.spec.ts` (a real Tab traversal, focus ring measured from pixels) |
+| E2E Tests | Playwright | ^1.40.0 | Smoke tests; config in `playwright.config.ts`. Accessibility gates (dev dependency `axe-core`): `tests/ux-axe.spec.ts` (critical and serious findings plus `heading-order` fail), `tests/ux-keyboard.spec.ts` (a real Tab traversal, focus ring measured from pixels). Contrast gates, measured from pixels by `tests/helpers/pixel-contrast.ts` (the page is photographed with and without its text): `tests/ux-contrast.spec.ts` (every page, both themes), `tests/ux-contrast-states.spec.ts` (each tool in the state it is read in), `tests/ux-contrast-rooms.spec.ts` (each room type as its host sees it; needs the database, so it skips without Supabase), and `tests/ux-contrast-calibration.spec.ts` (the measurement itself, checked on text of known contrast) |
 
 ---
 

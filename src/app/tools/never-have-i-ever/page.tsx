@@ -125,14 +125,14 @@ export default function NeverHaveIEverPage() {
             <Button
               size="lg"
               onClick={() => respond(true)}
-              className="px-4 min-[360px]:px-6 sm:px-8 py-4 bg-pink-600 hover:bg-pink-500"
+              className="px-4 min-[360px]:px-6 sm:px-8 py-4 bg-pink-700 hover:bg-pink-800 text-white"
             >
               <CheckCircle className="w-5 h-5 mr-2" /> I Have
             </Button>
             <Button
               size="lg"
               onClick={() => respond(false)}
-              className="px-4 min-[360px]:px-6 sm:px-8 py-4 bg-emerald-600 hover:bg-emerald-500"
+              className="px-4 min-[360px]:px-6 sm:px-8 py-4 bg-emerald-700 hover:bg-emerald-800 text-white"
             >
               <XCircle className="w-5 h-5 mr-2" /> Never Have
             </Button>
@@ -153,7 +153,7 @@ export default function NeverHaveIEverPage() {
           </div>
         ) : (
           <div className="mb-4">
-            <p className={`text-lg font-semibold flex items-center justify-center gap-2 ${iHave ? "text-pink-400" : "text-emerald-400"}`}>
+            <p className={`text-lg font-semibold flex items-center justify-center gap-2 ${iHave ? "text-pink-700 dark:text-pink-400" : "text-emerald-700 dark:text-emerald-400"}`}>
               {iHave ? (
                 <><Emoji name="flushed_face" size={22} pop /> You&apos;ve done it!</>
               ) : (

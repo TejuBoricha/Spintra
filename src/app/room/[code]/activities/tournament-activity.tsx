@@ -83,7 +83,7 @@ function MatchCard({
         </span>
       </div>
       {match.winner && (
-        <div className="mt-1 text-[11px] text-amber-400">{match.winner} won</div>
+        <div className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">{match.winner} won</div>
       )}
     </motion.button>
   );
@@ -142,7 +142,7 @@ function ScoreEditor({
           </Button>
           <Button
             onClick={() => onSave(score1, score2)}
-            className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0"
+            className="flex-1 bg-gradient-to-r from-amber-400 to-orange-500 text-primary-foreground border-0"
           >
             <Check className="w-4 h-4 mr-1" />
             Save
@@ -576,7 +576,7 @@ export function TournamentActivity() {
       {!tournament && isHost && (
         <Button
           onClick={generateBracket}
-          className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white border-0 rounded-full h-11 font-bold shadow-lg shadow-amber-500/10"
+          className="w-full bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-primary-foreground border-0 rounded-full h-11 font-bold shadow-lg shadow-amber-500/10"
         >
           <Trophy className="w-4 h-4 mr-2" /> Generate Bracket
         </Button>

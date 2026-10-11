@@ -240,7 +240,7 @@ export default function TeamMakerPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">Number of Teams</Label>
-                <span className="text-sm font-mono text-primary">{numTeams}</span>
+                <span className="text-sm font-mono text-(--text-accent)">{numTeams}</span>
               </div>
               <Slider
                 value={[numTeams]}
@@ -455,7 +455,7 @@ export default function TeamMakerPage() {
                                     ))}
                                   <button
                                     onClick={() => removeMember(teamIdx, memberIdx)}
-                                    className="p-1 rounded text-xs text-red-400 hover:bg-red-500/10 transition-colors"
+                                    className="p-1 rounded text-xs text-red-700 dark:text-red-400 hover:bg-red-500/10 transition-colors"
                                     title="Remove"
                                     aria-label={`Remove ${member} from ${team.name}`}
                                   >

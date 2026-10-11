@@ -24,13 +24,13 @@ const TOD_BUTTONS = [
   {
     type: "truth",
     label: "Truth",
-    color: "from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500",
+    color: "from-cyan-700 to-blue-700 hover:from-cyan-800 hover:to-blue-800",
     emoji: "thinking_face",
   },
   {
     type: "dare",
     label: "Dare",
-    color: "from-pink-500 to-rose-600 hover:from-pink-400 hover:to-rose-500",
+    color: "from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700",
     emoji: "fire",
   },
 ] as const;
@@ -128,15 +128,15 @@ export function TruthOrDareActivity() {
           aria-live="polite"
           className={`w-full text-center px-8 py-10 rounded-3xl border-2 shadow-2xl leading-relaxed ${
             todPrompt.type === "truth"
-              ? "bg-gradient-to-br from-cyan-500/5 to-blue-500/5 border-cyan-500/40 text-cyan-100 shadow-cyan-500/10"
-              : "bg-gradient-to-br from-pink-500/5 to-rose-500/5 border-pink-500/40 text-pink-100 shadow-pink-500/10"
+              ? "bg-gradient-to-br from-cyan-500/5 to-blue-500/5 border-cyan-500/40 text-cyan-900 dark:text-cyan-100 shadow-cyan-500/10"
+              : "bg-gradient-to-br from-pink-500/5 to-rose-500/5 border-pink-500/40 text-pink-900 dark:text-pink-100 shadow-pink-500/10"
           }`}
         >
           <Badge
             className={`mb-4 text-xs font-semibold px-4 py-1 gap-1.5 uppercase tracking-wider ${
               todPrompt.type === "truth"
-                ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/20"
-                : "bg-pink-500/15 text-pink-300 border border-pink-500/20"
+                ? "bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 border border-cyan-500/20"
+                : "bg-pink-500/15 text-pink-800 dark:text-pink-300 border border-pink-500/20"
             }`}
           >
             {todPrompt.type === "truth" ? (

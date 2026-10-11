@@ -46,7 +46,7 @@ export function FeatureCard({ title, description, icon: Icon, href, gradient, ta
             {/* Tagline + CTA */}
             <div className="flex items-center justify-between pt-4 border-t border-(--border-hairline)">
               <span className="text-sm text-muted-foreground">{tagline}</span>
-              <span className="flex items-center gap-1 text-sm font-medium text-(--brand-primary-strong) group-hover:text-primary transition-colors">
+              <span className="flex items-center gap-1 text-sm font-medium text-(--brand-primary-strong) group-hover:text-(--text-accent) transition-colors">
                 Try it <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </span>
             </div>

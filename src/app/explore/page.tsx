@@ -506,7 +506,7 @@ export default function ExplorePage() {
                       </div>
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <div className="flex items-center gap-3">
-                          <span className="flex items-center gap-1 font-semibold text-emerald-400">
+                          <span className="flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-400">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping mr-0.5" />
                             <Users className="w-3.5 h-3.5" />
                             {room.participants}

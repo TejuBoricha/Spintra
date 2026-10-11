@@ -208,7 +208,7 @@ export function CityTrade({
             <>
               {/* The reason this panel exists. */}
               {theirGain.length > 0 && (
-                <p className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+                <p className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
                   This completes <b>{nameOf(partner)}&apos;s {theirGain.join(" and ")}</b>. They can
                   build there straight away, and their rent doubles even undeveloped.
                 </p>

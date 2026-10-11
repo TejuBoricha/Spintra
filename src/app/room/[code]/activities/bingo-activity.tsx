@@ -247,8 +247,8 @@ export function BingoActivity() {
           animate={{ opacity: 1, scale: 1 }}
           className="text-center p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl w-full max-w-xs"
         >
-          <p className="text-sm text-emerald-300 font-semibold uppercase tracking-wider mb-1">Bingo Winner!</p>
-          <p className="text-2xl font-black text-emerald-400 flex items-center justify-center gap-2">
+          <p className="text-sm text-emerald-800 dark:text-emerald-300 font-semibold uppercase tracking-wider mb-1">Bingo Winner!</p>
+          <p className="text-2xl font-black text-emerald-700 dark:text-emerald-400 flex items-center justify-center gap-2">
             {bingoWinner} <Emoji name="party_popper" size={26} pop />
           </p>
         </motion.div>
@@ -266,9 +266,9 @@ export function BingoActivity() {
           animate={{ opacity: 1, scale: 1 }}
           role="status"
           aria-live="polite"
-          className="w-20 h-20 rounded-full flex flex-col items-center justify-center bg-gradient-to-br from-cyan-500 to-blue-600 border border-cyan-400/40 shadow-xl shadow-cyan-500/10 text-white select-none"
+          className="w-20 h-20 rounded-full flex flex-col items-center justify-center bg-gradient-to-br from-cyan-700 to-blue-700 border border-cyan-400/40 shadow-xl shadow-cyan-500/10 text-white select-none"
         >
-          <span className="text-[10px] uppercase font-bold tracking-widest leading-none text-cyan-200/80 mb-0.5">Called</span>
+          <span className="text-[10px] uppercase font-bold tracking-widest leading-none text-cyan-100 mb-0.5">Called</span>
           <span className="text-2xl font-black">{columnFor(lastCalled)}-{lastCalled}</span>
         </motion.div>
       )}
@@ -279,7 +279,7 @@ export function BingoActivity() {
           {COLUMNS.map((col) => (
             <div
               key={col}
-              className="w-12 h-8 flex items-center justify-center font-black text-cyan-400 text-base tracking-wider uppercase select-none"
+              className="w-12 h-8 flex items-center justify-center font-black text-cyan-700 dark:text-cyan-400 text-base tracking-wider uppercase select-none"
             >
               {col}
             </div>
@@ -294,8 +294,8 @@ export function BingoActivity() {
               let styleClass = "border-border text-muted-foreground bg-muted/30";
               if (marked) {
                 styleClass = isFree
-                  ? "bg-amber-500/20 border-amber-500 text-amber-200 shadow-amber-500/10"
-                  : "bg-cyan-500/20 border-cyan-500 text-cyan-200 shadow-cyan-500/10";
+                  ? "bg-amber-500/20 border-amber-500 text-amber-900 dark:text-amber-200 shadow-amber-500/10"
+                  : "bg-cyan-500/20 border-cyan-500 text-cyan-900 dark:text-cyan-200 shadow-cyan-500/10";
               }
 
               return (
@@ -332,7 +332,7 @@ export function BingoActivity() {
               const number = remaining[Math.floor(Math.random() * remaining.length)];
               sendActivityEvent({ kind: "bingo_call", number });
             }}
-            className="h-11 px-6 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white border-0 rounded-full font-bold shadow-lg shadow-cyan-500/10"
+            className="h-11 px-6 bg-gradient-to-r from-cyan-700 to-blue-700 hover:from-cyan-800 hover:to-blue-800 text-white border-0 rounded-full font-bold shadow-lg shadow-cyan-500/10"
           >
             Call Next Number
           </Button>
@@ -343,7 +343,7 @@ export function BingoActivity() {
                 sendActivityEvent({ kind: "bingo_reset" });
               }}
               variant="outline"
-              className="h-11 px-5 border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10 rounded-full transition-all"
+              className="h-11 px-5 border-cyan-500/30 text-cyan-800 dark:text-cyan-300 hover:bg-cyan-500/10 rounded-full transition-all"
             >
               <RotateCcw className="w-4 h-4 mr-2" /> Reset
             </Button>

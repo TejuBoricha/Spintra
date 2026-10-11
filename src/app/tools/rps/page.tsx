@@ -85,15 +85,15 @@ export default function RPSPage() {
 
           {/* Score */}
           <div className="flex justify-center gap-4 mb-8">
-            <div className="px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+            <div className="px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-800 dark:text-emerald-400">
               <div className="text-xl font-bold">{score.wins}</div>
               <div className="text-xs">Wins</div>
             </div>
-            <div className="px-4 py-2 rounded-lg bg-amber-500/10 text-amber-400">
+            <div className="px-4 py-2 rounded-lg bg-amber-500/10 text-amber-800 dark:text-amber-400">
               <div className="text-xl font-bold">{score.draws}</div>
               <div className="text-xs">Draws</div>
             </div>
-            <div className="px-4 py-2 rounded-lg bg-red-500/10 text-red-400">
+            <div className="px-4 py-2 rounded-lg bg-red-500/10 text-red-700 dark:text-red-400">
               <div className="text-xl font-bold">{score.losses}</div>
               <div className="text-xs">Losses</div>
             </div>
