@@ -32,6 +32,9 @@ for (const theme of ['dark', 'light'] as const) {
         await page.goto(path);
         // Let the page settle: hydration, and fonts changing the layout, would move things under the pictures.
         await page.waitForLoadState('load');
+        // CI's validate job builds without the Supabase variables; its red warning bar would be in every picture
+        // (and over the skip link). Real visitors never see it.
+        await hideConfigBanner(page);
         await page.waitForTimeout(600);
         const { stops, measured, unmeasured, problems } = await focusRingProblems(page, decoder);
         await decoder.close();

@@ -25,6 +25,12 @@ test('site-wide: nav does not overflow its container at 768x1024', async ({ page
 
 test('site-wide: footer links meet a 24px tap target', async ({ page }) => {
   await page.goto(`${BASE}/`);
+  // Measured right after load, a cold first page in CI once reported every link at 0 px (and 36 px a retry later):
+  // wait until the links have a box, then measure.
+  await page.waitForFunction(() => {
+    const links = Array.from(document.querySelectorAll('footer a'));
+    return links.length > 0 && links.every((a) => a.getBoundingClientRect().height > 0);
+  }, undefined, { timeout: 10_000 });
   const heights = await page.evaluate(() =>
     Array.from(document.querySelectorAll('footer a')).map((a) => ({
       text: a.textContent,
