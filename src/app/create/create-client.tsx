@@ -264,7 +264,7 @@ export default function CreateRoomClient() {
   const visibleGames = isClassroom ? GAMES.filter((g) => g.classroomSafe !== false) : GAMES;
 
   return (
-    <div className="grid lg:grid-cols-3 gap-8">
+    <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-3 gap-8">
       {/* Room Types */}
       <div className="lg:col-span-2 space-y-4">
         <div className="flex items-center gap-2 mb-4">

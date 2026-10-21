@@ -154,7 +154,7 @@ export default function WordScramblePage() {
           </motion.div>
         </AnimatePresence>
 
-        <div className="flex justify-center gap-3">
+        <div className="flex flex-wrap justify-center gap-3">
           {solved ? (
             <Button onClick={nextWord} className="bg-gradient-to-r from-lime-500 to-green-600 hover:from-lime-400 hover:to-green-500 text-white border-0">
               Next Word

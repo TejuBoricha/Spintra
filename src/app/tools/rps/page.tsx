@@ -102,22 +102,22 @@ export default function RPSPage() {
 
         {/* Battle Area */}
         <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-8 mb-8">
-          {/* One row at the normal text size; with larger text the two tiles and "VS" no longer fit side by side on a
-              phone, so the row wraps instead of running past the screen edge. */}
-          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 sm:gap-x-16">
+          {/* One row always. The two tiles are 6rem at most and shrink to fit (flex-1, min-w-0), so a narrow phone or
+              larger text makes them smaller instead of pushing "AI" onto its own row or past the screen edge. */}
+          <div className="flex items-center justify-center gap-8 sm:gap-16">
             {/* Player */}
-            <div className="text-center">
+            <div className="min-w-0 max-w-24 flex-1 text-center">
               <div className="text-sm text-muted-foreground mb-3">You</div>
               <motion.div
                 key={playerChoice}
                 initial={{ scale: 0.5 }}
                 animate={{ scale: 1 }}
-                className="w-24 h-24 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) flex items-center justify-center"
+                className="aspect-square w-full rounded-2xl border border-(--border-hairline) bg-(--surface-panel) flex items-center justify-center"
               >
                 {playerChoice ? (
-                  <Emoji name={choices.find((c) => c.name === playerChoice)!.emoji} size={56} pop />
+                  <Emoji name={choices.find((c) => c.name === playerChoice)!.emoji} size={56} pop className="max-h-[85%] max-w-[85%] object-contain" />
                 ) : (
-                  <Emoji name="question_mark" size={56} />
+                  <Emoji name="question_mark" size={56} className="max-h-[85%] max-w-[85%] object-contain" />
                 )}
               </motion.div>
             </div>
@@ -126,32 +126,32 @@ export default function RPSPage() {
             <motion.div
               animate={playing ? { scale: [1, 1.2, 1] } : {}}
               transition={{ repeat: Infinity, duration: 0.5 }}
-              className="text-2xl font-bold text-muted-foreground"
+              className="shrink-0 text-2xl font-bold text-muted-foreground"
             >
               VS
             </motion.div>
 
             {/* AI */}
-            <div className="text-center">
+            <div className="min-w-0 max-w-24 flex-1 text-center">
               <div className="text-sm text-muted-foreground mb-3">AI</div>
               <motion.div
                 key={aiChoice}
                 initial={aiChoice ? { scale: 0.5 } : {}}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.3 }}
-                className="w-24 h-24 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) flex items-center justify-center"
+                className="aspect-square w-full rounded-2xl border border-(--border-hairline) bg-(--surface-panel) flex items-center justify-center"
               >
                 {playing ? (
                   <motion.div
                     animate={{ rotate: [0, 360] }}
                     transition={{ repeat: Infinity, duration: 0.3, ease: "linear" }}
                   >
-                    <Swords className="w-12 h-12 text-(--brand-primary-strong)" />
+                    <Swords className="h-12 w-12 max-h-[85%] max-w-[85%] text-(--brand-primary-strong)" />
                   </motion.div>
                 ) : aiChoice ? (
-                  <Emoji name={choices.find((c) => c.name === aiChoice)!.emoji} size={56} pop />
+                  <Emoji name={choices.find((c) => c.name === aiChoice)!.emoji} size={56} pop className="max-h-[85%] max-w-[85%] object-contain" />
                 ) : (
-                  <Emoji name="robot" size={56} />
+                  <Emoji name="robot" size={56} className="max-h-[85%] max-w-[85%] object-contain" />
                 )}
               </motion.div>
             </div>

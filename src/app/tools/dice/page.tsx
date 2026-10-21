@@ -184,8 +184,9 @@ export default function DicePage() {
   const currentDice = diceTypes.find((d) => d.sides === selectedDice) || diceTypes[1];
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden pb-16 px-4">
-      {/* Immersive background glow effects */}
+    <div className="min-h-screen bg-background relative overflow-clip pb-16 px-4">
+      {/* Immersive background glow effects. The page clips them (overflow-clip, not overflow-hidden): a hidden
+          page-sized box is still a scroll container, and focusing or clicking a control scrolled it sideways. */}
       <div className="absolute top-[-10%] left-[-20%] w-[60%] h-[50%] rounded-full dark:bg-(--violet-800)/10 bg-primary/5 blur-[150px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-20%] w-[60%] h-[50%] rounded-full dark:bg-cyan-900/10 bg-cyan-500/5 blur-[150px] pointer-events-none" />
 
@@ -216,8 +217,9 @@ export default function DicePage() {
                   Select Dice Shape
                 </h2>
                 {/* Four columns, but never narrower than a button's own content (3rem, which grows with the text size):
-                    with larger text a fixed four columns pushed the whole panel wider than the screen. */}
-                <div className="grid grid-cols-[repeat(auto-fit,minmax(max(3rem,calc((100%_-_1.5rem)/4)),1fr))] gap-2">
+                    with larger text a fixed four columns pushed the whole panel wider than the screen. The width of
+                    the three gaps in the column formula is the same --gap the grid uses, so changing it keeps four. */}
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(max(3rem,calc((100%_-_3_*_var(--gap))/4)),1fr))] gap-(--gap) [--gap:0.5rem]">
                   {diceTypes.map((d) => (
                     <button
                       key={d.sides}
@@ -417,12 +419,13 @@ export default function DicePage() {
               </div>
 
               {/* Footer Controls */}
-              <div className="relative z-10 flex flex-wrap items-center justify-center gap-4 mt-6">
+              <div className="relative z-10 flex flex-wrap items-center justify-center gap-3 min-[360px]:gap-4 mt-6">
                 <Button
                   size="lg"
+                  wrap
                   onClick={roll}
                   disabled={rolling}
-                  className="px-10 py-6 text-sm font-black tracking-wider uppercase bg-gradient-to-r bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95 shadow-lg shadow-glow-primary-sm flex items-center gap-2 rounded-xl"
+                  className="px-10 text-sm font-black tracking-wider uppercase bg-gradient-to-r bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95 shadow-lg shadow-glow-primary-sm flex items-center gap-2 rounded-xl"
                 >
                   <Play className="w-4 h-4 fill-white" />
                   Roll {count}d{selectedDice}

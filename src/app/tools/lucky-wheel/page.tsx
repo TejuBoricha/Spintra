@@ -599,7 +599,7 @@ export default function LuckyWheelPage() {
         </div>
 
         {/* ── Main layout: Wheel | Sidebar ── */}
-        <div className="grid lg:grid-cols-3 gap-8 mb-10">
+        <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-3 gap-8 mb-10">
           {/* Wheel column */}
           <div
             className="lg:col-span-2 flex flex-col items-center reveal reveal-scale reveal-delay-1"

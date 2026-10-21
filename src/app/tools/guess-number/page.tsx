@@ -115,7 +115,8 @@ export default function GuessNumberPage() {
 
         {/* Guess Input */}
         {!gameOver && (
-          <div className="flex justify-center gap-3 mb-8">
+          // The field starts at 6rem and grows to 8rem, so the row stays one line on a 320px phone and wraps only when the text is larger.
+          <div className="flex flex-wrap justify-center gap-3 mb-8">
             <input
               type="number"
               min={1}
@@ -124,7 +125,7 @@ export default function GuessNumberPage() {
               onChange={(e) => setGuess(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && makeGuess()}
               placeholder={`Enter 1-${mode.range}`}
-              className="w-32 min-w-0 px-4 py-3 rounded-xl bg-(--surface-sunken) border border-(--border-hairline) text-center text-lg font-bold focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring outline-none"
+              className="w-24 min-w-0 max-w-32 grow px-4 py-3 rounded-xl bg-(--surface-sunken) border border-(--border-hairline) text-center text-lg font-bold focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring outline-none"
             />
             <Button onClick={makeGuess} className="bg-primary text-primary-foreground hover:brightness-95">
               <Target className="w-4 h-4 mr-2" /> Guess
