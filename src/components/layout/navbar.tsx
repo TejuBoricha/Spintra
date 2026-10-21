@@ -25,6 +25,7 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useWhatsNew, WhatsNewTrigger, WhatsNewDialog } from "@/components/layout/whats-new-dialog";
 import { cn } from "@/lib/utils";
+import { isImeKey } from "@/lib/keyboard";
 
 // The confetti library loads when the page is idle (and on first use if that has not happened
 // yet), not in every page's first load (search audit S-7). A failed fetch just means no confetti.
@@ -127,6 +128,7 @@ export function Navbar() {
 
   const handleDigitKeyDown = useCallback(
     (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (isImeKey(e)) return;
       if (e.key === "Enter") {
         handleJoinRoomSubmit();
         return;

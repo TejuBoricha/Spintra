@@ -19,6 +19,7 @@ import { Emoji, renderTextWithEmoji, EMOJI_UNICODE } from "@/components/emoji";
 import { RankBadge } from "@/components/ui/rank-badge";
 import { getBlockedUsers, toggleBlockedUser } from "@/lib/blocked-users";
 import type { User, ChatMessage, RoomParticipant } from "@/lib/types";
+import { isImeKey } from "@/lib/keyboard";
 
 const REACTION_NAMES = [
   "thumbs_up",
@@ -336,7 +337,7 @@ export function RoomSidebar({
                     aria-label="Type a message"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                    onKeyDown={(e) => e.key === "Enter" && !isImeKey(e) && sendMessage()}
                     maxLength={MAX_MESSAGE_LENGTH}
                     className="flex-1"
                   />
@@ -430,6 +431,7 @@ export function RoomSidebar({
                               maxLength={15}
                               className="text-xs bg-black/5 dark:bg-(--surface-sunken) border border-black/10 dark:border-(--border-hairline) rounded px-1.5 py-0.5 font-medium text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring w-24"
                               onKeyDown={(e) => {
+                                if (isImeKey(e)) return;
                                 if (e.key === "Enter") handleSaveUsername();
                                 if (e.key === "Escape") setIsEditingUsername(false);
                               }}

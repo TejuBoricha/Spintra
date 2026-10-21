@@ -11,6 +11,7 @@ import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
 import { toast } from "sonner";
 import { playSwipe, playSuccess } from "@/lib/audio";
+import { isImeKey } from "@/lib/keyboard";
 
 // ── Helpers copied from standalone tool for UI alignment ──
 function getContrastText(hex: string): string {
@@ -408,6 +409,7 @@ export function LuckyWheelActivity() {
                       setEditingIndex(null);
                     }}
                     onKeyDown={(evt) => {
+                      if (isImeKey(evt)) return;
                       if (evt.key === "Enter") {
                         const trimmed = editingText.trim();
                         if (trimmed && trimmed !== e) {
@@ -458,7 +460,7 @@ export function LuckyWheelActivity() {
             <Input
               value={newWheelEntryText}
               onChange={(e) => setNewWheelEntryText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && addWheelEntry()}
+              onKeyDown={(e) => e.key === "Enter" && !isImeKey(e) && addWheelEntry()}
               placeholder="Add an option..."
               aria-label="Add a wheel option"
               maxLength={40}

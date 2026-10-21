@@ -31,6 +31,7 @@ import { Emoji, type EmojiName } from "@/components/emoji";
 import { fireConfetti, CelebrationBanner } from "@/components/celebration";
 import { playTick } from "@/lib/audio";
 import { getGameByType } from "@/lib/games";
+import { isImeKey } from "@/lib/keyboard";
 
 const GameIcon = getGameByType("lucky-wheel")!.icon;
 
@@ -736,7 +737,7 @@ export default function LuckyWheelPage() {
                             setEditingId(null);
                           }}
                           onKeyDown={(e) => {
-                            if (e.nativeEvent.isComposing) return; // Enter confirms an IME composition here, it does not save
+                            if (isImeKey(e)) return; // Enter confirms an IME composition here, it does not save
                             if (e.key === "Enter") {
                               // Without this the same key press, now on the entry's button (focus moves back to it
                               // below), would press that button and open the editor again.
@@ -816,7 +817,7 @@ export default function LuckyWheelPage() {
                   value={newEntryLabel}
                   onChange={(e) => setNewEntryLabel(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") addEntry();
+                    if (e.key === "Enter" && !isImeKey(e)) addEntry();
                   }}
                   className="flex-1 text-xs"
                 />
