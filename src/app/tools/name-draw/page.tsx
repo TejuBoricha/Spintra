@@ -283,8 +283,8 @@ export default function NameDrawPage() {
   const drawnButShuffled = [...drawnNames].reverse();
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Aurora background accent */}
+    <div className="min-h-screen bg-background relative overflow-clip">
+      {/* Aurora background accent (clipped with overflow-clip so the page is not a scroll container) */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-amber-500/10 via-orange-500/5 to-transparent blur-3xl pointer-events-none" />
 
       <div className="max-w-5xl mx-auto px-4 py-8 sm:py-12 relative z-10">
@@ -305,7 +305,7 @@ export default function NameDrawPage() {
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-5 gap-6">
           {/* Left Panel: Input */}
           <div
             className="lg:col-span-2 space-y-4 reveal reveal-left reveal-delay-1"

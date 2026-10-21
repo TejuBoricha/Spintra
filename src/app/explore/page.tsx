@@ -464,7 +464,7 @@ export default function ExplorePage() {
                   No public rooms match this filter right now. Make one public and it will show up here for others to join.
                 </p>
               </div>
-              <ButtonLink href="/create" variant="brand">
+              <ButtonLink href="/create" variant="brand" wrap>
                 <Plus className="w-4 h-4" />
                 Create Public Room
               </ButtonLink>
