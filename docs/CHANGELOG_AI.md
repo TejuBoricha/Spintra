@@ -3520,3 +3520,13 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 **Also (outside the repo, nothing committed):** the launch video, made by hand from the brag-slim recipe: 20 s landscape and vertical cuts with sound, posters and share text in C:/Users/tejas/Desktop/Spintra-launch-video/brag-output/ (plan and results in its `brag-plan.md`). Real UI recorded on the local stack; sound unheard by the assistant.
 **Evidence:** #82 merged at `46dbe56` with `validate` and `db-integration` green on its exact head `5aca790`. The live home page loaded read-only at 390 px is 390 px wide (scrollWidth = clientWidth = 390). Lighthouse 13.5.0 against https://spintra.io, one run each: mobile home 71 / LCP 4.4 s, dice 81 / 4.3 s, tournament 81 / 4.2 s, desktop home 99 / 1.0 s (7 Oct: 49 / 6.70 s, 71 / 4.85 s, 78 / 4.92 s, 82 / 1.29 s).
 **Not verified:** `main`'s post-merge CI for `46dbe56` and the Vercel deploy (still running when this was written); the Lighthouse tool version of the 7 Oct runs, so the before and after are not like for like to the decimal.
+
+## [2026-10-21] — CI dependency audit: `hono` advisory (lockfile only)
+
+**AI:** Claude Code (cloud session)
+**Task:** start-of-session check of `main` (`5860ab7`): `npm run verify` failed at its last step, `npm run audit`.
+**Cause:** GHSA-5r4p-p66f-jhc7 (moderate; `hono` 4.12.4 to 4.13.10, `serveStatic` decodes the path twice). It is reached only through `shadcn` → `@modelcontextprotocol/sdk` (development tooling; `npm audit --omit=dev` reports 0), but the gate is `moderate` for the whole tree, so every branch and pull request would have gone red at `validate`'s audit step, before any test ran.
+**Change:** `package-lock.json` only: `hono` 4.13.7 to 4.13.13 (3 lines: version, resolved, integrity). No `package.json` or code change.
+**Why not `npm audit fix`:** it rewrote 344 lockfile lines (browserslist, caniuse-lite, a nested zod and others), wider than the advisory needs. `npm update hono --package-lock-only` picked the same hono version but this container's npm 10 also drops the `"libc"` fields that the repo's npm 11 writes (126 lines of noise), so the three lines were applied by hand.
+**Evidence:** `npm ci` from the edited lockfile exits 0 and `npm ls hono` shows 4.13.13 for both paths; `npm run audit` passes (only the dated `braces` exception remains); `npm run verify` clean; `SKIP_ENV_VALIDATION=true npm run build` clean.
+**Not verified:** CI on a pull request head (none opened yet). **Still due by 2026-11-07:** the `braces` exception (`braces` is still 3.0.3 on 21 Oct, so it will need renewing with a new date and reason, see `HANDOFF.md` section 4).
