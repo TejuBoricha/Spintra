@@ -128,9 +128,8 @@ export function Navbar() {
 
   const handleDigitKeyDown = useCallback(
     (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (isImeKey(e)) return;
       if (e.key === "Enter") {
-        handleJoinRoomSubmit();
+        if (!isImeKey(e)) handleJoinRoomSubmit();
         return;
       }
       if (e.key === "Backspace" && !codeDigits[index] && index > 0) {

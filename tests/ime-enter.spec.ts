@@ -10,11 +10,15 @@ import { test, expect, type Page, type Locator } from '@playwright/test';
 // presses Enter again: that one is the field's own and must still act. The first press is checked on its own, right after it
 // (a buggy first Enter clears the field, so the end state alone would look the same as a correct run).
 
+/** The page's handlers are attached when React has hydrated the field: an Enter before that does nothing on any build, which
+ * would let the guard-less code pass a case by accident. */
+async function hydrated(field: Locator) {
+  await expect.poll(() => field.evaluate((el) => Object.keys(el).some((key) => key.startsWith('__reactProps$')))).toBe(true);
+}
+
 /** Starts a composition in the field, presses Enter, and says whether the page saw that Enter as part of the composition. */
 async function enterWhileComposing(page: Page, field: Locator) {
-  // The page's handlers are attached when React has hydrated the field: an Enter before that does nothing on any build, which
-  // would let the guard-less code pass this case by accident.
-  await expect.poll(() => field.evaluate((el) => Object.keys(el).some((key) => key.startsWith('__reactProps$')))).toBe(true);
+  await hydrated(field);
   await page.evaluate(() => {
     (window as unknown as { __imeKeys: boolean[] }).__imeKeys = [];
     document.addEventListener('keydown', (e) => (window as unknown as { __imeKeys: boolean[] }).__imeKeys.push(e.isComposing), true);
@@ -45,12 +49,29 @@ test.describe('Enter that confirms an input-method composition does not submit t
     await expect(entries, 'the next Enter is the field\'s own').toContainText('(6)');
   });
 
+  test('Lucky Wheel: Safari reports the confirming Enter after the composition has ended', async ({ page }) => {
+    // Safari fires compositionend first, so that keydown has isComposing false and only keyCode 229 gives it away. Chromium
+    // cannot be made to do that, so the event is dispatched by hand, the way the browser would report it.
+    await page.goto('/tools/lucky-wheel');
+    const entries = page.getByRole('heading', { name: /Entries \(\d+\)/ });
+    await expect(entries).toContainText('(5)');
+    const field = page.getByPlaceholder('New entry...');
+    await hydrated(field);
+    await field.fill('にほん');
+    await field.evaluate((el) => el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 229, isComposing: false, bubbles: true })));
+    await page.waitForTimeout(500);
+    await expect(entries, 'no entry added by the Enter that confirmed the composition').toContainText('(5)');
+    await field.press('Enter');
+    await expect(entries, 'the next Enter is the field\'s own').toContainText('(6)');
+  });
+
   test('Team Maker: adding a player to a team', async ({ page }) => {
     await page.goto('/tools/team-maker');
     await page.locator('textarea').first().fill('Alex\nJordan\nTaylor\nMorgan');
     await page.getByRole('button', { name: /Generate Teams/ }).evaluate((el) => (el as HTMLElement).click());
-    const members = page.locator('li');
-    await expect(members.first()).toBeVisible();
+    // Team 1's own members (one Remove button each), not every list item on the page.
+    const members = page.getByRole('button', { name: /^Remove .* from Team 1$/ });
+    await expect(members.first()).toBeAttached();
     const before = await members.count();
     const cdp = await enterWhileComposing(page, page.getByLabel('Add a player to Team 1').first());
     await expect(members, 'no player added by the Enter that confirmed the composition').toHaveCount(before);
