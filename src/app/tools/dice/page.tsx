@@ -447,7 +447,7 @@ export default function DicePage() {
             {/* Elegant History Feed */}
             {history.length > 0 && (
               <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6">
-                <div className="flex items-center justify-between w-full mb-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 w-full mb-4">
                   <span className="text-xs uppercase font-bold tracking-widest text-muted-foreground flex items-center gap-2">
                     <History className="w-4 h-4 text-(--brand-primary-strong)" />
                     History Feed
@@ -457,7 +457,7 @@ export default function DicePage() {
                     size="sm"
                     onClick={clearHistory}
                     disabled={rolling}
-                    className="text-xs text-muted-foreground hover:text-red-400 h-8 gap-1.5"
+                    className="ml-auto text-xs text-muted-foreground hover:text-red-400 h-8 gap-1.5"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                     Clear

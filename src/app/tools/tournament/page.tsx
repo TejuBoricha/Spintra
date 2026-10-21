@@ -109,7 +109,7 @@ function ScoreEditor({
         <h3 className="text-lg font-bold mb-4 text-center">Update Score</h3>
 
         <div className="flex items-center gap-4 mb-6">
-          <div className="flex-1 text-center">
+          <div className="min-w-0 flex-1 text-center">
             <p className="text-sm font-semibold mb-2 truncate">
               {match.player1 || "TBD"}
             </p>
@@ -118,11 +118,11 @@ function ScoreEditor({
               min={0}
               value={score1}
               onChange={(e) => setScore1(parseInt(e.target.value) || 0)}
-              className="w-20 mx-auto text-center text-lg font-bold"
+              className="w-full max-w-20 mx-auto text-center text-lg font-bold"
             />
           </div>
           <span className="text-muted-foreground font-bold mt-6">vs</span>
-          <div className="flex-1 text-center">
+          <div className="min-w-0 flex-1 text-center">
             <p className="text-sm font-semibold mb-2 truncate">
               {match.player2 || "TBD"}
             </p>
@@ -131,12 +131,12 @@ function ScoreEditor({
               min={0}
               value={score2}
               onChange={(e) => setScore2(parseInt(e.target.value) || 0)}
-              className="w-20 mx-auto text-center text-lg font-bold"
+              className="w-full max-w-20 mx-auto text-center text-lg font-bold"
             />
           </div>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <Button variant="outline" onClick={onClose} className="flex-1">
             Cancel
           </Button>
@@ -561,7 +561,7 @@ export default function TournamentPage() {
             <GameIcon className="w-4 h-4 text-emerald-400" />
             <span className="text-muted-foreground">Bracket Generator</span>
           </div>
-          <h1 className="font-display text-4xl sm:text-5xl font-black mb-3">
+          <h1 className="font-display text-4xl sm:text-5xl font-black mb-3 hyphens-auto [overflow-wrap:anywhere]">
             Tournament{" "}
             <span className="gradient-text">Generator</span>
           </h1>

@@ -456,7 +456,7 @@ export default function NameDrawPage() {
                     <motion.div
                       animate={{ rotate: [0, -3, 3, -2, 0] }}
                       transition={{ duration: 0.3, repeat: Infinity }}
-                      className="text-5xl sm:text-6xl md:text-7xl font-bold text-amber-400 mb-4"
+                      className="text-5xl sm:text-6xl md:text-7xl font-bold text-amber-400 mb-4 [overflow-wrap:anywhere]"
                     >
                       {shufflingName}
                     </motion.div>
