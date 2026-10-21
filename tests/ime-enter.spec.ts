@@ -10,6 +10,12 @@ import { test, expect, type Page, type Locator } from '@playwright/test';
 // presses Enter again: that one is the field's own and must still act. The first press is checked on its own, right after it
 // (a buggy first Enter clears the field, so the end state alone would look the same as a correct run).
 
+/** A field by its placeholder, label or id, as the person sees it. These pages stream: for a moment the server's copy of a
+ * section sits hidden in a staging container (`div#S:0`) next to the copy React has just created, and unlike `getByRole`,
+ * `getByPlaceholder`, `getByLabel` and `locator('#id')` match hidden nodes too, so a plain locator saw two inputs and threw a
+ * strict-mode violation (CI, first run of this file). Only the visible one is the field. */
+const visible = (field: Locator) => field.filter({ visible: true });
+
 /** The page's handlers are attached when React has hydrated the field: an Enter before that does nothing on any build, which
  * would let the guard-less code pass a case by accident. */
 async function hydrated(field: Locator) {
@@ -42,7 +48,7 @@ test.describe('Enter that confirms an input-method composition does not submit t
     await page.goto('/tools/lucky-wheel');
     const entries = page.getByRole('heading', { name: /Entries \(\d+\)/ });
     await expect(entries).toContainText('(5)');
-    const cdp = await enterWhileComposing(page, page.getByPlaceholder('New entry...'));
+    const cdp = await enterWhileComposing(page, visible(page.getByPlaceholder('New entry...')));
     await expect(entries, 'no entry added by the Enter that confirmed the composition').toContainText('(5)');
     await commit(cdp);
     await page.keyboard.press('Enter');
@@ -55,7 +61,7 @@ test.describe('Enter that confirms an input-method composition does not submit t
     await page.goto('/tools/lucky-wheel');
     const entries = page.getByRole('heading', { name: /Entries \(\d+\)/ });
     await expect(entries).toContainText('(5)');
-    const field = page.getByPlaceholder('New entry...');
+    const field = visible(page.getByPlaceholder('New entry...'));
     await hydrated(field);
     await field.fill('にほん');
     await field.evaluate((el) => el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 229, isComposing: false, bubbles: true })));
@@ -73,7 +79,7 @@ test.describe('Enter that confirms an input-method composition does not submit t
     const members = page.getByRole('button', { name: /^Remove .* from Team 1$/ });
     await expect(members.first()).toBeAttached();
     const before = await members.count();
-    const cdp = await enterWhileComposing(page, page.getByLabel('Add a player to Team 1').first());
+    const cdp = await enterWhileComposing(page, visible(page.getByLabel('Add a player to Team 1')).first());
     await expect(members, 'no player added by the Enter that confirmed the composition').toHaveCount(before);
     await commit(cdp);
     await page.keyboard.press('Enter');
@@ -82,7 +88,7 @@ test.describe('Enter that confirms an input-method composition does not submit t
 
   test('Word Scramble: submitting a guess', async ({ page }) => {
     await page.goto('/tools/word-scramble');
-    const cdp = await enterWhileComposing(page, page.getByPlaceholder('Your guess...'));
+    const cdp = await enterWhileComposing(page, visible(page.getByPlaceholder('Your guess...')));
     // One read, not a retrying assertion: a toast goes away by itself after a few seconds, which would turn this into a pass.
     expect(await page.getByText('Not quite. Try again.').count(), 'no guess judged for the Enter that confirmed the composition').toBe(0);
     await commit(cdp);
@@ -92,7 +98,7 @@ test.describe('Enter that confirms an input-method composition does not submit t
 
   test('Settings: saving the display name (Enter leaves the field)', async ({ page }) => {
     await page.goto('/settings');
-    const name = page.locator('#settings-display-name');
+    const name = visible(page.locator('#settings-display-name'));
     const cdp = await enterWhileComposing(page, name);
     await expect(name, 'still being typed in').toBeFocused();
     await commit(cdp);
