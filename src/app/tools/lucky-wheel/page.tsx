@@ -843,7 +843,6 @@ export default function LuckyWheelPage() {
                       }
                       applyTemplate(tpl);
                     }}
-                    aria-label={`Apply "${tpl.label}" template (replaces current entries)`}
                     className="flex items-center gap-3 p-2.5 rounded-lg border border-(--border-hairline) bg-(--surface-sunken) hover:bg-muted hover:border-cyan-500/20 transition-all text-left group"
                   >
                     <Emoji name={tpl.icon} size={22} animated={false} />
@@ -852,7 +851,9 @@ export default function LuckyWheelPage() {
                         {tpl.label}
                       </div>
                       <div className="text-xs text-muted-foreground">
+                        {/* The name comes from the visible text (WCAG 2.5.3 Label in Name); an aria-label that left out "N entries" failed axe-core 4.14. */}
                         {tpl.entries.length} entries
+                        <span className="sr-only">, replaces the current entries</span>
                       </div>
                     </div>
                     <ArrowRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-cyan-300 group-hover:translate-x-0.5 transition-all" />
