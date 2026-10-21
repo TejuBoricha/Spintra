@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { SITE_PAGES, NOT_FOUND_PATH } from './site-routes';
 import { hideConfigBanner } from './helpers/config-banner';
 
@@ -76,6 +76,35 @@ async function overflowProblems(page: Page): Promise<string[]> {
           if (spill > 2) {
             out.push(`${label(el)} is ${Math.round(r.width)}px wide in a ${Math.round(pr.width - padL - padR)}px box and sticks out ${Math.round(spill)}px into its padding`);
           }
+        }
+      }
+    }
+    // The text itself. A word wider than its block keeps the block's box inside the screen while the word sticks out or is cut
+    // off by the page (the "Tournament" title at 150% text on a 360px phone: box 24 to 336px, text 24 to 377px, clipped at
+    // the screen edge by the page's overflow-clip), and no box rule above can see that. Text that a box narrower than the
+    // screen clips on purpose (an ellipsis, a card's own overflow) is left alone, like the controls above.
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const text = (node.textContent ?? '').trim();
+      const owner = node.parentElement;
+      if (!text || !owner) continue;
+      const ownerStyle = getComputedStyle(owner);
+      if (ownerStyle.display === 'none' || ownerStyle.visibility === 'hidden') continue;
+      if (/(^|\s)sr-only(\s|$)/.test(owner.getAttribute('class') ?? '')) continue;
+      let skipped = false;
+      for (let n: Element | null = owner; n && n !== document.documentElement; n = n.parentElement) {
+        const o = getComputedStyle(n);
+        if (Number(o.opacity) < 0.05) skipped = true;
+        if (/(auto|scroll|hidden|clip)/.test(o.overflowX) && n.getBoundingClientRect().width < vw - 2) skipped = true;
+      }
+      if (skipped) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      for (const r of Array.from(range.getClientRects())) {
+        if (r.width < 1 || r.height < 1) continue;
+        if (r.right > vw + 1 || r.left < -1) {
+          out.push(`text "${text.slice(0, 24)}" spans ${Math.round(r.left)} to ${Math.round(r.right)}px in a ${vw}px window`);
+          break;
         }
       }
     }
@@ -172,6 +201,122 @@ for (const width of [360, 390]) {
         await page.addStyleTag({ content: 'html { font-size: 150% !important; }' });
         await page.getByRole('region', { name: 'Cookie notice' }).waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
         expect(await problemsWhileScrolling(page), 'nothing is wider than the screen or its box').toEqual([]);
+      });
+    }
+  });
+}
+
+// Larger text, the other half (U-41 part 2): the loop above measures each page as it loads. A page that has been used shows
+// other things: a dialog, a label that grows while the wheel turns, a card per team, a header button that appears with the
+// first flip. All of these overflowed at 360px and 150% and none showed in the idle measurement. Timers the page waits on
+// are shortened (fast) or held (the name draw's shuffle) so the state can be measured without racing its own animation.
+// They are matched by value: 1200ms is Coin Flip's flip and 1000ms Dice's roll (a changed duration only makes the case slower,
+// the 5s expectations still hold), and 80ms is the Name Draw shuffle's tick (a changed tick lets the shuffle finish, and the
+// case then fails on 'Picking a winner...': update the number here).
+const fastTimers = () => {
+  const real = window.setTimeout.bind(window);
+  window.setTimeout = ((fn: TimerHandler, ms?: number, ...args: unknown[]) => real(fn, ms === 1000 || ms === 1200 ? 15 : ms, ...args)) as typeof window.setTimeout;
+};
+const holdNameDrawShuffle = () => {
+  const real = window.setInterval.bind(window);
+  window.setInterval = ((fn: TimerHandler, ms?: number, ...args: unknown[]) => {
+    if (ms !== 80) return real(fn, ms, ...args);
+    let ticks = 0;
+    return real(() => {
+      if (ticks++ < 3) (fn as () => void)();
+    }, ms);
+  }) as typeof window.setInterval;
+};
+/** A click from the page itself: the cookie notice can cover a button at the bottom of a phone screen. */
+const press = (target: Locator) => target.evaluate((el) => (el as HTMLElement).click());
+
+const STATES: { name: string; path: string; init?: () => void; drive: (page: Page) => Promise<void> }[] = [
+  {
+    name: 'Tournament: the Update Score dialog',
+    path: '/tools/tournament',
+    drive: async (page) => {
+      await press(page.locator('button:has-text("8 player single")').first());
+      await press(page.getByRole('button', { name: /Generate Bracket/ }));
+      await press(page.locator('[data-match-ready="true"]').first());
+      await expect(page.getByRole('heading', { name: 'Update Score' })).toBeVisible();
+      await atRest(page);
+    },
+  },
+  {
+    name: 'Lucky Wheel: while the wheel spins ("Spinning..." is longer than "Spin!")',
+    path: '/tools/lucky-wheel',
+    drive: async (page) => {
+      await press(page.getByRole('button', { name: /Spin!/ }));
+      await expect(page.getByRole('button', { name: /Spinning/ })).toBeVisible(); // a spin lasts seconds: measure now
+    },
+  },
+  {
+    name: 'Team Maker: the teams, one with an ordinary 18-character name, and the Create Room button',
+    path: '/tools/team-maker',
+    drive: async (page) => {
+      await page.locator('textarea').first().fill('Alexander Hamilton\nJordan\nTaylor\nMorgan');
+      await press(page.getByRole('button', { name: /Generate Teams/ }));
+      await expect(page.getByText('Want everyone to see their team?')).toBeVisible();
+      await atRest(page);
+    },
+  },
+  {
+    name: 'Name Draw: a long name while the names shuffle',
+    path: '/tools/name-draw',
+    init: holdNameDrawShuffle,
+    drive: async (page) => {
+      await page.locator('textarea').first().fill('Christopher\nBartholomew');
+      await press(page.getByRole('button', { name: /Draw One/ }));
+      await expect(page.getByText('Picking a winner...')).toBeVisible();
+      // The card clips whatever sticks out of it (its glow, and here the name), and a box narrower than the screen is left
+      // alone by the text rule above, so the name is held to its card here: every line of it inside the card's edges.
+      const spill = await page.evaluate(() => {
+        const note = Array.from(document.querySelectorAll('p')).find((p) => p.textContent?.includes('Picking a winner...'))!;
+        const name = note.previousElementSibling as HTMLElement;
+        const card = note.closest('[class*="overflow-hidden"]') as HTMLElement;
+        const range = document.createRange();
+        range.selectNodeContents(name);
+        const box = card.getBoundingClientRect();
+        return Math.max(0, ...Array.from(range.getClientRects()).map((r) => Math.max(box.left - r.left, r.right - box.right)));
+      });
+      expect(spill, 'the shuffling name stays inside its card instead of being cut off by it').toBeLessThanOrEqual(1);
+    },
+  },
+  {
+    name: 'Coin Flip: the Statistics header, with its Reset button, after a flip',
+    path: '/tools/coin-flip',
+    init: fastTimers,
+    drive: async (page) => {
+      await press(page.getByRole('button', { name: /Flip Coin|Flipping/ }));
+      await expect(page.getByRole('button', { name: 'Reset', exact: true })).toBeVisible();
+      await atRest(page);
+    },
+  },
+  {
+    name: 'Dice: the History Feed header, with its Clear button, after a roll',
+    path: '/tools/dice',
+    init: fastTimers,
+    drive: async (page) => {
+      await press(page.getByRole('button', { name: /^Roll \d+d\d+/i }));
+      await expect(page.getByRole('button', { name: 'Clear', exact: true })).toBeVisible();
+      await atRest(page);
+    },
+  },
+];
+
+for (const width of [360, 390]) {
+  test.describe(`at ${width}px wide with the text 150% as large, after the visitor has done something`, () => {
+    test.use({ viewport: { width, height: 800 } });
+
+    for (const state of STATES) {
+      test(state.name, async ({ page }) => {
+        if (state.init) await page.addInitScript(state.init);
+        await page.goto(state.path);
+        await hideConfigBanner(page);
+        await page.addStyleTag({ content: 'html { font-size: 150% !important; }' });
+        await atRest(page); // the page's own entrance first, or it reads as overflow
+        await state.drive(page);
+        expect(await overflowProblems(page), 'nothing is wider than the screen or its box').toEqual([]);
       });
     }
   });

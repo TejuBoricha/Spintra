@@ -130,7 +130,7 @@ export default function CoinFlipPage() {
           <div
             className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 max-w-md mx-auto reveal reveal-fade"
           >
-            <h2 className="text-lg font-semibold mb-4 flex items-center justify-between w-full">
+            <h2 className="text-lg font-semibold mb-4 flex flex-wrap items-center justify-between gap-2 w-full">
               <span className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-(--brand-primary-strong)" />
                 Statistics
@@ -140,7 +140,7 @@ export default function CoinFlipPage() {
                 size="sm"
                 onClick={resetStats}
                 disabled={flipping}
-                className="text-xs text-muted-foreground hover:text-red-400 h-8 gap-1.5"
+                className="ml-auto text-xs text-muted-foreground hover:text-red-400 h-8 gap-1.5"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 Reset

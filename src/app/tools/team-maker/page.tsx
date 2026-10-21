@@ -370,7 +370,7 @@ export default function TeamMakerPage() {
               </div>
 
               {/* Team cards grid */}
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-[minmax(0,1fr)] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {teams.map((team, teamIdx) => {
                   const color = TEAM_COLORS[team.colorIdx % TEAM_COLORS.length];
                   const isCollapsed = collapsedTeams.has(teamIdx);
@@ -434,7 +434,7 @@ export default function TeamMakerPage() {
                                 exit={{ opacity: 0, x: 10, height: 0 }}
                                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-(--surface-sunken) border border-(--border-hairline) group/member hover:bg-muted transition-colors"
                               >
-                                <span className="flex-1 text-sm truncate">
+                                <span className="min-w-0 flex-1 text-sm truncate" title={member}>
                                   {member}
                                 </span>
                                 {/* Move to other teams */}
@@ -518,7 +518,7 @@ export default function TeamMakerPage() {
                   Create a room and share the code. Each person sees the teams on their own
                   phone, and any reshuffle shows up for everyone.
                 </p>
-                <ButtonLink href="/create?type=team-maker" className="gap-2 bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">
+                <ButtonLink href="/create?type=team-maker" wrap className="gap-2 bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">
                   <Users className="w-4 h-4" />
                   Create Room
                   <ArrowRight className="w-4 h-4" />
