@@ -888,7 +888,7 @@ export default function LuckyWheelPage() {
             Create a room and everyone watches the same spin on their own screen.
             Useful for giveaways, where people want to see the draw for themselves.
           </p>
-          <ButtonLink href="/create?type=lucky-wheel" className="gap-2 bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">
+          <ButtonLink href="/create?type=lucky-wheel" wrap className="gap-2 bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">
             <Disc3 className="w-4 h-4" />
             Create Room
             <ArrowRight className="w-4 h-4" />

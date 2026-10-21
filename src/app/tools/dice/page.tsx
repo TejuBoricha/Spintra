@@ -206,7 +206,8 @@ export default function DicePage() {
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        {/* minmax(0, 1fr) below lg, not the implicit auto column, which grows to its widest content (see Team Maker). */}
+        <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-3 gap-8">
           {/* Controls Panel */}
           <div className="space-y-6">
             <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 space-y-6">
@@ -214,7 +215,9 @@ export default function DicePage() {
                 <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-4">
                   Select Dice Shape
                 </h2>
-                <div className="grid grid-cols-4 gap-2">
+                {/* Four columns, but never narrower than a button's own content (3rem, which grows with the text size):
+                    with larger text a fixed four columns pushed the whole panel wider than the screen. */}
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(max(3rem,calc((100%_-_1.5rem)/4)),1fr))] gap-2">
                   {diceTypes.map((d) => (
                     <button
                       key={d.sides}
@@ -261,7 +264,7 @@ export default function DicePage() {
                     value={count}
                     onChange={(e) => setCount(Number(e.target.value))}
                     disabled={rolling}
-                    className="flex-1 accent-primary h-1 bg-muted rounded-lg cursor-pointer"
+                    className="min-w-0 flex-1 accent-primary h-1 bg-muted rounded-lg cursor-pointer"
                   />
                   <Button
                     variant="outline"
@@ -414,7 +417,7 @@ export default function DicePage() {
               </div>
 
               {/* Footer Controls */}
-              <div className="relative z-10 flex items-center justify-center gap-4 mt-6">
+              <div className="relative z-10 flex flex-wrap items-center justify-center gap-4 mt-6">
                 <Button
                   size="lg"
                   onClick={roll}

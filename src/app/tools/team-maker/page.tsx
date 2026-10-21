@@ -214,7 +214,10 @@ export default function TeamMakerPage() {
         </div>
 
         {/* ── Main grid: Input + Controls | Templates ── */}
-        <div className="grid lg:grid-cols-3 gap-6 mb-8">
+        {/* The single column below lg is minmax(0, 1fr), not the implicit auto: an auto column grows to its widest
+            content (the textarea sizes itself to its placeholder), which pushed the page past a phone's edge once the
+            text size was raised. */}
+        <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-3 gap-6 mb-8">
           {/* Input column */}
           <div
             className="lg:col-span-2 border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 space-y-5 reveal reveal-left reveal-delay-1"

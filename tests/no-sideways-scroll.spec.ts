@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { SITE_PAGES, NOT_FOUND_PATH } from './site-routes';
+import { hideConfigBanner } from './helpers/config-banner';
 
 // UX audit (7 Oct 2026): on a phone the live home page was 421px wide in a 390px window. The
 // footer's single row of seven items was 449px wide and centred, so it ran off both edges: the
@@ -152,6 +153,27 @@ for (const width of WIDTHS) {
     }
   });
 }
+
+// Larger text (UX audit U-41): a phone's text-size setting (or a browser's "text only" zoom) makes every size in rem
+// grow while the screen stays 390px wide. Controls that cannot wrap, and grid or flex children that cannot shrink
+// below their text, then run past the edge where they cannot be scrolled to (WCAG 1.4.4 Resize Text, 1.4.10 Reflow).
+// At 150% seven pages broke (Explore, Spintra City, Coin Flip, Dice, Lucky Wheel, Rock Paper Scissors, Team Maker);
+// at 130%, a common "large" setting, only Spintra City's button. The same rules as above, with the root font size
+// raised. The warning bar of a build made without Supabase is hidden (a visitor never sees it); the cookie notice is
+// left in, because a first-time visitor does.
+test.describe('at 390px wide with the text 150% as large', () => {
+  test.use({ viewport: { width: 390, height: 800 } });
+
+  for (const path of SITE_PAGES) {
+    test(`${path}: nothing makes the page scroll sideways or sticks out of the screen`, async ({ page }) => {
+      await page.goto(path);
+      await hideConfigBanner(page);
+      await page.addStyleTag({ content: 'html { font-size: 150% !important; }' });
+      await page.getByRole('region', { name: 'Cookie notice' }).waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
+      expect(await problemsWhileScrolling(page), 'nothing is wider than the screen or its box').toEqual([]);
+    });
+  }
+});
 
 // Never Have I Ever's two answer buttons are one pair: at 320px they wrapped onto two rows ("I Have" alone,
 // then "Never Have" next to the sound button), at 360 to 390px the sound button sits centred under the pair.

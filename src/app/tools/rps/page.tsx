@@ -102,7 +102,9 @@ export default function RPSPage() {
 
         {/* Battle Area */}
         <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-8 mb-8">
-          <div className="flex items-center justify-center gap-8 sm:gap-16">
+          {/* One row at the normal text size; with larger text the two tiles and "VS" no longer fit side by side on a
+              phone, so the row wraps instead of running past the screen edge. */}
+          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 sm:gap-x-16">
             {/* Player */}
             <div className="text-center">
               <div className="text-sm text-muted-foreground mb-3">You</div>

@@ -98,7 +98,7 @@ export default function CoinFlipPage() {
           </div>
         )}
 
-        <div className="flex items-center justify-center gap-4 mb-16">
+        <div className="flex flex-wrap items-center justify-center gap-4 mb-16">
           <Button
             size="lg"
             onClick={flip}
