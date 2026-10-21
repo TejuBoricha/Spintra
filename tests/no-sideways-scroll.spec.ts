@@ -262,9 +262,64 @@ test.describe('Rock Paper Scissors: the spinner keeps its size and shape while t
   }
 });
 
+// Lucky Wheel's entry rows. The rename input (flex-1 shrink-0, 169px wide whatever the room) sat in a row with the weight
+// slider and the Remove button that appear with hover or focus, so on a phone the row's contents ran past its right edge:
+// on main the whole page became 399px wide at every phone width, and after the grid fix the entries list scrolled sideways
+// instead. At larger text the same slider squeezed a focused entry's name to nothing (0px at 360px and 150%; main kept 65px
+// only because its column grew past the screen). The idle page shows neither, and the rules above skip anything inside a box
+// that scrolls on purpose, so the open editor and the focused row need their own tests.
+test.describe('Lucky Wheel: an entry row keeps its name and stays inside its card', () => {
+  for (const [width, text] of [[320, 100], [360, 100], [390, 100], [360, 150], [390, 150]] as const) {
+    test(`rename editor at ${width}px wide with the text at ${text}%`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto('/tools/lucky-wheel');
+      await page.addStyleTag({ content: `html { font-size: ${text}% !important; }` });
+      // From the keyboard: the cookie notice can cover the entries card on a phone.
+      await page.getByRole('button', { name: /^Rename / }).first().focus();
+      await page.keyboard.press('Enter');
+      await expect(page.locator('input:focus')).toHaveCount(1);
+      await atRest(page); // the page's own slide-in is still moving right after load, and would read as overflow
+      const m = await page.evaluate(() => {
+        const input = document.activeElement as HTMLElement;
+        const row = input.closest('[class*="group/entry"]') as HTMLElement;
+        const remove = row.querySelector('button[aria-label^="Remove"]') as HTMLElement;
+        const list = row.parentElement as HTMLElement;
+        return {
+          pageOver: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          rowOver: row.scrollWidth - row.clientWidth,
+          removeOver: remove.getBoundingClientRect().right - row.getBoundingClientRect().right,
+          listOver: list.scrollWidth - list.clientWidth,
+          inputWidth: input.getBoundingClientRect().width,
+        };
+      });
+      expect(m.pageOver, 'the page does not scroll sideways').toBeLessThanOrEqual(0);
+      expect(m.rowOver, 'the row holds its contents').toBeLessThanOrEqual(1);
+      expect(m.removeOver, 'the Remove button ends inside the row').toBeLessThanOrEqual(1);
+      expect(m.listOver, 'the entries list does not scroll sideways').toBeLessThanOrEqual(1);
+      expect(m.inputWidth, 'the field can show a name').toBeGreaterThanOrEqual(64);
+    });
+  }
+
+  for (const width of [360, 390]) {
+    test(`a focused entry keeps a readable name at ${width}px wide with the text at 150%`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto('/tools/lucky-wheel');
+      await page.addStyleTag({ content: 'html { font-size: 150% !important; }' });
+      const name = page.getByRole('button', { name: /^Rename / }).nth(1);
+      await name.focus();
+      await atRest(page);
+      // Focus shows the weight slider and the Remove button beside the name; they must wrap, not take its room.
+      expect((await name.boundingBox())!.width, 'the focused entry still shows its name').toBeGreaterThanOrEqual(90);
+    });
+  }
+});
+
 // The same goes for the rows that were made to wrap for larger text (Dice's Roll and sound buttons, Guess Number's field,
-// Guess button and sound button): at the normal text size they fit on one row on a 320px phone, as they always did, and
-// the Roll button keeps its height (a first version let `wrap` and a stray `py-6` make it 20px taller at every width).
+// Guess button and sound button): at the normal text size, in their default state, they fit on one row on a 320px phone, as
+// they always did (Dice's row by 0.4px), and the Roll button keeps its height (a first version let `wrap` and a stray `py-6`
+// make it 20px taller at every width). Only the default state is tested: with another die or more dice the Roll label is
+// wider and the sound button wraps below it at 320px, which beats main, whose row ran off the screen (33.7px past it with
+// ten D100 dice).
 test.describe('Dice and Guess Number: the rows made to wrap for larger text stay one row at the normal text size', () => {
   for (const width of [320, 360, 390]) {
     test(`Dice at ${width}px wide`, async ({ page }) => {

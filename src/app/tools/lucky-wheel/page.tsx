@@ -696,7 +696,7 @@ export default function LuckyWheelPage() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 10, height: 0 }}
-                      className="flex items-center gap-2 p-2.5 rounded-lg bg-(--surface-sunken) border border-(--border-hairline) group/entry hover:bg-muted transition-colors"
+                      className="flex flex-wrap items-center gap-2 p-2.5 rounded-lg bg-(--surface-sunken) border border-(--border-hairline) group/entry hover:bg-muted transition-colors"
                     >
                       {/* Color picker */}
                       <div className="relative">
@@ -713,7 +713,9 @@ export default function LuckyWheelPage() {
                         />
                       </div>
 
-                      {/* Label */}
+                      {/* Label. The row wraps and the name keeps 3rem at least: the weight slider and Remove button that
+                          appear with hover or focus drop to a second line when they do not fit beside it, instead of
+                          squeezing the name to nothing (larger text on a phone) or pushing the row past its card. */}
                       {editingId === entry.id ? (
                         <input
                           type="text"
@@ -751,7 +753,7 @@ export default function LuckyWheelPage() {
                           autoFocus
                           maxLength={40}
                           disabled={spinning}
-                          className="flex-1 h-6 px-1.5 text-xs bg-primary/10 border border-primary/40 text-(--brand-primary-strong) rounded-lg shrink-0"
+                          className="flex-1 min-w-12 h-6 px-1.5 text-xs bg-primary/10 border border-primary/40 text-(--brand-primary-strong) rounded-lg"
                         />
                       ) : (
                         <button
@@ -766,7 +768,7 @@ export default function LuckyWheelPage() {
                           aria-disabled={spinning}
                           title="Click to rename"
                           aria-label={`Rename ${entry.label}`}
-                          className="flex-1 min-w-0 text-left text-sm truncate cursor-pointer hover:text-(--brand-primary-strong) transition-colors aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+                          className="flex-1 min-w-12 text-left text-sm truncate cursor-pointer hover:text-(--brand-primary-strong) transition-colors aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
                         >
                           {entry.label}
                         </button>
