@@ -450,7 +450,7 @@ export default function HomePage() {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             data-testid="closing-card"
-            className="rounded-2xl border border-(--border-hairline) bg-(--surface-panel) px-5 py-12 min-[380px]:px-12 sm:p-16 relative overflow-hidden shadow-2"
+            className="rounded-2xl border border-(--border-hairline) bg-(--surface-panel) px-5 py-12 min-[380px]:px-12 sm:p-16 relative overflow-clip shadow-2"
           >
             {/* Inner glow */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-(--cyan-500)/10" />

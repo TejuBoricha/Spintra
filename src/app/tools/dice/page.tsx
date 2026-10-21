@@ -218,8 +218,9 @@ export default function DicePage() {
                 </h2>
                 {/* Four columns, but never narrower than a button's own content (3rem, which grows with the text size):
                     with larger text a fixed four columns pushed the whole panel wider than the screen. The width of
-                    the three gaps in the column formula is the same --gap the grid uses, so changing it keeps four. */}
-                <div className="grid grid-cols-[repeat(auto-fit,minmax(max(3rem,calc((100%_-_3_*_var(--gap))/4)),1fr))] gap-(--gap) [--gap:0.5rem]">
+                    the three gaps in the column formula is the same --gap the grid uses, so changing it keeps four; the 1px
+                    of slack stops rounding from leaving the four tracks a hair too wide and dropping to three. */}
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(max(3rem,calc((100%_-_3_*_var(--gap))/4_-_1px)),1fr))] gap-(--gap) [--gap:0.5rem]">
                   {diceTypes.map((d) => (
                     <button
                       key={d.sides}

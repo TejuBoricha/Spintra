@@ -145,8 +145,10 @@ export default function RPSPage() {
                   <motion.div
                     animate={{ rotate: [0, 360] }}
                     transition={{ repeat: Infinity, duration: 0.3, ease: "linear" }}
+                    className="max-h-[85%] max-w-[85%]"
                   >
-                    <Swords className="h-12 w-12 max-h-[85%] max-w-[85%] text-(--brand-primary-strong)" />
+                    {/* The cap is on the wrapper, which is sized by the tile; a percentage on the icon would resolve against the wrapper's own, icon-sized width. */}
+                    <Swords className="h-auto w-12 max-w-full text-(--brand-primary-strong)" />
                   </motion.div>
                 ) : aiChoice ? (
                   <Emoji name={choices.find((c) => c.name === aiChoice)!.emoji} size={56} pop className="max-h-[85%] max-w-[85%] object-contain" />

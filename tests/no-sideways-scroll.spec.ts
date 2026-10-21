@@ -194,23 +194,28 @@ test.describe('Dice: the Roll button in its longest state stays inside its panel
   }
 });
 
-// A page-wide box that hides its overflow (overflow-hidden) is still a scroll container: clicking or focusing a control
-// in it scrolls it sideways to the control, which moved the whole Dice page 61px left (its glow blobs made the box 432px
-// wide in a 360px window; Tournament and Name Draw had the same with an 800px glow). overflow-clip clips the same way
-// and cannot be scrolled. The rule needs no click, so it covers every page: no box as wide as the screen hides content
-// beyond its own width.
-test.describe('No page-wide box that hides its overflow can be scrolled sideways', () => {
-  test.use({ viewport: { width: 360, height: 800 } });
-
+// A box that hides its overflow (overflow-hidden) is still a scroll container: clicking or focusing a control in it scrolls
+// it sideways to the control, which moved the whole Dice page 61px left (its glow blobs made the page-sized box 432px
+// wide in a 360px window; Tournament and Name Draw had the same with an 800px glow, and the home page's closing card
+// is 96px wider than itself). overflow-clip clips the same way and cannot be scrolled. The rule needs no click, so it
+// covers every page at every width: no visible box (100px or wider, which leaves out screen-reader-only text and the
+// hidden 12px honeypot on /create) hides content beyond its own width, unless it is a line of text with an ellipsis.
+test.describe('No visible box that hides its overflow can be scrolled sideways', () => {
   for (const path of [...SITE_PAGES, NOT_FOUND_PATH]) {
-    test(`${path}: a clipped wrapper is overflow-clip, not overflow-hidden`, async ({ page }) => {
+    test(`${path}: a box that clips a glow or blob is overflow-clip, not overflow-hidden`, async ({ page }) => {
       await page.goto(path);
-      const movable = await page.evaluate(() =>
-        Array.from(document.querySelectorAll('*'))
-          .filter((el) => getComputedStyle(el).overflowX === 'hidden' && el.clientWidth >= window.innerWidth - 2 && el.scrollWidth > el.clientWidth + 1)
-          .map((el) => `${el.tagName.toLowerCase()}.${(el.getAttribute('class') ?? '').split(/\s+/).slice(0, 4).join('.')} is ${el.scrollWidth}px wide in a ${el.clientWidth}px box`),
-      );
-      expect(movable, 'a wrapper that hides sideways overflow can still be scrolled by focus; use overflow-clip').toEqual([]);
+      for (const width of [320, 360, 390, 768, 1280]) {
+        await page.setViewportSize({ width, height: 800 });
+        const movable = await page.evaluate(() =>
+          Array.from(document.querySelectorAll('*'))
+            .filter((el) => {
+              const cs = getComputedStyle(el);
+              return cs.overflowX === 'hidden' && cs.textOverflow !== 'ellipsis' && el.clientWidth >= 100 && el.scrollWidth > el.clientWidth + 1;
+            })
+            .map((el) => `${el.tagName.toLowerCase()}.${(el.getAttribute('class') ?? '').split(/\s+/).slice(0, 4).join('.')} is ${el.scrollWidth}px wide in a ${el.clientWidth}px box`),
+        );
+        expect(movable, `at ${width}px: a box that hides sideways overflow can still be scrolled by focus; use overflow-clip`).toEqual([]);
+      }
     });
   }
 });
@@ -228,6 +233,31 @@ test.describe('Rock Paper Scissors: You, VS and AI share one row at the normal t
       const [a, b] = [await you.boundingBox(), await ai.boundingBox()];
       expect(Math.abs(a!.y - b!.y), '"You" and "AI" are on the same row').toBeLessThan(4);
       expect(b!.x, '"AI" is to the right of "You"').toBeGreaterThan(a!.x + a!.width);
+    });
+  }
+});
+
+// The "computer is choosing" spinner keeps its size: a percentage cap on the icon inside its auto-sized, rotating wrapper
+// resolved against the icon's own width and made it 41px wide and 48px tall (and 28 by 72px at 150% on a 360px phone).
+test.describe('Rock Paper Scissors: the spinner keeps its size and shape while the computer chooses', () => {
+  for (const [width, text] of [[390, 100], [360, 150]] as const) {
+    test(`at ${width}px wide with the text at ${text}%`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto('/tools/rps');
+      await page.addStyleTag({ content: `html { font-size: ${text}% !important; }` });
+      // From the keyboard: the cookie notice covers the choice buttons at the bottom of a phone screen.
+      await page.getByRole('button', { name: 'Rock' }).focus();
+      await page.keyboard.press('Enter');
+      const spinner = page.locator('svg.lucide-swords');
+      await expect(spinner).toBeVisible();
+      // Layout size, not the bounding box, which grows while the icon turns.
+      const { w, h, tile } = await spinner.evaluate((el) => {
+        const cs = getComputedStyle(el);
+        return { w: parseFloat(cs.width), h: parseFloat(cs.height), tile: el.closest('div.rounded-2xl')!.getBoundingClientRect().width };
+      });
+      expect(Math.abs(w - h), 'the icon is square').toBeLessThan(1);
+      if (text === 100) expect(w, 'the icon is its usual 3rem').toBeGreaterThan(47);
+      expect(w, 'the icon fits its tile').toBeLessThanOrEqual(tile);
     });
   }
 });
