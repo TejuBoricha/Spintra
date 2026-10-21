@@ -626,8 +626,9 @@ export default function LuckyWheelPage() {
             </div>
 
             {/* Spin button */}
-            {/* The label grows from "Spin!" to "Spinning..." while the wheel turns. The padding is rem, so it grows with the text
-                too: it is capped by the screen (12vw is 2.5rem from 334px up), and the sound button wraps below when the row is full. */}
+            {/* The label grows from "Spin!" to "Spinning..." while the wheel turns. A padding in rem doubles with the text, so it is
+                capped by the screen: 12vw is 40px, the same as 2.5rem at the default size, from 334px up, and with larger text the
+                cap wins, so the padding stops growing while the label keeps growing. The sound button wraps below when the row is full. */}
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
               <Button
                 onClick={spin}

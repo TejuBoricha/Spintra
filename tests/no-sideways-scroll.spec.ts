@@ -210,6 +210,9 @@ for (const width of [360, 390]) {
 // other things: a dialog, a label that grows while the wheel turns, a card per team, a header button that appears with the
 // first flip. All of these overflowed at 360px and 150% and none showed in the idle measurement. Timers the page waits on
 // are shortened (fast) or held (the name draw's shuffle) so the state can be measured without racing its own animation.
+// They are matched by value: 1200ms is Coin Flip's flip and 1000ms Dice's roll (a changed duration only makes the case slower,
+// the 5s expectations still hold), and 80ms is the Name Draw shuffle's tick (a changed tick lets the shuffle finish, and the
+// case then fails on 'Picking a winner...': update the number here).
 const fastTimers = () => {
   const real = window.setTimeout.bind(window);
   window.setTimeout = ((fn: TimerHandler, ms?: number, ...args: unknown[]) => real(fn, ms === 1000 || ms === 1200 ? 15 : ms, ...args)) as typeof window.setTimeout;

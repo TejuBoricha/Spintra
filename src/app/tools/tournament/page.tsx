@@ -110,11 +110,12 @@ function ScoreEditor({
 
         <div className="flex items-center gap-4 mb-6">
           <div className="min-w-0 flex-1 text-center">
-            <p className="text-sm font-semibold mb-2 truncate">
+            <p className="text-sm font-semibold mb-2 truncate" title={match.player1 || "TBD"}>
               {match.player1 || "TBD"}
             </p>
             <Input
               type="number"
+              aria-label={`Score for ${match.player1 || "TBD"}`}
               min={0}
               value={score1}
               onChange={(e) => setScore1(parseInt(e.target.value) || 0)}
@@ -123,11 +124,12 @@ function ScoreEditor({
           </div>
           <span className="text-muted-foreground font-bold mt-6">vs</span>
           <div className="min-w-0 flex-1 text-center">
-            <p className="text-sm font-semibold mb-2 truncate">
+            <p className="text-sm font-semibold mb-2 truncate" title={match.player2 || "TBD"}>
               {match.player2 || "TBD"}
             </p>
             <Input
               type="number"
+              aria-label={`Score for ${match.player2 || "TBD"}`}
               min={0}
               value={score2}
               onChange={(e) => setScore2(parseInt(e.target.value) || 0)}

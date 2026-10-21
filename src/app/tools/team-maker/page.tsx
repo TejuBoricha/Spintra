@@ -434,7 +434,7 @@ export default function TeamMakerPage() {
                                 exit={{ opacity: 0, x: 10, height: 0 }}
                                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-(--surface-sunken) border border-(--border-hairline) group/member hover:bg-muted transition-colors"
                               >
-                                <span className="min-w-0 flex-1 text-sm truncate">
+                                <span className="min-w-0 flex-1 text-sm truncate" title={member}>
                                   {member}
                                 </span>
                                 {/* Move to other teams */}
