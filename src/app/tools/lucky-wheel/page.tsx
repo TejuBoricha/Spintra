@@ -885,7 +885,7 @@ export default function LuckyWheelPage() {
         <div
           className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 text-center space-y-4 reveal reveal-fade reveal-delay-5"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-300 text-xs font-medium">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-800 dark:text-cyan-300 text-xs font-medium">
             <Sparkles className="w-3.5 h-3.5" />
             Multiplayer
           </div>

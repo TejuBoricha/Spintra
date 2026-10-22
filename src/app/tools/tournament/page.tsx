@@ -144,7 +144,7 @@ function ScoreEditor({
           </Button>
           <Button
             onClick={() => onSave(score1, score2)}
-            className="flex-1 border-2 border-(--border-strong) bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:brightness-95"
+            className="flex-1 border-2 border-(--border-strong) bg-gradient-to-r from-emerald-500 to-teal-500 text-(--text-on-lime) hover:brightness-95"
           >
             <Check className="w-4 h-4 mr-1" />
             Save
@@ -225,7 +225,7 @@ function MatchCard({
       {match.winner && (
         <div className="mt-1 flex items-center gap-1 text-xs">
           <span className={`w-1.5 h-1.5 rounded-full ${statusDot[match.status]}`} />
-          <span className={match.status === "completed" ? "text-emerald-400" : "text-amber-400"}>
+          <span className={match.status === "completed" ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}>
             {match.winner} won
           </span>
         </div>
@@ -486,7 +486,7 @@ export default function TournamentPage() {
                 {row.diff}
               </span>
             </span>
-            <span className="text-xs font-bold text-emerald-400 ml-2">
+            <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 ml-2">
               {row.points} pts
             </span>
           </div>
@@ -655,7 +655,7 @@ export default function TournamentPage() {
               <Button
                 onClick={generateBracket}
                 disabled={participants.length < 2}
-                className="w-full border-2 border-(--border-strong) bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white shadow-lg shadow-emerald-500/25"
+                className="w-full border-2 border-(--border-strong) bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-(--text-on-lime) shadow-lg shadow-emerald-500/25"
               >
                 <Swords className="w-4 h-4 mr-2" />
                 Generate Bracket
@@ -723,7 +723,7 @@ export default function TournamentPage() {
                 <p className="text-lg font-semibold text-muted-foreground mb-1">
                   No Bracket Yet
                 </p>
-                <p className="text-sm text-muted-foreground/60 text-center max-w-xs">
+                <p className="text-sm text-muted-foreground text-center max-w-xs">
                   Add participants, pick a format, and generate your bracket
                 </p>
               </div>
@@ -791,7 +791,7 @@ export default function TournamentPage() {
                     icon={<Crown className="w-12 h-12 text-amber-400" />}
                     title={tournament.winner}
                     subtitle={<><Emoji name="trophy" size={20} pop /> {isSharedFirst(tournament) ? "Shared first place" : "Tournament Champion"}</>}
-                    titleClassName="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400 bg-clip-text text-transparent"
+                    titleClassName="bg-gradient-to-r from-amber-700 via-yellow-700 to-amber-700 dark:from-amber-400 dark:via-yellow-400 dark:to-amber-400 bg-clip-text text-transparent"
                   />
                 )}
 

@@ -414,7 +414,7 @@ export default function DicePage() {
                     <div className="relative w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                       <PolyhedralSvg sides={selectedDice} className="w-full h-full text-foreground/5" />
                     </div>
-                    <span className="text-sm font-semibold opacity-30">Drop dice in the tray to roll</span>
+                    <span className="text-sm font-semibold text-muted-foreground">Drop dice in the tray to roll</span>
                   </div>
                 )}
               </div>

@@ -117,7 +117,7 @@ export default function WordScramblePage() {
                 ? scrambled.split("").map((letter, i) => (
                     <div
                       key={i}
-                      className="w-12 h-12 rounded-xl bg-gradient-to-br from-lime-500 to-green-600 flex items-center justify-center text-2xl font-black text-white shadow-lg"
+                      className="w-12 h-12 rounded-xl bg-gradient-to-br from-lime-500 to-green-500 flex items-center justify-center text-2xl font-black text-(--text-on-lime) shadow-lg"
                     >
                       {letter}
                     </div>
@@ -133,7 +133,7 @@ export default function WordScramblePage() {
             )}
             {solved ? (
               <div className="mb-4 reveal reveal-scale">
-                <p className="flex items-center justify-center gap-2 text-xl font-bold text-emerald-400">
+                <p className="flex items-center justify-center gap-2 text-xl font-bold text-emerald-700 dark:text-emerald-400">
                   <Emoji name="party_popper" size={28} pop /> {word}!
                 </p>
               </div>
@@ -147,7 +147,7 @@ export default function WordScramblePage() {
                   className="max-w-xs"
                   autoFocus
                 />
-                <Button onClick={submitGuess} className="bg-gradient-to-r from-lime-500 to-green-600 hover:from-lime-400 hover:to-green-500 text-white border-0">
+                <Button onClick={submitGuess} className="bg-gradient-to-r from-lime-500 to-green-500 hover:from-lime-400 hover:to-green-400 text-(--text-on-lime) border-0">
                   Guess
                 </Button>
               </div>
@@ -157,7 +157,7 @@ export default function WordScramblePage() {
 
         <div className="flex flex-wrap justify-center gap-3">
           {solved ? (
-            <Button onClick={nextWord} className="bg-gradient-to-r from-lime-500 to-green-600 hover:from-lime-400 hover:to-green-500 text-white border-0">
+            <Button onClick={nextWord} className="bg-gradient-to-r from-lime-500 to-green-500 hover:from-lime-400 hover:to-green-400 text-(--text-on-lime) border-0">
               Next Word
             </Button>
           ) : (

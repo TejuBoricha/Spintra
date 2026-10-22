@@ -244,7 +244,7 @@ export default function TeamMakerPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">Number of Teams</Label>
-                <span className="text-sm font-mono text-primary">{numTeams}</span>
+                <span className="text-sm font-mono text-(--text-accent)">{numTeams}</span>
               </div>
               <Slider
                 value={[numTeams]}
