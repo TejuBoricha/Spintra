@@ -30,6 +30,7 @@ import { getOrCreateRoomUser } from "@/lib/room-user";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { withAuthRetry, isTransientAuthError, AUTH_BUSY_MESSAGE } from "@/lib/supabase/auth-retry";
 import { checkCanJoinRoom, ROOM_JOIN_ERROR_MESSAGES } from "@/lib/room-join-check";
+import { isImeKey } from "@/lib/keyboard";
 
 interface ExploreRoom {
   id: string;
@@ -384,7 +385,7 @@ export default function ExplorePage() {
                 maxLength={6}
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-                onKeyDown={(e) => e.key === "Enter" && handleJoinRoom(joinCode)}
+                onKeyDown={(e) => e.key === "Enter" && !isImeKey(e) && handleJoinRoom(joinCode)}
                 placeholder="JOIN BY CODE (EX: 89PB5T)"
                 aria-label="Join room by code"
                 className="flex-1 h-12 text-center text-sm font-mono font-bold uppercase tracking-wider text-(--brand-primary-strong)"

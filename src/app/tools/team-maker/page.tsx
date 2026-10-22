@@ -28,6 +28,7 @@ import { getGameByType } from "@/lib/games";
 import { Emoji, type EmojiName } from "@/components/emoji";
 import { playPop, playSuccess } from "@/lib/audio";
 import { toast } from "sonner";
+import { isImeKey } from "@/lib/keyboard";
 
 const GameIcon = getGameByType("team-maker")!.icon;
 
@@ -486,7 +487,7 @@ export default function TeamMakerPage() {
                               }))
                             }
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") addMember(teamIdx);
+                              if (e.key === "Enter" && !isImeKey(e)) addMember(teamIdx);
                             }}
                             className="flex-1 text-xs"
                           />

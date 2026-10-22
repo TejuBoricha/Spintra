@@ -12,6 +12,7 @@ import { playPop, playSuccess } from "@/lib/audio";
 import { getGameByType } from "@/lib/games";
 import { toast } from "sonner";
 import { WORD_SCRAMBLE_WORDS, scramble, shuffleArray } from "@/lib/utils";
+import { isImeKey } from "@/lib/keyboard";
 
 const GameIcon = getGameByType("word-scramble")!.icon;
 
@@ -141,7 +142,7 @@ export default function WordScramblePage() {
                 <Input
                   value={guess}
                   onChange={(e) => setGuess(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && submitGuess()}
+                  onKeyDown={(e) => e.key === "Enter" && !isImeKey(e) && submitGuess()}
                   placeholder="Your guess..."
                   className="max-w-xs"
                   autoFocus

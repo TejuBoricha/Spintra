@@ -20,6 +20,7 @@ import { FeatureCard } from "@/components/landing/feature-card";
 import { AuroraBackground } from "@/components/landing/aurora-bg";
 import { FooterTable } from "@/components/landing/footer-table";
 import { GAMES } from "@/lib/games";
+import { isImeKey } from "@/lib/keyboard";
 
 const heroFeatures = GAMES.map((game) => ({
   title: game.label,
@@ -244,7 +245,7 @@ export default function HomePage() {
                 maxLength={6}
                 value={homeCode}
                 onChange={(e) => setHomeCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-                onKeyDown={(e) => e.key === "Enter" && handleHomeJoin()}
+                onKeyDown={(e) => e.key === "Enter" && !isImeKey(e) && handleHomeJoin()}
                 placeholder="ENTER CODE"
                 aria-label="Enter room code"
                 onFocus={() => void loadJoinCheck()}
