@@ -52,4 +52,19 @@ test.describe('Tournament: the Update Score dialog', () => {
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(dialog).toHaveCount(0);
   });
+
+  test('scores that cannot be saved are explained inside the dialog, where a screen reader can hear them', async ({ page }) => {
+    // While a modal is open everything outside it is hidden from assistive technology, the toaster included, so a toast would be
+    // seen but never announced.
+    await openScoreDialog(page);
+    const dialog = page.getByRole('dialog', { name: 'Update Score' });
+    await dialog.getByRole('button', { name: 'Save' }).click(); // 0 : 0, which an elimination match cannot end on
+    await expect(dialog, 'the dialog stays open').toBeVisible();
+    const alert = dialog.getByRole('alert');
+    await expect(alert).toContainText("can't be tied");
+    await dialog.getByRole('spinbutton').nth(0).fill('2');
+    await expect(alert, 'the message goes once a score changes').toHaveCount(0);
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(dialog).toHaveCount(0);
+  });
 });

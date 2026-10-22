@@ -87,11 +87,14 @@ function ScoreEditor({
   onClose,
 }: {
   match: BracketMatch;
-  onSave: (s1: number, s2: number) => void;
+  /** Returns why the scores cannot be saved, or null once they were. */
+  onSave: (s1: number, s2: number) => string | null;
   onClose: () => void;
 }) {
   const [score1, setScore1] = useState(match.score1 ?? 0);
   const [score2, setScore2] = useState(match.score2 ?? 0);
+  // Said inside the dialog: while it is open everything outside it is hidden from a screen reader, the toaster included.
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <Dialog
@@ -116,7 +119,10 @@ function ScoreEditor({
               aria-label={`Score for ${match.player1 || "TBD"}`}
               min={0}
               value={score1}
-              onChange={(e) => setScore1(parseInt(e.target.value) || 0)}
+              onChange={(e) => {
+                setScore1(parseInt(e.target.value) || 0);
+                setError(null);
+              }}
               className="w-full max-w-20 mx-auto text-center text-lg font-bold"
             />
           </div>
@@ -130,18 +136,27 @@ function ScoreEditor({
               aria-label={`Score for ${match.player2 || "TBD"}`}
               min={0}
               value={score2}
-              onChange={(e) => setScore2(parseInt(e.target.value) || 0)}
+              onChange={(e) => {
+                setScore2(parseInt(e.target.value) || 0);
+                setError(null);
+              }}
               className="w-full max-w-20 mx-auto text-center text-lg font-bold"
             />
           </div>
         </div>
+
+        {error && (
+          <p role="alert" className="text-center text-sm font-medium text-(--destructive-strong)">
+            {error}
+          </p>
+        )}
 
         <div className="flex flex-wrap gap-3">
           <Button variant="outline" onClick={onClose} className="flex-1">
             Cancel
           </Button>
           <Button
-            onClick={() => onSave(score1, score2)}
+            onClick={() => setError(onSave(score1, score2))}
             className="flex-1 border-2 border-(--border-strong) bg-gradient-to-r from-emerald-500 to-teal-500 text-(--text-on-lime) hover:brightness-95"
           >
             <Check className="w-4 h-4 mr-1" />
@@ -294,15 +309,12 @@ export default function TournamentPage() {
   }, [participants, seeds, tournamentType, soundEnabled]);
 
   const handleScoreSave = useCallback(
-    (s1: number, s2: number) => {
-      if (!editingMatch || !tournament) return;
+    (s1: number, s2: number): string | null => {
+      if (!editingMatch || !tournament) return null;
 
       const outcome = recordMatchResult(tournament, editingMatch, s1, s2);
 
-      if (outcome.kind === "invalid") {
-        toast.error(outcome.message);
-        return;
-      }
+      if (outcome.kind === "invalid") return outcome.message;
 
       if (outcome.kind === "advanced" && !outcome.winner) {
         playPop(soundEnabled);
@@ -319,13 +331,14 @@ export default function TournamentPage() {
         toast.success(shared ? `${outcome.winner} share first place!` : `${outcome.winner} wins the tournament!`, {
           icon: <Emoji name="trophy" size={18} />,
         });
-        return;
+        return null;
       }
       if (outcome.kind === "grand-final-set") {
         toast.success("Grand Final is set!");
-        return;
+        return null;
       }
       toast.success(outcome.winner ? `${outcome.winner} advances!` : "Draw recorded!");
+      return null;
     },
     [editingMatch, tournament, soundEnabled]
   );
@@ -624,7 +637,7 @@ export default function TournamentPage() {
 
               <Textarea
                 placeholder="Enter participant names, one per line...&#10;Alpha&#10;Bravo&#10;Charlie&#10;Delta"
-                className="min-h-[120px] resize-y font-mono text-base md:text-sm"
+                className="min-h-[120px] resize-y font-mono"
                 value={textInput}
                 onChange={(e) => {
                   setTextInput(e.target.value);
@@ -640,7 +653,7 @@ export default function TournamentPage() {
                 <Textarea
                   aria-label="Seeds, one per line, top seed first"
                   placeholder="Alpha&#10;Bravo"
-                  className="min-h-[72px] resize-y font-mono text-base md:text-sm"
+                  className="min-h-[72px] resize-y font-mono"
                   value={seedInput}
                   onChange={(e) => {
                     setSeedInput(e.target.value);

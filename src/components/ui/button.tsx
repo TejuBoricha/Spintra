@@ -4,17 +4,23 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+// A disabled filled button is a neutral block that says "off", not the same fill faded (a faded lime or a faded gradient reads as khaki
+// or olive: UX audit U-17). The base class's disabled:opacity-50 and grayscale are undone here; the quieter variants (secondary,
+// outline, ghost, destructive, link) have no saturated fill to turn muddy, and keep the faded look.
+const DISABLED_FILLED =
+  "disabled:border-(--border-hairline) disabled:bg-(--surface-sunken) disabled:bg-none disabled:text-muted-foreground disabled:shadow-none disabled:opacity-100 disabled:grayscale-0"
+
 const buttonVariants = cva(
   "group/button inline-flex shrink-0 items-center justify-center gap-2 rounded-pill font-body font-semibold whitespace-nowrap transition-[transform,filter] duration-fast ease-standard outline-none select-none active:not-aria-[haspopup]:translate-y-px active:not-aria-[haspopup]:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 disabled:grayscale-[60%] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background aria-invalid:ring-3 aria-invalid:ring-destructive/30 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default:
-          "border-2 border-(--border-strong) bg-primary text-primary-foreground hover:brightness-95 disabled:border-(--border-hairline) disabled:bg-(--surface-sunken) disabled:bg-none disabled:text-muted-foreground disabled:shadow-none disabled:opacity-100 disabled:grayscale-0",
+          `border-2 border-(--border-strong) bg-primary text-primary-foreground hover:brightness-95 ${DISABLED_FILLED}`,
         brand:
-          "border-2 border-(--border-strong) bg-(image:--gradient-brand) text-primary-foreground shadow-glow-primary-sm hover:brightness-95 disabled:border-(--border-hairline) disabled:bg-(--surface-sunken) disabled:bg-none disabled:text-muted-foreground disabled:shadow-none disabled:opacity-100 disabled:grayscale-0",
+          `border-2 border-(--border-strong) bg-(image:--gradient-brand) text-primary-foreground shadow-glow-primary-sm hover:brightness-95 ${DISABLED_FILLED}`,
         contrast:
-          "border-2 border-(--border-strong) bg-(--surface-contrast) text-(--text-on-contrast) hover:brightness-95 dark:hover:brightness-110 disabled:border-(--border-hairline) disabled:bg-(--surface-sunken) disabled:bg-none disabled:text-muted-foreground disabled:shadow-none disabled:opacity-100 disabled:grayscale-0",
+          `border-2 border-(--border-strong) bg-(--surface-contrast) text-(--text-on-contrast) hover:brightness-95 dark:hover:brightness-110 ${DISABLED_FILLED}`,
         // border-current (not --border-strong, unlike every filled variant
         // above): --border-strong is deliberately pinned to pure black in
         // BOTH themes, giving a filled button's bright fill a crisp

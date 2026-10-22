@@ -68,7 +68,7 @@ export function evaluateAudit(report, allowlist, level, today) {
  * @param {() => {stdout?: string | null, stderr?: string | null, signal?: string | null}} run one `npm audit --json`, with its own time limit
  * @param {number} attempts how many times to run it at most
  * @param {(message: string) => void} log
- * @returns {{report?: any, unreadable?: string}} `report` is the parsed JSON (it may carry npm's own `error`); `unreadable` says what came back when it was not JSON
+ * @returns {{report?: any, unreadable?: string, notAReport?: boolean}} `report` is the parsed JSON (it may carry npm's own `error`); `unreadable` says what came back when it was not an audit report (`notAReport`: it was JSON, of another kind)
  */
 export function readAuditReport(run, attempts, log) {
   let last = {};
@@ -89,7 +89,11 @@ export function readAuditReport(run, attempts, log) {
         : result.signal
           ? `npm audit was stopped (${result.signal}) before it answered`
           : `npm audit did not return JSON: ${(result.stderr || result.stdout || "").slice(0, 300)}`;
-    last = report?.error ? { report } : { unreadable: (result.stderr || result.stdout || why).slice(0, 800) };
+    // What is printed when the last attempt fails: npm's own error goes to evaluateAudit; JSON that is not a report is shown as it
+    // came (stdout), not the stderr warning that may sit beside it; anything else is stderr, then stdout.
+    last = report?.error
+      ? { report }
+      : { unreadable: (report ? result.stdout : result.stderr || result.stdout || why).slice(0, 800), ...(report ? { notAReport: true } : {}) };
     if (attempt < attempts) log(`npm audit attempt ${attempt} of ${attempts} returned no report (${why}); trying again.`);
   }
   return last;

@@ -19,7 +19,7 @@ export const FOOTER_LINK = "inline-flex items-center min-h-11 md:not-any-pointer
  */
 export function SiteFooter() {
   const pathname = usePathname();
-  if (pathname === "/" || pathname.startsWith("/room/")) return null;
+  if (pathname === "/" || pathname === "/room" || pathname.startsWith("/room/")) return null;
   return (
     <footer className="relative z-10 border-t border-border px-4 py-8 text-sm text-muted-foreground">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 text-center md:flex-row md:items-start md:justify-between md:text-left">

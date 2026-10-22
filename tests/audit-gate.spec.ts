@@ -142,6 +142,11 @@ test('JSON that is not an audit report is no report either: it is run again and 
   const last = readAuditReport(always.run, 3, () => {});
   expect(last.report).toBeUndefined(); // so the gate prints it and exits 1, as for any unreadable output
   expect(last.unreadable).toBe('{}');
+  expect(last.notAReport).toBe(true);
+
+  // what is shown is the JSON that came back, not a warning npm printed beside it
+  const beside = runner({ stdout: '{"message":"Bad Gateway"}', stderr: 'npm warn config something', signal: null });
+  expect(readAuditReport(beside.run, 2, () => {}).unreadable).toBe('{"message":"Bad Gateway"}');
 });
 
 test('output that is not JSON counts as no report, with what npm printed', () => {
