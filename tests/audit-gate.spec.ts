@@ -130,6 +130,20 @@ test('when every attempt fails the gate still fails: the last failure comes back
   expect(last.unreadable).toBeUndefined();
 });
 
+test('JSON that is not an audit report is no report either: it is run again and never passes', () => {
+  const log: string[] = [];
+  const notAReport = { stdout: JSON.stringify({ message: 'Bad Gateway' }), stderr: '', signal: null };
+  const { run, calls } = runner(notAReport, answered);
+  expect(readAuditReport(run, 6, (m) => log.push(m)).report).toEqual({ vulnerabilities: {}, metadata: {} });
+  expect(calls.count).toBe(2);
+  expect(log[0]).toContain('not an audit report');
+
+  const always = runner({ stdout: '{}', stderr: '', signal: null });
+  const last = readAuditReport(always.run, 3, () => {});
+  expect(last.report).toBeUndefined(); // so the gate prints it and exits 1, as for any unreadable output
+  expect(last.unreadable).toBe('{}');
+});
+
 test('output that is not JSON counts as no report, with what npm printed', () => {
   const { run } = runner({ stdout: '', stderr: 'npm error code EAI_AGAIN', signal: null });
   expect(readAuditReport(run, 2, () => {})).toEqual({ unreadable: 'npm error code EAI_AGAIN' });

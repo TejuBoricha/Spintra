@@ -21,10 +21,11 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     # Fail fast on a hang instead of burning the GitHub default 360-minute
-    # ceiling. A healthy run takes about 30 minutes: the whole suite runs on one
+    # ceiling. A healthy run takes about 27 minutes: the whole suite runs on one
     # worker (playwright.config.ts), and the two pixel-contrast specs are 148 of
-    # its cases (about 9 minutes). 25 minutes cancelled the first run that
-    # carried them; 40 is what db-integration has.
+    # its cases (about 9 minutes), which db-integration leaves to this job: it
+    # has no room for them (about 36 of its 50 minutes without). 25 minutes
+    # cancelled the first run that carried them.
     timeout-minutes: 40
 
     steps:

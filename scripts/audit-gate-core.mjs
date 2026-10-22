@@ -80,13 +80,16 @@ export function readAuditReport(run, attempts, log) {
     } catch {
       report = undefined;
     }
-    if (report && !report.error) return { report };
-    const why = report
+    // An audit report has a `vulnerabilities` object (even an empty one); JSON without it (a proxy's page, `{}`) is not a report.
+    if (report && !report.error && report.vulnerabilities && typeof report.vulnerabilities === "object") return { report };
+    const why = report?.error
       ? `npm audit reported an error: ${report.error.summary || report.error.code || "unknown error"}`
-      : result.signal
-        ? `npm audit was stopped (${result.signal}) before it answered`
-        : `npm audit did not return JSON: ${(result.stderr || result.stdout || "").slice(0, 300)}`;
-    last = report ? { report } : { unreadable: (result.stderr || result.stdout || why).slice(0, 800) };
+      : report
+        ? `npm audit returned JSON that is not an audit report: ${(result.stdout || "").slice(0, 200)}`
+        : result.signal
+          ? `npm audit was stopped (${result.signal}) before it answered`
+          : `npm audit did not return JSON: ${(result.stderr || result.stdout || "").slice(0, 300)}`;
+    last = report?.error ? { report } : { unreadable: (result.stderr || result.stdout || why).slice(0, 800) };
     if (attempt < attempts) log(`npm audit attempt ${attempt} of ${attempts} returned no report (${why}); trying again.`);
   }
   return last;
