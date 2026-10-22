@@ -8,15 +8,25 @@ import { test, expect, type Page } from '@playwright/test';
 
 const SCENE = '[data-testid="footer-table"]';
 
+/**
+ * The page streams: the footer first sits in a hidden staging container (div#S:0) and React swaps the real node in 100 to
+ * 300ms later, after `load` when the machine is busy. For that moment the scene exists twice, and a plain locator either
+ * resolves the node that is about to be discarded (scrolling it fails with "Element is not attached to the DOM") or throws
+ * a strict-mode violation (two matches). Only the visible one is the scene, and a locator that asks for it is looked up
+ * again on every retry, so waiting for it first lands on the node that stays (without this the desktop case of the footer
+ * links failed about 1 run in 11 here, and several CI jobs on 21 Oct).
+ */
+const visibleScene = (page: Page) => page.locator(`${SCENE}:visible`);
+
 async function openHome(page: Page, theme: 'dark' | 'light' = 'dark') {
   await page.addInitScript(([t]) => {
     localStorage.setItem('spintra-theme', t);
     localStorage.setItem('spintra-cookie-consent', 'denied');
   }, [theme]);
   await page.goto('/');
-  const scene = page.locator(SCENE);
-  await scene.scrollIntoViewIfNeeded();
+  const scene = visibleScene(page);
   await expect(scene).toBeVisible();
+  await scene.scrollIntoViewIfNeeded();
   return scene;
 }
 
@@ -150,7 +160,7 @@ test.describe('motion', () => {
   test('it does no work while it is off screen', async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem('spintra-cookie-consent', 'denied'));
     await page.goto('/');
-    const scene = page.locator(SCENE);
+    const scene = visibleScene(page);
     await expect(scene).toHaveAttribute('data-live', 'false'); // the footer is thousands of pixels down
     await scene.scrollIntoViewIfNeeded();
     await expect(scene).toHaveAttribute('data-live', 'true');
@@ -204,7 +214,7 @@ test.describe('the cursor easter egg', () => {
   test('a mouse moving over the rest of the page makes the scene do no work while it is off screen', async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem('spintra-cookie-consent', 'denied'));
     await page.goto('/');
-    const scene = page.locator(SCENE);
+    const scene = visibleScene(page);
     await expect(scene).toHaveAttribute('data-live', 'false'); // the footer is thousands of pixels down
     await scene.evaluate((el) => {
       (window as unknown as { __writes: number }).__writes = 0;
