@@ -21,8 +21,11 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     # Fail fast on a hang instead of burning the GitHub default 360-minute
-    # ceiling; a healthy run of this job finishes well under 15 minutes.
-    timeout-minutes: 25
+    # ceiling. A healthy run takes about 30 minutes: the whole suite runs on one
+    # worker (playwright.config.ts), and the two pixel-contrast specs are 148 of
+    # its cases (about 9 minutes). 25 minutes cancelled the first run that
+    # carried them; 40 is what db-integration has.
+    timeout-minutes: 40
 
     steps:
       - name: Checkout Repository
@@ -34,8 +37,11 @@ jobs:
           node-version: 22
           cache: 'npm'
 
+      # --no-audit: `npm ci` would otherwise ask the registry's advisory endpoint for a report nobody reads (the audit step
+      # below is the gate). On 22 Oct 2026 that endpoint stopped answering about half of its requests, and npm waited out its
+      # 5-minute fetch timeout: 7 minutes of this step, in db-integration, which then ran out of its 40.
       - name: Install Dependencies
-        run: npm ci
+        run: npm ci --no-audit
 
       # The threshold itself lives in package.json's "audit" script (single
       # source of truth -- this and the local "ci" script both call it,
@@ -50,6 +56,8 @@ jobs:
       # loosening the threshold for everything, scripts/audit-gate.mjs reads a
       # short time-boxed allowlist (scripts/audit-allowlist.json), one advisory per
       # entry, each with a reason and an expiry date.
+      # The gate runs `npm audit` again when the registry does not answer (readAuditReport in scripts/audit-gate-core.mjs):
+      # it fails closed after six attempts, never passes without a report.
       - name: Strict Dependency Security Audit
         run: npm run audit # Block build on moderate, high, or critical vulnerability findings
 
@@ -126,9 +134,11 @@ jobs:
   db-integration:
     runs-on: ubuntu-latest
     # Bigger budget than validate: this job also pulls/starts ~10 Supabase
-    # Docker containers and runs the full E2E suite with CI retries. A
-    # healthy run still finishes well under half of this.
-    timeout-minutes: 40
+    # Docker containers (about 5 minutes) and runs the full E2E suite with CI
+    # retries. A healthy run takes about 36 minutes; 40 left room for one bad
+    # step and no more (a hung `npm ci` took 7 of them on 22 Oct 2026 and the
+    # run was cancelled with its tests still going), so it has 50.
+    timeout-minutes: 50
 
     steps:
       - name: Checkout Repository
@@ -141,7 +151,7 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm ci --no-audit # the audit gate is validate's job; see the note on its install step
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v3

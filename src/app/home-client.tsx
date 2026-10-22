@@ -208,7 +208,7 @@ export default function HomePage() {
 
           {/* Subheadline */}
           <p
-            className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed reveal reveal-up reveal-delay-1"
+            className="text-lg sm:text-xl text-foreground/80 dark:text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed reveal reveal-up reveal-delay-1"
           >
             Make a room, share the code, and everyone watches the same wheel,
             bracket, or game play out on their own screen.
@@ -396,7 +396,7 @@ export default function HomePage() {
       </section>
 
       {/* Perks Bar */}
-      <section className="relative z-10 py-12 border-y border-border bg-black/20 backdrop-blur-sm">
+      <section className="relative z-10 py-12 border-y border-border bg-black/5 dark:bg-black/20 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {perks.map((perk, i) => (

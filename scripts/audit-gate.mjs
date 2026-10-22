@@ -17,8 +17,9 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { evaluateAudit } from "./audit-gate-core.mjs";
+import { evaluateAudit, readAuditReport } from "./audit-gate-core.mjs";
 
+const AUDIT_ATTEMPTS = 6;
 const ALLOWLIST_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), "audit-allowlist.json");
 
 function main() {
@@ -26,13 +27,16 @@ function main() {
   const level = levelArg ? levelArg.split("=")[1] : "moderate";
   const allowlist = JSON.parse(fs.readFileSync(ALLOWLIST_PATH, "utf8"));
 
-  // One fixed command string through the shell: it finds npm.cmd on Windows too.
-  const run = spawnSync("npm audit --json", { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, shell: true });
-  let report;
-  try {
-    report = JSON.parse(run.stdout);
-  } catch {
-    console.error(`npm audit did not return JSON:\n${(run.stderr || run.stdout || "").slice(0, 800)}`);
+  // One fixed command string through the shell: it finds npm.cmd on Windows too. npm audit answers in about a second, but
+  // the registry's advisory endpoint sometimes never answers a request (see readAuditReport): each attempt gets a 10 second
+  // fetch timeout inside npm and 40 seconds outside it, and a failed attempt is run again.
+  const { report, unreadable } = readAuditReport(
+    () => spawnSync("npm audit --json --fetch-timeout=10000", { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, shell: true, timeout: 40_000 }),
+    AUDIT_ATTEMPTS,
+    (message) => console.log(`::warning::${message}`),
+  );
+  if (!report) {
+    console.error(`npm audit did not return JSON:\n${unreadable}`);
     process.exit(1);
   }
 

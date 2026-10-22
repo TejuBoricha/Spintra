@@ -125,7 +125,7 @@ export default function GuessNumberPage() {
               onChange={(e) => setGuess(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && makeGuess()}
               placeholder={`Enter 1-${mode.range}`}
-              className="w-24 min-w-0 max-w-32 grow px-4 py-3 rounded-xl bg-(--surface-sunken) border border-(--border-hairline) text-center text-lg font-bold focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring outline-none"
+              className="w-24 min-w-0 max-w-32 grow px-4 py-3 rounded-xl bg-(--surface-sunken) border border-(--border-hairline) text-center text-lg font-bold placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring outline-none"
             />
             <Button onClick={makeGuess} className="bg-primary text-primary-foreground hover:brightness-95">
               <Target className="w-4 h-4 mr-2" /> Guess
@@ -150,7 +150,7 @@ export default function GuessNumberPage() {
         {/* Last hint */}
         {lastGuess && lastGuess.hint !== "correct" && (
           <div className="mb-4 reveal reveal-up-sm">
-            <Badge className={lastGuess.hint === "high" ? "bg-red-500/10 text-red-400" : "bg-blue-500/10 text-blue-400"}>
+            <Badge className={lastGuess.hint === "high" ? "bg-red-500/10 text-red-700 dark:text-red-400" : "bg-blue-500/10 text-blue-700 dark:text-blue-400"}>
               {lastGuess.hint === "high" ? <ArrowDown className="w-4 h-4 mr-1" /> : <ArrowUp className="w-4 h-4 mr-1" />}
               Too {lastGuess.hint}! Try {lastGuess.hint === "high" ? "lower" : "higher"}.
             </Badge>
@@ -160,7 +160,7 @@ export default function GuessNumberPage() {
         {/* Game Over */}
         {gameOver && (
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="mb-8">
-            <div className={`text-2xl font-bold mb-2 flex items-center justify-center gap-2 ${won ? "gradient-text" : "text-red-400"}`}>
+            <div className={`text-2xl font-bold mb-2 flex items-center justify-center gap-2 ${won ? "gradient-text" : "text-red-700 dark:text-red-400"}`}>
               <Emoji name={won ? "party_popper" : "disappointed_face"} size={32} pop />
               {won ? "You Got It!" : "Out of Attempts!"}
             </div>
@@ -202,10 +202,10 @@ export default function GuessNumberPage() {
                   animate={{ scale: 1 }}
                   className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${
                     g.hint === "correct"
-                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                      ? "bg-emerald-500/20 text-emerald-800 dark:text-emerald-400 border border-emerald-500/30"
                       : g.hint === "high"
-                      ? "bg-red-500/10 text-red-400 border border-red-500/20"
-                      : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                      ? "bg-red-500/10 text-red-700 dark:text-red-400 border border-red-500/20"
+                      : "bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20"
                   }`}
                 >
                   {g.value}

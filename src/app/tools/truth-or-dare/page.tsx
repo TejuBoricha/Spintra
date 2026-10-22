@@ -80,7 +80,7 @@ export default function TruthOrDarePage() {
               exit={{ opacity: 0, scale: 0.9, y: -20 }}
               className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-8 mb-8 max-w-lg mx-auto"
             >
-              <Badge className={`mb-4 ${mode === "truth" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"}`}>
+              <Badge className={`mb-4 ${mode === "truth" ? "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20" : "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20"}`}>
                 {mode === "truth" ? "Truth" : "Dare"}
               </Badge>
               <p className="text-xl sm:text-2xl font-medium leading-relaxed">{current}</p>
@@ -95,24 +95,24 @@ export default function TruthOrDarePage() {
               <Button
                 size="lg"
                 onClick={() => generate("truth")}
-                className="px-8 py-6 bg-blue-600 hover:bg-blue-500 text-lg"
+                className="px-8 py-6 bg-blue-600 hover:bg-blue-700 text-white text-lg"
               >
                 <MessageCircleQuestion className="w-5 h-5 mr-2" /> Truth
               </Button>
               <Button
                 size="lg"
                 onClick={() => generate("dare")}
-                className="px-8 py-6 bg-red-600 hover:bg-red-500 text-lg"
+                className="px-8 py-6 bg-red-600 hover:bg-red-700 text-white text-lg"
               >
                 <ShieldAlert className="w-5 h-5 mr-2" /> Dare
               </Button>
             </>
           ) : (
             <>
-              <Button onClick={() => generate("truth")} variant="outline" className="border-blue-500/20 text-blue-400">
+              <Button onClick={() => generate("truth")} variant="outline" className="border-blue-500/20 text-blue-700 dark:text-blue-400">
                 <MessageCircleQuestion className="w-4 h-4 mr-2" /> New Truth
               </Button>
-              <Button onClick={() => generate("dare")} variant="outline" className="border-red-500/20 text-red-400">
+              <Button onClick={() => generate("dare")} variant="outline" className="border-red-500/20 text-red-700 dark:text-red-400">
                 <ShieldAlert className="w-4 h-4 mr-2" /> New Dare
               </Button>
             </>

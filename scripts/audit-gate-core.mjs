@@ -24,7 +24,7 @@ export function evaluateAudit(report, allowlist, level, today) {
   const failures = [];
   const allowed = [];
   if (report?.error) {
-    failures.push(`npm audit could not run: ${report.error.summary ?? report.error.code ?? "unknown error"}`);
+    failures.push(`npm audit could not run: ${report.error.summary || report.error.code || "unknown error"}`);
   }
 
   const entries = new Map(allowlist.map((entry) => [entry.id.toUpperCase(), entry]));
@@ -55,4 +55,39 @@ export function evaluateAudit(report, allowlist, level, today) {
 
   const stale = [...entries.keys()].filter((id) => !used.has(id)).map((id) => `${id} is on the allowlist but npm audit no longer reports it; remove it from scripts/audit-allowlist.json.`);
   return { failures, allowed, stale };
+}
+
+/**
+ * Run `npm audit --json` until it returns a report. The advisory endpoint (registry.npmjs.org/-/npm/v1/security/advisories/bulk)
+ * sometimes accepts a request and never answers it: on 22 Oct 2026 about half of them, from GitHub's runners and from a laptop
+ * alike. npm then waits out its 5-minute fetch timeout, falls back to a retired endpoint and reports that it "could not run",
+ * after 7 minutes, and a retry of the whole job is a coin toss again. One hung request costs the caller's timeout instead,
+ * and the next attempt usually answers in about a second. Only a report is accepted: after the last attempt the result is
+ * what it was before this retry existed, the last failure, which the gate reports and fails on. It never passes on a report
+ * it did not read.
+ * @param {() => {stdout?: string | null, stderr?: string | null, signal?: string | null}} run one `npm audit --json`, with its own time limit
+ * @param {number} attempts how many times to run it at most
+ * @param {(message: string) => void} log
+ * @returns {{report?: any, unreadable?: string}} `report` is the parsed JSON (it may carry npm's own `error`); `unreadable` says what came back when it was not JSON
+ */
+export function readAuditReport(run, attempts, log) {
+  let last = {};
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const result = run();
+    let report;
+    try {
+      report = JSON.parse(result.stdout ?? "");
+    } catch {
+      report = undefined;
+    }
+    if (report && !report.error) return { report };
+    const why = report
+      ? `npm audit reported an error: ${report.error.summary || report.error.code || "unknown error"}`
+      : result.signal
+        ? `npm audit was stopped (${result.signal}) before it answered`
+        : `npm audit did not return JSON: ${(result.stderr || result.stdout || "").slice(0, 300)}`;
+    last = report ? { report } : { unreadable: (result.stderr || result.stdout || why).slice(0, 800) };
+    if (attempt < attempts) log(`npm audit attempt ${attempt} of ${attempts} returned no report (${why}); trying again.`);
+  }
+  return last;
 }

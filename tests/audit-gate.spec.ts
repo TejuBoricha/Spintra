@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { evaluateAudit, ghsaOf } from '../scripts/audit-gate-core.mjs';
+import { evaluateAudit, ghsaOf, readAuditReport } from '../scripts/audit-gate-core.mjs';
 
 // The CI dependency gate (`npm run audit`) is npm audit plus a time-boxed allowlist for
 // an advisory with no fix yet (7 Oct 2026: braces, which has no patched release). A bug
@@ -68,6 +68,10 @@ test('an entry npm no longer reports is flagged as stale, and a failed npm audit
   const broken = evaluateAudit({ error: { code: 'ENOAUDIT', summary: 'audit endpoint returned an error' } }, [entry], 'moderate', '2026-10-07');
   expect(broken.failures).toHaveLength(1);
   expect(broken.failures[0]).toContain('could not run');
+
+  // npm printed an error object with an empty summary and no code in CI (22 Oct 2026): the line must still say something.
+  const silent = evaluateAudit({ error: { code: '', summary: '' } }, [], 'moderate', '2026-10-07');
+  expect(silent.failures).toEqual(['npm audit could not run: unknown error']);
 });
 
 test('the level "none" never fails, as with npm audit, and an unknown level is still rejected', () => {
@@ -80,4 +84,53 @@ test('ids are matched case-insensitively and an unknown level is rejected', () =
   expect(ghsaOf('https://example.com/no-id')).toBeNull();
   expect(evaluateAudit(report(braces), [{ ...entry, id: 'ghsa-vfj7-8cjw-p6xm' }], 'moderate', '2026-10-07').failures).toEqual([]);
   expect(() => evaluateAudit({ vulnerabilities: {} }, [], 'severe', '2026-10-07')).toThrow(/Unknown audit level/);
+});
+
+// 22 Oct 2026: the registry's advisory endpoint accepted about half of the requests and never answered the rest, so
+// `npm audit` waited 7 minutes and reported "could not run" (on GitHub's runners and on a laptop alike). The gate runs it
+// again; what it must never do is pass on anything but a report.
+const hung = { stdout: '', stderr: '', signal: 'SIGTERM' };
+const answered = { stdout: JSON.stringify({ vulnerabilities: {}, metadata: {} }), stderr: '', signal: null };
+const failedToRun = { stdout: JSON.stringify({ error: { code: 'ENOAUDIT', summary: 'audit endpoint returned an error' } }), stderr: '', signal: null };
+/** A runner that returns these results in turn, and counts its calls. */
+function runner(...results: { stdout: string; stderr: string; signal: string | null }[]) {
+  const calls = { count: 0 };
+  return { calls, run: () => results[Math.min(calls.count++, results.length - 1)] };
+}
+
+test('npm audit is run again after a request that never answered, and the first report is used', () => {
+  const log: string[] = [];
+  const { run, calls } = runner(hung, failedToRun, answered);
+  expect(readAuditReport(run, 6, (m) => log.push(m))).toEqual({ report: { vulnerabilities: {}, metadata: {} } });
+  expect(calls.count).toBe(3);
+  expect(log).toHaveLength(2); // one line per failed attempt, none for the one that worked
+  expect(log[0]).toContain('attempt 1 of 6');
+  expect(log[0]).toContain('SIGTERM');
+  expect(log[1]).toContain('audit endpoint returned an error');
+});
+
+test('a report on the first attempt costs no retry and no log line', () => {
+  const log: string[] = [];
+  const { run, calls } = runner(answered);
+  expect(readAuditReport(run, 6, (m) => log.push(m)).report).toBeDefined();
+  expect(calls.count).toBe(1);
+  expect(log).toEqual([]);
+});
+
+test('when every attempt fails the gate still fails: the last failure comes back, never a pass', () => {
+  const stuck = runner(hung);
+  expect(readAuditReport(stuck.run, 4, () => {})).toEqual({ unreadable: 'npm audit was stopped (SIGTERM) before it answered' });
+  expect(stuck.calls.count).toBe(4);
+
+  const broken = runner(failedToRun);
+  const last = readAuditReport(broken.run, 3, () => {});
+  expect(broken.calls.count).toBe(3);
+  // npm's own error report goes on to evaluateAudit, which fails the gate on it.
+  expect(evaluateAudit(last.report, [], 'moderate', '2026-10-22').failures).toEqual(['npm audit could not run: audit endpoint returned an error']);
+  expect(last.unreadable).toBeUndefined();
+});
+
+test('output that is not JSON counts as no report, with what npm printed', () => {
+  const { run } = runner({ stdout: '', stderr: 'npm error code EAI_AGAIN', signal: null });
+  expect(readAuditReport(run, 2, () => {})).toEqual({ unreadable: 'npm error code EAI_AGAIN' });
 });

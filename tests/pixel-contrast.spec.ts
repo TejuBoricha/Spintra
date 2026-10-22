@@ -1,0 +1,34 @@
+import { test, expect } from '@playwright/test';
+import { SITE_PAGES, NOT_FOUND_PATH } from './site-routes';
+import { hideConfigBanner } from './helpers/config-banner';
+import { contrastProblems } from './helpers/pixel-contrast';
+
+// UX audit (7 Oct 2026), finding U-04: text that does not meet WCAG 1.4.3 (4.5 : 1, or 3 : 1 for large text), judged from the
+// pixels because axe cannot read text on gradients and translucent layers (ux-axe.spec.ts has its colour-contrast rule off for
+// that reason). Every page, both themes, a phone and a desktop. How it measures is in helpers/pixel-contrast.ts.
+
+// CI runs this whole suite in two jobs. This gate is about pixels, not the database, and its 148 cases take about 9 minutes on CI's one
+// worker, which `validate` (about 29 minutes now, limit 40) can carry and `db-integration` (about 36 of its 40) cannot: that job, the
+// one with a real Supabase (NEXT_PUBLIC_SUPABASE_URL), leaves it to `validate`. Locally it always runs.
+test.skip(!!process.env.CI && !!process.env.NEXT_PUBLIC_SUPABASE_URL, 'run by the validate job; db-integration is near its time limit');
+
+const PAGES = [...SITE_PAGES, NOT_FOUND_PATH];
+
+for (const [theme, width, height] of [['dark', 1280, 800], ['light', 1280, 800], ['dark', 390, 844], ['light', 390, 844]] as const) {
+  test.describe(`${theme} theme, ${width}px wide`, () => {
+    test.use({ viewport: { width, height }, colorScheme: theme, reducedMotion: 'reduce' });
+    for (const path of PAGES) {
+      test(`${path}: all text has enough contrast`, async ({ page }) => {
+        await page.addInitScript(([t]) => {
+          localStorage.setItem('spintra-theme', t);
+          localStorage.setItem('spintra-cookie-consent', 'denied'); // the notice would sit over the page's last lines
+        }, [theme]);
+        await page.goto(path);
+        await page.waitForLoadState('load');
+        await hideConfigBanner(page);
+        await page.waitForTimeout(400); // hydration, so client-rendered text exists
+        expect(await contrastProblems(page)).toEqual([]);
+      });
+    }
+  });
+}
