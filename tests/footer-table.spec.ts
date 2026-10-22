@@ -33,10 +33,12 @@ async function openHome(page: Page, theme: 'dark' | 'light' = 'dark') {
 /** The centre of each piece's sprite, relative to the scene, and the scene's width. */
 async function pieceCentres(page: Page) {
   return page.evaluate((sel) => {
-    const scene = document.querySelector(sel)!.getBoundingClientRect();
+    // the copy that is on screen (a hidden staging copy has no boxes), as visibleScene() does for a locator
+    const root = Array.from(document.querySelectorAll(sel)).find((el) => el.getClientRects().length > 0)!;
+    const scene = root.getBoundingClientRect();
     return {
       width: scene.width,
-      centres: Array.from(document.querySelectorAll(`${sel} [data-pull] svg`)).map((s) => {
+      centres: Array.from(root.querySelectorAll('[data-pull] svg')).map((s) => {
         const r = s.getBoundingClientRect();
         return { x: r.left + r.width / 2 - scene.left, y: r.top + r.height / 2 - scene.top };
       }),
@@ -45,7 +47,7 @@ async function pieceCentres(page: Page) {
 }
 
 const offset = (page: Page, which: string) =>
-  page.locator(`${SCENE} [data-pull="${which}"]`).first().evaluate((el) => {
+  page.locator(`${SCENE}:visible [data-pull="${which}"]`).first().evaluate((el) => {
     const m = getComputedStyle(el).translate.match(/-?[\d.]+/g);
     return m ? Math.hypot(Number(m[0]), Number(m[1] ?? 0)) : 0;
   });
@@ -195,7 +197,7 @@ test.describe('the cursor easter egg', () => {
 
   test('with a mouse, a nearby piece moves away, the track bends, and both settle back when the cursor leaves', async ({ page }) => {
     const scene = await openHome(page);
-    const track = page.locator(`${SCENE} [data-track]`);
+    const track = page.locator(`${SCENE}:visible [data-track]`);
     const baseTrack = await track.getAttribute('d');
     const before = await offset(page, 'flee');
     expect(before, 'at rest nothing is pushed').toBeLessThan(0.5);
@@ -257,13 +259,13 @@ test.describe('the cursor easter egg', () => {
     test.use({ hasTouch: true });
     test('nothing reacts: no pushing, no bending', async ({ page }) => {
       const scene = await openHome(page);
-      const baseTrack = await page.locator(`${SCENE} [data-track]`).getAttribute('d');
+      const baseTrack = await page.locator(`${SCENE}:visible [data-track]`).getAttribute('d');
       const { centres } = await pieceCentres(page);
       const box = (await scene.boundingBox())!;
       await page.mouse.move(box.x + centres[0].x, box.y + centres[0].y);
       await page.waitForTimeout(500);
       expect(await offset(page, 'flee')).toBe(0);
-      expect(await page.locator(`${SCENE} [data-track]`).getAttribute('d')).toBe(baseTrack);
+      expect(await page.locator(`${SCENE}:visible [data-track]`).getAttribute('d')).toBe(baseTrack);
     });
   });
 });
