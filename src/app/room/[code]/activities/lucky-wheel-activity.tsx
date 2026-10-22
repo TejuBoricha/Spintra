@@ -365,7 +365,7 @@ export function LuckyWheelActivity() {
           className="w-full h-full"
           style={{ maxWidth: 384, maxHeight: 384 }}
         />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 text-2xl drop-shadow-md select-none pointer-events-none">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 text-2xl text-red-600 dark:text-red-500 drop-shadow-md select-none pointer-events-none">
           ▼
         </div>
       </div>

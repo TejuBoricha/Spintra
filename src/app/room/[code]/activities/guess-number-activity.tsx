@@ -151,13 +151,13 @@ export function GuessNumberActivity() {
             </p>
           )}
           <div className="flex gap-4 items-center">
-            <span className="text-4xl font-black text-cyan-400">{guessSecretNumber !== null ? guessSecretNumber : "??"}</span>
+            <span className="text-4xl font-black text-cyan-700 dark:text-cyan-400">{guessSecretNumber !== null ? guessSecretNumber : "??"}</span>
             <Button
               size="sm"
               variant="outline"
               disabled={resetting}
               onClick={resetSecretNumber}
-              className="ml-auto rounded-full border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10 h-9 px-4"
+              className="ml-auto rounded-full border-cyan-500/30 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/10 h-9 px-4"
             >
               Reset Number
             </Button>
@@ -170,7 +170,7 @@ export function GuessNumberActivity() {
         {guessHistory.map((g, i) => {
           const isCorrect = g.hint === "correct";
           const itemStyle = isCorrect
-            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200"
             : "border-border bg-muted/30";
 
           return (
@@ -188,17 +188,17 @@ export function GuessNumberActivity() {
               <span className="ml-auto flex items-center gap-1.5 font-semibold text-xs">
                 {g.hint === "too high" ? (
                   <>
-                    <span className="text-red-400">Too High</span>
+                    <span className="text-red-700 dark:text-red-400">Too High</span>
                     <ArrowDown className="w-4 h-4 text-red-500" />
                   </>
                 ) : g.hint === "too low" ? (
                   <>
-                    <span className="text-amber-400">Too Low</span>
+                    <span className="text-amber-800 dark:text-amber-400">Too Low</span>
                     <ArrowUp className="w-4 h-4 text-amber-500" />
                   </>
                 ) : (
                   <>
-                    <span className="text-emerald-400">Correct!</span>
+                    <span className="text-emerald-700 dark:text-emerald-400">Correct!</span>
                     <Emoji name="party_popper" size={16} pop />
                   </>
                 )}
@@ -243,7 +243,7 @@ export function GuessNumberActivity() {
               submitGuess(val);
               if (input) input.value = "";
             }}
-            className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white border-0 rounded-full px-6 h-11 shadow-md shadow-cyan-500/10"
+            className="bg-gradient-to-r from-cyan-700 to-blue-700 hover:from-cyan-800 hover:to-blue-800 text-white border-0 rounded-full px-6 h-11 shadow-md shadow-cyan-500/10"
           >
             Guess
           </Button>

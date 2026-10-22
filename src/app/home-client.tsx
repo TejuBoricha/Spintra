@@ -33,6 +33,11 @@ const heroFeatures = GAMES.map((game) => ({
 }));
 
 const socialProofGames = GAMES.filter((g) => !g.createOnly).slice(0, 4);
+// One count of what the catalogue holds, used by the hero and by the section below it, so the two cannot disagree (UX audit
+// U-16: "14 games to play" above and "17 games and room modes" below). Room modes (Party, Classroom, City) are not tools you
+// play on your own, so they are counted apart; the two numbers add up to the cards in the grid.
+const PLAYABLE_COUNT = GAMES.filter((g) => !g.createOnly).length;
+const MODE_COUNT = GAMES.length - PLAYABLE_COUNT;
 
 const perks = [
   { icon: Zap, label: "One-click rooms", desc: "Share a 6-character code and people are in" },
@@ -361,7 +366,7 @@ export default function HomePage() {
                   </div>
                 ))}
               </div>
-              <span>{GAMES.filter((g) => !g.createOnly).length} games to play</span>
+              <span>{PLAYABLE_COUNT} games to play</span>
             </div>
             <div className="hidden sm:block w-px h-4 bg-border" />
             <span className="hidden sm:flex items-center gap-1.5">
@@ -376,8 +381,10 @@ export default function HomePage() {
           </div>
 
           {/* Scroll indicator */}
+          {/* A mouse-wheel cue: a touch screen has no wheel (UX audit U-16) */}
           <div
-            className="absolute bottom-8 left-1/2 -translate-x-1/2 reveal reveal-fade reveal-delay-6"
+            data-testid="scroll-cue"
+            className="absolute bottom-8 left-1/2 -translate-x-1/2 reveal reveal-fade reveal-delay-6 pointer-coarse:hidden"
           >
             <motion.div
               animate={{ y: [0, 8, 0] }}
@@ -426,7 +433,7 @@ export default function HomePage() {
               <span className="gradient-text">play</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              {GAMES.length} games and room modes. Use any of them on your own, or open a room and play with everyone.
+              {PLAYABLE_COUNT} games and {MODE_COUNT} room modes. Play any game on your own, or open a room and play with everyone.
             </p>
           </motion.div>
 

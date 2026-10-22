@@ -421,6 +421,25 @@
   * {
     border-color: var(--border);
   }
+  /* No heading or paragraph ends on a single word of its own (UX audit U-26: "Pick a game and / play." left a lone
+     word on a line of its own on 20 of the 24 pages at a phone's width). `balance` evens out the lines of a heading;
+     `pretty` keeps the last line of a paragraph from being one word. A browser without them ignores the rule, and a
+     utility class (text-balance, text-nowrap, text-wrap) still wins. */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    text-wrap: balance;
+  }
+  p,
+  li,
+  dd,
+  blockquote,
+  figcaption {
+    text-wrap: pretty;
+  }
   /* One focus indicator for everything that can be focused and does not draw its own: links, cards that
      are links, summaries, plain buttons. Components that set `outline-none` draw a ring of the same colour
      instead (see components/ui). The colour passes 3 : 1 in both themes (UX audit U-01, U-02). */
