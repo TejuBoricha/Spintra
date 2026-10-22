@@ -22,14 +22,16 @@ export function FeatureCard({ title, description, icon: Icon, href, gradient, ta
       transition={{ delay: (index % 3) * 0.1, duration: 0.4 }}
       viewport={{ once: true, margin: "-50px" }}
       whileHover={{ y: -6, scale: 1.02 }}
+      className="h-full"
     >
       {/* block + the card's radius: an inline link around a block child draws no solid focus outline around the card */}
-      <Link href={href} className="block rounded-xl">
+      <Link href={href} data-testid="feature-card" className="block h-full rounded-xl">
         <div className="rounded-xl border border-(--border-hairline) bg-(--surface-panel) p-8 h-full group cursor-pointer relative overflow-hidden shadow-1 hover:border-primary/30 transition-colors">
           {/* Hover gradient glow */}
           <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
 
-          <div className="relative z-10">
+          {/* A column whose footer is pinned to the bottom, so the rule and "Try it" line up across a row of cards (UX audit U-16) */}
+          <div className="relative z-10 flex h-full flex-col">
             {/* Icon */}
             <div className={`w-14 h-14 rounded-control border-2 border-(--border-strong) bg-gradient-to-br ${gradient} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
               <Icon className="w-7 h-7 text-white" />
@@ -44,7 +46,7 @@ export function FeatureCard({ title, description, icon: Icon, href, gradient, ta
             </p>
 
             {/* Tagline + CTA */}
-            <div className="flex items-center justify-between pt-4 border-t border-(--border-hairline)">
+            <div data-testid="feature-card-footer" className="mt-auto flex items-center justify-between pt-4 border-t border-(--border-hairline)">
               <span className="text-sm text-muted-foreground">{tagline}</span>
               <span className="flex items-center gap-1 text-sm font-medium text-(--brand-primary-strong) group-hover:text-primary transition-colors">
                 Try it <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

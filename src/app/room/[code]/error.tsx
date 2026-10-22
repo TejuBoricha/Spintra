@@ -13,6 +13,7 @@ export default function RoomError({ error, reset }: { error: Error & { digest?: 
       reset={reset}
       title="This room hit a snag"
       description="Something broke loading this room. Try again, or head back to Explore and rejoin with the room code."
+      escape={{ href: "/explore", label: "Back to Explore" }}
     />
   );
 }

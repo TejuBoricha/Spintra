@@ -84,7 +84,7 @@ export function WouldYouRatherActivity() {
             const prompt = prompts[Math.floor(Math.random() * prompts.length)];
             sendActivityEvent({ kind: "wyr_prompt", ...prompt });
           }}
-          className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-0 rounded-full px-6"
+          className="bg-gradient-to-r from-emerald-700 to-teal-700 text-white border-0 rounded-full px-6"
         >
           <Shuffle className="w-4 h-4 mr-2" /> New Question
         </Button>
@@ -107,8 +107,8 @@ export function WouldYouRatherActivity() {
                           : myVote
                           ? "border-(--border-hairline) opacity-40"
                           : "border-rose-500/20 hover:border-rose-500/50 hover:bg-rose-500/[0.03]",
-                      badge: "bg-rose-500/15 text-rose-300 border border-rose-500/20",
-                      countColor: "text-rose-400",
+                      badge: "bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/20",
+                      countColor: "text-rose-700 dark:text-rose-400",
                     }
                   : {
                       bg: "bg-gradient-to-br from-cyan-500/5 to-blue-500/5",
@@ -118,8 +118,8 @@ export function WouldYouRatherActivity() {
                           : myVote
                           ? "border-(--border-hairline) opacity-40"
                           : "border-cyan-500/20 hover:border-cyan-500/50 hover:bg-cyan-500/[0.03]",
-                      badge: "bg-cyan-500/15 text-cyan-300 border border-cyan-500/20",
-                      countColor: "text-cyan-400",
+                      badge: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20",
+                      countColor: "text-cyan-700 dark:text-cyan-400",
                     };
 
               return (
@@ -182,8 +182,8 @@ export function WouldYouRatherActivity() {
                 key={i}
                 className={
                   v.option === "A"
-                    ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
-                    : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                    ? "bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30"
+                    : "bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30"
                 }
               >
                 {v.username} → {v.option}

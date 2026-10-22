@@ -185,7 +185,7 @@ export function ScoreboardPanel({ roomCode, isHost }: { roomCode: string; isHost
                   {row.position}
                 </span>
                 <span className="text-sm font-medium flex-1 truncate">{row.username}</span>
-                <span className="text-sm font-bold text-amber-400 shrink-0">{row.points} pts</span>
+                <span className="text-sm font-bold text-amber-800 dark:text-amber-400 shrink-0">{row.points} pts</span>
               </div>
             ))}
           </div>
@@ -195,7 +195,7 @@ export function ScoreboardPanel({ roomCode, isHost }: { roomCode: string; isHost
               <Button
                 variant="outline"
                 onClick={() => setIsResetConfirmOpen(true)}
-                className="text-rose-400 hover:text-rose-300"
+                className="text-rose-700 dark:text-rose-400 hover:text-rose-900 dark:hover:text-rose-300"
               >
                 <RotateCcw className="w-4 h-4 mr-2" /> Reset Scoreboard
               </Button>

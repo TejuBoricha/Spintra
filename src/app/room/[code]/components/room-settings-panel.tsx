@@ -223,14 +223,14 @@ export function RoomSettingsPanel({
 
           <div className="space-y-5 py-1">
             {!isOnlineRoom && (
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
                 This room only works on this device, so name, size, and visibility can&apos;t be
                 changed here. You can still lock or unlock it below.
               </div>
             )}
 
             {loadError && (
-              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-900 dark:text-red-200">
                 Couldn&apos;t load this room&apos;s current settings. Close this dialog and try again.
               </div>
             )}

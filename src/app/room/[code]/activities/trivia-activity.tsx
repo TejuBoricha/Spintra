@@ -215,7 +215,7 @@ export function TriviaActivity() {
 
       {isHost && !triviaQuestion && (
         <div className="w-full space-y-4 border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-yellow-400">Host Settings</h3>
+          <h3 className="text-lg font-bold text-yellow-800 dark:text-yellow-400">Host Settings</h3>
           <p className="text-xs text-muted-foreground -mt-2">Pick a category and difficulty, then press Start Trivia</p>
 
           <div className="grid grid-cols-2 gap-4">
@@ -260,7 +260,7 @@ export function TriviaActivity() {
           <Button
             disabled={filteredQuestions.length === 0}
             onClick={drawNextQuestion}
-            className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-white border-0 rounded-full h-11 shadow-lg shadow-yellow-500/10"
+            className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-(--text-on-lime) border-0 rounded-full h-11 shadow-lg shadow-yellow-500/10"
           >
             Start Trivia
           </Button>
@@ -270,12 +270,12 @@ export function TriviaActivity() {
       {triviaQuestion && (
         <>
           <div className="flex flex-wrap gap-2 justify-center mb-1">
-            <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">Question {triviaQuestion.num}</Badge>
-            <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/30">{triviaQuestion.category}</Badge>
+            <Badge className="bg-yellow-500/20 text-yellow-800 dark:text-yellow-300 border-yellow-500/30">Question {triviaQuestion.num}</Badge>
+            <Badge className="bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-500/30">{triviaQuestion.category}</Badge>
             <Badge className={`border-0
-              ${triviaQuestion.difficulty === "easy" ? "bg-emerald-500/20 text-emerald-300" : ""}
-              ${triviaQuestion.difficulty === "medium" ? "bg-amber-500/20 text-amber-300" : ""}
-              ${triviaQuestion.difficulty === "hard" ? "bg-red-500/20 text-red-300" : ""}
+              ${triviaQuestion.difficulty === "easy" ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300" : ""}
+              ${triviaQuestion.difficulty === "medium" ? "bg-amber-500/20 text-amber-800 dark:text-amber-300" : ""}
+              ${triviaQuestion.difficulty === "hard" ? "bg-red-500/20 text-red-700 dark:text-red-300" : ""}
             `}>
               {triviaQuestion.difficulty.charAt(0).toUpperCase() + triviaQuestion.difficulty.slice(1)}
             </Badge>
@@ -294,9 +294,9 @@ export function TriviaActivity() {
               let btnStyle = "border-(--border-hairline) hover:border-yellow-500/50 hover:bg-yellow-500/10";
               if (hasAnswered) {
                 if (isCorrectOption) {
-                  btnStyle = "border-emerald-500 bg-emerald-500/15 text-emerald-300 shadow-emerald-500/10 font-bold";
+                  btnStyle = "border-emerald-500 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 shadow-emerald-500/10 font-bold";
                 } else if (isPicked) {
-                  btnStyle = "border-rose-500 bg-rose-500/15 text-rose-300 shadow-rose-500/10 font-bold";
+                  btnStyle = "border-rose-500 bg-rose-500/15 text-rose-700 dark:text-rose-300 shadow-rose-500/10 font-bold";
                 } else {
                   btnStyle = "border-(--border-hairline) opacity-40";
                 }
@@ -382,7 +382,7 @@ export function TriviaActivity() {
             <div className="w-full flex flex-col gap-2 mt-4">
               <Button
                 onClick={drawNextQuestion}
-                className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-white border-0 w-full rounded-full h-11 shadow-lg shadow-yellow-500/10"
+                className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-(--text-on-lime) border-0 w-full rounded-full h-11 shadow-lg shadow-yellow-500/10"
               >
                 <Shuffle className="w-4 h-4 mr-2" /> Next Question
               </Button>

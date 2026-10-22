@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { createLegalSections } from "@/components/legal-sections";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | Spintra",
@@ -7,16 +8,29 @@ export const metadata: Metadata = {
   alternates: { canonical: "/legal/privacy" },
 };
 
+const { Contents, Section } = createLegalSections([
+  "Information We Collect",
+  "How We Use This Information",
+  "Who We Share Data With",
+  "How Long We Keep It",
+  "Your Choices and Rights",
+  "Children and Schools",
+  "Changes to This Policy",
+  "Contact",
+]);
+
 // Every statement here should match what the code does. If you change what
 // is collected, sent, or kept, change this page in the same pull request.
 export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen pb-16 px-4">
-      <div className="max-w-3xl mx-auto prose-content">
+      <div className="max-w-[32rem] mx-auto">
         <h1 className="text-4xl sm:text-5xl font-bold mb-2">
           Privacy <span className="gradient-text">Policy</span>
         </h1>
-        <p className="text-muted-foreground mb-10">Effective date: September 26, 2026</p>
+        <p className="text-muted-foreground mb-6">Effective date: September 26, 2026</p>
+
+        <Contents />
 
         <div className="space-y-8 text-foreground/90 leading-relaxed">
           <p>
@@ -25,8 +39,7 @@ export default function PrivacyPolicyPage() {
             is used, who it is shared with, and how long it is kept.
           </p>
 
-          <section>
-            <h2 className="text-2xl font-semibold mb-3">1. Information We Collect</h2>
+          <Section n={1}>
             <ul className="list-disc pl-6 space-y-2">
               <li>
                 <strong>An anonymous ID:</strong> a random identifier created for your browser
@@ -71,20 +84,18 @@ export default function PrivacyPolicyPage() {
               We do <strong>not</strong> show advertising, sell data, build profiles of
               individuals, or collect device fingerprints or precise location.
             </p>
-          </section>
+          </Section>
 
-          <section>
-            <h2 className="text-2xl font-semibold mb-3">2. How We Use This Information</h2>
+          <Section n={2}>
             <p>
               To run the Service: creating and syncing rooms, delivering chat and game moves in
               real time, keeping scores, enforcing room limits, locks, and bans, and preventing
               abuse. Error and performance reports are used to fix problems. Analytics, if you
               allow it, is used only to understand overall use and improve the Service.
             </p>
-          </section>
+          </Section>
 
-          <section>
-            <h2 className="text-2xl font-semibold mb-3">3. Who We Share Data With</h2>
+          <Section n={3}>
             <p>
               Providers that run parts of the Service for us: <strong>Supabase</strong>{" "}
               (database, anonymous sign-in, real-time messaging), <strong>Vercel</strong>{" "}
@@ -102,10 +113,9 @@ export default function PrivacyPolicyPage() {
               ). They process data on our behalf. We do not sell personal data or share it for
               advertising.
             </p>
-          </section>
+          </Section>
 
-          <section>
-            <h2 className="text-2xl font-semibold mb-3">4. How Long We Keep It</h2>
+          <Section n={4}>
             <ul className="list-disc pl-6 space-y-2">
               <li>
                 <strong>Rooms and everything in them</strong> (who joined, chat, game moves,
@@ -132,10 +142,9 @@ export default function PrivacyPolicyPage() {
                 until you ask us to delete it.
               </li>
             </ul>
-          </section>
+          </Section>
 
-          <section>
-            <h2 className="text-2xl font-semibold mb-3">5. Your Choices and Rights</h2>
+          <Section n={5}>
             <p>
               You can turn analytics on or off at any time in{" "}
               <Link href="/settings" className="underline hover:text-foreground">Settings</Link>,
@@ -146,10 +155,9 @@ export default function PrivacyPolicyPage() {
               Write to <strong className="[overflow-wrap:anywhere]">tejasboricha225@gmail.com</strong>; this address also handles
               complaints about how we process data.
             </p>
-          </section>
+          </Section>
 
-          <section>
-            <h2 className="text-2xl font-semibold mb-3">6. Children and Schools</h2>
+          <Section n={6}>
             <p>
               Spintra is for general audiences and is also used in classrooms. We don&apos;t ask
               anyone, including children, for a name, an email, or an account, and we never
@@ -182,22 +190,20 @@ export default function PrivacyPolicyPage() {
                 it.
               </li>
             </ul>
-          </section>
+          </Section>
 
-          <section>
-            <h2 className="text-2xl font-semibold mb-3">7. Changes to This Policy</h2>
+          <Section n={7}>
             <p>
               We may update this Privacy Policy from time to time. Material changes will be
               reflected by updating the effective date above.
             </p>
-          </section>
+          </Section>
 
-          <section>
-            <h2 className="text-2xl font-semibold mb-3">8. Contact</h2>
+          <Section n={8}>
             <p>
               Questions about this Policy can be sent to <strong className="[overflow-wrap:anywhere]">tejasboricha225@gmail.com</strong>.
             </p>
-          </section>
+          </Section>
 
           <p className="text-sm text-muted-foreground pt-4 border-t border-border">
             See also our <Link href="/legal/terms" className="underline hover:text-foreground">Terms of Service</Link>.

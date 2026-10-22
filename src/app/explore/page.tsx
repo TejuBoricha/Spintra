@@ -487,7 +487,7 @@ export default function ExplorePage() {
                   >
                       <div className="flex items-start justify-between mb-3">
                         <div className="min-w-0 flex-1 pr-2">
-                          <h3 className="font-bold text-foreground group-hover:text-(--brand-primary-strong) transition-colors line-clamp-1">
+                          <h3 className="font-bold text-foreground group-hover:text-(--brand-primary-strong) transition-colors line-clamp-1 text-wrap">
                             {room.name}
                           </h3>
                           <p className="text-xs font-mono text-(--brand-primary-strong)/80 uppercase font-semibold tracking-wider mt-0.5">
@@ -553,7 +553,7 @@ export default function ExplorePage() {
                       <h3 className="font-bold text-foreground text-sm group-hover:text-(--brand-primary-strong) transition-colors">
                         {t.label}
                       </h3>
-                      <p className="text-xs text-muted-foreground mt-1">{t.tagline}</p>
+                      <p className="text-xs text-muted-foreground mt-1 text-balance">{t.tagline}</p>
                     </div>
                   </Link>
                 );

@@ -163,7 +163,7 @@ export const RoomHeader = memo(function RoomHeader({
               aria-live="polite"
               className={`mt-3 rounded-xl border px-3 py-2 text-sm transition-all ${
                 realtimeError
-                  ? "border-red-500/20 bg-red-500/10 text-red-200"
+                  ? "border-red-500/20 bg-red-500/10 text-red-900 dark:text-red-200"
                   : "border-emerald-500/20 bg-emerald-500/10 text-emerald-100"
               }`}
             >
@@ -240,7 +240,7 @@ export const RoomHeader = memo(function RoomHeader({
                       size="icon"
                       onClick={onOpenCloseRoomDialog}
                       aria-label="Close room for everyone"
-                      className="text-red-400 hover:text-red-300"
+                      className="text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
                     />
                   }
                 >
@@ -275,7 +275,7 @@ export const RoomHeader = memo(function RoomHeader({
                         size="icon"
                         onClick={() => setIsResetConfirmOpen(true)}
                         aria-label="Reset current activity"
-                        className="text-red-400"
+                        className="text-red-700 dark:text-red-400"
                       />
                     }
                   >
@@ -329,7 +329,7 @@ export const RoomHeader = memo(function RoomHeader({
                   size="icon"
                   onClick={() => setIsExitConfirmOpen(true)}
                   aria-label="Leave room"
-                  className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                  className="text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 hover:bg-red-500/10"
                 />
               }
             >
@@ -350,7 +350,7 @@ export const RoomHeader = memo(function RoomHeader({
           </DialogHeader>
 
           {isLocalOnlyMode && (
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200 text-left">
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-200 text-left">
               This room only works on this device. Whoever scans this code has to be using this
               same browser. It won&apos;t connect anyone joining from a different phone or computer.
             </div>

@@ -437,10 +437,10 @@ export function RoomSidebar({
                               }}
                               autoFocus
                             />
-                            <button onClick={handleSaveUsername} aria-label="Save username" className="text-emerald-400 hover:text-emerald-300">
+                            <button onClick={handleSaveUsername} aria-label="Save username" className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-300">
                               <Check className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={() => setIsEditingUsername(false)} aria-label="Cancel editing username" className="text-red-400 hover:text-red-300">
+                            <button onClick={() => setIsEditingUsername(false)} aria-label="Cancel editing username" className="text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300">
                               <X className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -493,7 +493,7 @@ export function RoomSidebar({
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className={`h-9 w-9 ${blockedUsers.includes(p.user_id) ? "text-red-400" : ""}`}
+                                  className={`h-9 w-9 ${blockedUsers.includes(p.user_id) ? "text-red-700 dark:text-red-400" : ""}`}
                                   onClick={() => handleToggleBlock(p.user_id)}
                                   aria-label={`${
                                     blockedUsers.includes(p.user_id) ? "Unblock" : "Block"

@@ -45,7 +45,7 @@ export function TeamMakerActivity() {
             <Button
               key={n}
               variant="outline"
-              className="h-10 px-5 text-sm font-semibold border-cyan-500/30 hover:bg-cyan-500/10 text-cyan-300 rounded-full transition-all"
+              className="h-10 px-5 text-sm font-semibold border-cyan-500/30 hover:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 rounded-full transition-all"
               onClick={() => {
                 const online = participants.filter((p) => p.is_online);
                 // Without this, 0 online silently produced N teams each

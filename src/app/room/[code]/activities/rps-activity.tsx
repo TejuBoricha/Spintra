@@ -137,16 +137,16 @@ export function RpsActivity() {
           className="bg-(--surface-panel) rounded-2xl p-4 text-center w-full max-w-xs border border-rose-500/20"
         >
           {roundResult.outcome === "decided" ? (
-            <p className="text-lg font-bold text-emerald-400 flex items-center justify-center gap-2 flex-wrap">
+            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400 flex items-center justify-center gap-2 flex-wrap">
               <Emoji name="party_popper" size={24} pop /> {winners.join(", ")} win{winners.length === 1 ? "s" : ""}!
               <span className="text-xs text-muted-foreground font-normal block w-full">
                 {roundResult.winningChoice} beats {roundResult.losingChoice}
               </span>
             </p>
           ) : roundResult.outcome === "tie" ? (
-            <p className="text-lg font-bold text-amber-400">Everyone picked the same. It&apos;s a tie.</p>
+            <p className="text-lg font-bold text-amber-800 dark:text-amber-400">Everyone picked the same. It&apos;s a tie.</p>
           ) : (
-            <p className="text-lg font-bold text-amber-400">
+            <p className="text-lg font-bold text-amber-800 dark:text-amber-400">
               Rock, paper, and scissors all got picked, so nobody wins this round.
             </p>
           )}
@@ -163,9 +163,9 @@ export function RpsActivity() {
         <div className="flex gap-4">
           {(["Rock", "Paper", "Scissors"] as const).map((choice) => {
             const config = {
-              Rock: { border: "hover:border-rose-500/50 hover:bg-rose-500/10", text: "text-rose-400" },
-              Paper: { border: "hover:border-cyan-500/50 hover:bg-cyan-500/10", text: "text-cyan-400" },
-              Scissors: { border: "hover:border-(--violet-500)/50 hover:bg-(--violet-500)/10", text: "text-(--violet-400)" },
+              Rock: { border: "hover:border-rose-500/50 hover:bg-rose-500/10", text: "text-rose-700 dark:text-rose-400" },
+              Paper: { border: "hover:border-cyan-500/50 hover:bg-cyan-500/10", text: "text-cyan-700 dark:text-cyan-400" },
+              Scissors: { border: "hover:border-(--violet-500)/50 hover:bg-(--violet-500)/10", text: "text-violet-700 dark:text-(--violet-400)" },
             }[choice];
 
             return (
@@ -245,7 +245,7 @@ export function RpsActivity() {
             sendActivityEvent({ kind: "rps_reset" });
           }}
           variant="outline"
-          className="h-10 px-5 text-sm font-semibold border-rose-500/30 text-rose-400 hover:bg-rose-500/10 rounded-full transition-all"
+          className="h-10 px-5 text-sm font-semibold border-rose-500/30 text-rose-700 dark:text-rose-400 hover:bg-rose-500/10 rounded-full transition-all"
         >
           <RotateCcw className="w-4 h-4 mr-2" /> New Round
         </Button>

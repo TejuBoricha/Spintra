@@ -24,13 +24,13 @@ const TOD_BUTTONS = [
   {
     type: "truth",
     label: "Truth",
-    color: "from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500",
+    color: "from-cyan-700 to-blue-700 hover:from-cyan-800 hover:to-blue-800",
     emoji: "thinking_face",
   },
   {
     type: "dare",
     label: "Dare",
-    color: "from-pink-500 to-rose-600 hover:from-pink-400 hover:to-rose-500",
+    color: "from-pink-600 to-rose-700 hover:from-pink-700 hover:to-rose-800",
     emoji: "fire",
   },
 ] as const;
@@ -135,8 +135,8 @@ export function TruthOrDareActivity() {
           <Badge
             className={`mb-4 text-xs font-semibold px-4 py-1 gap-1.5 uppercase tracking-wider ${
               todPrompt.type === "truth"
-                ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/20"
-                : "bg-pink-500/15 text-pink-300 border border-pink-500/20"
+                ? "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20"
+                : "bg-pink-500/15 text-pink-700 dark:text-pink-300 border border-pink-500/20"
             }`}
           >
             {todPrompt.type === "truth" ? (

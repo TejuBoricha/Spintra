@@ -86,7 +86,7 @@ export function NeverHaveIEverActivity() {
             const text = statements[Math.floor(Math.random() * statements.length)];
             sendActivityEvent({ kind: "nhie_prompt", text });
           }}
-          className="bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white border-0 rounded-full px-6"
+          className="bg-gradient-to-r from-violet-600 to-fuchsia-700 text-white border-0 rounded-full px-6"
         >
           <Shuffle className="w-4 h-4 mr-2" /> Next Statement
         </Button>
@@ -111,7 +111,7 @@ export function NeverHaveIEverActivity() {
                           : myChoice
                           ? "border-border opacity-40"
                           : "border-rose-500/20 hover:border-rose-500/50 hover:bg-rose-500/[0.03]",
-                      text: "text-rose-400",
+                      text: "text-rose-700 dark:text-rose-400",
                     }
                   : {
                       bg: "from-emerald-500/5 to-teal-500/5",
@@ -121,7 +121,7 @@ export function NeverHaveIEverActivity() {
                           : myChoice
                           ? "border-border opacity-40"
                           : "border-emerald-500/20 hover:border-emerald-500/50 hover:bg-emerald-500/[0.03]",
-                      text: "text-emerald-400",
+                      text: "text-emerald-700 dark:text-emerald-400",
                     };
 
               return (
@@ -145,12 +145,12 @@ export function NeverHaveIEverActivity() {
                     {choice === "have" ? (
                       <>
                         <Emoji name="raised_hand" size={20} />
-                        <span className="text-base text-rose-300">I have</span>
+                        <span className="text-base text-rose-700 dark:text-rose-300">I have</span>
                       </>
                     ) : (
                       <>
                         <Emoji name="person_gesturing_no" size={20} />
-                        <span className="text-base text-emerald-300">Never</span>
+                        <span className="text-base text-emerald-700 dark:text-emerald-300">Never</span>
                       </>
                     )}
                   </div>
@@ -166,8 +166,8 @@ export function NeverHaveIEverActivity() {
                 key={i}
                 className={
                   c.choice === "have"
-                    ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
-                    : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                    ? "bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30"
+                    : "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
                 }
               >
                 {c.username} → {c.choice === "have" ? "I have" : "Never"}

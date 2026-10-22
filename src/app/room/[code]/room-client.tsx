@@ -19,8 +19,9 @@ import { ActivityPickerDialog } from "./activities/activity-picker-dialog";
 import { ACTIVITY_REGISTRY } from "./activities/activity-registry";
 import { CityMatchShell } from "./city/city-match-shell";
 import { RoomActivityContext, RoomParticipantsContext } from "./context/room-activity-context";
-import { useRouter } from "next/navigation";
-import { Emoji, type EmojiName } from "@/components/emoji";
+import { type EmojiName } from "@/components/emoji";
+import { ErrorState } from "@/components/error-state";
+import { Button, ButtonLink } from "@/components/ui/button";
 
 // Custom Hooks
 import { useRoomSubscription } from "./hooks/use-room-subscription";
@@ -117,7 +118,7 @@ const RoomGameArea = memo(function RoomGameArea({
                   key={activeActivity.type}
                   fallback={
                     <div className="bg-(--surface-panel) p-8 rounded-2xl text-center border border-red-500/20 max-w-md mx-auto mt-8">
-                      <p className="text-xl font-bold text-red-400 mb-2">Something went wrong</p>
+                      <p className="text-xl font-bold text-red-700 dark:text-red-400 mb-2">Something went wrong</p>
                       <p className="text-sm text-muted-foreground">
                         The activity crashed or failed to load. Try picking a different activity.
                       </p>
@@ -147,7 +148,7 @@ const RoomGameArea = memo(function RoomGameArea({
                 key="city"
                 fallback={
                   <div className="bg-(--surface-panel) p-8 rounded-2xl text-center border border-red-500/20 max-w-md mx-auto mt-8">
-                    <p className="text-xl font-bold text-red-400 mb-2">Something went wrong</p>
+                    <p className="text-xl font-bold text-red-700 dark:text-red-400 mb-2">Something went wrong</p>
                     <p className="text-sm text-muted-foreground">
                       The match failed to load. Try refreshing the page. Your seat is saved.
                     </p>
@@ -173,7 +174,6 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
   // after its retries, so the room lookup below is not run without a session:
   // it would come back empty and say "Room Not Found" (audit L-3).
   const signInBusyRef = useRef(false);
-  const router = useRouter();
 
   // Cached from verifyAccess below so useRoomSubscription doesn't have to
   // re-fetch the same `rooms` row and re-check the same "am I already a
@@ -469,33 +469,28 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
       },
     }[accessError];
 
+    const retry = accessError === "error" || accessError === "busy";
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="max-w-md w-full p-8 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) text-center shadow-3 space-y-6">
-          <div className="flex justify-center">
-            <Emoji name={errorDetails.emoji} size={64} pop />
-          </div>
-          <div className="space-y-2">
-            <h1 tabIndex={-1} ref={(el) => el?.focus()} className="font-display text-2xl font-black text-foreground">{errorDetails.title}</h1>
-            <p className="text-muted-foreground text-sm leading-relaxed">{errorDetails.desc}</p>
-          </div>
-          {accessError === "error" || accessError === "busy" ? (
-            <button
-              onClick={() => window.location.reload()}
-              className="w-full h-11 rounded-pill border-2 border-(--border-strong) bg-primary text-primary-foreground font-body font-bold hover:brightness-95 transition-all"
-            >
-              Try Again
-            </button>
-          ) : (
-            <button
-              onClick={() => router.push("/explore")}
-              className="w-full h-11 rounded-pill border-2 border-(--border-strong) bg-primary text-primary-foreground font-body font-bold hover:brightness-95 transition-all"
-            >
-              Back to Explore
-            </button>
-          )}
-        </div>
-      </div>
+      <ErrorState
+        emoji={errorDetails.emoji}
+        title={errorDetails.title}
+        description={errorDetails.desc}
+        pageTitle={`${errorDetails.title} | Spintra`}
+        takeFocus
+      >
+        {retry ? (
+          <Button onClick={() => window.location.reload()} className="h-11 w-full">
+            Try Again
+          </Button>
+        ) : (
+          <ButtonLink href="/explore" className="h-11 w-full">
+            Back to Explore
+          </ButtonLink>
+        )}
+        <ButtonLink href={retry ? "/explore" : "/tools"} variant="outline" className="h-11 w-full">
+          {retry ? "Back to Explore" : "Browse tools"}
+        </ButtonLink>
+      </ErrorState>
     );
   }
 

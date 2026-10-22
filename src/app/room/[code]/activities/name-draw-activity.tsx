@@ -48,7 +48,7 @@ export function NameDrawActivity() {
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2 font-semibold">
             Selected Winner
           </p>
-          <p className="text-4xl font-black text-pink-400 flex items-center justify-center gap-2">
+          <p className="text-4xl font-black text-pink-700 dark:text-pink-400 flex items-center justify-center gap-2">
             {ndWinner} <Emoji name="party_popper" size={36} pop />
           </p>
         </motion.div>
@@ -78,7 +78,7 @@ export function NameDrawActivity() {
             const winner = names[Math.floor(Math.random() * names.length)];
             sendActivityEvent({ kind: "name_draw_winner", winner });
           }}
-          className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 text-white border-0 rounded-full h-11 font-bold shadow-lg shadow-pink-500/10"
+          className="w-full bg-gradient-to-r from-pink-600 to-rose-700 hover:from-pink-700 hover:to-rose-800 text-white border-0 rounded-full h-11 font-bold shadow-lg shadow-pink-500/10"
         >
           <Shuffle className="w-4 h-4 mr-2" /> Draw a Name
         </Button>

@@ -115,7 +115,7 @@ export function WordScrambleActivity() {
       {isHost && (
         <Button
           onClick={newWord}
-          className="bg-gradient-to-r from-lime-500 to-green-600 hover:from-lime-400 hover:to-green-500 text-white border-0 rounded-full px-6 shadow-lg shadow-lime-500/10"
+          className="bg-gradient-to-r from-lime-500 to-green-500 hover:from-lime-400 hover:to-green-400 text-(--text-on-lime) border-0 rounded-full px-6 shadow-lg shadow-lime-500/10"
         >
           <Shuffle className="w-4 h-4 mr-2" /> {scrambleWord ? "New Word" : "Start"}
         </Button>
@@ -130,7 +130,7 @@ export function WordScrambleActivity() {
                 initial={{ scale: 0, rotate: -10 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: "spring", stiffness: 120, delay: i * 0.05 }}
-                className="w-12 h-12 rounded-xl bg-gradient-to-br from-lime-500 to-green-600 flex items-center justify-center text-2xl font-black text-white shadow-xl shadow-lime-500/10 border border-lime-400/40 select-none"
+                className="w-12 h-12 rounded-xl bg-gradient-to-br from-lime-500 to-green-500 flex items-center justify-center text-2xl font-black text-(--text-on-lime) shadow-xl shadow-lime-500/10 border border-lime-400/40 select-none"
               >
                 {letter}
               </motion.div>
@@ -143,7 +143,7 @@ export function WordScrambleActivity() {
               animate={{ opacity: 1, scale: 1 }}
               role="status"
               aria-live="polite"
-              className="text-xl font-bold text-emerald-400 flex items-center gap-2 bg-emerald-500/10 px-6 py-2 rounded-full border border-emerald-500/20"
+              className="text-xl font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-2 bg-emerald-500/10 px-6 py-2 rounded-full border border-emerald-500/20"
             >
               <Emoji name="party_popper" size={24} pop /> {scrambleWinner} got it: {scrambleWord.answer}
             </motion.p>
@@ -159,7 +159,7 @@ export function WordScrambleActivity() {
               />
               <Button
                 onClick={submitGuess}
-                className="bg-gradient-to-r from-lime-500 to-green-600 hover:from-lime-400 hover:to-green-500 text-white border-0 rounded-full px-6 h-11 shadow-md shadow-lime-500/10"
+                className="bg-gradient-to-r from-lime-500 to-green-500 hover:from-lime-400 hover:to-green-400 text-(--text-on-lime) border-0 rounded-full px-6 h-11 shadow-md shadow-lime-500/10"
               >
                 Guess
               </Button>

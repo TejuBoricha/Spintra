@@ -80,8 +80,8 @@ export function DiceActivity() {
             key={i}
             animate={diceRolling ? { rotate: [0, 180, 360], scale: [1, 1.25, 1], y: [0, -20, 0] } : { rotate: 0, scale: 1, y: 0 }}
             transition={{ duration: 0.8, delay: i * 0.08, ease: "easeInOut" }}
-            className={`w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-(--violet-600) flex items-center justify-center text-5xl font-black text-white shadow-2xl border border-(--border-strong) select-none ${
-              val === 0 ? "opacity-40" : "shadow-glow-primary-sm"
+            className={`w-20 h-20 rounded-2xl bg-gradient-to-br flex items-center justify-center text-5xl font-black shadow-2xl border border-(--border-strong) select-none ${
+              val === 0 ? "from-primary/40 to-(--violet-600)/40 text-foreground" : "from-primary to-(--violet-600) text-(--text-on-lime) shadow-glow-primary-sm"
             }`}
           >
             {val === 0 ? "?" : ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"][val - 1]}
