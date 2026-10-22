@@ -388,7 +388,7 @@ export default function ExplorePage() {
                 onKeyDown={(e) => e.key === "Enter" && !isImeKey(e) && handleJoinRoom(joinCode)}
                 placeholder="JOIN BY CODE (EX: 89PB5T)"
                 aria-label="Join room by code"
-                className="flex-1 h-12 text-center text-sm font-mono font-bold uppercase tracking-wider text-(--brand-primary-strong)"
+                className="flex-1 h-12 text-center text-base md:text-sm font-mono font-bold uppercase tracking-wider text-(--brand-primary-strong)"
               />
               <Button
                 onClick={() => handleJoinRoom(joinCode)}

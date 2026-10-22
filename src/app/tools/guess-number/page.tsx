@@ -150,7 +150,7 @@ export default function GuessNumberPage() {
         {/* Last hint */}
         {lastGuess && lastGuess.hint !== "correct" && (
           <div className="mb-4 reveal reveal-up-sm">
-            <Badge className={lastGuess.hint === "high" ? "bg-red-500/10 text-red-700 dark:text-red-400" : "bg-blue-500/10 text-blue-700 dark:text-blue-400"}>
+            <Badge className={`h-auto px-4 py-1.5 text-base ${lastGuess.hint === "high" ? "bg-red-500/10 text-red-700 dark:text-red-400" : "bg-blue-500/10 text-blue-700 dark:text-blue-400"}`}>
               {lastGuess.hint === "high" ? <ArrowDown className="w-4 h-4 mr-1" /> : <ArrowUp className="w-4 h-4 mr-1" />}
               Too {lastGuess.hint}! Try {lastGuess.hint === "high" ? "lower" : "higher"}.
             </Badge>

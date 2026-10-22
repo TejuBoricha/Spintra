@@ -323,7 +323,7 @@ export default function NameDrawPage() {
 
               <Textarea
                 placeholder="Paste names, one per line...&#10;Alice&#10;Bob&#10;Charlie"
-                className="min-h-[160px] resize-y font-mono text-sm"
+                className="min-h-[160px] resize-y font-mono text-base md:text-sm"
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
               />

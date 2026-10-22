@@ -10,11 +10,11 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "border-2 border-(--border-strong) bg-primary text-primary-foreground hover:brightness-95",
+          "border-2 border-(--border-strong) bg-primary text-primary-foreground hover:brightness-95 disabled:border-(--border-hairline) disabled:bg-(--surface-sunken) disabled:bg-none disabled:text-muted-foreground disabled:shadow-none disabled:opacity-100 disabled:grayscale-0",
         brand:
-          "border-2 border-(--border-strong) bg-(image:--gradient-brand) text-primary-foreground shadow-glow-primary-sm hover:brightness-95",
+          "border-2 border-(--border-strong) bg-(image:--gradient-brand) text-primary-foreground shadow-glow-primary-sm hover:brightness-95 disabled:border-(--border-hairline) disabled:bg-(--surface-sunken) disabled:bg-none disabled:text-muted-foreground disabled:shadow-none disabled:opacity-100 disabled:grayscale-0",
         contrast:
-          "border-2 border-(--border-strong) bg-(--surface-contrast) text-(--text-on-contrast) hover:brightness-95 dark:hover:brightness-110",
+          "border-2 border-(--border-strong) bg-(--surface-contrast) text-(--text-on-contrast) hover:brightness-95 dark:hover:brightness-110 disabled:border-(--border-hairline) disabled:bg-(--surface-sunken) disabled:bg-none disabled:text-muted-foreground disabled:shadow-none disabled:opacity-100 disabled:grayscale-0",
         // border-current (not --border-strong, unlike every filled variant
         // above): --border-strong is deliberately pinned to pure black in
         // BOTH themes, giving a filled button's bright fill a crisp

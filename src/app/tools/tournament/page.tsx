@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import {
   Trophy,
@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { ChipGroup } from "@/components/ui/chip-group";
 import { toast } from "sonner";
 import type { TournamentType } from "@/lib/types";
@@ -78,6 +79,8 @@ const TEMPLATES: Record<
 };
 
 // ──── Score Editor Dialog ────
+// A real dialog (the site's `Dialog`): a role and a name for a screen reader, focus that moves into it and stays in it, Escape and a
+// click on the backdrop close it, and the page behind it is inert. It was a plain `fixed inset-0` div with none of these.
 function ScoreEditor({
   match,
   onSave,
@@ -91,24 +94,19 @@ function ScoreEditor({
   const [score2, setScore2] = useState(match.score2 ?? 0);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
       }}
     >
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 w-full max-w-sm"
-      >
-        <h3 className="text-lg font-bold mb-4 text-center">Update Score</h3>
+      <DialogContent showCloseButton={false} className="p-6 sm:max-w-sm">
+        <DialogTitle className="text-center">Update Score</DialogTitle>
+        <DialogDescription className="sr-only">
+          Enter the score for each side of this match, then save.
+        </DialogDescription>
 
-        <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center gap-4">
           <div className="min-w-0 flex-1 text-center">
             <p className="text-sm font-semibold mb-2 truncate" title={match.player1 || "TBD"}>
               {match.player1 || "TBD"}
@@ -150,8 +148,8 @@ function ScoreEditor({
             Save
           </Button>
         </div>
-      </motion.div>
-    </motion.div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -626,7 +624,7 @@ export default function TournamentPage() {
 
               <Textarea
                 placeholder="Enter participant names, one per line...&#10;Alpha&#10;Bravo&#10;Charlie&#10;Delta"
-                className="min-h-[120px] resize-y font-mono text-sm"
+                className="min-h-[120px] resize-y font-mono text-base md:text-sm"
                 value={textInput}
                 onChange={(e) => {
                   setTextInput(e.target.value);
@@ -642,7 +640,7 @@ export default function TournamentPage() {
                 <Textarea
                   aria-label="Seeds, one per line, top seed first"
                   placeholder="Alpha&#10;Bravo"
-                  className="min-h-[72px] resize-y font-mono text-sm"
+                  className="min-h-[72px] resize-y font-mono text-base md:text-sm"
                   value={seedInput}
                   onChange={(e) => {
                     setSeedInput(e.target.value);
@@ -655,11 +653,17 @@ export default function TournamentPage() {
               <Button
                 onClick={generateBracket}
                 disabled={participants.length < 2}
+                aria-describedby={participants.length < 2 ? "tournament-why-disabled" : undefined}
                 className="w-full border-2 border-(--border-strong) bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-(--text-on-lime) shadow-lg shadow-emerald-500/25"
               >
                 <Swords className="w-4 h-4 mr-2" />
                 Generate Bracket
               </Button>
+              {participants.length < 2 && (
+                <p id="tournament-why-disabled" className="text-center text-xs text-muted-foreground">
+                  Add at least two participants to make a bracket.
+                </p>
+              )}
             </div>
 
             {/* Templates */}
@@ -849,15 +853,13 @@ export default function TournamentPage() {
       </div>
 
       {/* Score Editor Modal */}
-      <AnimatePresence>
-        {editingMatch && (
-          <ScoreEditor
-            match={editingMatch.match}
-            onSave={handleScoreSave}
-            onClose={() => setEditingMatch(null)}
-          />
-        )}
-      </AnimatePresence>
+      {editingMatch && (
+        <ScoreEditor
+          match={editingMatch.match}
+          onSave={handleScoreSave}
+          onClose={() => setEditingMatch(null)}
+        />
+      )}
     </div>
   );
 }
