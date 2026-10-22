@@ -53,7 +53,9 @@ function collectItems(): Item[] {
     const d = g.getImageData(0, 0, 1, 1).data;
     return [d[0], d[1], d[2], d[3] / 255];
   };
-  // while a dialog or a full-screen overlay is open, the page behind it is dimmed or covered and nobody reads it: judge that only
+  // while a dialog or a full-screen overlay is open, the page behind it is dimmed or covered and nobody reads it: judge that only.
+  // This assumes a role="dialog" or aria-modal element IS modal, as every dialog on the site is (a non-modal notice must not carry
+  // either, or the page behind it would stop being judged).
   const alphaOf = (css: string) => rgba(css)[3];
   const modal =
     Array.from(document.querySelectorAll('[role="dialog"], [aria-modal="true"]')).find((d) => {
@@ -205,7 +207,7 @@ async function judge(args: { items: Item[]; hidden: string; painted: string | nu
     const need = it.fontSize >= 24 || (it.fontSize >= 18.66 && it.weight >= 700) ? 3 : 4.5; // "large text", WCAG 1.4.3
     const ratios: number[] = [];
     if (it.gradient) {
-      if (!A || A.w !== B.w || A.h !== B.h) continue;
+      if (!A || A.w !== B.w || A.h !== B.h) throw new Error('the capture with the text and the one without it differ in size: the layout moved between them, so gradient text cannot be judged');
       let max = 0;
       const diffs: [number, number][] = [];
       for (let y = y0; y < y1; y++) {
@@ -216,7 +218,12 @@ async function judge(args: { items: Item[]; hidden: string; painted: string | nu
           if (d > max) max = d;
         }
       }
-      if (max < 4) continue;
+      if (max < 4) {
+        // the glyphs are painted in (almost) the very colour behind them: as unreadable as text can be
+        judged++;
+        fails.push({ text: it.text, ratio: 1, need, where: it.where });
+        continue;
+      }
       for (const [i, d] of diffs) if (d >= max * 0.9) ratios.push(ratio(lum(A.data[i], A.data[i + 1], A.data[i + 2]), lum(B.data[i], B.data[i + 1], B.data[i + 2])));
       if (ratios.length < 2) continue;
     } else {
@@ -241,6 +248,8 @@ async function judge(args: { items: Item[]; hidden: string; painted: string | nu
   return { fails, judged };
 }
 
+// `color: transparent` also blanks whatever is painted with currentColor (bg-current, border-current, a ring): four places on the site, none
+// behind text. Text over such an element would be judged against the page behind it.
 const HIDE_TEXT = `
   *, *::before, *::after { color: transparent !important; -webkit-text-fill-color: transparent !important; text-shadow: none !important; caret-color: transparent !important; -webkit-text-stroke: 0 !important; }
   *::placeholder { color: transparent !important; -webkit-text-fill-color: transparent !important; }
@@ -282,7 +291,7 @@ export async function contrastProblems(page: Page): Promise<string[]> {
       for (const el of Array.from(document.querySelectorAll<HTMLElement>('*'))) {
         const cs = getComputedStyle(el);
         if (cs.backgroundClip === 'text' || (cs as unknown as { webkitBackgroundClip: string }).webkitBackgroundClip === 'text') {
-          el.setAttribute('data-pixel-contrast-clip', el.style.getPropertyValue('background-image'));
+          el.setAttribute('data-pixel-contrast-clip', JSON.stringify([el.style.getPropertyValue('background-image'), el.style.getPropertyPriority('background-image')]));
           el.style.setProperty('background-image', 'none', 'important');
         }
       }
@@ -300,8 +309,8 @@ export async function contrastProblems(page: Page): Promise<string[]> {
     await page
       .evaluate(() => {
         for (const el of Array.from(document.querySelectorAll<HTMLElement>('[data-pixel-contrast-clip]'))) {
-          const before = el.getAttribute('data-pixel-contrast-clip') ?? '';
-          if (before) el.style.setProperty('background-image', before);
+          const [before, priority] = JSON.parse(el.getAttribute('data-pixel-contrast-clip') || '["",""]') as [string, string];
+          if (before) el.style.setProperty('background-image', before, priority);
           else el.style.removeProperty('background-image');
           el.removeAttribute('data-pixel-contrast-clip');
         }

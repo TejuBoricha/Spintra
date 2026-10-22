@@ -225,7 +225,7 @@ export function TriviaActivity() {
                 id="trivia-category"
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-sm text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none w-full"
+                className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-base md:text-sm text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none w-full"
               >
                 <option value="All" className="bg-neutral-950 text-white">All Categories</option>
                 <option value="General Knowledge" className="bg-neutral-950 text-white">General Knowledge</option>
@@ -243,7 +243,7 @@ export function TriviaActivity() {
                 id="trivia-difficulty"
                 value={selectedDifficulty}
                 onChange={(e) => setSelectedDifficulty(e.target.value)}
-                className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-sm text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none w-full"
+                className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-base md:text-sm text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none w-full"
               >
                 <option value="All" className="bg-neutral-950 text-white">All Difficulties</option>
                 <option value="easy" className="bg-neutral-950 text-white">Easy</option>

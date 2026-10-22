@@ -423,7 +423,7 @@ export function LuckyWheelActivity() {
                     autoFocus
                     maxLength={40}
                     disabled={wheelSpinning}
-                    className="h-6 py-0 px-2 text-xs w-28 bg-primary/10 border-primary/40 text-(--brand-primary-strong) rounded-lg shrink-0"
+                    className="h-6 py-0 px-2 text-base md:text-xs w-28 bg-primary/10 border-primary/40 text-(--brand-primary-strong) rounded-lg shrink-0"
                   />
                 );
               }

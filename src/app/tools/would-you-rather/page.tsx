@@ -108,13 +108,13 @@ export default function WouldYouRatherPage() {
                   <button
                     onClick={() => !showResult && vote("A")}
                     disabled={showResult}
-                    className={`w-full p-5 rounded-xl text-lg font-semibold transition-all relative overflow-hidden ${
+                    className={`w-full p-5 rounded-xl text-lg font-semibold transition-all relative overflow-hidden flex items-center gap-4 ${
                       showResult
-                        ? "border border-(--border-hairline) bg-(--surface-panel) rounded-2xl cursor-default"
-                        : "border border-(--border-hairline) bg-(--surface-panel) rounded-2xl hover:border-primary/30 hover:bg-primary/5 cursor-pointer"
+                        ? "justify-between text-left border border-(--border-hairline) bg-(--surface-panel) rounded-2xl cursor-default"
+                        : "justify-center text-center border border-(--border-hairline) bg-(--surface-panel) rounded-2xl hover:border-primary/30 hover:bg-primary/5 cursor-pointer"
                     }`}
                   >
-                    {q.optionA}
+                    <span className="relative z-10">{q.optionA}</span>
                     {showResult && (
                       <motion.div
                         initial={{ scaleX: 0 }}
@@ -123,7 +123,7 @@ export default function WouldYouRatherPage() {
                         className="absolute inset-0 bg-primary/10 rounded-xl z-0"
                       />
                     )}
-                    <span className="relative z-10">{showResult && `${total > 0 ? Math.round((aVotes / Math.max(total, 1)) * 100) : 50}%`}</span>
+                    {showResult && <span className="relative z-10 shrink-0 tabular-nums">{`${total > 0 ? Math.round((aVotes / Math.max(total, 1)) * 100) : 50}%`}</span>}
                   </button>
 
                   <div className="flex items-center justify-center gap-4">
@@ -135,13 +135,13 @@ export default function WouldYouRatherPage() {
                   <button
                     onClick={() => !showResult && vote("B")}
                     disabled={showResult}
-                    className={`w-full p-5 rounded-xl text-lg font-semibold transition-all relative overflow-hidden ${
+                    className={`w-full p-5 rounded-xl text-lg font-semibold transition-all relative overflow-hidden flex items-center gap-4 ${
                       showResult
-                        ? "border border-(--border-hairline) bg-(--surface-panel) rounded-2xl cursor-default"
-                        : "border border-(--border-hairline) bg-(--surface-panel) rounded-2xl hover:border-cyan-500/30 hover:bg-cyan-500/5 cursor-pointer"
+                        ? "justify-between text-left border border-(--border-hairline) bg-(--surface-panel) rounded-2xl cursor-default"
+                        : "justify-center text-center border border-(--border-hairline) bg-(--surface-panel) rounded-2xl hover:border-cyan-500/30 hover:bg-cyan-500/5 cursor-pointer"
                     }`}
                   >
-                    {q.optionB}
+                    <span className="relative z-10">{q.optionB}</span>
                     {showResult && (
                       <motion.div
                         initial={{ scaleX: 0 }}
@@ -150,7 +150,7 @@ export default function WouldYouRatherPage() {
                         className="absolute inset-0 bg-cyan-500/10 rounded-xl z-0"
                       />
                     )}
-                    <span className="relative z-10">{showResult && `${total > 0 ? Math.round((bVotes / Math.max(total, 1)) * 100) : 50}%`}</span>
+                    {showResult && <span className="relative z-10 shrink-0 tabular-nums">{`${total > 0 ? Math.round((bVotes / Math.max(total, 1)) * 100) : 50}%`}</span>}
                   </button>
                 </>
               ) : (

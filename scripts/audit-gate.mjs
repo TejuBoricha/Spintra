@@ -30,13 +30,13 @@ function main() {
   // One fixed command string through the shell: it finds npm.cmd on Windows too. npm audit answers in about a second, but
   // the registry's advisory endpoint sometimes never answers a request (see readAuditReport): each attempt gets a 10 second
   // fetch timeout inside npm and 40 seconds outside it, and a failed attempt is run again.
-  const { report, unreadable } = readAuditReport(
+  const { report, unreadable, notAReport } = readAuditReport(
     () => spawnSync("npm audit --json --fetch-timeout=10000", { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, shell: true, timeout: 40_000 }),
     AUDIT_ATTEMPTS,
     (message) => console.log(`::warning::${message}`),
   );
   if (!report) {
-    console.error(`npm audit did not return JSON:\n${unreadable}`);
+    console.error(`npm audit did not return ${notAReport ? "an audit report" : "JSON"}:\n${unreadable}`);
     process.exit(1);
   }
 

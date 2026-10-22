@@ -19,6 +19,7 @@ const HeroThreeScene = dynamic(() => import("@/components/landing/hero-scene").t
 import { FeatureCard } from "@/components/landing/feature-card";
 import { AuroraBackground } from "@/components/landing/aurora-bg";
 import { FooterTable } from "@/components/landing/footer-table";
+import { FOOTER_LINK } from "@/components/layout/site-footer";
 import { GAMES } from "@/lib/games";
 import { isImeKey } from "@/lib/keyboard";
 
@@ -39,12 +40,6 @@ const perks = [
   { icon: MessageCircle, label: "Chat in every room", desc: "Talk while you play" },
   { icon: Star, label: "Invite by link or QR", desc: "Handy when everyone is in the same place" },
 ];
-
-// Footer links are 44px tall by default (a phone, any device with a touchscreen: WCAG 2.5.8 asks for 24px, and 44px
-// is the size a thumb hits reliably) and 36px only where there is room and no touch input at all (md and up, mouse
-// only), where the row is compact. `any-pointer` rather than `pointer`: a touchscreen laptop or a 2-in-1 with a
-// trackpad reports a fine primary pointer, and a finger still taps those links. The compact size has to be asked for.
-const FOOTER_LINK = "inline-flex items-center min-h-11 md:not-any-pointer-coarse:min-h-9 hover:text-foreground transition-colors";
 
 export default function HomePage() {
   const router = useRouter();
@@ -189,13 +184,13 @@ export default function HomePage() {
           className="relative z-10 max-w-5xl mx-auto px-4 py-20 text-center"
         >
           {/* Badge */}
-          <div
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm mb-8 reveal reveal-up reveal-delay-1"
+          <p
+            className="inline-block px-4 py-1.5 rounded-3xl border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm mb-8 reveal reveal-up reveal-delay-1"
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-muted-foreground">Free games and group tools,</span>
+            <span className="mr-2 inline-block h-2 w-2 rounded-full bg-emerald-400 animate-pulse align-middle" />
+            <span className="text-muted-foreground">Free games and group tools,</span>{" "}
             <span className="text-foreground font-medium">played in one shared room</span>
-          </div>
+          </p>
 
           {/* Main Headline */}
           <h1

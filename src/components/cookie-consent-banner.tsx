@@ -50,23 +50,21 @@ export function CookieConsentBanner() {
           // button landed on the banner instead and silently did nothing
           // (BUG-040). ml-auto plus a max-width hugs it to the right edge
           // at every size, same shape as the sm:+ breakpoint already had.
-          className="fixed bottom-4 left-4 right-4 ml-auto max-w-sm sm:max-w-md z-40 border border-(--border-glass) bg-(--surface-glass-strong) backdrop-blur-(--blur-glass) rounded-xl shadow-3 p-4 sm:p-5"
+          className="fixed bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 ml-auto max-w-sm sm:max-w-md z-40 border border-(--border-glass) bg-(--surface-glass-strong) backdrop-blur-(--blur-glass) rounded-xl shadow-3 p-3 sm:p-5"
           role="region"
           aria-label="Cookie notice"
         >
           <div className="flex gap-3">
             <Cookie className="w-5 h-5 text-(--brand-secondary) shrink-0 mt-0.5" />
-            <div className="space-y-3 font-body text-sm">
-              <p className="text-foreground/90 leading-relaxed">
-                Spintra uses local storage to remember your session and preferences. If you
-                agree, we also measure how the site is used
+            <div className="space-y-2 sm:space-y-3 font-body text-[0.8125rem] sm:text-sm">
+              {/* Two short sentences instead of five lines on a phone (U-09): what is stored without asking, then the one question. */}
+              <p className="text-foreground/90 leading-snug sm:leading-relaxed">
+                Spintra keeps your session and preferences in local storage. May we also measure how the site is used
                 {googleAnalyticsConfigured ? " (with Google Analytics and our own usage counts)" : " (our own usage counts)"}
-                . No advertising, ever.{" "}
-                See our{" "}
+                ? No advertising, ever.{" "}
                 <Link href="/legal/privacy" className="text-(--text-link) underline hover:text-foreground">
                   Privacy Policy
-                </Link>{" "}
-                for details.
+                </Link>
               </p>
               {/* Equal weight on purpose: making Accept more prominent than
                   Decline is the "nudge" the UK Children's Code and EU

@@ -7,10 +7,9 @@ import { contrastProblems } from './helpers/pixel-contrast';
 // pixels because axe cannot read text on gradients and translucent layers (ux-axe.spec.ts has its colour-contrast rule off for
 // that reason). Every page, both themes, a phone and a desktop. How it measures is in helpers/pixel-contrast.ts.
 
-// CI runs this whole suite in two jobs. This gate is about pixels, not the database, and its 148 cases take about 9 minutes on CI's one
-// worker, which `validate` (about 29 minutes now, limit 40) can carry and `db-integration` (about 36 of its 40) cannot: that job, the
-// one with a real Supabase (NEXT_PUBLIC_SUPABASE_URL), leaves it to `validate`. Locally it always runs.
-test.skip(!!process.env.CI && !!process.env.NEXT_PUBLIC_SUPABASE_URL, 'run by the validate job; db-integration is near its time limit');
+// This gate is about pixels, not the database, so `db-integration` (the job with a real Supabase, NEXT_PUBLIC_SUPABASE_URL) leaves it
+// to `validate`; the timings behind that are in .github/workflows/ci.yml. Locally it always runs.
+test.skip(!!process.env.CI && !!process.env.NEXT_PUBLIC_SUPABASE_URL, 'run by the validate job, see .github/workflows/ci.yml');
 
 const PAGES = [...SITE_PAGES, NOT_FOUND_PATH];
 

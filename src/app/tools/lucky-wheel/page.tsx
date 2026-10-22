@@ -757,7 +757,7 @@ export default function LuckyWheelPage() {
                           autoFocus
                           maxLength={40}
                           disabled={spinning}
-                          className="flex-1 min-w-12 h-6 px-1.5 text-xs bg-primary/10 border border-primary/40 text-(--brand-primary-strong) rounded-lg"
+                          className="flex-1 min-w-12 h-6 px-1.5 text-base md:text-xs bg-primary/10 border border-primary/40 text-(--brand-primary-strong) rounded-lg"
                         />
                       ) : (
                         <button
@@ -819,7 +819,7 @@ export default function LuckyWheelPage() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !isImeKey(e)) addEntry();
                   }}
-                  className="flex-1 text-xs"
+                  className="flex-1 text-base md:text-xs"
                 />
                 <Button
                   size="icon-sm"

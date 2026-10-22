@@ -8,10 +8,9 @@ import { contrastProblems } from './helpers/pixel-contrast';
 // dark badge (1.06 : 1) in the dark theme, the guess hints and the winner's name were pale tints on cream in the light theme,
 // and several buttons had white text on amber, yellow, teal or lime. Both themes, a phone and a desktop.
 
-// CI runs this whole suite in two jobs. This gate is about pixels, not the database, and its 148 cases take about 9 minutes on CI's one
-// worker, which `validate` (about 29 minutes now, limit 40) can carry and `db-integration` (about 36 of its 40) cannot: that job, the
-// one with a real Supabase (NEXT_PUBLIC_SUPABASE_URL), leaves it to `validate`. Locally it always runs.
-test.skip(!!process.env.CI && !!process.env.NEXT_PUBLIC_SUPABASE_URL, 'run by the validate job; db-integration is near its time limit');
+// This gate is about pixels, not the database, so `db-integration` (the job with a real Supabase, NEXT_PUBLIC_SUPABASE_URL) leaves it
+// to `validate`; the timings behind that are in .github/workflows/ci.yml. Locally it always runs.
+test.skip(!!process.env.CI && !!process.env.NEXT_PUBLIC_SUPABASE_URL, 'run by the validate job, see .github/workflows/ci.yml');
 
 type State = {
   name: string;

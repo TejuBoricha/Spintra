@@ -284,12 +284,18 @@ export default function TeamMakerPage() {
             <Button
               onClick={generateTeams}
               disabled={parsedNames.length === 0}
+              aria-describedby={parsedNames.length === 0 ? "team-maker-why-disabled" : undefined}
               className="w-full h-12 text-base font-semibold bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95"
             >
               <Shuffle className="w-5 h-5 mr-2" />
               Generate Teams
               <Sparkles className="w-4 h-4 ml-2 opacity-60" />
             </Button>
+            {parsedNames.length === 0 && (
+              <p id="team-maker-why-disabled" className="mt-2 text-center text-xs text-muted-foreground">
+                Add some names to make teams.
+              </p>
+            )}
           </div>
 
           {/* Templates column */}
@@ -489,7 +495,7 @@ export default function TeamMakerPage() {
                             onKeyDown={(e) => {
                               if (e.key === "Enter" && !isImeKey(e)) addMember(teamIdx);
                             }}
-                            className="flex-1 text-xs"
+                            className="flex-1 text-base md:text-xs"
                           />
                           <Button
                             size="icon-sm"
