@@ -12,7 +12,7 @@ import type { Page } from '@playwright/test';
 //
 // Reading the glyph pixels instead would be wrong for small text: an anti-aliased edge is a blend of text and background, so
 // 12px text read about 25% too low. The one exception is text painted through a gradient (`background-clip: text`), which has
-// no single colour: it is read from the glyph pixels, the fully covered ones.
+// no single colour: it is read from the glyph pixels, the fully covered ones (and judged at the 10th percentile like the rest).
 //
 // Not judged: a toast (transient, and it covers other text), a disabled control (WCAG 1.4.3 exempts it), text that is not painted (closed <details>, opacity 0), and the page
 // behind an open dialog or full-screen overlay (the backdrop dims it and nobody reads it).
@@ -173,7 +173,7 @@ function collectItems(): Item[] {
 }
 
 /** Runs in the page: decodes the two screenshots and judges every item. */
-async function judge(args: { items: Item[]; hidden: string; painted: string | null }): Promise<ContrastFailure[]> {
+async function judge(args: { items: Item[]; hidden: string; painted: string | null; page: { dpr: number; height: number } }): Promise<{ fails: ContrastFailure[]; judged: number }> {
   const decode = async (b64: string) => {
     const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
     const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
@@ -190,7 +190,12 @@ async function judge(args: { items: Item[]; hidden: string; painted: string | nu
   const ratio = (a: number, b: number) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
   const B = await decode(args.hidden);
   const A = args.painted ? await decode(args.painted) : null;
+  // item rectangles are in CSS pixels and the image must be one capture of the whole page at scale 1: text below a clamped capture
+  // (Chromium stops at 16384 px) or under another device scale would be judged against the wrong pixels, or not at all
+  if (args.page.dpr !== 1) throw new Error(`the page is rendered at device scale ${args.page.dpr}: this check reads one image pixel per CSS pixel`);
+  if (Math.abs(B.h - args.page.height) > 2) throw new Error(`the capture is ${B.h}px tall but the page is ${args.page.height}px: part of the page cannot be judged`);
   const fails: ContrastFailure[] = [];
+  let judged = 0;
   for (const it of args.items) {
     const x0 = Math.max(0, it.x);
     const y0 = Math.max(0, it.y);
@@ -229,10 +234,11 @@ async function judge(args: { items: Item[]; hidden: string; painted: string | nu
       }
     }
     ratios.sort((a, b) => a - b);
-    const got = ratios[Math.floor(ratios.length * (it.gradient ? 0.5 : 0.1))];
+    const got = ratios[Math.floor(ratios.length * 0.1)];
+    judged++;
     if (got < need - 0.05) fails.push({ text: it.text, ratio: Math.round(got * 100) / 100, need, where: it.where });
   }
-  return fails;
+  return { fails, judged };
 }
 
 const HIDE_TEXT = `
@@ -249,48 +255,58 @@ export async function contrastProblems(page: Page): Promise<string[]> {
   // a toast is transient and sits over whatever is at the bottom of the screen, so the text under it would be judged against the
   // toast's own background; it is taken out for the duration of the check
   const toasts = await page.addStyleTag({ content: '[data-sonner-toaster] { display: none !important; }' });
-  // entrance animations that run when a section scrolls into view must have run, or their text is measured at opacity 0
-  await page.evaluate(async () => {
-    const height = document.documentElement.scrollHeight;
-    for (let y = 0; y < height; y += Math.max(300, innerHeight * 0.7)) {
-      window.scrollTo(0, y);
-      await new Promise((resolve) => setTimeout(resolve, 90));
-    }
-    window.scrollTo(0, 0);
-  });
-  await page.waitForTimeout(400);
-  const items = await page.evaluate(collectItems);
-  // an entrance or a pulse can be half done when the page is read: take the higher opacity of two reads 350 ms apart
-  await page.waitForTimeout(350);
-  const again = await page.evaluate(collectItems);
-  for (const item of items) {
-    const later = again.find((a) => a.text === item.text && a.x === item.x && a.y === item.y);
-    if (later && later.opacity > item.opacity) item.opacity = later.opacity;
-  }
-  const painted = items.some((item) => item.gradient) ? (await page.screenshot({ fullPage: true, animations: 'disabled' })).toString('base64') : null;
-  const style = await page.addStyleTag({ content: HIDE_TEXT });
-  // gradient text is painted by the gradient itself: take it away in the image of what sits behind the text
-  await page.evaluate(() => {
-    for (const el of Array.from(document.querySelectorAll<HTMLElement>('*'))) {
-      const cs = getComputedStyle(el);
-      if (cs.backgroundClip === 'text' || (cs as unknown as { webkitBackgroundClip: string }).webkitBackgroundClip === 'text') {
-        el.setAttribute('data-pixel-contrast-clip', '');
-        el.style.setProperty('background-image', 'none', 'important');
+  let hideText: Awaited<ReturnType<Page['addStyleTag']>> | null = null;
+  try {
+    // entrance animations that run when a section scrolls into view must have run, or their text is measured at opacity 0
+    await page.evaluate(async () => {
+      const height = document.documentElement.scrollHeight;
+      for (let y = 0; y < height; y += Math.max(300, innerHeight * 0.7)) {
+        window.scrollTo(0, y);
+        await new Promise((resolve) => setTimeout(resolve, 90));
       }
+      window.scrollTo(0, 0);
+    });
+    await page.waitForTimeout(400);
+    const items = await page.evaluate(collectItems);
+    // an entrance or a pulse can be half done when the page is read: take the higher opacity of two reads 350 ms apart
+    await page.waitForTimeout(350);
+    const again = await page.evaluate(collectItems);
+    for (const item of items) {
+      const later = again.find((a) => a.text === item.text && a.x === item.x && a.y === item.y);
+      if (later && later.opacity > item.opacity) item.opacity = later.opacity;
     }
-  });
-  await page.waitForTimeout(80);
-  const hidden = (await page.screenshot({ fullPage: true, animations: 'disabled' })).toString('base64');
-  await style.evaluate((el) => (el as Element).remove());
-  await page.evaluate(() => {
-    for (const el of Array.from(document.querySelectorAll<HTMLElement>('[data-pixel-contrast-clip]'))) {
-      el.style.removeProperty('background-image');
-      el.removeAttribute('data-pixel-contrast-clip');
-    }
-  });
-  const failures = await page.evaluate(judge, { items, hidden, painted });
-  await toasts.evaluate((el) => (el as Element).remove());
-  return failures
-    .sort((a, b) => a.ratio - b.ratio)
-    .map((f) => `${f.ratio}:1 (needs ${f.need}) "${f.text}" in ${f.where}`);
+    const painted = items.some((item) => item.gradient) ? (await page.screenshot({ fullPage: true, animations: 'disabled' })).toString('base64') : null;
+    hideText = await page.addStyleTag({ content: HIDE_TEXT });
+    // gradient text is painted by the gradient itself: take it away in the image of what sits behind the text
+    await page.evaluate(() => {
+      for (const el of Array.from(document.querySelectorAll<HTMLElement>('*'))) {
+        const cs = getComputedStyle(el);
+        if (cs.backgroundClip === 'text' || (cs as unknown as { webkitBackgroundClip: string }).webkitBackgroundClip === 'text') {
+          el.setAttribute('data-pixel-contrast-clip', el.style.getPropertyValue('background-image'));
+          el.style.setProperty('background-image', 'none', 'important');
+        }
+      }
+    });
+    await page.waitForTimeout(80);
+    const hidden = (await page.screenshot({ fullPage: true, animations: 'disabled' })).toString('base64');
+    const metrics = await page.evaluate(() => ({ dpr: window.devicePixelRatio, height: document.documentElement.scrollHeight }));
+    const { fails, judged } = await page.evaluate(judge, { items, hidden, painted, page: metrics });
+    // a dialog or overlay that is always on screen would exempt the whole page: the gate must not pass by judging nothing
+    if (judged < 3) return [`only ${judged} of ${items.length} pieces of text were judged: the page was not really scanned (an overlay that hides the rest?)`];
+    return fails.sort((a, b) => a.ratio - b.ratio).map((f) => `${f.ratio}:1 (needs ${f.need}) "${f.text}" in ${f.where}`);
+  } finally {
+    // the page is left as it was found, so a later screenshot, a trace or a second scan of the same page sees the real thing
+    await hideText?.evaluate((el) => (el as Element).remove()).catch(() => {});
+    await page
+      .evaluate(() => {
+        for (const el of Array.from(document.querySelectorAll<HTMLElement>('[data-pixel-contrast-clip]'))) {
+          const before = el.getAttribute('data-pixel-contrast-clip') ?? '';
+          if (before) el.style.setProperty('background-image', before);
+          else el.style.removeProperty('background-image');
+          el.removeAttribute('data-pixel-contrast-clip');
+        }
+      })
+      .catch(() => {});
+    await toasts.evaluate((el) => (el as Element).remove()).catch(() => {});
+  }
 }
