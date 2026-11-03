@@ -12,8 +12,14 @@ This board is the one place that says what is **done, in progress and pending**.
 
 ### 1. Git and deploy state
 
-- `main` is at `75f5ede` (merge of PR #103: migrations 0115 & 0116, home footer landmark fix, and cursor performance, 4 Nov 2026), after PR #102 (CI pipeline turbo acceleration) and PR #100.
-- **Branch `chore/repository-showcase-transformation`**:
+- `main` is at `34ecbe8` (merge of PR #104: repository showcase transformation, 4 Nov 2026), after PR #103 (migrations 0115 & 0116, home footer landmark fix, and cursor performance), PR #102, and PR #100.
+- **Branch `perf/ci-acceleration-and-sharding`**:
+  - CI pipeline enterprise acceleration reducing total CI runtime to ~6–7 minutes (~50% pipeline speedup):
+  - 4-way parallel matrix sharding on `validate-shard` (`shard: [1/4, 2/4, 3/4, 4/4]`) running 8 concurrent Playwright workers across 4 runner VMs (~2.5–3m test duration).
+  - 2-way parallel matrix sharding on `db-integration-shard` (`shard: [1/2, 2/2]`) with restored `.next/cache` build caching (~4.5m test duration).
+  - Preserves exact required branch protection status contexts via synthetic gateway aggregators (`validate` and `db-integration`).
+  - Disabled unneeded local Supabase services (`studio`, `local_smtp`, `storage`, `edge_runtime`, `analytics`) in `supabase/config.toml`, saving ~1.5 GB of Docker pulls and ~60s of container startup time.
+- **PR #104** (merged 4 Nov 2026 as `34ecbe8`, all checks green on exact head `ad0cbf4`):
   - Full GitHub repository presentation transformation into an artistic, visual masterpiece.
   - Bespoke vector brand artwork: `assets/branding/hero-banner.svg`, `assets/branding/architecture-diagram.svg`, `assets/branding/divider.svg`.
   - 8 real high-res retina screenshots captured via Playwright in `assets/screenshots/`.

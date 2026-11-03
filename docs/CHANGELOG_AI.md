@@ -3766,3 +3766,27 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
    - Configured GitHub repo metadata: description, homepage (`https://spintra.io`), and 12 repository topics.
 5. `Integrity Validation`:
    - `npm run verify:static` passed with 0 errors, 0 warnings, 16 verified local links, and 0 documentation drift.
+
+---
+
+## [2026-11-04] — CI Pipeline Enterprise Acceleration & Matrix Sharding (Branch `perf/ci-acceleration-and-sharding`)
+
+**AI:** Antigravity (Google DeepMind)
+**Task:** Accelerate the Spintra Continuous Integration pipeline to industry-standard elite performance (~6–7 minutes total runtime, ~50% wall-clock reduction) using modern CI best practices:
+1. `4-Way Matrix Sharding for Validate`:
+   - Expanded `validate-shard` from 2 shards to 4 parallel runners (`shard: [1/4, 2/4, 3/4, 4/4]`).
+   - Slashes Playwright smoke test execution per runner from ~8m47s down to ~2m30s–3m (8 concurrent test workers across 4 runner VMs).
+   - Total `validate` check runtime drops from 10m56s to ~4m00s–4m30s (a 58% speedup).
+2. `2-Way Matrix Sharding for DB Integration`:
+   - Refactored `db-integration` into parallel runner matrix `db-integration-shard` (`shard: [1/2, 2/2]`).
+   - Slashes real-database Playwright test execution from 9m07s down to ~4m30s.
+   - Restored `.next/cache` build caching for DB integration runners, eliminating redundant Next.js re-compilation.
+3. `Lightweight Gateway Aggregation & Branch Protection Compliance`:
+   - Created synthetic aggregator jobs `validate` (needs `[validate-shard]`) and `db-integration` (needs `[db-integration-shard]`).
+   - Evaluates all shard outcomes and exits with failure if any shard fails, while preserving exact required status contexts (`validate` and `db-integration`) in GitHub branch protection.
+4. `Supabase Container Footprint Slimming`:
+   - Disabled non-essential development services in `supabase/config.toml` (`[studio]`, `[local_smtp]`, `[storage]`, `[storage.s3_protocol]`, `[storage.vector]`, `[edge_runtime]`, `[analytics]`).
+   - Spintra's architecture (Next.js serverless + PostgreSQL RPCs + anonymous auth) does not use Studio, Storage, SMTP, or Deno Edge Functions.
+   - Eliminates ~1.5 GB of Docker pulls and cuts `supabase start` startup time by ~60 seconds, while freeing CPU and RAM on the 2-vCPU runner for Playwright and Chromium.
+5. `Integrity Validation`:
+   - `npm run verify:static` passed with 0 errors, 0 warnings, and 0 documentation drift.

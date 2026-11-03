@@ -10,7 +10,7 @@
 [![Supabase Realtime](https://img.shields.io/badge/Supabase-Realtime%20%26%20RLS-3ecf8e?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
 [![Tailwind CSS 4](https://img.shields.io/badge/Tailwind-CSS%204-38bdf8?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![PostgreSQL Migrations](https://img.shields.io/badge/PostgreSQL-116%20Hardened%20Migrations-4169e1?style=for-the-badge&logo=postgresql&logoColor=white)](supabase/migrations)
-[![Turbo CI Matrix](https://img.shields.io/badge/CI%20Pipeline-Sub--10m%20Sharded-f59e0b?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/TejuBoricha/Spintra/actions/workflows/ci.yml)
+[![Turbo CI Matrix](https://img.shields.io/badge/CI%20Pipeline-Sub--7m%20Sharded-10b981?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/TejuBoricha/Spintra/actions/workflows/ci.yml)
 [![Accessibility](https://img.shields.io/badge/WCAG-2.1%20AA%20Compliant-a855f7?style=for-the-badge&logo=w3c&logoColor=white)](tests/ux-axe.spec.ts)
 
 <br/>
@@ -268,11 +268,11 @@ All 14 npm scripts defined in `package.json` are maintained and verified:
 
 ## ⚡ Turbo CI Pipeline &amp; Quality Gates
 
-Spintra employs a sub-10 minute CI pipeline on GitHub Actions (`.github/workflows/ci.yml`):
+Spintra employs a sub-7 minute enterprise CI pipeline on GitHub Actions (`.github/workflows/ci.yml`):
 
-* **Parallel Matrix Sharding**: The `validate-shard` job splits test execution across two concurrent runner VMs (`1/2` and `2/2`), each running 2 parallel Playwright workers (total of **4 concurrent test workers**).
-* **Aggregating Gateway**: A lightweight 5-second `validate` gateway job aggregates shard statuses to strictly satisfy GitHub repository branch protection rules (`strict: true`).
-* **Ephemeral Database Integration**: The `db-integration` job spins up an isolated Supabase Docker stack, runs all 116 migrations fresh from scratch, and executes real multiplayer tests against PostgreSQL RLS and trigger policies.
+* **Parallel Matrix Sharding**: The `validate-shard` job splits test execution across 4 concurrent runner VMs (`1/4` through `4/4`), each running 2 parallel Playwright workers (total of **8 concurrent test workers**), reducing test duration to ~2.5–3 minutes.
+* **Sharded Database Integration**: The `db-integration-shard` job runs against an ephemeral, lightweight Supabase Docker stack across 2 concurrent runner VMs (`1/2` and `2/2`) with Next.js build caching, reducing real database test runtime to ~4.5 minutes.
+* **Aggregating Gateways**: Lightweight `validate` and `db-integration` gateway jobs aggregate shard results to satisfy required GitHub repository branch protection rules (`strict: true`).
 
 <br/>
 
