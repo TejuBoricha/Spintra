@@ -3,6 +3,9 @@ import { spawnSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration(test);
 
 // The backup workflow retries every read of production through scripts/backup/retry.sh
 // (PR #67: the 2 Oct scheduled backup failed on one refused pooler connection and that

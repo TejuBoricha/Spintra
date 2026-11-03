@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { hideConfigBanner } from './helpers/config-banner';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration();
 
 // UX audit (7 Oct 2026), finding U-09: on a first visit the cookie notice sat over a quarter to two fifths of a phone screen (five
 // lines of text), half-covering the hero's "Explore Games" button. The notice is required, but the first screen is the product's

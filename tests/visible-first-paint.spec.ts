@@ -1,5 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 import { GAMES } from '../src/lib/games';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration();
 
 // SEO audit S-2 (7 Oct 2026): on a throttled phone the home page and every tool page painted
 // their heading about 5 s in (Largest Contentful Paint 4.8 to 5.0 s, Google's "good" line is

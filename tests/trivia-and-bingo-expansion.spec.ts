@@ -1,4 +1,7 @@
 import { test, expect } from "@playwright/test";
+import { skipInDbIntegration } from "./helpers/ci-skip";
+
+skipInDbIntegration();
 
 test.describe("Trivia and Bingo Enhancements", () => {
   test.describe("Trivia Tool (/tools/trivia)", () => {

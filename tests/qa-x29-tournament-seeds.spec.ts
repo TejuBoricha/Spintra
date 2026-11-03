@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration();
 
 // Audit T-3, the parts left after the placement fix: the seeds box was a
 // single-line input labelled "one per line", so only one seed could be typed, and

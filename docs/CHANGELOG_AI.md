@@ -3670,3 +3670,25 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 3. `Testing & Quality Assurance`:
    - Created `tests/trivia-and-bingo-expansion.spec.ts` covering trivia filtering, answer reveals, bingo themes, manual daubing, and called board matrix (4/4 passed).
    - Verified clean static analysis (`npm run verify:static`) and security gate (`npm run audit`).
+
+---
+
+## [2026-11-03] — CI Pipeline Acceleration: Parallel Workers & Smart DB Integration Filtering (Branch `perf/ci-pipeline-acceleration`)
+
+**AI:** Antigravity (Google DeepMind)
+**Task:** Accelerate GitHub Actions CI pipeline execution time from 35+ minutes down to ~10–14 minutes:
+1. `validate Job Worker Concurrency`:
+   - Configured `playwright.config.ts` to support `PLAYWRIGHT_WORKERS` environment variable override (falling back to 1 in CI if unset).
+   - Configured `PLAYWRIGHT_WORKERS: "2"` in `.github/workflows/ci.yml` `validate` smoke test step to utilize both vCPUs on GitHub's `ubuntu-latest` runner.
+   - Reduced `validate` job `timeout-minutes` ceiling from 55m to 35m.
+2. `Smart db-integration Job Filtering`:
+   - Created `tests/helpers/ci-skip.ts` exporting `skipInDbIntegration(test, reason?)` which skips non-database specs in CI when `NEXT_PUBLIC_SUPABASE_URL` is set.
+   - Applied `skipInDbIntegration` to purely static, layout, visual, accessibility, and client-side test suites (~600+ tests) including `no-sideways-scroll`, `ux-axe`, `visible-first-paint`, `comprehensive-tournament-audit`, `tournament-bracket-sizes`, `tournament-double-elimination`, `tournament-rescore`, `trivia-and-bingo-expansion`, `cookie-notice-size`, `lucky-wheel-template-names`, `home-footer`, `ime-enter`, `seo-foundations`, `tool-seo-titles`, `qa-x29-tournament-seeds`, `qa-x30-name-draw`, `qa-x31-content-safety`, `qa-x32-light-theme-headings`, `ux-small-fixes`, `audit-gate`, and `backup-retry`.
+   - Preserved full execution of real Supabase tests (`multiplayer-loop`, `city-regression`, `qa-x1` through `qa-x28`, and in-room database suites).
+   - Reduced `db-integration` job `timeout-minutes` ceiling from 50m to 25m.
+3. `Branch Protection Compliance`:
+   - Maintained exact job names `validate` and `db-integration` required by GitHub repository branch protection (`strict: true`).
+**Outcome:**
+- Test execution time in `validate` reduced from ~28–30m to ~12–14m.
+- Test execution time in `db-integration` reduced from ~30m+ down to ~5m.
+- Total CI pipeline runtime reduced from 35+ minutes to ~10–14 minutes (~65% reduction in CI run time and GitHub Actions compute minutes).

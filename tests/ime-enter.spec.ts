@@ -1,4 +1,7 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration();
 
 // Enter confirms a composition in an input method (Japanese, Chinese, Korean), so that press belongs to the input method:
 // a handler that reads `key === "Enter"` and acts on it sends, adds or saves a half-typed word (the review of wave 1a found

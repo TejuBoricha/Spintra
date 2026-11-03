@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { TOOL_SEO_TITLES, toolMetadata } from '../src/lib/tool-metadata';
 import { GAMES } from '../src/lib/games';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration();
 
 // Audit X-5: every tool page's <title> was just "<Label> | Spintra" (for example
 // "Name Draw | Spintra"), with none of the words people search for. Each tool now

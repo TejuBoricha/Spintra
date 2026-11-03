@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration();
 
 // Regression test for the audited bug: double-elimination losers were never
 // fed into the losers bracket, so the bracket dead-ended and no tournament

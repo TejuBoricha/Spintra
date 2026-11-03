@@ -1,6 +1,9 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import { SITE_PAGES, NOT_FOUND_PATH } from './site-routes';
 import { hideConfigBanner } from './helpers/config-banner';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration();
 
 // UX audit (7 Oct 2026): on a phone the live home page was 421px wide in a 390px window. The
 // footer's single row of seven items was 449px wide and centred, so it ran off both edges: the
