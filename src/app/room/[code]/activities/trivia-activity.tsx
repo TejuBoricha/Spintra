@@ -6,6 +6,14 @@ import { Lightbulb, Shuffle, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -220,38 +228,62 @@ export function TriviaActivity() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label htmlFor="trivia-category" className="text-xs text-muted-foreground font-semibold">Category</label>
-              <select
-                id="trivia-category"
+              <label htmlFor="trivia-category" className="text-xs text-muted-foreground font-semibold block">Category</label>
+              <Select
                 value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-base md:text-sm text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none w-full"
+                onValueChange={(val) => {
+                  if (val) setSelectedCategory(val);
+                }}
               >
-                <option value="All" className="bg-neutral-950 text-white">All Categories</option>
-                <option value="General Knowledge" className="bg-neutral-950 text-white">General Knowledge</option>
-                <option value="Science & Nature" className="bg-neutral-950 text-white">Science & Nature</option>
-                <option value="Geography" className="bg-neutral-950 text-white">Geography</option>
-                <option value="History" className="bg-neutral-950 text-white">History</option>
-                <option value="Pop Culture" className="bg-neutral-950 text-white">Pop Culture</option>
-                <option value="Sports" className="bg-neutral-950 text-white">Sports</option>
-                <option value="Technology" className="bg-neutral-950 text-white">Technology</option>
-                <option value="Arts & Literature" className="bg-neutral-950 text-white">Arts & Literature</option>
-              </select>
+                <SelectTrigger
+                  id="trivia-category"
+                  className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-base md:text-sm text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none w-full"
+                >
+                  <SelectValue>{selectedCategory === "All" ? "All Categories" : selectedCategory}</SelectValue>
+                </SelectTrigger>
+                <SelectContent alignItemWithTrigger={false} sideOffset={6} className="w-(--anchor-width) min-w-[220px] max-w-[calc(100vw-2rem)]">
+                  <SelectGroup>
+                    <SelectItem value="All">All Categories</SelectItem>
+                    <SelectItem value="General Knowledge">General Knowledge</SelectItem>
+                    <SelectItem value="Science & Nature">Science & Nature</SelectItem>
+                    <SelectItem value="Geography">Geography</SelectItem>
+                    <SelectItem value="History">History</SelectItem>
+                    <SelectItem value="Pop Culture">Pop Culture</SelectItem>
+                    <SelectItem value="Sports">Sports</SelectItem>
+                    <SelectItem value="Technology">Technology</SelectItem>
+                    <SelectItem value="Arts & Literature">Arts & Literature</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="trivia-difficulty" className="text-xs text-muted-foreground font-semibold">Difficulty</label>
-              <select
-                id="trivia-difficulty"
+              <label htmlFor="trivia-difficulty" className="text-xs text-muted-foreground font-semibold block">Difficulty</label>
+              <Select
                 value={selectedDifficulty}
-                onChange={(e) => setSelectedDifficulty(e.target.value)}
-                className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-base md:text-sm text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none w-full"
+                onValueChange={(val) => {
+                  if (val) setSelectedDifficulty(val);
+                }}
               >
-                <option value="All" className="bg-neutral-950 text-white">All Difficulties</option>
-                <option value="easy" className="bg-neutral-950 text-white">Easy</option>
-                <option value="medium" className="bg-neutral-950 text-white">Medium</option>
-                <option value="hard" className="bg-neutral-950 text-white">Hard</option>
-              </select>
+                <SelectTrigger
+                  id="trivia-difficulty"
+                  className="bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-base md:text-sm text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none w-full"
+                >
+                  <SelectValue>
+                    {selectedDifficulty === "All"
+                      ? "All Difficulties"
+                      : selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1)}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent alignItemWithTrigger={false} sideOffset={6} className="w-(--anchor-width) min-w-[200px] max-w-[calc(100vw-2rem)]">
+                  <SelectGroup>
+                    <SelectItem value="All">All Difficulties</SelectItem>
+                    <SelectItem value="easy">Easy</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="hard">Hard</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
