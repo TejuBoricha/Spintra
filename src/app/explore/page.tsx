@@ -57,7 +57,7 @@ const featuredTemplates = GAMES.map((game) => ({
   label: game.label,
   type: game.type,
   icon: game.icon,
-  href: game.href,
+  href: game.type === "city" ? "/spintra-city" : game.href,
   tagline: game.tagline,
   gradient: game.color,
 }));

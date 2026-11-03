@@ -3520,3 +3520,32 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 **Also (outside the repo, nothing committed):** the launch video, made by hand from the brag-slim recipe: 20 s landscape and vertical cuts with sound, posters and share text in C:/Users/tejas/Desktop/Spintra-launch-video/brag-output/ (plan and results in its `brag-plan.md`). Real UI recorded on the local stack; sound unheard by the assistant.
 **Evidence:** #82 merged at `46dbe56` with `validate` and `db-integration` green on its exact head `5aca790`. The live home page loaded read-only at 390 px is 390 px wide (scrollWidth = clientWidth = 390). Lighthouse 13.5.0 against https://spintra.io, one run each: mobile home 71 / LCP 4.4 s, dice 81 / 4.3 s, tournament 81 / 4.2 s, desktop home 99 / 1.0 s (7 Oct: 49 / 6.70 s, 71 / 4.85 s, 78 / 4.92 s, 82 / 1.29 s).
 **Not verified:** `main`'s post-merge CI for `46dbe56` and the Vercel deploy (still running when this was written); the Lighthouse tool version of the 7 Oct runs, so the before and after are not like for like to the decimal.
+
+---
+
+## [2026-11-03] — Ahrefs Site Audit: AI Discoverability, Organization Schema, Internal Links & Next.js Proxy (Branch `seo/ahrefs-audit-fixes`)
+
+**AI:** Antigravity (Google DeepMind)
+**Task:** Resolve all issues and findings from the live Ahrefs Site Audit report for Spintra (`Actual 12` issues):
+1. `AI Discoverability — Machine Readability`: Category page missing `ItemList` schema (2 pages: `/tools` and `/explore`).
+2. `AI Discoverability — Machine Readability`: Organization schema missing or incomplete (1 page: `/`).
+3. `Links — Indexable`: Page has only one dofollow incoming internal link (`/spintra-city`).
+4. `Redirects / Routing`: Next.js middleware `proxy.ts` placed in root rather than `src/` (`X-17`).
+**Change:**
+- `src/app/tools/page.tsx`: Added Schema.org `ItemList` JSON-LD schema with `ListItem` elements for all 14 tools, plus an internal anchor link to `/spintra-city`.
+- `src/app/explore/layout.tsx`: Added Schema.org `ItemList` JSON-LD schema covering all games and party activities with canonical URLs.
+- `src/app/explore/page.tsx`: Updated featured templates mapping to link Spintra City directly to its canonical `/spintra-city` landing page.
+- `src/app/page.tsx`: Enriched homepage `Organization` JSON-LD schema with `description`, support email (`support@spintra.io`), and `contactPoint` object.
+- `proxy.ts` -> `src/proxy.ts`: Relocated Next.js middleware file to `src/proxy.ts` so Next.js executes `/room?code=...` uppercase redirects at the edge; added dual `proxy` and `middleware` exports for universal compatibility.
+- `tests/seo-foundations.spec.ts`: Added automated Playwright test assertions verifying `ItemList` schema is emitted on `/tools` and `/explore`, and `Organization` schema has description.
+**Evidence:**
+- `npm run verify:static`: Clean (0 errors, 0 warnings, TypeScript clean, ESLint clean, 0 documentation drift).
+- Playwright `tests/seo-foundations.spec.ts`: All 8 tests passed in 14.7s.
+**Ahrefs MCP & API Investigation:**
+- Registered Ahrefs remote MCP endpoint (`https://api.ahrefs.com/mcp/mcp`) in Claude Code and Antigravity.
+- Tested user-provided key `bsy3j3vkyFCQhu-tHr-eNijpQdRmHW0XzncAzQzC` against both the MCP server and API v3:
+  - MCP endpoint: `McpError -32600: Access denied: MCP token is invalid`.
+  - API v3 endpoint: `401 Unauthorized` (`["Error","Unauthorized"]`).
+  - Public endpoint `https://api.ahrefs.com/v3/public/crawler-ip-ranges`: 200 OK (confirmed network connection works).
+  - Cause: As documented by Ahrefs, API v3 and hosted MCP access require a paid plan (Lite or higher). Accounts on the free Ahrefs Webmaster Tools (AWT) tier (`+ Upgrade` visible on user dashboard) have web dashboard access for verified properties, but are restricted from programmatic API v3 and MCP endpoints.
+- All 12 audit issues identified in the user's Ahrefs dashboard were directly reproduced and resolved in codebase without needing paid API units.

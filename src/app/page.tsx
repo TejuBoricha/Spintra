@@ -38,7 +38,17 @@ const entity = {
       "@id": "https://spintra.io/#organization",
       name: "Spintra",
       url: "https://spintra.io",
+      description:
+        "Spintra provides free browser-based group tools and multiplayer party games for classrooms, friends, and teams.",
       logo: { "@type": "ImageObject", url: "https://spintra.io/icon.png", width: 192, height: 192 },
+      email: "support@spintra.io",
+      contactPoint: [
+        {
+          "@type": "ContactPoint",
+          email: "support@spintra.io",
+          contactType: "customer support",
+        },
+      ],
     },
   ],
 };
