@@ -20,8 +20,8 @@ for (const [width, height] of [[1280, 800], [390, 844]] as const) {
         await hideConfigBanner(page);
         const footer = page.locator('footer');
         await expect(footer, 'exactly one footer').toHaveCount(1);
-        // outside <main>, so it is the page's footer landmark (the home page's own footer sits inside its <main>, as before)
-        if (path !== '/') await expect(page.getByRole('contentinfo')).toHaveCount(1);
+        // Exactly one contentinfo landmark on every page
+        await expect(page.getByRole('contentinfo')).toHaveCount(1);
         await expect(footer.getByRole('link', { name: 'Terms', exact: true })).toHaveAttribute('href', '/legal/terms');
         await expect(footer.getByRole('link', { name: 'Privacy', exact: true })).toHaveAttribute('href', '/legal/privacy');
         await expect(footer).toContainText(`© ${new Date().getFullYear()} Spintra`);

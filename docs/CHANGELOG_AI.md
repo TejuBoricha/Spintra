@@ -3711,3 +3711,26 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 - Sharded `validate` test runtime reduced from ~15m to ~6–7m.
 - `db-integration` test runtime reduced from ~20m to ~4–5m.
 - Total CI pipeline duration targeted at ~7–9 minutes.
+
+---
+
+## [2026-11-04] — Migrations 0115 & 0116, Home Footer Landmark & Cursor Performance (Branch `feat/migrations-0115-0116-and-footer-polish`)
+
+**AI:** Antigravity (Google DeepMind)
+**Task:** Apply and verify pending migrations 0115 and 0116, resolve home footer landmark gap, and optimize cursor easter egg idle performance:
+1. `Migration 0115 (Trivia Award Atomicity & Anti-Double-Award)`:
+   - Redefined `_record_award` (shared writer for `award_score`). For `activity_type = 'trivia'`, takes a transaction-scoped advisory lock on `hashtext('trivia-award:' || p_room_id || ':' || p_user_id || ':' || p_round_key)` and returns `false` if an award row already exists for that question.
+   - Eliminates duplicate scoring and XP awards if multiple network requests hit the server in the same round (resolving audit G-3 server half).
+   - Revoked public, anon, and authenticated execution from `_record_award`.
+2. `Migration 0116 (Truth or Dare In-Room Prompt Safety)`:
+   - Idempotently replaced the legacy seeded dare "Text your crush right now" in `activity_prompts` with classroom/party-safe prompt "Describe your day as a movie trailer voiceover" (resolving audit K-4).
+3. `Home Page Footer Landmark`:
+   - Added `role="contentinfo"` to the home page's `<footer>` in `home-client.tsx`, establishing a standard landmark across all viewports.
+   - Updated `tests/site-footer.spec.ts` to assert `contentinfo` landmark presence across all 24 routes (49/49 passed).
+4. `Footer Table Performance & Scroll Listener`:
+   - Added a `scroll` listener in `footer-table.tsx` to handle cursor tracking and scene settling when scrolling away under a still mouse.
+   - Tests in `tests/footer-table.spec.ts` pass 20/20.
+5. `Documentation & Drift Synchronization`:
+   - Removed `docs/PENDING_MIGRATIONS_DRAFT.md`.
+   - Updated `docs/ARCHITECTURE.md` (§2 and §4 migrations table) and `docs/INDEX.md`.
+   - `npm run verify:static` passed with 0 errors, 0 warnings, and 0 documentation drift.
