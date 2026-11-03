@@ -4,12 +4,35 @@ import Link from "next/link";
 import { revealStagger } from "@/lib/reveal";
 import { Wrench } from "lucide-react";
 import { GAMES } from "@/lib/games";
+import { jsonLdScript } from "@/lib/site-metadata";
+
+const BASE_URL = "https://spintra.io";
 
 export default function ToolsPage() {
   const tools = GAMES.filter((game) => !game.createOnly);
 
+  const itemListSchema = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Spintra Quick Tools",
+    description: "Free standalone group tools and party games: spinner wheel, team generator, name picker, tournament brackets, dice, and more.",
+    url: `${BASE_URL}/tools`,
+    numberOfItems: tools.length,
+    itemListElement: tools.map((tool, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: tool.label,
+      description: tool.desc,
+      url: `${BASE_URL}${tool.href}`,
+    })),
+  };
+
   return (
     <div className="min-h-screen pt-28 pb-16 px-4">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(itemListSchema) }}
+      />
       <div className="max-w-6xl mx-auto space-y-12">
         {/* Header */}
         <div
@@ -54,6 +77,17 @@ export default function ToolsPage() {
               </div>
             );
           })}
+        </div>
+
+        {/* Callout to multiplayer board game */}
+        <div className="text-center pt-8 border-t border-(--border-hairline)">
+          <p className="text-muted-foreground text-sm">
+            Looking for a multiplayer board game? Play{" "}
+            <Link href="/spintra-city" className="font-semibold text-foreground underline hover:text-(--brand-primary-strong) transition-colors">
+              Spintra City
+            </Link>{" "}
+            online with 2 to 8 friends.
+          </p>
         </div>
       </div>
     </div>

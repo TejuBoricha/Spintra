@@ -16,6 +16,9 @@ export function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
+export { proxy as middleware };
+export default proxy;
+
 export const config = {
   matcher: ["/room", "/room/"],
 };

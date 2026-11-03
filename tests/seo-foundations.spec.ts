@@ -17,9 +17,11 @@ type LdNode = {
   '@graph'?: LdNode[];
   name?: string;
   url?: string;
+  description?: string;
   alternateName?: string;
   publisher?: { '@id'?: string };
   logo?: { url: string };
+  itemListElement?: unknown[];
 };
 
 async function html(request: APIRequestContext, path: string) {
@@ -94,11 +96,24 @@ test('the home page says who Spintra is: a WebSite and an Organization with its 
   expect(site?.alternateName).toBe('Spintra.io');
   expect(org?.name).toBe('Spintra');
   expect(org?.url).toBe(SITE);
+  expect(org?.description).toBeTruthy();
   expect(org?.logo?.url).toMatch(/^https:\/\/spintra\.io\/.+\.(png|svg|webp|jpg)$/);
   expect(site?.publisher?.['@id'], 'the site names the organization as its publisher').toBe(org?.['@id']);
 
   // What was already there stays.
   expect(nodes.find((n) => n['@type'] === 'WebApplication')?.name).toBe('Spintra');
+});
+
+test('category pages /tools and /explore emit ItemList schema for AI discoverability', async ({ request }) => {
+  const toolsNodes = ldNodes(await html(request, '/tools'));
+  const toolsItemList = toolsNodes.find((n) => n['@type'] === 'ItemList');
+  expect(toolsItemList, 'tools page has ItemList schema').toBeTruthy();
+  expect(toolsItemList?.itemListElement?.length).toBeGreaterThanOrEqual(14);
+
+  const exploreNodes = ldNodes(await html(request, '/explore'));
+  const exploreItemList = exploreNodes.find((n) => n['@type'] === 'ItemList');
+  expect(exploreItemList, 'explore page has ItemList schema').toBeTruthy();
+  expect(exploreItemList?.itemListElement?.length).toBeGreaterThanOrEqual(14);
 });
 
 test('the Organization logo address serves an image, and a tool page does not repeat the home page entity markup', async ({ request }) => {
