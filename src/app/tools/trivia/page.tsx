@@ -311,7 +311,7 @@ export default function TriviaPage() {
                           onClick={() => setRoundSize(size)}
                           className={`flex-1 py-1.5 text-xs font-medium rounded-lg border transition-all ${
                             roundSize === size
-                              ? "bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500 font-bold"
+                              ? "bg-yellow-500/20 text-yellow-800 dark:text-yellow-300 border-yellow-500 font-bold"
                               : "border-(--border-hairline) bg-(--surface-sunken) text-muted-foreground hover:text-foreground"
                           }`}
                         >
@@ -332,7 +332,7 @@ export default function TriviaPage() {
                           onClick={() => setTimerSeconds(opt.seconds)}
                           className={`flex-1 py-1.5 text-xs font-medium rounded-lg border transition-all flex items-center justify-center gap-1 ${
                             timerSeconds === opt.seconds
-                              ? "bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500 font-bold"
+                              ? "bg-yellow-500/20 text-yellow-800 dark:text-yellow-300 border-yellow-500 font-bold"
                               : "border-(--border-hairline) bg-(--surface-sunken) text-muted-foreground hover:text-foreground"
                           }`}
                         >
@@ -372,7 +372,7 @@ export default function TriviaPage() {
                 </Badge>
                 <Badge
                   variant="outline"
-                  className="hidden sm:inline-flex border-yellow-500/30 text-yellow-700 dark:text-yellow-400"
+                  className="hidden sm:inline-flex border-yellow-500/30 text-yellow-800 dark:text-yellow-300"
                 >
                   {currentQuestion.category}
                 </Badge>
@@ -382,7 +382,7 @@ export default function TriviaPage() {
                     currentQuestion.difficulty === "easy"
                       ? "text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
                       : currentQuestion.difficulty === "medium"
-                      ? "text-amber-700 dark:text-amber-400 border-amber-500/30"
+                      ? "text-amber-800 dark:text-amber-300 border-amber-500/30"
                       : "text-rose-700 dark:text-rose-400 border-rose-500/30"
                   }`}
                 >

@@ -73,7 +73,7 @@ test.describe("Trivia and Bingo Enhancements", () => {
       await expect(freeSpace).toBeVisible();
 
       // Call next number
-      const callNextBtn = page.getByRole("button", { name: "Call Next" });
+      const callNextBtn = page.getByRole("button", { name: /Call Next/ });
       await expect(callNextBtn).toBeVisible();
       await callNextBtn.click();
 

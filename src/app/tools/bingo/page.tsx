@@ -437,7 +437,7 @@ export default function BingoPage() {
             disabled={!card || hasBingo || called.length >= currentTheme.items.length}
             className="bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-(--text-on-lime) border-0 font-bold px-6 shadow-md shadow-teal-500/10"
           >
-            <Sparkles className="w-4 h-4 mr-2" /> Call Next
+            <Sparkles className="w-4 h-4 mr-2" /> Call Next Number
           </Button>
 
           <Button onClick={resetGame} variant="outline">
