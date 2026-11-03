@@ -3649,3 +3649,8 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
   - Public endpoint `https://api.ahrefs.com/v3/public/crawler-ip-ranges`: 200 OK (confirmed network connection works).
   - Cause: As documented by Ahrefs, API v3 and hosted MCP access require a paid plan (Lite or higher). Accounts on the free Ahrefs Webmaster Tools (AWT) tier (`+ Upgrade` visible on user dashboard) have web dashboard access for verified properties, but are restricted from programmatic API v3 and MCP endpoints.
 - All 12 audit issues identified in the user's Ahrefs dashboard were directly reproduced and resolved in codebase without needing paid API units.
+- **CI Dependency Audit Gate (`npm run audit`):**
+  - Resolved 8 late-October advisories (`@hono/node-server`, `body-parser`, `fast-uri`, `ip-address`, `qs`, `systeminformation`, `zod`) via lockfile update.
+  - Retired stale `braces` exception (`GHSA-vfj7-8cjw-p6xm`) from `scripts/audit-allowlist.json`.
+  - Added time-boxed allowlist exceptions expiring 2026-12-03 for `glob` (`GHSA-3g3m-2fjr-6pw4`) and `minimatch` (`GHSA-g3hv-75wg-m249`), both restricted to build/development tooling with no minor/patch upstream fix currently available.
+  - Verified `tests/audit-gate.spec.ts` (12/12 passed) and full `npm run verify` passes with 0 errors.
