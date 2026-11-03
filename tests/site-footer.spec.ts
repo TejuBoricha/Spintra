@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { SITE_PAGES, NOT_FOUND_PATH } from './site-routes';
 import { hideConfigBanner } from './helpers/config-banner';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration(test);
 
 // UX audit (7 Oct 2026), finding U-12: only the home page had a footer, so Terms, Privacy and the copyright could be reached from
 // the home page, the cookie notice and Settings and nowhere else. A visitor who landed on a tool page from search had no way to the

@@ -1,6 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { test, expect } from '@playwright/test';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration(test);
 
 // UX audit (7 Oct 2026), U-01 and U-02, kept from coming back: Tailwind's `outline-none` removes the browser's
 // focus outline, so a control that sets it and draws nothing in its place is invisible to a keyboard user. The

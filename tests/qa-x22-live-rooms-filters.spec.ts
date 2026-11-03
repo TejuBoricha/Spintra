@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { acceptCookieBanner } from './qa-city-helpers';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration(test);
 
 // Product decision 2026-09-29: the Live Rooms filter "Popular" (1+ online) is
 // gone, since the page only lists rooms with someone online and it showed the

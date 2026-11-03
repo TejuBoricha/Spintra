@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration(test);
 
 test('comprehensive smoke test of all tools and room activities', async ({ page }) => {
   // Direct console capture

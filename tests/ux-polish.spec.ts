@@ -1,5 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 import { hideConfigBanner } from './helpers/config-banner';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration(test);
 
 // UX audit (7 Oct 2026), wave 2: U-17 (a disabled button reads as an odd khaki block and does not say why), U-10 (one sentence
 // broken into columns that wrap on their own) and the two result-state defects of U-19 that the contrast scan cannot see (the
