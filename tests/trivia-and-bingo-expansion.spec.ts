@@ -42,15 +42,15 @@ test.describe("Trivia and Bingo Enhancements", () => {
       // Category select should contain the new categories
       const categorySelect = page.locator("#trivia-tool-category");
       await expect(categorySelect).toBeVisible();
-      await expect(categorySelect.locator("option")).toContainText([
-        "All Categories",
-        "Science & Nature",
-        "Technology",
-        "Arts & Literature",
-      ]);
+      await categorySelect.click();
 
-      // Select Science category and 5 questions per round
-      await categorySelect.selectOption("Science & Nature");
+      // Check popup options and pick Science & Nature
+      await expect(page.getByRole("option", { name: "All Categories" })).toBeVisible();
+      await expect(page.getByRole("option", { name: "Science & Nature" })).toBeVisible();
+      await expect(page.getByRole("option", { name: "Technology", exact: true })).toBeVisible();
+      await expect(page.getByRole("option", { name: "Arts & Literature" })).toBeVisible();
+
+      await page.getByRole("option", { name: "Science & Nature" }).click();
       await page.getByRole("button", { name: "5", exact: true }).click();
 
       // Apply & Restart
@@ -104,7 +104,8 @@ test.describe("Trivia and Bingo Enhancements", () => {
       // Select Science & Nature theme
       const themeSelect = page.locator("#bingo-theme-select");
       await expect(themeSelect).toBeVisible();
-      await themeSelect.selectOption({ label: "Science & Nature" });
+      await themeSelect.click();
+      await page.getByRole("option", { name: /Science & Nature/ }).click();
 
       // Card should update with science terms (not just numbers)
       await expect(page.getByText("Science & Nature").first()).toBeVisible();

@@ -58,15 +58,15 @@ export const BINGO_THEMES: BingoTheme[] = [
     emoji: "party_popper",
     isNumbers: false,
     items: [
-      "Spilled a drink", "Group selfie taken", "Song everyone sings to", "Phone lost then found",
-      "Dad joke delivered", "Dance battle breaks out", "Outfit compliment given", "Late arrival grand entrance",
-      "Ice cubes dropped", "Double dipping caught", "Unexpected deep chat", "Bathroom line forms",
-      "Song requested to DJ", "Heartfelt toast given", "Snack bowl emptied", "Someone wearing party hat",
-      "Laughing till crying", "Infectious laugh heard", "Secret handshake seen", "Spontaneous card game",
-      "Pet steals attention", "Someone loses their cup", "Epic high-five", "Early yawner spotted",
-      "Story wildly exaggerated", "Surprise guest arrives", "Someone spills food on shirt", "Phone flashlight waved",
-      "Karaoke microphone grabbed", "Shoes taken off", "Cheering for no reason", "Selfie retaken 5 times",
-      "Playlist switched", "Dip spilled on table", "Someone loses voice", "Group hug happens"
+      "Spilled a drink", "Group selfie", "Group sing-along", "Lost & found phone",
+      "Dad joke delivered", "Dance battle", "Outfit compliment", "Late grand entrance",
+      "Ice cubes dropped", "Double-dip caught", "Unexpected deep chat", "Long bathroom line",
+      "DJ song requested", "Heartfelt toast", "Snack bowl emptied", "Wearing party hat",
+      "Laughing till crying", "Infectious laugh", "Secret handshake", "Spontaneous card game",
+      "Pet steals the show", "Lost drink cup", "Epic high-five", "Early yawner",
+      "Exaggerated story", "Surprise guest", "Food spilled on shirt", "Flashlights waved",
+      "Karaoke mic grabbed", "Shoes taken off", "Spontaneous cheer", "5+ selfie retakes",
+      "Playlist switched", "Dip spilled", "Voice lost", "Group hug"
     ],
   },
   {
@@ -76,15 +76,15 @@ export const BINGO_THEMES: BingoTheme[] = [
     emoji: "handshake",
     isNumbers: false,
     items: [
-      "Has a pet cat", "Speaks 2+ languages", "Left-handed", "Born in another country",
-      "Plays musical instrument", "Has run a marathon", "Vegetarian or vegan", "Never broken a bone",
-      "Visited 3+ continents", "Loves spicy food", "Early bird (up before 6am)", "Night owl (awake at 1am)",
-      "Has a twin", "Can whistle loudly", "Has been on TV", "Has met a celebrity",
-      "Loves horror movies", "Drinks 3+ coffees daily", "Can solve a Rubik's cube", "Knows martial arts",
-      "Lived in 3+ cities", "Has a home garden", "Bakes homemade bread", "Afraid of heights",
-      "Prefers mountains to beach", "Plays video games weekly", "Drives manual shift", "Has ridden a horse",
-      "Owns a vinyl record", "Has a tattoo", "Keeps a daily journal", "Practices meditation",
-      "Has scuba dived", "Camped under the stars", "Has a unique collection", "Knows sign language"
+      "Has a pet cat", "Speaks 2+ languages", "Left-handed", "Born abroad",
+      "Plays an instrument", "Ran a marathon", "Vegetarian / Vegan", "Never broke a bone",
+      "Visited 3+ continents", "Loves spicy food", "Early bird (pre-6am)", "Night owl (post-1am)",
+      "Has a twin", "Whistles loudly", "Been on TV", "Met a celebrity",
+      "Loves horror films", "Drinks 3+ coffees", "Solves Rubik's cube", "Knows martial arts",
+      "Lived in 3+ cities", "Home gardener", "Bakes fresh bread", "Afraid of heights",
+      "Loves mountains", "Plays video games", "Drives manual shift", "Rode a horse",
+      "Owns vinyl records", "Has a tattoo", "Daily journaler", "Meditates",
+      "Scuba dived", "Camped outside", "Unique collection", "Knows sign language"
     ],
   },
   {
@@ -94,14 +94,14 @@ export const BINGO_THEMES: BingoTheme[] = [
     emoji: "clapper",
     isNumbers: false,
     items: [
-      "Dramatic plot twist", "Jump scare", "Post-credits scene", "Training montage",
-      "Villain monologues", "Slow-motion explosion", "Car chase scene", "Wise old mentor",
-      "Rain during sad moment", "Wilhelm scream heard", "Love triangle introduced", "Hacking in 10 seconds",
-      "Fake-out death", "Inspirational speech", "Disguise fools everyone", "Timer stopped at 0:01",
-      "Character says title", "Product placement seen", "Flashback sequence", "Mirror scare",
-      "Phone battery dies", "Epic final battle", "Pet survives danger", "Surprise cameo",
-      "Unnecessary romance", "Catchphrase delivered", "Sequel teaser at end", "Dramatic rooftop talk",
-      "Elevator music scene", "Whispering during secret", "Key found just in time", "Dramatic gasp"
+      "Plot twist", "Jump scare", "Post-credits scene", "Training montage",
+      "Villain speech", "Slow-mo explosion", "Car chase", "Wise old mentor",
+      "Rain at sad moment", "Wilhelm scream", "Love triangle", "10-second hacking",
+      "Fake-out death", "Inspiring speech", "Flawless disguise", "Timer at 0:01",
+      "Title drop", "Product placement", "Flashback scene", "Mirror scare",
+      "Phone battery dies", "Final battle", "Pet survives", "Surprise cameo",
+      "Unnecessary romance", "Catchphrase said", "Sequel teaser", "Rooftop showdown",
+      "Elevator music", "Whispered secret", "Key found in time", "Dramatic gasp"
     ],
   },
 ];

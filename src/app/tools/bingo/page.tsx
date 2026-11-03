@@ -16,6 +16,14 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Emoji } from "@/components/emoji";
 import { fireConfetti, CelebrationBanner } from "@/components/celebration";
 import { getGameByType } from "@/lib/games";
@@ -245,42 +253,66 @@ export default function BingoPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Theme Selector */}
                   <div className="space-y-1.5">
-                    <label htmlFor="bingo-theme-select" className="text-xs font-medium text-muted-foreground">
+                    <label htmlFor="bingo-theme-select" className="text-xs font-medium text-muted-foreground block">
                       Card Theme
                     </label>
-                    <select
-                      id="bingo-theme-select"
+                    <Select
                       value={currentThemeId}
-                      onChange={(e) => {
-                        setCurrentThemeId(e.target.value);
+                      onValueChange={(val) => {
+                        if (val) setCurrentThemeId(val);
                       }}
-                      className="w-full bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-base md:text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
                     >
-                      {BINGO_THEMES.map((theme) => (
-                        <option key={theme.id} value={theme.id}>
-                          {theme.name}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger
+                        id="bingo-theme-select"
+                        className="w-full bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-base md:text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+                      >
+                        <SelectValue>{currentTheme.name}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent alignItemWithTrigger={false} sideOffset={6} className="w-(--anchor-width) min-w-[260px] max-w-[calc(100vw-2rem)]">
+                        <SelectGroup>
+                          {BINGO_THEMES.map((theme) => (
+                            <SelectItem key={theme.id} value={theme.id} className="py-2">
+                              <div className="flex flex-col text-left py-0.5">
+                                <span className="font-semibold text-foreground text-sm">{theme.name}</span>
+                                <span className="text-xs text-muted-foreground">{theme.description}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Winning Pattern */}
                   <div className="space-y-1.5">
-                    <label htmlFor="bingo-pattern-select" className="text-xs font-medium text-muted-foreground">
+                    <label htmlFor="bingo-pattern-select" className="text-xs font-medium text-muted-foreground block">
                       Winning Pattern
                     </label>
-                    <select
-                      id="bingo-pattern-select"
+                    <Select
                       value={currentPatternId}
-                      onChange={(e) => setCurrentPatternId(e.target.value as BingoPatternId)}
-                      className="w-full bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-base md:text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+                      onValueChange={(val) => {
+                        if (val) setCurrentPatternId(val as BingoPatternId);
+                      }}
                     >
-                      {BINGO_PATTERNS.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}: {p.description}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger
+                        id="bingo-pattern-select"
+                        className="w-full bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-base md:text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+                      >
+                        <SelectValue>{currentPattern.name}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent alignItemWithTrigger={false} sideOffset={6} className="w-(--anchor-width) min-w-[260px] max-w-[calc(100vw-2rem)]">
+                        <SelectGroup>
+                          {BINGO_PATTERNS.map((p) => (
+                            <SelectItem key={p.id} value={p.id} className="py-2">
+                              <div className="flex flex-col text-left py-0.5">
+                                <span className="font-semibold text-foreground text-sm">{p.name}</span>
+                                <span className="text-xs text-muted-foreground">{p.description}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -353,13 +385,13 @@ export default function BingoPage() {
         )}
 
         {/* Bingo Card Container */}
-        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-2 sm:p-4 mb-5 shadow-sm w-full max-w-[340px] sm:max-w-[420px] mx-auto">
+        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-2 sm:p-4 mb-5 shadow-sm w-full max-w-[340px] sm:max-w-[500px] md:max-w-[560px] mx-auto">
           {/* Column Headers B-I-N-G-O */}
           <div className="grid grid-cols-5 gap-1 sm:gap-1.5 mb-1.5">
             {COLUMNS.map((col) => (
               <div
                 key={col}
-                className="w-full h-7 sm:h-8 flex items-center justify-center font-black text-sm sm:text-base text-teal-700 dark:text-teal-400 tracking-wider"
+                className="w-full h-7 sm:h-9 flex items-center justify-center font-black text-sm sm:text-lg text-teal-700 dark:text-teal-400 tracking-wider"
               >
                 {col}
               </div>
@@ -383,10 +415,15 @@ export default function BingoPage() {
                       onClick={() => handleCellClick(col, row)}
                       disabled={isFree || autoDaub}
                       aria-pressed={marked}
+                      title={isFree ? "Free Space" : cellText}
                       aria-label={`${COLUMNS[col]} ${row + 1}: ${
                         isFree ? "Free Space" : cellText
                       }, ${marked ? "Marked" : "Unmarked"}`}
-                      className={`min-w-0 w-full aspect-square flex flex-col items-center justify-center rounded-xl text-[11px] sm:text-sm font-semibold border-2 transition-all p-0.5 sm:p-1 text-center select-none relative overflow-hidden ${
+                      className={`min-w-0 w-full flex flex-col items-center justify-center rounded-xl font-semibold border-2 transition-all p-0.5 sm:p-1.5 text-center select-none relative overflow-hidden ${
+                        currentTheme.isNumbers
+                          ? "aspect-square text-sm sm:text-xl font-black"
+                          : "min-h-[58px] sm:min-h-[74px] md:min-h-[82px] text-[10px] sm:text-xs md:text-sm leading-tight"
+                      } ${
                         isFree
                           ? "bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400"
                           : marked
@@ -403,7 +440,7 @@ export default function BingoPage() {
                         </div>
                       ) : (
                         <>
-                          <span className="line-clamp-2 leading-tight break-words px-0.5">{cellText}</span>
+                          <span className="leading-tight break-words px-0.5 hyphens-auto">{cellText}</span>
                           {marked && (
                             <span className="absolute bottom-0.5 right-0.5 w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full bg-teal-500 text-white flex items-center justify-center">
                               <Check className="w-2 h-2 sm:w-2.5 sm:h-2.5 stroke-[3]" />
@@ -422,7 +459,9 @@ export default function BingoPage() {
                 {COLUMNS.map((_, col) => (
                   <div
                     key={col}
-                    className="min-w-0 w-full aspect-square rounded-xl border border-(--border-hairline) bg-(--surface-sunken) animate-pulse"
+                    className={`min-w-0 w-full rounded-xl border border-(--border-hairline) bg-(--surface-sunken) animate-pulse ${
+                      currentTheme.isNumbers ? "aspect-square" : "min-h-[58px] sm:min-h-[74px] md:min-h-[82px]"
+                    }`}
                   />
                 ))}
               </div>

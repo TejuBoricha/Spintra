@@ -17,6 +17,14 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Emoji } from "@/components/emoji";
 import { fireConfetti, CelebrationBanner } from "@/components/celebration";
 import { playPop, playSuccess, playFailure } from "@/lib/audio";
@@ -264,40 +272,83 @@ export default function TriviaPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Category Selector */}
                   <div className="space-y-1.5">
-                    <label htmlFor="trivia-tool-category" className="text-xs font-medium text-muted-foreground">
+                    <label htmlFor="trivia-tool-category" className="text-xs font-medium text-muted-foreground block">
                       Category
                     </label>
-                    <select
-                      id="trivia-tool-category"
+                    <Select
                       value={selectedCategory}
-                      onChange={(e) => setSelectedCategory(e.target.value)}
-                      className="w-full bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-base md:text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500"
+                      onValueChange={(val) => {
+                        if (val) setSelectedCategory(val);
+                      }}
                     >
-                      <option value="All">All Categories</option>
-                      {TRIVIA_CATEGORIES.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger
+                        id="trivia-tool-category"
+                        className="w-full bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-base md:text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500"
+                      >
+                        <SelectValue>{selectedCategory === "All" ? "All Categories" : selectedCategory}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent alignItemWithTrigger={false} sideOffset={6} className="w-(--anchor-width) min-w-[240px] max-w-[calc(100vw-2rem)]">
+                        <SelectGroup>
+                          <SelectItem value="All" className="py-2">
+                            <span className="font-semibold text-foreground text-sm">All Categories</span>
+                          </SelectItem>
+                          {TRIVIA_CATEGORIES.map((cat) => (
+                            <SelectItem key={cat} value={cat} className="py-2">
+                              <span className="text-sm">{cat}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Difficulty Selector */}
                   <div className="space-y-1.5">
-                    <label htmlFor="trivia-tool-difficulty" className="text-xs font-medium text-muted-foreground">
+                    <label htmlFor="trivia-tool-difficulty" className="text-xs font-medium text-muted-foreground block">
                       Difficulty
                     </label>
-                    <select
-                      id="trivia-tool-difficulty"
+                    <Select
                       value={selectedDifficulty}
-                      onChange={(e) => setSelectedDifficulty(e.target.value)}
-                      className="w-full bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-base md:text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500"
+                      onValueChange={(val) => {
+                        if (val) setSelectedDifficulty(val);
+                      }}
                     >
-                      <option value="All">All Difficulties</option>
-                      <option value="easy">Easy</option>
-                      <option value="medium">Medium</option>
-                      <option value="hard">Hard</option>
-                    </select>
+                      <SelectTrigger
+                        id="trivia-tool-difficulty"
+                        className="w-full bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-base md:text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500"
+                      >
+                        <SelectValue>
+                          {selectedDifficulty === "All"
+                            ? "All Difficulties"
+                            : selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1)}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent alignItemWithTrigger={false} sideOffset={6} className="w-(--anchor-width) min-w-[240px] max-w-[calc(100vw-2rem)]">
+                        <SelectGroup>
+                          <SelectItem value="All" className="py-2">
+                            <span className="font-semibold text-foreground text-sm">All Difficulties</span>
+                          </SelectItem>
+                          <SelectItem value="easy" className="py-2">
+                            <div className="flex flex-col text-left py-0.5">
+                              <span className="font-semibold text-foreground text-sm">Easy</span>
+                              <span className="text-xs text-muted-foreground">Casual and introductory questions</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="medium" className="py-2">
+                            <div className="flex flex-col text-left py-0.5">
+                              <span className="font-semibold text-foreground text-sm">Medium</span>
+                              <span className="text-xs text-muted-foreground">Standard competitive trivia challenge</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="hard" className="py-2">
+                            <div className="flex flex-col text-left py-0.5">
+                              <span className="font-semibold text-foreground text-sm">Hard</span>
+                              <span className="text-xs text-muted-foreground">Deep knowledge and expert level</span>
+                            </div>
+                          </SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Round Size */}
