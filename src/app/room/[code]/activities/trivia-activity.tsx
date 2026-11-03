@@ -234,6 +234,8 @@ export function TriviaActivity() {
                 <option value="History" className="bg-neutral-950 text-white">History</option>
                 <option value="Pop Culture" className="bg-neutral-950 text-white">Pop Culture</option>
                 <option value="Sports" className="bg-neutral-950 text-white">Sports</option>
+                <option value="Technology" className="bg-neutral-950 text-white">Technology</option>
+                <option value="Arts & Literature" className="bg-neutral-950 text-white">Arts & Literature</option>
               </select>
             </div>
 
