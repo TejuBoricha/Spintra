@@ -4,6 +4,9 @@ import path from 'node:path';
 import * as ts from 'typescript';
 import { SITE_PAGES } from './site-routes';
 import { hideConfigBanner } from './helpers/config-banner';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration(test);
 
 // UX audit (7 Oct 2026), finding U-11: iOS Safari zooms the page into any text field whose font is under 16px when it is tapped, and
 // leaves it zoomed. Every field was 14px (`text-sm` in the shared Input and Textarea). The shared components now use `text-base`

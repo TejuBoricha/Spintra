@@ -19,12 +19,16 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  validate:
+  validate-shard:
+    name: validate-shard (${{ matrix.shard }})
     runs-on: ubuntu-latest
-    # Fail fast on a hang instead of burning the GitHub default 360-minute ceiling.
-    # The suite runs across 2 workers on the 2-vCPU runner (PLAYWRIGHT_WORKERS=2),
-    # bringing test execution down to ~12-15 minutes (total job runtime ~15-18m).
-    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1/2, 2/2]
+    # 2 parallel shards each with 2 workers (4 total parallel test workers)
+    # bringing test execution down to ~6-7 minutes.
+    timeout-minutes: 20
 
     steps:
       - name: Checkout Repository
@@ -106,7 +110,7 @@ jobs:
           SKIP_ENV_VALIDATION: "true"
 
       - name: Execute Playwright E2E Smoke Tests
-        run: npm run test:smoke
+        run: npx playwright test --shard=${{ matrix.shard }}
         env:
           SKIP_ENV_VALIDATION: "true"
           PLAYWRIGHT_WORKERS: "2"
@@ -115,9 +119,24 @@ jobs:
         uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-shard-${{ strategy.job-index }}
           path: playwright-report/
           retention-days: 7
+
+  validate:
+    name: validate
+    needs: [validate-shard]
+    runs-on: ubuntu-latest
+    if: always()
+    timeout-minutes: 5
+    steps:
+      - name: Evaluate Shard Results
+        run: |
+          if [ "${{ needs.validate-shard.result }}" != "success" ]; then
+            echo "::error::One or more validate shards failed."
+            exit 1
+          fi
+          echo "All validate shards passed successfully."
 
   # Found in the Session 41 production-readiness audit: the job above never
   # touches a real database — RLS policies, triggers (rate limiting, bans,
@@ -135,8 +154,8 @@ jobs:
     runs-on: ubuntu-latest
     # Ephemeral local Supabase stack (Docker). Pure visual, static, and UI tests
     # are skipped in this job via skipInDbIntegration, leaving only real DB/RLS/
-    # realtime tests. Total job runtime is reduced from ~36m down to ~10-12m.
-    timeout-minutes: 25
+    # realtime tests running across 2 workers. Total job runtime is reduced to ~7-9m.
+    timeout-minutes: 18
 
     steps:
       - name: Checkout Repository
@@ -217,6 +236,8 @@ jobs:
 
       - name: Execute E2E Tests Against Real RLS/Triggers/Realtime
         run: npm run test:smoke
+        env:
+          PLAYWRIGHT_WORKERS: "2"
 
       - name: Upload Test Artifacts on Failure
         uses: actions/upload-artifact@v7

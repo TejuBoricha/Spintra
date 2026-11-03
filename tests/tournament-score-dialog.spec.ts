@@ -1,4 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration(test);
 
 // The Update Score overlay of the Tournament tool was a plain `fixed inset-0` div: no dialog role or name (a screen reader said
 // nothing when it opened), focus stayed on the page behind it (a keyboard user tabbed through the bracket under the backdrop), and

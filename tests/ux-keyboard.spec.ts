@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test';
 import { SITE_PAGES, NOT_FOUND_PATH } from './site-routes';
 import { focusRingProblems, newDecoder, outlineProblem } from './helpers/focus-ring';
 import { hideConfigBanner } from './helpers/config-banner';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration(test);
 
 // UX audit (7 Oct 2026), findings U-01, U-02 and U-03.
 //

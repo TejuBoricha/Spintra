@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { BYE_PLAYER, isByePlayer, playerLabel } from '../src/lib/tournament-engine';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration(test);
 
 // Audit T-14 and T-13 on the standalone tournament page.
 // T-14: a player with a bye is paired with the placeholder "__BYE__". The page showed that

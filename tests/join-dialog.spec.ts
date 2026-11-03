@@ -1,5 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 import { hideConfigBanner } from './helpers/config-banner';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration(test);
 
 // UX audit (7 Oct 2026), finding U-29: the Join dialog, the way into every multiplayer session, was rough in the details. The code
 // boxes got labels (U-05), its arrow stopped bouncing under reduced motion (U-25) and its disabled button lost the olive (U-17, which

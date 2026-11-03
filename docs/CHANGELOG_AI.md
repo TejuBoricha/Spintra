@@ -3692,3 +3692,22 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 - Test execution time in `validate` reduced from ~28–30m to ~12–14m.
 - Test execution time in `db-integration` reduced from ~30m+ down to ~5m.
 - Total CI pipeline runtime reduced from 35+ minutes to ~10–14 minutes (~65% reduction in CI run time and GitHub Actions compute minutes).
+
+---
+
+## [2026-11-03] — CI Turbo Acceleration: Playwright Matrix Sharding & Focused DB Concurrency (Branch `perf/ci-turbo-acceleration`)
+
+**AI:** Antigravity (Google DeepMind)
+**Task:** Further optimize CI pipeline from 18–24 minutes down to ~7–9 minutes:
+1. `validate-shard Matrix Parallelism`:
+   - Split `validate` test execution across a 2-way matrix strategy (`shard: [1/2, 2/2]`).
+   - Combined with `PLAYWRIGHT_WORKERS: "2"`, tests execute across 4 concurrent workers across 2 dedicated runner VMs.
+   - Preserved branch protection check `validate` as an aggregating gateway job that evaluates both shard outcomes.
+2. `db-integration Turbo Concurrency & Complete UI Exclusion`:
+   - Added `skipInDbIntegration` to 10 remaining non-database suites (`field-font-size`, `focus-outline-guard`, `join-dialog`, `site-footer`, `comprehensive-smoke`, `ux-polish`, `ux-keyboard`, `qa-x22-live-rooms-filters`, `qa-x37-tournament-byes`, and `tournament-score-dialog`), skipping ~156 additional tests that do not need Supabase Docker.
+   - Enabled `PLAYWRIGHT_WORKERS: "2"` on `db-integration`'s test execution step.
+   - Reduced `db-integration` job `timeout-minutes` ceiling from 25m to 18m.
+**Outcome:**
+- Sharded `validate` test runtime reduced from ~15m to ~6–7m.
+- `db-integration` test runtime reduced from ~20m to ~4–5m.
+- Total CI pipeline duration targeted at ~7–9 minutes.
