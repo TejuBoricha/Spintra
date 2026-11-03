@@ -31,6 +31,7 @@ import { Emoji, type EmojiName } from "@/components/emoji";
 import { fireConfetti, CelebrationBanner } from "@/components/celebration";
 import { playTick } from "@/lib/audio";
 import { getGameByType } from "@/lib/games";
+import { isImeKey } from "@/lib/keyboard";
 
 const GameIcon = getGameByType("lucky-wheel")!.icon;
 
@@ -599,7 +600,7 @@ export default function LuckyWheelPage() {
         </div>
 
         {/* ── Main layout: Wheel | Sidebar ── */}
-        <div className="grid lg:grid-cols-3 gap-8 mb-10">
+        <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-3 gap-8 mb-10">
           {/* Wheel column */}
           <div
             className="lg:col-span-2 flex flex-col items-center reveal reveal-scale reveal-delay-1"
@@ -626,12 +627,15 @@ export default function LuckyWheelPage() {
             </div>
 
             {/* Spin button */}
-            <div className="mt-8 flex items-center gap-4">
+            {/* The label grows from "Spin!" to "Spinning..." while the wheel turns. A padding in rem doubles with the text, so it is
+                capped by the screen: 12vw is 40px, the same as 2.5rem at the default size, from 334px up, and with larger text the
+                cap wins, so the padding stops growing while the label keeps growing. The sound button wraps below when the row is full. */}
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
               <Button
                 onClick={spin}
                 disabled={spinning || entries.length === 0}
                 size="lg"
-                className="h-14 px-10 text-lg font-bold bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95 rounded-full shadow-lg shadow-glow-primary-sm hover:shadow-glow-primary-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className="h-14 px-[min(2.5rem,12vw)] text-lg font-bold bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95 rounded-full shadow-lg shadow-glow-primary-sm hover:shadow-glow-primary-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Play className="w-5 h-5 mr-2" />
                 {spinning ? "Spinning..." : "Spin!"}
@@ -696,7 +700,7 @@ export default function LuckyWheelPage() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 10, height: 0 }}
-                      className="flex items-center gap-2 p-2.5 rounded-lg bg-(--surface-sunken) border border-(--border-hairline) group/entry hover:bg-muted transition-colors"
+                      className="flex flex-wrap items-center gap-2 p-2.5 rounded-lg bg-(--surface-sunken) border border-(--border-hairline) group/entry hover:bg-muted transition-colors"
                     >
                       {/* Color picker */}
                       <div className="relative">
@@ -713,7 +717,9 @@ export default function LuckyWheelPage() {
                         />
                       </div>
 
-                      {/* Label */}
+                      {/* Label. The row wraps and the name keeps 3rem at least: the weight slider and Remove button that
+                          appear with hover or focus drop to a second line when they do not fit beside it, instead of
+                          squeezing the name to nothing (larger text on a phone) or pushing the row past its card. */}
                       {editingId === entry.id ? (
                         <input
                           type="text"
@@ -731,7 +737,7 @@ export default function LuckyWheelPage() {
                             setEditingId(null);
                           }}
                           onKeyDown={(e) => {
-                            if (e.nativeEvent.isComposing) return; // Enter confirms an IME composition here, it does not save
+                            if (isImeKey(e)) return; // Enter confirms an IME composition here, it does not save
                             if (e.key === "Enter") {
                               // Without this the same key press, now on the entry's button (focus moves back to it
                               // below), would press that button and open the editor again.
@@ -751,7 +757,7 @@ export default function LuckyWheelPage() {
                           autoFocus
                           maxLength={40}
                           disabled={spinning}
-                          className="flex-1 h-6 px-1.5 text-xs bg-primary/10 border border-primary/40 text-(--brand-primary-strong) rounded-lg shrink-0"
+                          className="flex-1 min-w-12 h-6 px-1.5 text-base md:text-xs bg-primary/10 border border-primary/40 text-(--brand-primary-strong) rounded-lg"
                         />
                       ) : (
                         <button
@@ -766,7 +772,7 @@ export default function LuckyWheelPage() {
                           aria-disabled={spinning}
                           title="Click to rename"
                           aria-label={`Rename ${entry.label}`}
-                          className="flex-1 min-w-0 text-left text-sm truncate cursor-pointer hover:text-(--brand-primary-strong) transition-colors aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+                          className="flex-1 min-w-12 text-left text-sm truncate cursor-pointer hover:text-(--brand-primary-strong) transition-colors aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
                         >
                           {entry.label}
                         </button>
@@ -811,9 +817,9 @@ export default function LuckyWheelPage() {
                   value={newEntryLabel}
                   onChange={(e) => setNewEntryLabel(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") addEntry();
+                    if (e.key === "Enter" && !isImeKey(e)) addEntry();
                   }}
-                  className="flex-1 text-xs"
+                  className="flex-1 text-base md:text-xs"
                 />
                 <Button
                   size="icon-sm"
@@ -843,7 +849,6 @@ export default function LuckyWheelPage() {
                       }
                       applyTemplate(tpl);
                     }}
-                    aria-label={`Apply "${tpl.label}" template (replaces current entries)`}
                     className="flex items-center gap-3 p-2.5 rounded-lg border border-(--border-hairline) bg-(--surface-sunken) hover:bg-muted hover:border-cyan-500/20 transition-all text-left group"
                   >
                     <Emoji name={tpl.icon} size={22} animated={false} />
@@ -852,7 +857,9 @@ export default function LuckyWheelPage() {
                         {tpl.label}
                       </div>
                       <div className="text-xs text-muted-foreground">
+                        {/* The name comes from the visible text (WCAG 2.5.3 Label in Name); an aria-label that left out "N entries" failed axe-core 4.14. */}
                         {tpl.entries.length} entries
+                        <span className="sr-only">, replaces the current entries</span>
                       </div>
                     </div>
                     <ArrowRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-cyan-300 group-hover:translate-x-0.5 transition-all" />
@@ -878,7 +885,7 @@ export default function LuckyWheelPage() {
         <div
           className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 text-center space-y-4 reveal reveal-fade reveal-delay-5"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-300 text-xs font-medium">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-800 dark:text-cyan-300 text-xs font-medium">
             <Sparkles className="w-3.5 h-3.5" />
             Multiplayer
           </div>
@@ -887,7 +894,7 @@ export default function LuckyWheelPage() {
             Create a room and everyone watches the same spin on their own screen.
             Useful for giveaways, where people want to see the draw for themselves.
           </p>
-          <ButtonLink href="/create?type=lucky-wheel" className="gap-2 bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">
+          <ButtonLink href="/create?type=lucky-wheel" wrap className="gap-2 bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">
             <Disc3 className="w-4 h-4" />
             Create Room
             <ArrowRight className="w-4 h-4" />

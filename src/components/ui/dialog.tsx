@@ -65,13 +65,13 @@ function DialogContent({
             render={
               <Button
                 variant="ghost"
-                className="absolute top-2 right-2"
+                className="absolute top-2 right-2 pointer-coarse:top-1 pointer-coarse:right-1 pointer-coarse:size-11"
                 size="icon-sm"
               />
             }
           >
-            <XIcon
-            />
+            {/* 32px with a mouse, 44px under a finger (the audit's 12px glyph, U-29) */}
+            <XIcon className="size-3.5 pointer-coarse:size-5" />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
         )}

@@ -5,6 +5,7 @@ import Script from "next/script";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/layout/navbar";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { Toaster } from "@/components/ui/toaster";
 import { AnalyticsScripts } from "@/components/analytics-scripts";
 
@@ -97,6 +98,7 @@ export default function RootLayout({
           <Navbar />
           {/* tabIndex -1: the skip link's target takes focus when it is used; not a Tab stop, so no ring is drawn */}
           <main id="main-content" tabIndex={-1} className="min-h-screen pt-[6rem] outline-none">{children}</main>
+          <SiteFooter />
           <Toaster position="bottom-center" />
         </Providers>
         {/* E2E test bridge: catches clicks on the hidden server-rendered

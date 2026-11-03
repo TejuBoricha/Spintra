@@ -19,7 +19,9 @@ const HeroThreeScene = dynamic(() => import("@/components/landing/hero-scene").t
 import { FeatureCard } from "@/components/landing/feature-card";
 import { AuroraBackground } from "@/components/landing/aurora-bg";
 import { FooterTable } from "@/components/landing/footer-table";
+import { FOOTER_LINK } from "@/components/layout/site-footer";
 import { GAMES } from "@/lib/games";
+import { isImeKey } from "@/lib/keyboard";
 
 const heroFeatures = GAMES.map((game) => ({
   title: game.label,
@@ -38,12 +40,6 @@ const perks = [
   { icon: MessageCircle, label: "Chat in every room", desc: "Talk while you play" },
   { icon: Star, label: "Invite by link or QR", desc: "Handy when everyone is in the same place" },
 ];
-
-// Footer links are 44px tall by default (a phone, any device with a touchscreen: WCAG 2.5.8 asks for 24px, and 44px
-// is the size a thumb hits reliably) and 36px only where there is room and no touch input at all (md and up, mouse
-// only), where the row is compact. `any-pointer` rather than `pointer`: a touchscreen laptop or a 2-in-1 with a
-// trackpad reports a fine primary pointer, and a finger still taps those links. The compact size has to be asked for.
-const FOOTER_LINK = "inline-flex items-center min-h-11 md:not-any-pointer-coarse:min-h-9 hover:text-foreground transition-colors";
 
 export default function HomePage() {
   const router = useRouter();
@@ -188,13 +184,13 @@ export default function HomePage() {
           className="relative z-10 max-w-5xl mx-auto px-4 py-20 text-center"
         >
           {/* Badge */}
-          <div
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm mb-8 reveal reveal-up reveal-delay-1"
+          <p
+            className="inline-block px-4 py-1.5 rounded-3xl border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm mb-8 reveal reveal-up reveal-delay-1"
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-muted-foreground">Free games and group tools,</span>
+            <span className="mr-2 inline-block h-2 w-2 rounded-full bg-emerald-400 animate-pulse align-middle" />
+            <span className="text-muted-foreground">Free games and group tools,</span>{" "}
             <span className="text-foreground font-medium">played in one shared room</span>
-          </div>
+          </p>
 
           {/* Main Headline */}
           <h1
@@ -207,7 +203,7 @@ export default function HomePage() {
 
           {/* Subheadline */}
           <p
-            className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed reveal reveal-up reveal-delay-1"
+            className="text-lg sm:text-xl text-foreground/80 dark:text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed reveal reveal-up reveal-delay-1"
           >
             Make a room, share the code, and everyone watches the same wheel,
             bracket, or game play out on their own screen.
@@ -244,7 +240,7 @@ export default function HomePage() {
                 maxLength={6}
                 value={homeCode}
                 onChange={(e) => setHomeCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-                onKeyDown={(e) => e.key === "Enter" && handleHomeJoin()}
+                onKeyDown={(e) => e.key === "Enter" && !isImeKey(e) && handleHomeJoin()}
                 placeholder="ENTER CODE"
                 aria-label="Enter room code"
                 onFocus={() => void loadJoinCheck()}
@@ -395,7 +391,7 @@ export default function HomePage() {
       </section>
 
       {/* Perks Bar */}
-      <section className="relative z-10 py-12 border-y border-border bg-black/20 backdrop-blur-sm">
+      <section className="relative z-10 py-12 border-y border-border bg-black/5 dark:bg-black/20 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {perks.map((perk, i) => (
@@ -450,7 +446,7 @@ export default function HomePage() {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             data-testid="closing-card"
-            className="rounded-2xl border border-(--border-hairline) bg-(--surface-panel) px-5 py-12 min-[380px]:px-12 sm:p-16 relative overflow-hidden shadow-2"
+            className="rounded-2xl border border-(--border-hairline) bg-(--surface-panel) px-5 py-12 min-[380px]:px-12 sm:p-16 relative overflow-clip shadow-2"
           >
             {/* Inner glow */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-(--cyan-500)/10" />

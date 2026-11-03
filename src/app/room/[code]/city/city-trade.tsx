@@ -344,7 +344,7 @@ function Side({
           step={10}
           value={cash}
           onChange={(e) => onCash(Math.max(0, Math.min(max, Number(e.target.value) || 0)))}
-          className="ml-auto w-24 h-8 font-mono text-[13px]"
+          className="ml-auto w-24 h-8 font-mono text-base md:text-[13px]"
         />
       </label>
     </div>

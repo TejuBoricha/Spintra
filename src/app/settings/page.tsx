@@ -31,6 +31,7 @@ import { getOrCreateRoomUser, updateRoomUsername, clearAllLocalUserData } from "
 import { safeStorageGet, safeStorageSet } from "@/lib/utils";
 import { getAnalyticsConsent, onAnalyticsConsentChange, setAnalyticsConsent } from "@/lib/consent";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { isImeKey } from "@/lib/keyboard";
 
 const SOUND_STORAGE_KEY = "spintra-room-sound";
 
@@ -122,7 +123,7 @@ export default function SettingsPage() {
                 onChange={(e) => setDisplayName(e.target.value)}
                 onBlur={saveDisplayName}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                  if (e.key === "Enter" && !isImeKey(e)) {
                     e.preventDefault();
                     (e.target as HTMLInputElement).blur();
                   }

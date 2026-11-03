@@ -30,6 +30,7 @@ import { getOrCreateRoomUser } from "@/lib/room-user";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { withAuthRetry, isTransientAuthError, AUTH_BUSY_MESSAGE } from "@/lib/supabase/auth-retry";
 import { checkCanJoinRoom, ROOM_JOIN_ERROR_MESSAGES } from "@/lib/room-join-check";
+import { isImeKey } from "@/lib/keyboard";
 
 interface ExploreRoom {
   id: string;
@@ -384,10 +385,10 @@ export default function ExplorePage() {
                 maxLength={6}
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-                onKeyDown={(e) => e.key === "Enter" && handleJoinRoom(joinCode)}
+                onKeyDown={(e) => e.key === "Enter" && !isImeKey(e) && handleJoinRoom(joinCode)}
                 placeholder="JOIN BY CODE (EX: 89PB5T)"
                 aria-label="Join room by code"
-                className="flex-1 h-12 text-center text-sm font-mono font-bold uppercase tracking-wider text-(--brand-primary-strong)"
+                className="flex-1 h-12 text-center text-base md:text-sm font-mono font-bold uppercase tracking-wider text-(--brand-primary-strong)"
               />
               <Button
                 onClick={() => handleJoinRoom(joinCode)}
@@ -464,7 +465,7 @@ export default function ExplorePage() {
                   No public rooms match this filter right now. Make one public and it will show up here for others to join.
                 </p>
               </div>
-              <ButtonLink href="/create" variant="brand">
+              <ButtonLink href="/create" variant="brand" wrap>
                 <Plus className="w-4 h-4" />
                 Create Public Room
               </ButtonLink>
@@ -506,7 +507,7 @@ export default function ExplorePage() {
                       </div>
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <div className="flex items-center gap-3">
-                          <span className="flex items-center gap-1 font-semibold text-emerald-400">
+                          <span className="flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-400">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping mr-0.5" />
                             <Users className="w-3.5 h-3.5" />
                             {room.participants}

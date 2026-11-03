@@ -478,6 +478,7 @@ npm run test:related # scripts/related-tests.mjs — only the specs that cover t
                     # whole suite for anything it cannot place (ADR-013)
 npm run test:city-regression # Spintra City release-blocker regression suite (needs the local Supabase stack)
 npm run audit      # node scripts/audit-gate.mjs: npm audit --audit-level=moderate plus the time-boxed allowlist
+                    # (run again, up to six times, when the registry does not answer; fails closed after that)
                     # in scripts/audit-allowlist.json — the one place this threshold is set;
                     # ci.yml's audit step calls this same script instead of hardcoding its own
 npm run ci         # verify (includes the audit) + build + test:smoke — mirrors the CI pipeline locally

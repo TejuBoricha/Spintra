@@ -104,7 +104,7 @@ export default function BingoPage() {
         {lastCalled && !hasBingo && (
           <p
             key={lastCalled}
-            className="text-2xl font-bold text-teal-400 mb-4 reveal reveal-scale"
+            className="text-2xl font-bold text-teal-700 dark:text-teal-400 mb-4 reveal reveal-scale"
           >
             {columnFor(lastCalled)}-{lastCalled}
           </p>
@@ -113,7 +113,7 @@ export default function BingoPage() {
         <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-4 mb-6 inline-block">
           <div className="grid grid-cols-5 gap-1 mb-1">
             {COLUMNS.map((col) => (
-              <div key={col} className="w-14 h-8 flex items-center justify-center font-black text-teal-400">
+              <div key={col} className="w-14 h-8 flex items-center justify-center font-black text-teal-700 dark:text-teal-400">
                 {col}
               </div>
             ))}
@@ -128,7 +128,7 @@ export default function BingoPage() {
                     <div
                       key={col}
                       className={`w-14 h-14 flex items-center justify-center rounded-lg text-sm font-semibold border transition-colors ${
-                        marked ? "bg-teal-500/30 border-teal-500 text-teal-200" : "border-(--border-hairline) text-muted-foreground"
+                        marked ? "bg-teal-500/30 border-teal-500 text-teal-900 dark:text-teal-200" : "border-(--border-hairline) text-muted-foreground"
                       }`}
                     >
                       {isFree ? <Emoji name="trophy" size={20} animated={false} /> : card[col][row]}
@@ -152,7 +152,7 @@ export default function BingoPage() {
           <Button
             onClick={callNumber}
             disabled={!card || hasBingo || called.length >= 75}
-            className="bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-white border-0"
+            className="bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-(--text-on-lime) border-0"
           >
             Call Next Number
           </Button>

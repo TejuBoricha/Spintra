@@ -110,7 +110,7 @@ export function CoinFlipActivity() {
           role="status"
           aria-live="polite"
         >
-          <Badge className="text-lg px-6 py-2 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border-yellow-500/30">
+          <Badge className="text-lg px-6 py-2 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border-yellow-500/30 text-amber-900 dark:text-amber-200">
             {coinResult}!
           </Badge>
         </motion.div>

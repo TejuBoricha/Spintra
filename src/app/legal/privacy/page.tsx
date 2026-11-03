@@ -143,7 +143,7 @@ export default function PrivacyPolicyPage() {
               browser. Depending on where you live, you may have the right to access, correct,
               or delete your data, or to withdraw consent. Because Spintra has no accounts, we
               can usually only act on requests that include a room code or your anonymous ID.
-              Write to <strong>tejasboricha225@gmail.com</strong>; this address also handles
+              Write to <strong className="[overflow-wrap:anywhere]">tejasboricha225@gmail.com</strong>; this address also handles
               complaints about how we process data.
             </p>
           </section>
@@ -178,7 +178,7 @@ export default function PrivacyPolicyPage() {
               </li>
               <li>
                 If you believe a child has shared personal information with us, write to{" "}
-                <strong>tejasboricha225@gmail.com</strong> with the room code and we will delete
+                <strong className="[overflow-wrap:anywhere]">tejasboricha225@gmail.com</strong> with the room code and we will delete
                 it.
               </li>
             </ul>
@@ -195,7 +195,7 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2 className="text-2xl font-semibold mb-3">8. Contact</h2>
             <p>
-              Questions about this Policy can be sent to <strong>tejasboricha225@gmail.com</strong>.
+              Questions about this Policy can be sent to <strong className="[overflow-wrap:anywhere]">tejasboricha225@gmail.com</strong>.
             </p>
           </section>
 

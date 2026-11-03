@@ -28,6 +28,7 @@ import { getGameByType } from "@/lib/games";
 import { Emoji, type EmojiName } from "@/components/emoji";
 import { playPop, playSuccess } from "@/lib/audio";
 import { toast } from "sonner";
+import { isImeKey } from "@/lib/keyboard";
 
 const GameIcon = getGameByType("team-maker")!.icon;
 
@@ -214,7 +215,10 @@ export default function TeamMakerPage() {
         </div>
 
         {/* ── Main grid: Input + Controls | Templates ── */}
-        <div className="grid lg:grid-cols-3 gap-6 mb-8">
+        {/* The single column below lg is minmax(0, 1fr), not the implicit auto: an auto column grows to its widest
+            content (the textarea sizes itself to its placeholder), which pushed the page past a phone's edge once the
+            text size was raised. */}
+        <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-3 gap-6 mb-8">
           {/* Input column */}
           <div
             className="lg:col-span-2 border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 space-y-5 reveal reveal-left reveal-delay-1"
@@ -240,7 +244,7 @@ export default function TeamMakerPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">Number of Teams</Label>
-                <span className="text-sm font-mono text-primary">{numTeams}</span>
+                <span className="text-sm font-mono text-(--text-accent)">{numTeams}</span>
               </div>
               <Slider
                 value={[numTeams]}
@@ -280,12 +284,18 @@ export default function TeamMakerPage() {
             <Button
               onClick={generateTeams}
               disabled={parsedNames.length === 0}
+              aria-describedby={parsedNames.length === 0 ? "team-maker-why-disabled" : undefined}
               className="w-full h-12 text-base font-semibold bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95"
             >
               <Shuffle className="w-5 h-5 mr-2" />
               Generate Teams
               <Sparkles className="w-4 h-4 ml-2 opacity-60" />
             </Button>
+            {parsedNames.length === 0 && (
+              <p id="team-maker-why-disabled" className="mt-2 text-center text-xs text-muted-foreground">
+                Add some names to make teams.
+              </p>
+            )}
           </div>
 
           {/* Templates column */}
@@ -367,7 +377,7 @@ export default function TeamMakerPage() {
               </div>
 
               {/* Team cards grid */}
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-[minmax(0,1fr)] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {teams.map((team, teamIdx) => {
                   const color = TEAM_COLORS[team.colorIdx % TEAM_COLORS.length];
                   const isCollapsed = collapsedTeams.has(teamIdx);
@@ -431,7 +441,7 @@ export default function TeamMakerPage() {
                                 exit={{ opacity: 0, x: 10, height: 0 }}
                                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-(--surface-sunken) border border-(--border-hairline) group/member hover:bg-muted transition-colors"
                               >
-                                <span className="flex-1 text-sm truncate">
+                                <span className="min-w-0 flex-1 text-sm truncate" title={member}>
                                   {member}
                                 </span>
                                 {/* Move to other teams */}
@@ -483,9 +493,9 @@ export default function TeamMakerPage() {
                               }))
                             }
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") addMember(teamIdx);
+                              if (e.key === "Enter" && !isImeKey(e)) addMember(teamIdx);
                             }}
-                            className="flex-1 text-xs"
+                            className="flex-1 text-base md:text-xs"
                           />
                           <Button
                             size="icon-sm"
@@ -515,7 +525,7 @@ export default function TeamMakerPage() {
                   Create a room and share the code. Each person sees the teams on their own
                   phone, and any reshuffle shows up for everyone.
                 </p>
-                <ButtonLink href="/create?type=team-maker" className="gap-2 bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">
+                <ButtonLink href="/create?type=team-maker" wrap className="gap-2 bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">
                   <Users className="w-4 h-4" />
                   Create Room
                   <ArrowRight className="w-4 h-4" />

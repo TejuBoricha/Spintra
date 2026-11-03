@@ -79,7 +79,7 @@ const FAQS = [
 
 function StartMatchButton() {
   return (
-    <ButtonLink href="/create?type=city" variant="brand" size="lg" className="rounded-full font-bold">
+    <ButtonLink href="/create?type=city" variant="brand" size="lg" wrap className="rounded-full font-bold">
       Start a Match
       <ArrowRight className="w-4 h-4" />
     </ButtonLink>

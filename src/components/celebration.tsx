@@ -29,7 +29,7 @@ export function fireConfetti() {
 
 const ACCENT_TITLE_CLASS: Record<"brand" | "gold", string> = {
   brand: "gradient-text",
-  gold: "bg-gradient-to-r from-amber-400 to-(--coral-400) bg-clip-text text-transparent",
+  gold: "bg-gradient-to-r from-amber-700 to-(--coral-600) dark:from-amber-400 dark:to-(--coral-400) bg-clip-text text-transparent",
 };
 
 interface CelebrationBannerProps {

@@ -25,6 +25,7 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useWhatsNew, WhatsNewTrigger, WhatsNewDialog } from "@/components/layout/whats-new-dialog";
 import { cn } from "@/lib/utils";
+import { isImeKey } from "@/lib/keyboard";
 
 // The confetti library loads when the page is idle (and on first use if that has not happened
 // yet), not in every page's first load (search audit S-7). A failed fetch just means no confetti.
@@ -128,7 +129,7 @@ export function Navbar() {
   const handleDigitKeyDown = useCallback(
     (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter") {
-        handleJoinRoomSubmit();
+        if (!isImeKey(e)) handleJoinRoomSubmit();
         return;
       }
       if (e.key === "Backspace" && !codeDigits[index] && index > 0) {
@@ -387,7 +388,7 @@ export function Navbar() {
                 <DialogTitle className="text-3xl font-display font-black tracking-widest text-foreground uppercase leading-tight">
                   Join Room
                 </DialogTitle>
-                <DialogDescription className="text-xs font-mono text-muted-foreground uppercase tracking-[0.3em] mt-3">
+                <DialogDescription className="text-sm font-mono text-muted-foreground uppercase tracking-widest mt-3 text-center">
                   Enter the 6-character code
                 </DialogDescription>
               </div>
@@ -423,7 +424,7 @@ export function Navbar() {
               <Button
                 disabled={joinCode.length !== 6 || joining}
                 onClick={handleJoinRoomSubmit}
-                className="relative z-10 w-full h-14 rounded-xl bg-(--brand-primary-strong) text-white hover:bg-primary/90 font-display font-black tracking-widest text-lg overflow-hidden transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:hover:scale-100 group/btn border-0 shadow-[0_0_20px_rgba(125,187,37,0.3)] hover:shadow-[0_0_30px_rgba(125,187,37,0.5)]"
+                className="relative z-10 w-full h-14 rounded-xl bg-(--brand-primary-strong) text-white hover:bg-primary/90 font-display font-black tracking-widest text-lg overflow-hidden transition-all hover:scale-[1.02] active:scale-95 disabled:hover:scale-100 group/btn border-0 shadow-[0_0_20px_rgba(125,187,37,0.3)] hover:shadow-[0_0_30px_rgba(125,187,37,0.5)]"
               >
                 <span className="relative z-10 flex items-center justify-center gap-2">
                   {joining ? "CONNECTING..." : "ENTER GAME"}

@@ -14,6 +14,7 @@ const WORDS = WORD_SCRAMBLE_WORDS;
 
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { playSwipe, playSuccess, playFailure } from "@/lib/audio";
+import { isImeKey } from "@/lib/keyboard";
 
 async function hashWord(word: string): Promise<string> {
   const msgBuffer = new TextEncoder().encode(word.trim().toUpperCase());
@@ -151,7 +152,7 @@ export function WordScrambleActivity() {
               <Input
                 value={guess}
                 onChange={(e) => setGuess(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && submitGuess()}
+                onKeyDown={(e) => e.key === "Enter" && !isImeKey(e) && submitGuess()}
                 placeholder="Your guess..."
                 aria-label="Guess the word"
                 className="flex-1 rounded-full px-4 h-11"

@@ -283,8 +283,8 @@ export default function NameDrawPage() {
   const drawnButShuffled = [...drawnNames].reverse();
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Aurora background accent */}
+    <div className="min-h-screen bg-background relative overflow-clip">
+      {/* Aurora background accent (clipped with overflow-clip so the page is not a scroll container) */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-amber-500/10 via-orange-500/5 to-transparent blur-3xl pointer-events-none" />
 
       <div className="max-w-5xl mx-auto px-4 py-8 sm:py-12 relative z-10">
@@ -305,7 +305,7 @@ export default function NameDrawPage() {
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-5 gap-6">
           {/* Left Panel: Input */}
           <div
             className="lg:col-span-2 space-y-4 reveal reveal-left reveal-delay-1"
@@ -323,7 +323,7 @@ export default function NameDrawPage() {
 
               <Textarea
                 placeholder="Paste names, one per line...&#10;Alice&#10;Bob&#10;Charlie"
-                className="min-h-[160px] resize-y font-mono text-sm"
+                className="min-h-[160px] resize-y font-mono"
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
               />
@@ -352,7 +352,7 @@ export default function NameDrawPage() {
                   size="sm"
                   onClick={clearAll}
                   disabled={names.length === 0 && drawnNames.length === 0}
-                  className="text-red-400 hover:text-red-300"
+                  className="text-red-700 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                 >
                   <Trash2 className="w-3.5 h-3.5 mr-1" />
                   Clear
@@ -456,14 +456,14 @@ export default function NameDrawPage() {
                     <motion.div
                       animate={{ rotate: [0, -3, 3, -2, 0] }}
                       transition={{ duration: 0.3, repeat: Infinity }}
-                      className="text-5xl sm:text-6xl md:text-7xl font-bold text-amber-400 mb-4"
+                      className="text-5xl sm:text-6xl md:text-7xl font-bold text-amber-700 dark:text-amber-400 mb-4 [overflow-wrap:anywhere]"
                     >
                       {shufflingName}
                     </motion.div>
                     <motion.p
-                      animate={{ opacity: [0.5, 1, 0.5] }}
+                      animate={{ opacity: [0.7, 1, 0.7] }}
                       transition={{ duration: 0.8, repeat: Infinity }}
-                      className="text-muted-foreground text-sm"
+                      className="text-foreground text-sm"
                     >
                       Picking a winner...
                     </motion.p>
@@ -484,7 +484,7 @@ export default function NameDrawPage() {
                       className="mb-4 reveal reveal-up reveal-delay-2"
                     >
                       <Crown className="w-12 h-12 text-amber-400 mx-auto mb-2" />
-                      <p className="text-sm text-amber-400/80 font-medium uppercase tracking-wider">
+                      <p className="text-sm text-amber-800 dark:text-amber-400/80 font-medium uppercase tracking-wider">
                         Winner!
                       </p>
                     </div>
@@ -492,7 +492,7 @@ export default function NameDrawPage() {
                       initial={{ scale: 2, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
-                      className="text-5xl sm:text-6xl md:text-7xl font-bold bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-400 bg-clip-text text-transparent mb-3 break-all"
+                      className="text-5xl sm:text-6xl md:text-7xl font-bold bg-gradient-to-r from-amber-700 via-orange-600 to-yellow-700 dark:from-amber-400 dark:via-orange-400 dark:to-yellow-400 bg-clip-text text-transparent mb-3 break-all"
                     >
                       {currentWinner}
                     </motion.div>
@@ -513,7 +513,7 @@ export default function NameDrawPage() {
                     className="text-center w-full reveal reveal-fade"
                   >
                     <Trophy className="w-10 h-10 text-amber-400 mx-auto mb-3" />
-                    <p className="text-sm text-amber-400/80 font-medium uppercase tracking-wider mb-4">
+                    <p className="text-sm text-amber-800 dark:text-amber-400/80 font-medium uppercase tracking-wider mb-4">
                       Winners
                     </p>
                     <div className="flex flex-wrap justify-center gap-4">
@@ -529,10 +529,10 @@ export default function NameDrawPage() {
                           }}
                           className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30"
                         >
-                          <div className="text-xs text-amber-400/60 mb-1">
+                          <div className="text-xs text-amber-800 dark:text-amber-400 mb-1">
                             #{i + 1}
                           </div>
-                          <div className="text-xl font-bold text-amber-300">
+                          <div className="text-xl font-bold text-amber-900 dark:text-amber-300">
                             {name}
                           </div>
                         </motion.div>
@@ -562,7 +562,7 @@ export default function NameDrawPage() {
                     <p className="text-lg font-semibold text-muted-foreground mb-1">
                       Ready to Draw
                     </p>
-                    <p className="text-sm text-muted-foreground/60">
+                    <p className="text-sm text-muted-foreground">
                       {names.length > 0
                         ? `${pluralize(names.length, "name")} loaded. Press Draw.`
                         : "Add some names to get started"}
@@ -581,7 +581,7 @@ export default function NameDrawPage() {
                   isDrawing ||
                   availableNames.length === 0
                 }
-                className="min-w-[9rem] flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white border-0 shadow-lg shadow-amber-500/25"
+                className="min-w-[9rem] flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-(--text-on-lime) border-0 shadow-lg shadow-amber-500/25"
               >
                 <Play className="w-4 h-4 mr-2" />
                 Draw One
@@ -670,7 +670,7 @@ export default function NameDrawPage() {
                   </h3>
                   <button
                     onClick={shareResults}
-                    className="text-xs text-amber-400/70 hover:text-amber-400 transition-colors flex items-center gap-1"
+                    className="text-xs text-amber-800 hover:text-amber-900 dark:text-amber-400/70 dark:hover:text-amber-400 transition-colors flex items-center gap-1"
                   >
                     <Copy className="w-3 h-3" />
                     Copy results
@@ -685,7 +685,7 @@ export default function NameDrawPage() {
                       transition={{ delay: i * 0.05 }}
                       className="flex items-center gap-3 px-3 py-2 rounded-lg bg-(--surface-sunken) border border-(--border-hairline)"
                     >
-                      <span className="text-xs font-mono text-amber-400/60 w-6 text-right">
+                      <span className="text-xs font-mono text-amber-800 dark:text-amber-400 w-6 text-right">
                         #{drawnNames.length - i}
                       </span>
                       <span className="text-sm font-medium flex-1">{name}</span>

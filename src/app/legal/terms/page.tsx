@@ -130,7 +130,7 @@ export default function TermsOfServicePage() {
             <h2 className="text-2xl font-semibold mb-3">11. Contact</h2>
             <p>
               Questions about these Terms can be sent to{" "}
-              <strong>tejasboricha225@gmail.com</strong>.
+              <strong className="[overflow-wrap:anywhere]">tejasboricha225@gmail.com</strong>.
             </p>
           </section>
 

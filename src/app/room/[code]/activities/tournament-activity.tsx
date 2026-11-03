@@ -404,7 +404,7 @@ export function TournamentActivity() {
               icon={<Crown className="w-12 h-12 text-amber-400" />}
               title={tournament.winner}
               subtitle={<><Emoji name="trophy" size={20} pop /> {isSharedFirst(tournament) ? "Shared first place" : "Tournament Champion"}</>}
-              titleClassName="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400 bg-clip-text text-transparent"
+              titleClassName="bg-gradient-to-r from-amber-700 via-yellow-700 to-amber-700 dark:from-amber-400 dark:via-yellow-400 dark:to-amber-400 bg-clip-text text-transparent"
             />
           )}
 
