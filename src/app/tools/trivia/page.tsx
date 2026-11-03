@@ -271,7 +271,7 @@ export default function TriviaPage() {
                       id="trivia-tool-category"
                       value={selectedCategory}
                       onChange={(e) => setSelectedCategory(e.target.value)}
-                      className="w-full bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500"
+                      className="w-full bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-base md:text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500"
                     >
                       <option value="All">All Categories</option>
                       {TRIVIA_CATEGORIES.map((cat) => (
@@ -291,7 +291,7 @@ export default function TriviaPage() {
                       id="trivia-tool-difficulty"
                       value={selectedDifficulty}
                       onChange={(e) => setSelectedDifficulty(e.target.value)}
-                      className="w-full bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500"
+                      className="w-full bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-base md:text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500"
                     >
                       <option value="All">All Difficulties</option>
                       <option value="easy">Easy</option>

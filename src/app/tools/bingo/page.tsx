@@ -254,7 +254,7 @@ export default function BingoPage() {
                       onChange={(e) => {
                         setCurrentThemeId(e.target.value);
                       }}
-                      className="w-full bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+                      className="w-full bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-base md:text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
                     >
                       {BINGO_THEMES.map((theme) => (
                         <option key={theme.id} value={theme.id}>
@@ -273,7 +273,7 @@ export default function BingoPage() {
                       id="bingo-pattern-select"
                       value={currentPatternId}
                       onChange={(e) => setCurrentPatternId(e.target.value as BingoPatternId)}
-                      className="w-full bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+                      className="w-full bg-(--surface-sunken) border border-(--border-hairline) rounded-xl px-3 py-2 text-base md:text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
                     >
                       {BINGO_PATTERNS.map((p) => (
                         <option key={p.id} value={p.id}>
