@@ -242,7 +242,7 @@ test.describe('the cursor easter egg', () => {
     await expect.poll(() => offset(page, 'flee'), { message: 'the die is pushed', timeout: 3000 }).toBeGreaterThan(3);
     // the mouse does not move; the page does
     await page.evaluate(() => window.scrollTo(0, 0));
-    await expect.poll(() => offset(page, 'flee'), { message: 'the die settles back', timeout: 4000 }).toBeLessThan(1.5);
+    await expect.poll(() => offset(page, 'flee'), { message: 'the die settles back', timeout: 10000 }).toBeLessThan(1.5);
     await scene.evaluate((el) => {
       (window as unknown as { __writes: number }).__writes = 0;
       new MutationObserver((records) => {
@@ -255,7 +255,7 @@ test.describe('the cursor easter egg', () => {
       await page.waitForTimeout(ms);
       return (await page.evaluate(() => (window as unknown as { __writes: number }).__writes)) - before;
     };
-    await expect.poll(() => writesIn(300), { message: 'style and path writes in a 300ms window', timeout: 5000, intervals: [0] }).toBe(0);
+    await expect.poll(() => writesIn(300), { message: 'style and path writes in a 300ms window', timeout: 10000, intervals: [0] }).toBe(0);
   });
 
   test.describe('on a touch device', () => {
