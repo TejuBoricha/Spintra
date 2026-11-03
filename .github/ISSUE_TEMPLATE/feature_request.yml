@@ -1,0 +1,29 @@
+name: ✨ Feature Request
+description: Propose a new game, tool, or platform capability for Spintra
+title: "feat: [Short proposal summary]"
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We love ideas! Please describe the proposed feature and how it benefits party hosts, teachers, or players.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Use Case
+      description: What challenge or player need does this feature address?
+      placeholder: "e.g. In classroom rooms, teachers need a quick way to..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: Describe the ideal user experience or technical implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered any alternative workarounds or approaches?
