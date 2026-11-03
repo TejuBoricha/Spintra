@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
 import { TRUTH_OR_DARE_ALL_DARES, TRUTH_OR_DARE_ALL_TRUTHS } from '../src/lib/utils';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration(test);
 
 // Audit K-1, K-2, K-3, K-5 and K-6: dares that force someone to show private photos,
 // post something that cannot be taken back, hand over their phone or call someone,

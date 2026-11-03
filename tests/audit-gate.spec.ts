@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { evaluateAudit, ghsaOf, readAuditReport } from '../scripts/audit-gate-core.mjs';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration(test);
 
 // The CI dependency gate (`npm run audit`) is npm audit plus a time-boxed allowlist for
 // an advisory with no fix yet (7 Oct 2026: braces, which has no patched release). A bug

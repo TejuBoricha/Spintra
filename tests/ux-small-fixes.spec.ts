@@ -3,6 +3,9 @@ import path from 'node:path';
 import { test, expect, type Page } from '@playwright/test';
 import { GLOBAL_ERROR_CSS } from '../src/app/global-error-styles';
 import { hideConfigBanner } from './helpers/config-banner';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration(test);
 
 // UX audit (7 Oct 2026): three small findings with one behaviour each.
 

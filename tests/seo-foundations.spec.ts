@@ -1,6 +1,9 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
 import { GAMES } from '../src/lib/games';
 import { jsonLdScript } from '../src/lib/site-metadata';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration();
 
 // 7 Oct 2026: searching "spintra dice" showed Google correcting "spintra" to "spinner" and
 // an AI overview defining it as a Roman token, so the site was not being found by its own

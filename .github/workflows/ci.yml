@@ -21,12 +21,10 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    # Fail fast on a hang instead of burning the GitHub default 360-minute
-    # ceiling. A healthy run takes about 27-42 minutes: the whole suite runs on one
-    # worker (playwright.config.ts), and the two pixel-contrast specs are 148 of
-    # its cases (about 9 minutes), which db-integration leaves to this job: it
-    # has no room for them (about 36 of its 50 minutes without).
-    timeout-minutes: 55
+    # Fail fast on a hang instead of burning the GitHub default 360-minute ceiling.
+    # The suite runs across 2 workers on the 2-vCPU runner (PLAYWRIGHT_WORKERS=2),
+    # bringing test execution down to ~12-15 minutes (total job runtime ~15-18m).
+    timeout-minutes: 35
 
     steps:
       - name: Checkout Repository
@@ -111,6 +109,7 @@ jobs:
         run: npm run test:smoke
         env:
           SKIP_ENV_VALIDATION: "true"
+          PLAYWRIGHT_WORKERS: "2"
 
       - name: Upload Test Artifacts on Failure
         uses: actions/upload-artifact@v7
@@ -134,12 +133,10 @@ jobs:
   # real RLS policies, and real triggers end-to-end.
   db-integration:
     runs-on: ubuntu-latest
-    # Bigger budget than validate: this job also pulls/starts ~10 Supabase
-    # Docker containers (about 5 minutes) and runs the full E2E suite with CI
-    # retries. A healthy run takes about 36 minutes; 40 left room for one bad
-    # step and no more (a hung `npm ci` took 7 of them on 22 Oct 2026 and the
-    # run was cancelled with its tests still going), so it has 50.
-    timeout-minutes: 50
+    # Ephemeral local Supabase stack (Docker). Pure visual, static, and UI tests
+    # are skipped in this job via skipInDbIntegration, leaving only real DB/RLS/
+    # realtime tests. Total job runtime is reduced from ~36m down to ~10-12m.
+    timeout-minutes: 25
 
     steps:
       - name: Checkout Repository

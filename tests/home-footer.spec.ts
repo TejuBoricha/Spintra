@@ -1,4 +1,7 @@
 import { test, expect, chromium, type Page } from '@playwright/test';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration();
 
 // The home footer. Review of PR #76 (9 Oct 2026): the footer links were 44px tall below the `md` breakpoint
 // and 36px above it, so a touch tablet (768px and wider: iPad portrait, large foldables) got the mouse size.

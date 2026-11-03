@@ -1,4 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration(test);
 
 // Audit X-4: on the light theme the highlighted word in headings (the .gradient-text
 // span) was a pale lime gradient on a cream page, about 1.07:1, nearly invisible on

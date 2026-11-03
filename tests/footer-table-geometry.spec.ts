@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { AX, AY, REST, TRACK_D, TRACK_WIDE_D, curve, toPath } from '../src/components/landing/footer-table-geometry';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration();
 
 // The footer scene's geometry is written out as text (footer-table-geometry.ts) so that the server and every browser
 // render the same markup: Math.cos and Math.sin are not guaranteed to agree to the last digit between engines. This

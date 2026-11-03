@@ -2,6 +2,9 @@ import fs from 'node:fs';
 import { test, expect, type Page } from '@playwright/test';
 import { SITE_PAGES, NOT_FOUND_PATH } from './site-routes';
 import { hideConfigBanner } from './helpers/config-banner';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration();
 
 // UX audit (7 Oct 2026), findings U-05 and U-27: controls and dialogs with no accessible name (both
 // dialogs, the dice and name-draw inputs, the Trivia room's two selects, the collapse and reset icon

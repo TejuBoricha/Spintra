@@ -1,4 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration(test);
 
 // Audit T-5 and T-6 on the Name Draw tool.
 // T-5: the draw history was stored as positions in the list, so editing the list

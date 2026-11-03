@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration();
 
 // WCAG 2.5.3, Label in Name: a control's accessible name has to contain the text it shows. Each Lucky Wheel
 // template button shows "<label>" and "<N> entries", but carried aria-label='Apply "<label>" template (replaces

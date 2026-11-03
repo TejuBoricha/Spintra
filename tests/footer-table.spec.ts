@@ -1,4 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
+import { skipInDbIntegration } from './helpers/ci-skip';
+
+skipInDbIntegration();
 
 // The home footer's "endless game table" (src/components/landing/footer-table.tsx): a living scene of game pieces on
 // a figure-of-eight track, in the middle of the footer, so that reaching the bottom of the page still feels like

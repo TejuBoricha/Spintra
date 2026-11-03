@@ -23,7 +23,9 @@ export default defineConfig({
   // that class of flake self-heal instead of failing the whole run; a
   // genuinely broken test still fails after using up its retries.
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.PLAYWRIGHT_WORKERS
+    ? parseInt(process.env.PLAYWRIGHT_WORKERS, 10)
+    : (process.env.CI ? 1 : undefined),
   reporter: process.env.CI ? [['html', { open: 'never' }], ['list']] : 'list',
   use: {
     headless: true,
