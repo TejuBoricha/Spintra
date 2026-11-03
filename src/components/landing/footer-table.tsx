@@ -416,6 +416,14 @@ function followCursor(root: HTMLElement): () => void {
     cursor = null;
     wake();
   };
+  const onScroll = () => {
+    if (!cursor) return;
+    const r = root.getBoundingClientRect();
+    if (!nearScene(cursor.x, cursor.y, r)) {
+      cursor = null;
+    }
+    wake();
+  };
 
   function tick() {
     frame = 0;
@@ -424,7 +432,7 @@ function followCursor(root: HTMLElement): () => void {
     // 370 style recalculations a second; this order costs one of each per frame at most.
     const r = root.getBoundingClientRect();
     const rects = pieces.map((p) => p.sprite.getBoundingClientRect());
-    // The page can scroll under a stationary mouse, so the cursor is checked against the scene every frame.
+    // The page can scroll under a stationary mouse, checked in onScroll or whenever tick runs.
     if (cursor && !nearScene(cursor.x, cursor.y, r)) cursor = null;
 
     const W = r.width;
@@ -438,8 +446,10 @@ function followCursor(root: HTMLElement): () => void {
     // the layers drift a little against the cursor, each by its own depth
     const nx = cursor ? (cx / W - 0.5) * 2 : 0;
     const ny = cursor ? (cy / H - 0.5) * 2 : 0;
-    px += (nx * 7 - px) * 0.08;
-    py += (ny * 5 - py) * 0.08;
+    const goalPx = nx * 7;
+    const goalPy = ny * 5;
+    px += (goalPx - px) * 0.08;
+    py += (goalPy - py) * 0.08;
 
     let moving = false;
     pieces.forEach((p, i) => {
@@ -472,7 +482,7 @@ function followCursor(root: HTMLElement): () => void {
       p.vy = (p.vy + (ty - p.y) * 0.1) * 0.8;
       p.x += p.vx;
       p.y += p.vy;
-      if (Math.abs(p.x) > 0.05 || Math.abs(p.y) > 0.05 || Math.abs(p.vx) > 0.02 || Math.abs(p.vy) > 0.02) moving = true;
+      if (Math.abs(p.x - tx) > 0.05 || Math.abs(p.y - ty) > 0.05 || Math.abs(p.vx) > 0.02 || Math.abs(p.vy) > 0.02) moving = true;
     });
 
     // write phase. The layers and the pieces get their own translate: moving them through a custom property on the
@@ -511,11 +521,13 @@ function followCursor(root: HTMLElement): () => void {
   }
 
   window.addEventListener("pointermove", onMove, { passive: true });
+  window.addEventListener("scroll", onScroll, { passive: true });
   document.documentElement.addEventListener("pointerleave", onLeave);
   window.addEventListener("blur", onLeave);
 
   return () => {
     window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("scroll", onScroll);
     document.documentElement.removeEventListener("pointerleave", onLeave);
     window.removeEventListener("blur", onLeave);
     if (frame) cancelAnimationFrame(frame);

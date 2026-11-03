@@ -48,3 +48,10 @@ test('never have I ever no longer has the fake ID and other adult premises, on t
   }
   expect(page).toContain('Never have I ever worn a costume when it wasn');
 });
+
+test('migration 0116 replaces the in-room "Text your crush" dare with movie trailer voiceover', () => {
+  const mig = fs.readFileSync(path.join(__dirname, '../supabase/migrations/0116_replace_text_your_crush_dare.sql'), 'utf-8');
+  expect(mig).toContain('Describe your day as a movie trailer voiceover');
+  expect(mig).toContain('Text your crush right now');
+});
+
