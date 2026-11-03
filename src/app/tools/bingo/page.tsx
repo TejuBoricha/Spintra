@@ -353,13 +353,13 @@ export default function BingoPage() {
         )}
 
         {/* Bingo Card Container */}
-        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-3 sm:p-4 mb-5 inline-block shadow-sm max-w-full">
+        <div className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-2 sm:p-4 mb-5 shadow-sm w-full max-w-[340px] sm:max-w-[420px] mx-auto">
           {/* Column Headers B-I-N-G-O */}
-          <div className="grid grid-cols-5 gap-1 mb-1.5">
+          <div className="grid grid-cols-5 gap-1 sm:gap-1.5 mb-1.5">
             {COLUMNS.map((col) => (
               <div
                 key={col}
-                className="w-14 sm:w-16 h-8 flex items-center justify-center font-black text-base text-teal-700 dark:text-teal-400 tracking-wider"
+                className="w-full h-7 sm:h-8 flex items-center justify-center font-black text-sm sm:text-base text-teal-700 dark:text-teal-400 tracking-wider"
               >
                 {col}
               </div>
@@ -369,7 +369,7 @@ export default function BingoPage() {
           {/* 5x5 Grid Cells */}
           {card ? (
             [0, 1, 2, 3, 4].map((row) => (
-              <div key={row} className="grid grid-cols-5 gap-1.5 mb-1.5 last:mb-0">
+              <div key={row} className="grid grid-cols-5 gap-1 sm:gap-1.5 mb-1 sm:mb-1.5 last:mb-0">
                 {COLUMNS.map((_, col) => {
                   const marked = isCellMarked(col, row);
                   const isFree = col === 2 && row === 2;
@@ -386,7 +386,7 @@ export default function BingoPage() {
                       aria-label={`${COLUMNS[col]} ${row + 1}: ${
                         isFree ? "Free Space" : cellText
                       }, ${marked ? "Marked" : "Unmarked"}`}
-                      className={`w-14 sm:w-16 h-14 sm:h-16 flex flex-col items-center justify-center rounded-xl text-xs sm:text-sm font-semibold border-2 transition-all p-1 text-center select-none relative overflow-hidden ${
+                      className={`min-w-0 w-full aspect-square flex flex-col items-center justify-center rounded-xl text-[11px] sm:text-sm font-semibold border-2 transition-all p-0.5 sm:p-1 text-center select-none relative overflow-hidden ${
                         isFree
                           ? "bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400"
                           : marked
@@ -398,15 +398,15 @@ export default function BingoPage() {
                     >
                       {isFree ? (
                         <div className="flex flex-col items-center">
-                          <Trophy className="w-5 h-5 text-amber-500" />
-                          <span className="text-[10px] font-bold uppercase tracking-wider mt-0.5">Free</span>
+                          <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
+                          <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider mt-0.5">Free</span>
                         </div>
                       ) : (
                         <>
-                          <span className="line-clamp-2 leading-tight break-words">{cellText}</span>
+                          <span className="line-clamp-2 leading-tight break-words px-0.5">{cellText}</span>
                           {marked && (
-                            <span className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-teal-500 text-white flex items-center justify-center">
-                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                            <span className="absolute bottom-0.5 right-0.5 w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full bg-teal-500 text-white flex items-center justify-center">
+                              <Check className="w-2 h-2 sm:w-2.5 sm:h-2.5 stroke-[3]" />
                             </span>
                           )}
                         </>
@@ -418,11 +418,11 @@ export default function BingoPage() {
             ))
           ) : (
             [0, 1, 2, 3, 4].map((row) => (
-              <div key={row} className="grid grid-cols-5 gap-1.5 mb-1.5">
+              <div key={row} className="grid grid-cols-5 gap-1 sm:gap-1.5 mb-1 sm:mb-1.5 last:mb-0">
                 {COLUMNS.map((_, col) => (
                   <div
                     key={col}
-                    className="w-14 sm:w-16 h-14 sm:h-16 rounded-xl border border-(--border-hairline) bg-(--surface-sunken) animate-pulse"
+                    className="min-w-0 w-full aspect-square rounded-xl border border-(--border-hairline) bg-(--surface-sunken) animate-pulse"
                   />
                 ))}
               </div>
