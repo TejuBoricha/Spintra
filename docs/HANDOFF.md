@@ -12,12 +12,14 @@ This board is the one place that says what is **done, in progress and pending**.
 
 ### 1. Git and deploy state
 
-- `main` is at `f3e3219` (merge of PR #102: CI pipeline turbo acceleration, 3 Nov 2026), after PR #100 (dropdown theming and text truncation), PR #101 (CI acceleration), and PR #98 (Dependabot updates).
-- **Branch `feat/migrations-0115-0116-and-footer-polish`**:
-  - Migrations 0115 (`0115_trivia_one_award_per_question.sql`, audit G-3 server half) and 0116 (`0116_replace_text_your_crush_dare.sql`, audit K-4 content safety).
-  - Home footer `role="contentinfo"` landmark added in `home-client.tsx`, covering all 24 pages in `tests/site-footer.spec.ts`.
-  - `footer-table.tsx` cursor frame loop: added scroll listener for still mouse scroll-away handling.
-  - Verified clean via `npm run verify:static` (0 errors, 0 warnings, 0 docs drift).
+- `main` is at `75f5ede` (merge of PR #103: migrations 0115 & 0116, home footer landmark fix, and cursor performance, 4 Nov 2026), after PR #102 (CI pipeline turbo acceleration) and PR #100.
+- **Branch `chore/repository-showcase-transformation`**:
+  - Full GitHub repository presentation transformation into an artistic, visual masterpiece.
+  - Bespoke vector brand artwork: `assets/branding/hero-banner.svg`, `assets/branding/architecture-diagram.svg`, `assets/branding/divider.svg`.
+  - 8 real high-res retina screenshots captured via Playwright in `assets/screenshots/`.
+  - GitHub issue forms (`bug_report.yml`, `feature_request.yml`), PR template, and `SECURITY.md`.
+  - Complete README overhaul with badging, feature matrices, architecture, Spintra City deep dive, and all 14 npm scripts documented.
+  - Verified clean via `npm run verify:static` (0 errors, 0 warnings, 16 local links verified, 0 docs drift).
 - **PR #68** (merged 7 Oct as `691de9a`, all five checks green on the exact head `7f5a14c`): the tournament, tools and content fixes of the 30 Sep and 2 Oct sessions plus five rounds of code review (round 1: 10 findings, round 2: 8, round 3: 10, round 4: 9, round 5: 7; the ones left on purpose, with reasons, are in `TASKS.md`), the Leave room changes (in-app navigation, one retry, a toast when the delete fails, a second press ignored), and the CI audit fix (below). Full Playwright suite on the final code: 181 passed, 2 skipped (by design), 0 failed. No migration.
 - **PR #67** (merged 7 Oct as `3a6aef3`, five green checks on the exact head `202383a`, which had `main` merged in for the audit fix): the daily backup retries every production read (`scripts/backup/retry.sh`, tested by `tests/backup-retry.spec.ts`: up to 5 tries, 15s to 120s apart; a wrong password or SQL error stops at once; "Tenant or user not found" gets 3 tries) and runs **twice a day** (03:00 and 15:00 UTC; the owner decided on 7 Oct to keep it). **Not run end to end:** a manual run from the branch reads production and was refused; **the first scheduled run after the merge is the test**: check `gh run list --workflow db-backup.yml` for a run that finished, and that two runs appear each day.
 - **CI dependency audit, again (10 Oct 2026):** five new Next.js advisories (cache poisoning of SSG and ISR pages, a Draft Mode leak through `use cache`, an information disclosure in metadata image routes, and a high-severity server-side request forgery in image optimization; all in 16.0.0 to 16.3.7) turned `npm run audit` red on every branch, and because that is the third step of the `validate` job, CI stopped there and ran no test. Fixed by moving `next` and `eslint-config-next` from 16.3.6 to 16.4.0 (branch `fix/deps-next-16-4-0`, lockfile and `package.json` only, no code change); the gate is green again apart from the `braces` exception below, which still expires 2026-11-07.

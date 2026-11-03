@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 440" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradients -->
+    <radialGradient id="bg-glow-1" cx="20%" cy="10%" r="60%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#090a0f" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="bg-glow-2" cx="80%" cy="30%" r="50%">
+      <stop offset="0%" stop-color="#6366f1" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#090a0f" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="bg-glow-3" cx="50%" cy="90%" r="40%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#090a0f" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Glass & Border Gradients -->
+    <linearGradient id="card-border" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.2"/>
+      <stop offset="50%" stop-color="#10b981" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#6366f1" stop-opacity="0.2"/>
+    </linearGradient>
+    <linearGradient id="brand-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="50%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#38bdf8"/>
+    </linearGradient>
+    <linearGradient id="badge-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="orange-token" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fb923c"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+
+    <!-- Grid Pattern -->
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#ffffff" stroke-opacity="0.03" stroke-width="1"/>
+    </pattern>
+
+    <!-- Filter for subtle drop shadows -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <style>
+    .font-title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-weight: 900; }
+    .font-sans { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+  </style>
+
+  <!-- Base Dark Canvas -->
+  <rect width="1200" height="440" rx="16" fill="#090a0f"/>
+
+  <!-- Ambient Glow Meshes -->
+  <rect width="1200" height="440" rx="16" fill="url(#bg-glow-1)"/>
+  <rect width="1200" height="440" rx="16" fill="url(#bg-glow-2)"/>
+  <rect width="1200" height="440" rx="16" fill="url(#bg-glow-3)"/>
+  <rect width="1200" height="440" rx="16" fill="url(#grid)"/>
+
+  <!-- Main Showcase Glass Card -->
+  <rect x="30" y="24" width="1140" height="392" rx="20" fill="#0f141e" fill-opacity="0.6" stroke="url(#card-border)" stroke-width="1.5"/>
+
+  <!-- Brand Symbol / Emblem Container -->
+  <g transform="translate(80, 85)">
+    <!-- Outer Glow Aura -->
+    <circle cx="55" cy="55" r="70" fill="#10b981" fill-opacity="0.15" filter="url(#glow)"/>
+    
+    <!-- Outer Ring (Lime) -->
+    <circle cx="55" cy="55" r="50" fill="none" stroke="#10b981" stroke-width="5"/>
+    <circle cx="55" cy="55" r="44" fill="#0b0f17"/>
+    
+    <!-- Inner Orange Core Disc -->
+    <circle cx="55" cy="55" r="36" fill="url(#orange-token)"/>
+    
+    <!-- The Spintra S Glyphs -->
+    <path d="M 67 40 C 63 31 43 32 42 43 C 41 55 68 54 67 67 C 66 79 46 80 41 70" fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Headings and Typography -->
+  <g transform="translate(230, 95)">
+    <!-- Top Pill / Pre-heading -->
+    <g transform="translate(0, 0)">
+      <rect width="210" height="26" rx="13" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-opacity="0.4" stroke-width="1"/>
+      <circle cx="14" cy="13" r="4" fill="#34d399"/>
+      <text x="28" y="17" class="font-mono" font-size="11" font-weight="700" fill="#34d399" letter-spacing="1">MULTIPLAYER LOUNGE</text>
+    </g>
+
+    <!-- Main Title -->
+    <text x="0" y="68" class="font-title" font-size="56" fill="#ffffff" letter-spacing="-1.5">
+      Spin<tspan fill="url(#brand-grad)">tra</tspan>
+    </text>
+
+    <!-- Subtitle / Vision Statement -->
+    <text x="0" y="105" class="font-sans" font-size="19" font-weight="400" fill="#cbd5e1" letter-spacing="-0.2">
+      The Real-Time Social Gaming Lounge &amp; Interactive Activity Suite
+    </text>
+
+    <text x="0" y="132" class="font-sans" font-size="14" font-weight="400" fill="#94a3b8">
+      Zero accounts required. Instant rooms. 14 single-player &amp; synced multiplayer tools + Spintra City.
+    </text>
+  </g>
+
+  <!-- Interactive Pillars & Specs Row -->
+  <g transform="translate(60, 265)">
+    <!-- Pill 1: 14 Tools -->
+    <g transform="translate(0, 0)">
+      <rect width="250" height="110" rx="14" fill="url(#badge-grad)" stroke="#ffffff" stroke-opacity="0.1" stroke-width="1"/>
+      <circle cx="36" cy="38" r="16" fill="#10b981" fill-opacity="0.2"/>
+      <text x="36" y="44" font-size="18" text-anchor="middle">🎲</text>
+      <text x="64" y="36" class="font-title" font-size="15" fill="#f8fafc">14 Instant Tools</text>
+      <text x="64" y="52" class="font-mono" font-size="11" fill="#34d399">Standalone &amp; Synced</text>
+      <text x="24" y="82" class="font-sans" font-size="12" fill="#94a3b8">Tournaments, 3D Wheel, Bingo,</text>
+      <text x="24" y="98" class="font-sans" font-size="12" fill="#94a3b8">Trivia, Scramble, Teams &amp; Dice.</text>
+    </g>
+
+    <!-- Pill 2: Spintra City -->
+    <g transform="translate(275, 0)">
+      <rect width="250" height="110" rx="14" fill="url(#badge-grad)" stroke="#ffffff" stroke-opacity="0.1" stroke-width="1"/>
+      <circle cx="36" cy="38" r="16" fill="#6366f1" fill-opacity="0.2"/>
+      <text x="36" y="44" font-size="18" text-anchor="middle">🏙️</text>
+      <text x="64" y="36" class="font-title" font-size="15" fill="#f8fafc">Spintra City Board</text>
+      <text x="64" y="52" class="font-mono" font-size="11" fill="#818cf8">40-Space Monopoly Engine</text>
+      <text x="24" y="82" class="font-sans" font-size="12" fill="#94a3b8">Real estate auctions, debt settling,</text>
+      <text x="24" y="98" class="font-sans" font-size="12" fill="#94a3b8">customs detention &amp; autopilot.</text>
+    </g>
+
+    <!-- Pill 3: Multiplayer Core -->
+    <g transform="translate(550, 0)">
+      <rect width="250" height="110" rx="14" fill="url(#badge-grad)" stroke="#ffffff" stroke-opacity="0.1" stroke-width="1"/>
+      <circle cx="36" cy="38" r="16" fill="#f59e0b" fill-opacity="0.2"/>
+      <text x="36" y="44" font-size="18" text-anchor="middle">⚡</text>
+      <text x="64" y="36" class="font-title" font-size="15" fill="#f8fafc">Supabase Realtime</text>
+      <text x="64" y="52" class="font-mono" font-size="11" fill="#fbbf24">Anonymous Auth &amp; Locks</text>
+      <text x="24" y="82" class="font-sans" font-size="12" fill="#94a3b8">Broadcast channels, host transfer,</text>
+      <text x="24" y="98" class="font-sans" font-size="12" fill="#94a3b8">moderation dashboard &amp; RLS.</text>
+    </g>
+
+    <!-- Pill 4: Production Quality -->
+    <g transform="translate(825, 0)">
+      <rect width="255" height="110" rx="14" fill="url(#badge-grad)" stroke="#ffffff" stroke-opacity="0.1" stroke-width="1"/>
+      <circle cx="36" cy="38" r="16" fill="#ec4899" fill-opacity="0.2"/>
+      <text x="36" y="44" font-size="18" text-anchor="middle">🛡️</text>
+      <text x="64" y="36" class="font-title" font-size="15" fill="#f8fafc">Engineering Craft</text>
+      <text x="64" y="52" class="font-mono" font-size="11" fill="#f472b6">116 Migrations • Sub-10m CI</text>
+      <text x="24" y="82" class="font-sans" font-size="12" fill="#94a3b8">Next 16, React 19, Tailwind 4,</text>
+      <text x="24" y="98" class="font-sans" font-size="12" fill="#94a3b8">sharded Playwright, Docker tests.</text>
+    </g>
+  </g>
+</svg>

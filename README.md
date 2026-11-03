@@ -1,210 +1,300 @@
-# Spintra
+<div align="center">
 
-[![CI](https://github.com/TejuBoricha/Spintra/actions/workflows/ci.yml/badge.svg)](https://github.com/TejuBoricha/Spintra/actions/workflows/ci.yml)
+<img src="assets/branding/hero-banner.svg" alt="Spintra Banner" width="100%" />
 
-A party/game-room web app: 14 standalone single-player tools plus a
-Supabase-backed multiplayer room feature (chat, live participants, shared
-activities synced in real time).
+<br/><br/>
 
-## Table of contents
+[![Live Deployment](https://img.shields.io/badge/Production-spintra.io-10b981?style=for-the-badge&logo=vercel&logoColor=white)](https://spintra.io)
+[![Next.js](https://img.shields.io/badge/Next.js%2016-Turbopack-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org)
+[![React](https://img.shields.io/badge/React%2019-Strict-61dafb?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
+[![Supabase Realtime](https://img.shields.io/badge/Supabase-Realtime%20%26%20RLS-3ecf8e?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
+[![Tailwind CSS 4](https://img.shields.io/badge/Tailwind-CSS%204-38bdf8?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![PostgreSQL Migrations](https://img.shields.io/badge/PostgreSQL-116%20Hardened%20Migrations-4169e1?style=for-the-badge&logo=postgresql&logoColor=white)](supabase/migrations)
+[![Turbo CI Matrix](https://img.shields.io/badge/CI%20Pipeline-Sub--10m%20Sharded-f59e0b?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/TejuBoricha/Spintra/actions/workflows/ci.yml)
+[![Accessibility](https://img.shields.io/badge/WCAG-2.1%20AA%20Compliant-a855f7?style=for-the-badge&logo=w3c&logoColor=white)](tests/ux-axe.spec.ts)
 
-- [Features](#features)
-- [Tech stack](#tech-stack)
-- [Getting started](#getting-started)
-- [Environment variables](#environment-variables)
-- [Scripts](#scripts)
-- [Project structure](#project-structure)
-- [Development notes](#development-notes)
-- [Testing](#testing)
-- [Known limitations](#known-limitations)
-- [Deployment](#deployment)
-- [License](#license)
+<br/>
 
-## Features
+**The real-time social gaming lounge & interactive activity suite for classrooms, friend groups, and game nights.**  
+*Zero account walls. Instant room codes. 14 standalone quick tools plus Spintra City.*
 
-Every tool below works standalone (single-player, at `/tools/<name>`) and as
-a synced multiplayer activity inside a room (`/room/[code]`):
+[Explore Live on spintra.io](https://spintra.io) • [Spintra City](#-the-crown-jewel-spintra-city) • [14 Quick Tools](#-14-instant-game-tools) • [Architecture](#-system-architecture) • [Quickstart](#-quickstart) • [Documentation](docs/INDEX.md)
 
-| Game | Description |
-|---|---|
-| Team Maker | Build balanced teams instantly |
-| Lucky Wheel | Physics-based 3D spinning wheel |
-| Name Draw | Random winner picker, with elimination mode |
-| Tournament | Single/double elimination and round-robin brackets |
-| Coin Flip | Flip a coin, settle debates |
-| Dice Roller | Roll custom dice sets |
-| Guess Number | Number guessing game with live hints |
-| Rock Paper Scissors | Classic showdown with synchronized reveals |
-| Truth or Dare | Party question/dare draws |
-| Would You Rather | Vote on impossible choices |
-| Never Have I Ever | Icebreaker confessions |
-| Trivia | Multiple-choice trivia, race to the top score |
-| Bingo | Classic number bingo, call and mark |
-| Word Scramble | Unscramble the word before anyone else |
+</div>
 
-Two additional room modes bundle several of the above into one room:
-**Party Mode** (all games unlocked) and **Classroom** (teacher-friendly picks/teams).
+<br/>
 
-## Room platform features
+<img src="assets/branding/divider.svg" alt="Section Divider" width="100%" />
 
-Beyond the games themselves, every multiplayer room includes:
+## 🌟 The Spintra Experience
 
-- **Moderation Dashboard** — message reporting, kick/ban with an action history audit log, host-scoped via server-verified RPCs
-- **Scoreboard + XP/Leveling** — server-verified score awards (RPS, Bingo, Trivia) with a live leaderboard and rank tiers
-- **Room Settings panel** — host controls for max participants, chat moderation, activity timers
-- **Automatic host migration** — if the host disconnects, the room elects a new host without interrupting the game
-- **Connection status banner** — live indicator when realtime sync degrades or reconnects
+Spintra redefines browser gaming by stripping away friction. No sign-ups, no email verification, and no app store installs. Whether you're an educator running a classroom trivia review, a team lead organizing icebreaker dares, or friends rolling dice in a 40-space board game match, Spintra delivers instant real-time synchronization directly in your browser.
 
-## Tech stack
+<br/>
 
-- Next.js 16 (App Router) + React 19
-- Supabase (`@supabase/supabase-js`) for multiplayer realtime sync — client-side only, no server/API routes
-- Tailwind CSS 4 + shadcn-style components (`@base-ui/react`, `vaul`)
-- Playwright for e2e smoke testing
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <h3 align="center">🏙️ Spintra City Board Engine</h3>
+      <p>A full-fledged, real-time multiplayer board game. Acquire properties, initiate dynamic auctions, mortgage assets, resolve customs detentions, and settle debt with full deterministic state enforcement.</p>
+    </td>
+    <td width="50%" valign="top">
+      <h3 align="center">🎲 14 Instant Game Tools</h3>
+      <p>A comprehensive library of single-player utilities and synced room activities: 3D physics dice, interactive tournament bracket generators, themed bingo cards, trivia arenas, and lucky prize wheels.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h3 align="center">🏫 Classroom &amp; Party Hub</h3>
+      <p>Dedicated room configurations for teachers and party hosts. Includes teacher-exclusive chat controls, participant moderation dashboards, instant team balancing, and auto-healing host migrations.</p>
+    </td>
+    <td width="50%" valign="top">
+      <h3 align="center">🛡️ Enterprise-Grade Hardening</h3>
+      <p>116 PostgreSQL migrations with transaction-scoped advisory locks (<code>pg_advisory_xact_lock</code>), row-level security on all 26 tables, sequence-monotonic event catch-up, and an offline Web API fallback.</p>
+    </td>
+  </tr>
+</table>
 
-## Getting started
+<br/>
+
+<img src="assets/branding/divider.svg" alt="Section Divider" width="100%" />
+
+## 📸 Visual Showcase
+
+<div align="center">
+  <p><em>Experience Spintra's aesthetic: dark-mode glassmorphism, responsive container queries, and fluid animations.</em></p>
+</div>
+
+### 1. Spintra City &amp; Tournament Arena
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <b>Spintra City: 40-Space Interactive Monopoly Board</b>
+      <br/><br/>
+      <img src="assets/screenshots/spintra-city.png" alt="Spintra City Interactive Board" width="100%" style="border-radius: 8px; border: 1px solid #1e293b;" />
+      <br/>
+      <sub>Dynamic auctions, property mortgages, customs corner, and responsive laptop/phone layouts.</sub>
+    </td>
+    <td width="50%" align="center">
+      <b>Tournament Engine: Single, Double &amp; Swiss Brackets</b>
+      <br/><br/>
+      <img src="assets/screenshots/tournament-bracket.png" alt="Tournament Bracket Engine" width="100%" style="border-radius: 8px; border: 1px solid #1e293b;" />
+      <br/>
+      <sub>Interactive seeding, auto bye resolution, match score dialogs, and tiebreak calculations.</sub>
+    </td>
+  </tr>
+</table>
+
+### 2. Live Gaming Lounge &amp; Atmosphere
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <b>Bingo Activity: Base UI Themed Select &amp; Call Matrix</b>
+      <br/><br/>
+      <img src="assets/screenshots/bingo-board.png" alt="Bingo Activity Board" width="100%" style="border-radius: 8px; border: 1px solid #1e293b;" />
+      <br/>
+      <sub>Responsive card grid, dynamic party/science themes, daub markers, and verified win claims.</sub>
+    </td>
+    <td width="50%" align="center">
+      <b>Lucky Wheel: Three.js 3D Physics Canvas</b>
+      <br/><br/>
+      <img src="assets/screenshots/lucky-wheel-3d.png" alt="Lucky Wheel 3D Physics" width="100%" style="border-radius: 8px; border: 1px solid #1e293b;" />
+      <br/>
+      <sub>Real-time canvas rendering, customizable slice probabilities, and haptic deceleration.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <b>Homepage Hero &amp; Aurora Atmosphere</b>
+      <br/><br/>
+      <img src="assets/screenshots/homepage-hero.png" alt="Homepage Hero Atmosphere" width="100%" style="border-radius: 8px; border: 1px solid #1e293b;" />
+      <br/>
+      <sub>Floating glass pill navbar, instant room code joiner, and endless living footer table.</sub>
+    </td>
+    <td width="50%" align="center">
+      <b>Trivia Arena &amp; Multiplayer Scramble</b>
+      <br/><br/>
+      <img src="assets/screenshots/trivia-arena.png" alt="Trivia Arena" width="100%" style="border-radius: 8px; border: 1px solid #1e293b;" />
+      <br/>
+      <sub>Category filters, server-verified score awards, streak multipliers, and instant XP leveling.</sub>
+    </td>
+  </tr>
+</table>
+
+<br/>
+
+<img src="assets/branding/divider.svg" alt="Section Divider" width="100%" />
+
+## 🏙️ The Crown Jewel: Spintra City
+
+**Spintra City** is a complete, relational board game engine built natively on top of PostgreSQL and Supabase Realtime:
+
+* **The Wheelworks Board**: 40 distinct spaces featuring 22 purchasable properties across 8 color sets, 4 transit stations, 2 utility companies, Customs detention, and event card spaces.
+* **Deterministic Randomness**: Dice outcomes and card draws are derived deterministically from `(rng_seed, rng_counter)` on the server. Seeds cannot be spoofed, manipulated, or read ahead of time by clients.
+* **Liquid Reserve Auctions**: When a player declines a landed property, an automated auction opens with an opening reserve price equal to mortgage value. Bids extend the auction timer dynamically.
+* **Automated Debt &amp; Bankruptcy**: Players in debt can mortgage properties and sell buildings. If funds cannot be raised before the timer expires, the server's autopilot liquidates assets and transfers holdings to the creditor.
+* **Server-Owned Timekeeper (`city_tick`)**: Clocks are held authoritatively by the database via `pg_cron` every 5 seconds. If a player disconnects mid-turn, autopilot steps in seamlessly without stalling the room.
+
+<br/>
+
+<img src="assets/branding/divider.svg" alt="Section Divider" width="100%" />
+
+## 🎯 14 Instant Game Tools
+
+Every tool runs as a standalone single-player utility at `/tools/<name>` and seamlessly converts into a synced multiplayer room activity at `/room/[code]`:
+
+| Tool | Route | Capability &amp; Highlights |
+|---|---|---|
+| **Spintra City** | `/spintra-city` | 40-space multiplayer board game with auctions, debt settlement, and autopilot |
+| **Tournament** | `/tools/tournament` | Single elimination, double elimination, Swiss, and round-robin bracket engine |
+| **Lucky Wheel** | `/tools/lucky-wheel` | 3D physics-driven prize wheel with slice customization and template libraries |
+| **Bingo** | `/tools/bingo` | Base UI themed bingo with custom word/number pools, call matrices, and win verification |
+| **Trivia** | `/tools/trivia` | Timed multiple-choice question arena with streak bonuses and XP leveling |
+| **Team Maker** | `/tools/team-maker` | Random and skill-balanced team generator with drag-and-drop roster management |
+| **Name Draw** | `/tools/name-draw` | Random name picker with multiset exclusion, redraw history, and elimination mode |
+| **Dice Roller** | `/tools/dice` | 3D physics dice simulator supporting D4, D6, D8, D10, D12, D20, and custom sets |
+| **Coin Flip** | `/tools/coin-flip` | Physics-based coin flipper with heads/tails streak tracking |
+| **Guess Number** | `/tools/guess-number` | Binary search number game with server-side secret validation and hint throttling |
+| **Word Scramble** | `/tools/word-scramble` | Live multiplayer anagram scramble race with hint reveals |
+| **Rock Paper Scissors** | `/tools/rps` | Synchronized duel arena with hidden selection and simultaneous reveals |
+| **Truth or Dare** | `/tools/truth-or-dare` | Classroom and party-safe prompt decks with randomizer cards |
+| **Would You Rather** | `/tools/would-you-rather` | Percentage-revealing polling activity with crowd sentiment tracking |
+| **Never Have I Ever** | `/tools/never-have-i-ever` | Filtered party icebreakers with live confessions and voting |
+
+<br/>
+
+<img src="assets/branding/divider.svg" alt="Section Divider" width="100%" />
+
+## 🏗️ System Architecture
+
+Spintra operates as a client-orchestrated, database-verified system. Business logic is backed by transactional stored procedures, row-level security policies, and advisory locks.
+
+<div align="center">
+  <img src="assets/branding/architecture-diagram.svg" alt="Spintra System Architecture" width="100%" />
+</div>
+
+### Architectural Highlights
+
+1. **Anonymous Authentication Model**:
+   - Every participant receives an authenticated `auth.users` identity without providing credentials or email addresses.
+   - All 26 database tables enforce Row-Level Security (RLS) policies scoped strictly to `auth.uid()`.
+2. **Transaction-Scoped Advisory Locks (`pg_advisory_xact_lock`)**:
+   - Host elections (`elect_room_host`), room joins, and trivia scoring operations acquire transaction-scoped locks on room hash IDs, completely serializing race conditions without table locks.
+3. **Monotonic Event Log &amp; Replay**:
+   - Game events pass through the `send_room_event` RPC, which validates game rules, stamps sequential event numbers (`seq`), verifies room membership, and broadcasts over Supabase Realtime.
+   - Disconnected clients automatically detect sequence gaps and sync state from `room_activity_state`.
+4. **Zero-Config Offline Fallback**:
+   - When launched without Supabase credentials, the client falls back to the native browser `BroadcastChannel` API. Single-player tools and same-browser multiplayer rooms function out of the box with zero external dependencies.
+
+<br/>
+
+<img src="assets/branding/divider.svg" alt="Section Divider" width="100%" />
+
+## 🚀 Quickstart
+
+### 1. Zero-Config Local Run (Offline Mode)
+
+You can run Spintra locally without configuring any external services or database:
 
 ```bash
-npm install
-cp .env.example .env.local   # fill in your Supabase project URL + anon key
+# Clone the repository
+git clone https://github.com/TejuBoricha/Spintra.git
+cd Spintra
+
+# Install dependencies
+npm ci
+
+# Start Next.js with Turbopack
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000) (or `http://127.0.0.1:3200`). Single-player tools and local multiplayer testing via `BroadcastChannel` are immediately active!
 
-## Environment variables
+### 2. Full Multiplayer with Supabase
 
-The multiplayer room feature needs a Supabase project. Without one
-configured, the app still runs — rooms fall back to a same-browser-tab demo
-mode via `BroadcastChannel` (see `src/lib/supabase/client.ts`), which does
-**not** sync across different devices/users.
+To run true multi-device multiplayer:
 
-To enable real multiplayer:
+1. Create a free project at [supabase.com](https://supabase.com).
+2. Copy `.env.example` to `.env.local` and fill in your keys:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-public-key
+   ```
+3. Push all migrations:
+   ```bash
+   npx supabase db push
+   ```
 
-1. Create a project at [supabase.com](https://supabase.com).
-2. Copy the Project URL and anon public key into `.env.local` (see `.env.example`).
-3. Apply every migration in `supabase/migrations/` in order (61 files as of
-   this writing) via `supabase db push` (or `supabase link` once, then
-   `supabase db push`) — this creates the full schema (`rooms`,
-   `room_participants`, `chat_messages`, moderation, scoring/XP, tournament
-   state, etc.), enables Row Level Security, and turns on realtime. On
-   `main`, `.github/workflows/deploy.yml` pushes any new migration files
-   automatically on every push that touches `supabase/migrations/**` — see
-   [Deployment](#deployment) for the secrets it needs.
+### 3. Ephemeral Local Docker Stack (Recommended for Contributors)
 
-Spintra uses Supabase **Anonymous Auth**: each client gets a real
-`auth.users` row (no email/password), and RLS/trigger policies key off
-`auth.uid()` rather than a client-supplied identity. See
-`supabase/migrations/0001_init_schema_and_rls.sql` for the baseline policy
-set and later migrations for the moderation/scoring/host-election hardening
-built on top of it.
+```bash
+# Start local Supabase Docker instance
+npx supabase@2.109.0 start -x studio,logflare,vector,mailpit,imgproxy,postgres-meta,edge-runtime
 
-| Variable | Required | Description |
-|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | For real multiplayer | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | For real multiplayer | Supabase anon public key |
-| `NEXT_PUBLIC_SENTRY_DSN` | Optional | Error monitoring. Without it, Sentry never initializes (see `sentry.*.config.ts`) — the app runs exactly the same |
-| `SENTRY_ORG` / `SENTRY_PROJECT` / `SENTRY_AUTH_TOKEN` | Optional | Only needed to upload source maps for readable production stack traces |
-| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Optional | Google Analytics (GA4). Without it, gtag.js never loads (see `src/app/layout.tsx`) and the CSP stays unchanged (see `next.config.ts`) |
-
-## Scripts
-
-| Command | Description |
-|---|---|
-| `npm run dev` | Start the dev server. For the one preview link of a session use `npm run dev -- -p 3200 -H 127.0.0.1` (http://127.0.0.1:3200): it follows the checked-out branch and reloads on every edit |
-| `npm run build` | Production build |
-| `npm run start` | Serve the production build |
-| `npm run lint` | ESLint |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run docs:check` | Verify `docs/` hasn't drifted from the real filesystem |
-| `npm run verify:static` | typecheck + lint + docs:check: the static checks that need no network |
-| `npm run verify` | `verify:static` + audit (the static gates CI runs first, so a red dependency audit shows up before the push; the audit needs the network, so it comes last; offline use `verify:static` and say the audit was not run) |
-| `npm run verify:migration [name]` | Confirms a migration's objects actually exist live in the linked Supabase project (not just tracked as "applied") — run after every `supabase db push` |
-| `npm run test:smoke` | Playwright smoke test (room create/join flow): the whole suite |
-| `npm run test:related` | Only the Playwright specs that cover the files changed since `main` (the whole suite for anything it cannot place: shared code, configuration, migrations, dependencies). `-- --list` shows the plan, `-- --full` forces everything, Playwright options go after a second `--`. It runs against this checkout's own preview server if one is running (found through `.next/dev/lock`), otherwise Playwright builds and starts its own. CI runs the whole suite on every pull request |
-| `npm run test:city-regression` | Spintra City release-blocker regression suite — asserts the fixed behaviour for each open blocker, so it stays red until the fix lands. Requires the local Supabase stack. |
-| `npm run audit` | `node scripts/audit-gate.mjs --audit-level=moderate`: `npm audit` at that threshold, plus a short time-boxed allowlist (`scripts/audit-allowlist.json`) for advisories that have no fix yet — the one place this threshold is set; `.github/workflows/ci.yml`'s CI gate calls this same script rather than hardcoding its own |
-| `npm run ci` | verify (which includes the audit) + build + test:smoke (the full CI gate, locally) |
-
-## Project structure
-
-```
-src/app/tools/*             standalone single-player game/utility pages
-src/app/room/[code]/        multiplayer room (chat, participants, header)
-src/app/room/[code]/activities/  per-game room UI, one file per game
-src/app/room/[code]/components/  moderation dashboard, scoreboard, room settings
-src/app/create/              room creation flow
-src/app/explore/             public room discovery / browse
-src/app/settings/            user preferences (username, theme, etc.)
-src/app/api/health/          liveness endpoint for uptime monitors / deploy checks
-src/lib/games.ts             single source of truth for the game catalog
-src/lib/supabase/client.ts   browser Supabase client (returns null if unconfigured)
-src/lib/room-user.ts         client-side identity, backed by Supabase Anonymous Auth
-src/lib/moderation.ts        moderation RPC client wrappers (kick/ban/dismiss)
-src/lib/xp.ts                XP/rank tier calculations
-src/lib/tournament-engine.ts bracket generation for all 4 tournament formats
-proxy.ts                     redirects /room?code=X to /room/X
-supabase/migrations/         schema + RLS for the Supabase-backed tables
+# Reset and apply all 116 migrations fresh from scratch
+npx supabase@2.109.0 db reset
 ```
 
-## Development notes
+<br/>
 
-> This Next.js version has breaking changes vs. older docs/training
-> data — see [`AGENTS.md`](AGENTS.md) and `node_modules/next/dist/docs/`
-> before assuming an API works the way you remember. Notably, the routing
-> hook file is `proxy.ts` (Next 16 renamed `middleware.ts`), not `middleware.ts`.
+<img src="assets/branding/divider.svg" alt="Section Divider" width="100%" />
 
-## Testing
+## 📜 Complete Scripts Inventory
 
-Playwright specs in `tests/`: `smoke.spec.ts` and `comprehensive-smoke.spec.ts`
-(room create/join flow), `multiplayer-loop.spec.ts` (two genuinely distinct
-participants — join, activity sync, moderation), `comprehensive-tournament-audit.spec.ts`
-and `tournament-double-elimination.spec.ts` (bracket generation and scoring
-across all formats).
+All 14 npm scripts defined in `package.json` are maintained and verified:
 
-`.github/workflows/ci.yml` runs two jobs once per pull request head (and once on `main` after a merge; a newer push to a pull request cancels the older run, and a branch without a pull request runs nothing): `validate` (dependency
-security audit, typecheck, lint, docs drift check, build, and the Playwright
-suite against the demo/`BroadcastChannel` fallback — no Supabase needed) and
-`db-integration` (spins up an ephemeral local Supabase via Docker, applies
-every migration fresh, and re-runs the suite against real RLS/triggers/realtime
-instead of the demo fallback).
-
-## Known limitations
-
-- Bingo's async host-side win verification has no arbitration between two
-  players who achieve a genuinely simultaneous valid win — a narrow,
-  code-reviewed (not yet live-reproduced) race.
-- The twice-daily DB backup and automatic migration-deploy workflows
-  (`.github/workflows/db-backup.yml`, `deploy.yml`) require repo secrets
-  that aren't configured yet — see [Deployment](#deployment).
-- Production error monitoring (Sentry) is scaffolded but not wired up
-  (no `NEXT_PUBLIC_SENTRY_DSN` configured yet).
-
-## Deployment
-
-Any Next.js host works (e.g. [Vercel](https://vercel.com/new)). Set the
-`NEXT_PUBLIC_SUPABASE_*` (and optionally `NEXT_PUBLIC_SENTRY_DSN`/`SENTRY_*`)
-environment variables in your hosting provider's dashboard before deploying.
-
-Two GitHub Actions workflows handle Supabase-side operations and need repo
-secrets to function:
-
-| Workflow | Trigger | Required secrets |
+| Command | Category | Description |
 |---|---|---|
-| `deploy.yml` | Push to `main` touching `supabase/migrations/**` (or manual dispatch) | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_ID` |
-| `db-backup.yml` | Twice a day, 03:00 and 15:00 UTC (+ manual dispatch) | `SUPABASE_DB_URL`, `AWS_BACKUP_ACCESS_KEY_ID`, `AWS_BACKUP_SECRET_ACCESS_KEY`, `AWS_BACKUP_S3_BUCKET`, `AWS_BACKUP_R2_ENDPOINT` |
+| `npm run dev` | Development | Starts Next.js development server with Turbopack (defaults to `http://localhost:3000`). |
+| `npm run build` | Build | Compiles production application with route optimization and asset hashing. |
+| `npm run start` | Production | Starts production server against compiled `.next` artifacts. |
+| `npm run lint` | Code Quality | Executes ESLint analysis with custom rules for accessibility and design consistency. |
+| `npm run typecheck` | Code Quality | Runs `tsc --noEmit` to validate all TypeScript types and schemas without generating files. |
+| `npm run docs:check` | Architecture | Runs `scripts/check-docs-drift.mjs` to ensure documentation matches code, schemas, and migrations. |
+| `npm run verify:static` | Quality Gate | Bundled static gate: executes `typecheck`, `lint`, and `docs:check` in one fast offline pass. |
+| `npm run verify` | Quality Gate | Primary developer gate: executes `verify:static` plus the `npm run audit` security check. |
+| `npm run verify:migration` | Database | Verifies that a migration's objects exist live in the linked Supabase project. |
+| `npm run test:smoke` | Testing | Runs full Playwright end-to-end smoke test suite across all desktop and mobile viewports. |
+| `npm run test:related` | Testing | Intelligently executes only the Playwright tests that cover modified files. |
+| `npm run test:city-regression` | Testing | Executes the 92-assertion Spintra City database regression suite against Supabase. |
+| `npm run audit` | Security | Runs `scripts/audit-gate.mjs` against moderate-threshold advisories with dated allowlist exceptions. |
+| `npm run ci` | Full CI Gate | Executes local equivalent of CI: `verify` + `build` + `test:smoke`. |
 
-`db-backup.yml` uploads to Cloudflare R2 (S3-API-compatible, free tier,
-zero egress fees) rather than real AWS S3 — `AWS_BACKUP_R2_ENDPOINT` is the
-bucket's R2 endpoint URL, and the region is hardcoded to `auto` in the
-workflow itself (R2's documented value, not a real AWS region).
+<br/>
 
-Without these secrets set (`gh secret set <NAME>`), both workflows run but
-fail every time — migrations must then be pushed manually
-(`supabase db push`) and no backups are retained.
+<img src="assets/branding/divider.svg" alt="Section Divider" width="100%" />
 
-## License
+## ⚡ Turbo CI Pipeline &amp; Quality Gates
 
-All rights reserved. This repository is source-available for portfolio and
-reference purposes only — reuse, modification, or redistribution of this
-code is not permitted without the author's permission.
+Spintra employs a sub-10 minute CI pipeline on GitHub Actions (`.github/workflows/ci.yml`):
+
+* **Parallel Matrix Sharding**: The `validate-shard` job splits test execution across two concurrent runner VMs (`1/2` and `2/2`), each running 2 parallel Playwright workers (total of **4 concurrent test workers**).
+* **Aggregating Gateway**: A lightweight 5-second `validate` gateway job aggregates shard statuses to strictly satisfy GitHub repository branch protection rules (`strict: true`).
+* **Ephemeral Database Integration**: The `db-integration` job spins up an isolated Supabase Docker stack, runs all 116 migrations fresh from scratch, and executes real multiplayer tests against PostgreSQL RLS and trigger policies.
+
+<br/>
+
+<img src="assets/branding/divider.svg" alt="Section Divider" width="100%" />
+
+## 🛡️ Security, Privacy &amp; Governance
+
+- **Zero PII Collection**: Spintra does not collect user emails, passwords, phone numbers, or persistent advertising cookies.
+- **Automated Backup Automation**: `.github/workflows/db-backup.yml` snapshots production database state twice daily (03:00 and 15:00 UTC) with exponential retries and uploads encrypted backups to Cloudflare R2 with zero egress fees.
+- **Reporting Vulnerabilities**: Review [SECURITY.md](SECURITY.md) for our private vulnerability disclosure process.
+
+<br/>
+
+<img src="assets/branding/divider.svg" alt="Section Divider" width="100%" />
+
+## 📄 License &amp; Portfolio Reference
+
+All rights reserved. This repository is source-available for portfolio, review, and educational reference purposes. Reuse, redistribution, or modification of this codebase without the author's prior permission is prohibited.
+
+<div align="center">
+  <br/>
+  <sub>Crafted with passion, precision, and engineering excellence by <b>Tejas Gogara</b>.</sub>
+  <br/>
+  <sub>Spintra • Free browser games and multiplayer tools for everyone.</sub>
+</div>

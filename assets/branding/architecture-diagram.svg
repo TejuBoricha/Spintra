@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 620" width="100%" height="100%">
+  <defs>
+    <linearGradient id="box-client" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="line-glow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="50%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#818cf8"/>
+    </linearGradient>
+    <linearGradient id="accent-green" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="accent-blue" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="accent-purple" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="accent-amber" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+  </defs>
+
+  <style>
+    .node-title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-weight: 700; font-size: 15px; fill: #f8fafc; }
+    .node-subtitle { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 12px; fill: #94a3b8; }
+    .node-tag { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10px; font-weight: 700; }
+    .layer-header { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 13px; font-weight: 800; letter-spacing: 1.5px; }
+  </style>
+
+  <!-- Background -->
+  <rect width="1100" height="620" rx="16" fill="#090a10"/>
+  <rect x="2" y="2" width="1096" height="616" rx="15" fill="none" stroke="#1e293b" stroke-width="1.5"/>
+
+  <!-- ==================== LAYER 1: CLIENT FRONTEND ==================== -->
+  <g transform="translate(40, 30)">
+    <rect width="1020" height="115" rx="12" fill="#0f172a" fill-opacity="0.4" stroke="#334155" stroke-width="1" stroke-dasharray="4 4"/>
+    <text x="20" y="24" class="layer-header" fill="#38bdf8">TIER 1 • NEXT.JS 16 &amp; REACT 19 CLIENT</text>
+
+    <!-- Block 1: App Router & Layout -->
+    <g transform="translate(20, 38)">
+      <rect width="230" height="62" rx="8" fill="url(#box-client)" stroke="#38bdf8" stroke-opacity="0.4" stroke-width="1"/>
+      <text x="14" y="24" class="node-title">App Router &amp; Layout</text>
+      <text x="14" y="44" class="node-subtitle">Turbopack, globals.css, Sentry</text>
+      <rect x="175" y="10" width="45" height="18" rx="4" fill="#0284c7" fill-opacity="0.2"/>
+      <text x="197" y="22" class="node-tag" fill="#38bdf8" text-anchor="middle">v16.4</text>
+    </g>
+
+    <!-- Block 2: 14 Tool Micro-Engines -->
+    <g transform="translate(265, 38)">
+      <rect width="240" height="62" rx="8" fill="url(#box-client)" stroke="#10b981" stroke-opacity="0.4" stroke-width="1"/>
+      <text x="14" y="24" class="node-title">14 Quick Tool Engines</text>
+      <text x="14" y="44" class="node-subtitle">Three.js 3D, physics dice, bracket</text>
+      <rect x="180" y="10" width="48" height="18" rx="4" fill="#059669" fill-opacity="0.2"/>
+      <text x="204" y="22" class="node-tag" fill="#34d399" text-anchor="middle">Client</text>
+    </g>
+
+    <!-- Block 3: Spintra City UI -->
+    <g transform="translate(520, 38)">
+      <rect width="235" height="62" rx="8" fill="url(#box-client)" stroke="#818cf8" stroke-opacity="0.4" stroke-width="1"/>
+      <text x="14" y="24" class="node-title">Spintra City Board</text>
+      <text x="14" y="44" class="node-subtitle">40-space canvas, roll center, tabs</text>
+      <rect x="180" y="10" width="42" height="18" rx="4" fill="#4f46e5" fill-opacity="0.2"/>
+      <text x="201" y="22" class="node-tag" fill="#a5b4fc" text-anchor="middle">Board</text>
+    </g>
+
+    <!-- Block 4: Design Primitives -->
+    <g transform="translate(770, 38)">
+      <rect width="230" height="62" rx="8" fill="url(#box-client)" stroke="#f472b6" stroke-opacity="0.4" stroke-width="1"/>
+      <text x="14" y="24" class="node-title">Base UI &amp; Tailwind 4</text>
+      <text x="14" y="44" class="node-subtitle">Select, Dialog, WCAG 2.1 AA</text>
+      <rect x="175" y="10" width="44" height="18" rx="4" fill="#db2777" fill-opacity="0.2"/>
+      <text x="197" y="22" class="node-tag" fill="#f472b6" text-anchor="middle">A11y</text>
+    </g>
+  </g>
+
+  <!-- Connectors Layer 1 -> Layer 2 -->
+  <line x1="280" y1="145" x2="280" y2="185" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="3 3"/>
+  <line x1="560" y1="145" x2="560" y2="185" stroke="#10b981" stroke-width="1.5" stroke-dasharray="3 3"/>
+  <line x1="840" y1="145" x2="840" y2="185" stroke="#818cf8" stroke-width="1.5" stroke-dasharray="3 3"/>
+
+  <!-- ==================== LAYER 2: TRANSPORT & REALTIME ==================== -->
+  <g transform="translate(40, 185)">
+    <rect width="1020" height="110" rx="12" fill="#0f172a" fill-opacity="0.4" stroke="#334155" stroke-width="1" stroke-dasharray="4 4"/>
+    <text x="20" y="24" class="layer-header" fill="#34d399">TIER 2 • MULTIPLAYER TRANSPORT &amp; ANONYMOUS AUTH</text>
+
+    <!-- Channel A: Supabase Realtime Broadcast -->
+    <g transform="translate(20, 36)">
+      <rect width="315" height="58" rx="8" fill="url(#box-client)" stroke="#10b981" stroke-opacity="0.5" stroke-width="1"/>
+      <text x="14" y="24" class="node-title">room:{code}:events Broadcast</text>
+      <text x="14" y="42" class="node-subtitle">send_room_event RPC, sequence monotonic</text>
+    </g>
+
+    <!-- Channel B: Presence & Heartbeat -->
+    <g transform="translate(350, 36)">
+      <rect width="320" height="58" rx="8" fill="url(#box-client)" stroke="#38bdf8" stroke-opacity="0.5" stroke-width="1"/>
+      <text x="14" y="24" class="node-title">Server Presence &amp; Heartbeat</text>
+      <text x="14" y="42" class="node-subtitle">10s heartbeat, 30s offline sweep, host auto-heal</text>
+    </g>
+
+    <!-- Channel C: Offline Web API Fallback -->
+    <g transform="translate(685, 36)">
+      <rect width="315" height="58" rx="8" fill="url(#box-client)" stroke="#fbbf24" stroke-opacity="0.5" stroke-width="1"/>
+      <text x="14" y="24" class="node-title">BroadcastChannel Web API</text>
+      <text x="14" y="42" class="node-subtitle">Same-browser zero-config offline demo mode</text>
+    </g>
+  </g>
+
+  <!-- Connectors Layer 2 -> Layer 3 -->
+  <line x1="280" y1="295" x2="280" y2="335" stroke="#10b981" stroke-width="1.5" stroke-dasharray="3 3"/>
+  <line x1="560" y1="295" x2="560" y2="335" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="3 3"/>
+  <line x1="840" y1="295" x2="840" y2="335" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="3 3"/>
+
+  <!-- ==================== LAYER 3: POSTGRESQL & 116 MIGRATIONS ==================== -->
+  <g transform="translate(40, 335)">
+    <rect width="1020" height="125" rx="12" fill="#0f172a" fill-opacity="0.4" stroke="#334155" stroke-width="1" stroke-dasharray="4 4"/>
+    <text x="20" y="24" class="layer-header" fill="#a78bfa">TIER 3 • POSTGRESQL ENGINE (116 MIGRATIONS)</text>
+
+    <!-- Box 1: Concurrency Control -->
+    <g transform="translate(20, 36)">
+      <rect width="230" height="72" rx="8" fill="url(#box-client)" stroke="#a78bfa" stroke-opacity="0.5" stroke-width="1"/>
+      <text x="14" y="22" class="node-title">Advisory Locks</text>
+      <text x="14" y="40" class="node-subtitle">pg_advisory_xact_lock</text>
+      <text x="14" y="58" class="node-subtitle">Host election &amp; room joins</text>
+    </g>
+
+    <!-- Box 2: RLS Security Boundary -->
+    <g transform="translate(265, 36)">
+      <rect width="240" height="72" rx="8" fill="url(#box-client)" stroke="#a78bfa" stroke-opacity="0.5" stroke-width="1"/>
+      <text x="14" y="22" class="node-title">Row-Level Security (RLS)</text>
+      <text x="14" y="40" class="node-subtitle">auth.uid() anonymous auth</text>
+      <text x="14" y="58" class="node-subtitle">26 tables strictly partitioned</text>
+    </g>
+
+    <!-- Box 3: Spintra City State Engine -->
+    <g transform="translate(520, 36)">
+      <rect width="235" height="72" rx="8" fill="url(#box-client)" stroke="#a78bfa" stroke-opacity="0.5" stroke-width="1"/>
+      <text x="14" y="22" class="node-title">Spintra City DB State</text>
+      <text x="14" y="40" class="node-subtitle">Deterministic RNG seeds</text>
+      <text x="14" y="58" class="node-subtitle">11 relational tables &amp; ledger</text>
+    </g>
+
+    <!-- Box 4: Background Jobs & Cron -->
+    <g transform="translate(770, 36)">
+      <rect width="230" height="72" rx="8" fill="url(#box-client)" stroke="#a78bfa" stroke-opacity="0.5" stroke-width="1"/>
+      <text x="14" y="22" class="node-title">pg_cron Automation</text>
+      <text x="14" y="40" class="node-subtitle">5s presence &amp; clock sweep</text>
+      <text x="14" y="58" class="node-subtitle">7d room TTL lifecycle rule</text>
+    </g>
+  </g>
+
+  <!-- Connectors Layer 3 -> Layer 4 -->
+  <line x1="560" y1="460" x2="560" y2="495" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="3 3"/>
+
+  <!-- ==================== LAYER 4: CI/CD & AUTOMATED VERIFICATION ==================== -->
+  <g transform="translate(40, 495)">
+    <rect width="1020" height="95" rx="12" fill="#0f172a" fill-opacity="0.4" stroke="#334155" stroke-width="1" stroke-dasharray="4 4"/>
+    <text x="20" y="22" class="layer-header" fill="#f59e0b">TIER 4 • TURBO CI PIPELINE &amp; INTEGRITY GATES</text>
+
+    <!-- CI Shard 1 -->
+    <g transform="translate(20, 32)">
+      <rect width="315" height="50" rx="8" fill="url(#box-client)" stroke="#f59e0b" stroke-opacity="0.4" stroke-width="1"/>
+      <text x="14" y="20" class="node-title">Parallel Matrix Shards</text>
+      <text x="14" y="38" class="node-subtitle">4 concurrent workers across 2 dedicated VMs</text>
+    </g>
+
+    <!-- CI Shard 2 -->
+    <g transform="translate(350, 32)">
+      <rect width="320" height="50" rx="8" fill="url(#box-client)" stroke="#f59e0b" stroke-opacity="0.4" stroke-width="1"/>
+      <text x="14" y="20" class="node-title">Ephemeral Docker Supabase</text>
+      <text x="14" y="38" class="node-subtitle">Fresh reset 0001–0116 + 92-assertion City suite</text>
+    </g>
+
+    <!-- CI Shard 3 -->
+    <g transform="translate(685, 32)">
+      <rect width="315" height="50" rx="8" fill="url(#box-client)" stroke="#f59e0b" stroke-opacity="0.4" stroke-width="1"/>
+      <text x="14" y="20" class="node-title">Cloudflare R2 Automation</text>
+      <text x="14" y="38" class="node-subtitle">Twice-daily DB snapshot with 5x retry logic</text>
+    </g>
+  </g>
+</svg>
