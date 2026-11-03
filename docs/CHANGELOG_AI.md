@@ -3654,3 +3654,19 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
   - Retired stale `braces` exception (`GHSA-vfj7-8cjw-p6xm`) from `scripts/audit-allowlist.json`.
   - Added time-boxed allowlist exceptions expiring 2026-12-03 for `glob` (`GHSA-3g3m-2fjr-6pw4`) and `minimatch` (`GHSA-g3hv-75wg-m249`), both restricted to build/development tooling with no minor/patch upstream fix currently available.
   - Verified `tests/audit-gate.spec.ts` (12/12 passed) and full `npm run verify` passes with 0 errors.
+
+## [2026-11-03] — Trivia and Bingo Overhaul: 200+ Questions, Word Themes, Manual Daubing, and Game Modes (Branch `feat/trivia-bingo-expansion`)
+
+**AI:** Antigravity (Google DeepMind)
+**Task:** Expand and modernize Trivia and Bingo based on user feedback and engagement:
+1. `Trivia Content & Features`:
+   - Expanded question bank in `src/lib/trivia-questions.ts` to 200+ fact-checked questions across 8 categories (General Knowledge, Science & Nature, Geography, History, Pop Culture, Sports, Technology, and Arts & Literature) with verified answers and educational fun-fact explanations.
+   - Upgraded `/tools/trivia`: Added Category filter, Difficulty selector, Round length presets (5, 10, 15, 20), Countdown timer (Off, 15s, 30s), Streak multiplier, post-answer explanation callouts, keyboard shortcuts (1-4 for options, Enter/Space for next), accessibility enhancements (`role="status"`, `aria-live`), and missed-questions review dialog.
+   - Enhanced in-room `trivia-activity.tsx`: Added support for the new "Technology" and "Arts & Literature" categories.
+2. `Bingo Content & Features`:
+   - Created `src/lib/bingo-themes.ts`: Added multiple themed word cards (Classic Numbers 1-75, Science & Nature, Party & Social, Get to Know You, and Movie Night).
+   - Added winning pattern support (Any Line, 4 Corners, X-Pattern, Plus Cross, and Full Card/Blackout).
+   - Upgraded `/tools/bingo`: Added interactive manual player daubing with stamped checkmarks and sound effects (with optional Auto-Daub helper), master board matrix drawer, Web Speech API voice announcer, printable card layout, and fully accessible button cells.
+3. `Testing & Quality Assurance`:
+   - Created `tests/trivia-and-bingo-expansion.spec.ts` covering trivia filtering, answer reveals, bingo themes, manual daubing, and called board matrix (4/4 passed).
+   - Verified clean static analysis (`npm run verify:static`) and security gate (`npm run audit`).
