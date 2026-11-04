@@ -3790,3 +3790,30 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
    - Eliminates ~1.5 GB of Docker pulls and cuts `supabase start` startup time by ~60 seconds, while freeing CPU and RAM on the 2-vCPU runner for Playwright and Chromium.
 5. `Integrity Validation`:
    - `npm run verify:static` passed with 0 errors, 0 warnings, and 0 documentation drift.
+
+---
+
+## [2026-11-04] — Ahrefs SEO Site Audit Resolution (Branch `fix/seo-ahrefs-audit-fixes`)
+
+**AI:** Antigravity (Google DeepMind)
+**Task:** Resolve all remaining warnings and notices reported in Ahrefs Site Audit:
+1. `Meta Description Length Calibration (120–155 Characters)`:
+   - Calibrated `featureDescription` across all 14 standalone quick tools in `src/lib/games.ts` (Lucky Wheel, Name Draw, Tournament, Coin Flip, Dice Roller, Guess Number, Rock Paper Scissors, Truth or Dare, Would You Rather, Never Have I Ever, Trivia, Bingo, Word Scramble) and non-tool modes (Party, Classroom) into natural, informative summaries between 134 and 151 characters.
+   - Cleared the 13 "Meta description too short" warnings on tool pages.
+   - Calibrated `/create`, `/legal/privacy`, `/legal/terms`, and `/settings` meta descriptions to strictly fall within 133–143 characters (clearing short description warnings).
+   - Calibrated `/for-teachers` (previously 175 characters) and `/spintra-city` (previously 189 characters) to 133 and 143 characters respectively, eliminating the 2 "Meta description too long" warnings.
+2. `Open Graph Tags Completeness`:
+   - Updated `toolMetadata` in `src/lib/tool-metadata.ts` to spread `SITE_OPEN_GRAPH`, providing `siteName: "Spintra"`, `images: [{ url: "/og-image.png" }]`, `locale: "en_US"`, and `type: "website"` across all 14 tool pages.
+   - Added complete Open Graph metadata definitions with `SITE_OPEN_GRAPH` across `/create`, `/explore`, `/tools`, `/for-teachers`, `/spintra-city`, `/legal/privacy`, and `/legal/terms`.
+   - Resolves all 5 "Open Graph tags incomplete" warnings.
+3. `Internal Linking & Link Equity Distribution`:
+   - Added `Spintra City` to `SiteFooter` navigation links in `src/components/layout/site-footer.tsx`, distributing internal links from all 24+ routes across the application.
+   - Resolves "Page has only one dofollow incoming internal link" notices.
+4. `Automated Playwright SEO Suite Expansion`:
+   - Expanded `tests/seo-foundations.spec.ts` with assertions ensuring every sitemap URL provides a meta description between 110 and 160 characters and complete Open Graph properties (`og:image`, `og:site_name`).
+   - All 9 SEO foundations tests passed (15.8s).
+   - All 49 site-footer tests passed (35.0s).
+   - All 6 home-footer tests passed (15.4s).
+   - All 3 tool SEO titles tests passed (19.3s).
+5. `Integrity Validation`:
+   - `npm run verify:static` passed with 0 errors, 0 warnings, and 0 documentation drift.

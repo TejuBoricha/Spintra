@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { GAMES } from "@/lib/games";
-import { jsonLdScript } from "@/lib/site-metadata";
+import { jsonLdScript, SITE_OPEN_GRAPH } from "@/lib/site-metadata";
 
 const BASE_URL = "https://spintra.io";
 
@@ -11,6 +11,13 @@ export const metadata: Metadata = {
   description:
     "See every Spintra game, from wheels and brackets to party games, and find public rooms that are open to join right now.",
   alternates: { canonical: "/explore" },
+  openGraph: {
+    ...SITE_OPEN_GRAPH,
+    title: "Explore Games & Rooms | Spintra",
+    description:
+      "Explore all Spintra multiplayer games, decision wheels, and tournament brackets, or join active public rooms right now in your browser.",
+    url: "/explore",
+  },
 };
 
 const exploreItemList = {

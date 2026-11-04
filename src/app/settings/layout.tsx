@@ -5,7 +5,8 @@ import type { ReactNode } from "react";
 // Settings are per-visitor (localStorage) — no value in search indexes.
 export const metadata: Metadata = {
   title: "Settings | Spintra",
-  description: "Manage your Spintra profile, sound, theme, and privacy preferences.",
+  description:
+    "Manage your Spintra preferences: customize your display name, audio effects, visual themes, and local privacy settings stored in your browser.",
   robots: { index: false },
 };
 

@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { Info } from "lucide-react";
 import type { Metadata } from "next";
+import { SITE_OPEN_GRAPH } from "@/lib/site-metadata";
 
 // Applies to /tools (the index/browse page) specifically — each individual
 // /tools/<name> page overrides this with its own metadata via its own
@@ -11,8 +12,15 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "All Games & Tools | Spintra",
   description:
-    "All 14 Spintra tools, including the wheel spinner, bracket maker, team maker, dice, and trivia. Use one on your own, or open a room and play it with a group.",
+    "Free quick tools and games: spinner wheel, team maker, name picker, brackets, dice, and trivia. Play solo or open a room with friends.",
   alternates: { canonical: "/tools" },
+  openGraph: {
+    ...SITE_OPEN_GRAPH,
+    title: "All Games & Tools | Spintra",
+    description:
+      "Free quick tools and games: spinner wheel, team maker, name picker, brackets, dice, and trivia. Play solo or open a room with friends.",
+    url: "/tools",
+  },
 };
 
 export default function ToolsLayout({ children }: { children: React.ReactNode }) {

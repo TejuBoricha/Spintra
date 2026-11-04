@@ -42,6 +42,7 @@ export function SiteFooter() {
           <Link href="/explore" className={FOOTER_LINK}>Explore</Link>
           <Link href="/create" className={FOOTER_LINK}>Create Room</Link>
           <Link href="/for-teachers" className={FOOTER_LINK}>For Teachers</Link>
+          <Link href="/spintra-city" className={FOOTER_LINK}>Spintra City</Link>
           <Link href="/legal/terms" className={FOOTER_LINK}>Terms</Link>
           <Link href="/legal/privacy" className={FOOTER_LINK}>Privacy</Link>
         </nav>

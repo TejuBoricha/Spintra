@@ -39,7 +39,8 @@ function attrOf(h: string, tag: string, match: RegExp, attr: string): string | u
   }
   return undefined;
 }
-const metaContent = (h: string, property: string) => attrOf(h, 'meta', new RegExp(`property="${property}"`), 'content');
+const metaContent = (h: string, property: string) =>
+  attrOf(h, 'meta', new RegExp(`(?:name|property)="${property}"`), 'content');
 const canonicalOf = (h: string) => attrOf(h, 'link', /rel="canonical"/, 'href');
 const ldNodes = (h: string): LdNode[] =>
   [...h.matchAll(/<script\b[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)]
@@ -69,6 +70,22 @@ test('every page in the sitemap names its own address as canonical (none inherit
     // og:url is optional, but when a page has one it must not point at another page.
     const ogUrl = metaContent(h, 'og:url');
     if (ogUrl !== undefined) expect(ogUrl, `og:url of ${loc}`).toBe(loc);
+  }
+});
+
+test('every page has complete Open Graph tags and meta description within recommended bounds', async ({ request }) => {
+  for (const { loc } of await sitemapEntries(request)) {
+    const h = await html(request, pathOf(loc));
+    const desc = metaContent(h, 'description');
+    expect(desc, `meta description exists on ${loc}`).toBeTruthy();
+    expect(desc!.length, `meta description length on ${loc} is between 110 and 160`).toBeGreaterThanOrEqual(110);
+    expect(desc!.length, `meta description length on ${loc} is between 110 and 160`).toBeLessThanOrEqual(160);
+
+    const ogImage = metaContent(h, 'og:image');
+    expect(ogImage, `og:image exists on ${loc}`).toBeTruthy();
+
+    const ogSiteName = metaContent(h, 'og:site_name');
+    expect(ogSiteName, `og:site_name exists on ${loc}`).toBe('Spintra');
   }
 });
 
