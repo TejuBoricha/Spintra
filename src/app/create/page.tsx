@@ -2,12 +2,20 @@ import React, { Suspense } from "react";
 import type { Metadata } from "next";
 import { Loader2 } from "lucide-react";
 import CreateRoomClient from "./create-client";
+import { SITE_OPEN_GRAPH } from "@/lib/site-metadata";
 
 export const metadata: Metadata = {
   title: "Create a Room | Spintra",
   description:
-    "Pick a game, set up your room, and invite people with a 6-character code.",
+    "Create a free multiplayer game room on Spintra. Choose your favorite party game or decision tool and invite friends or students instantly.",
   alternates: { canonical: "/create" },
+  openGraph: {
+    ...SITE_OPEN_GRAPH,
+    title: "Create a Room | Spintra",
+    description:
+      "Create a free multiplayer game room on Spintra. Choose your favorite party game or decision tool and invite friends or students instantly.",
+    url: "/create",
+  },
 };
 
 export default function Page() {

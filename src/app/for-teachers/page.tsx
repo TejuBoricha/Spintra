@@ -10,18 +10,19 @@ import {
 } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
 import { GAMES } from "@/lib/games";
+import { SITE_OPEN_GRAPH } from "@/lib/site-metadata";
 
 export const metadata: Metadata = {
   title: "Free Classroom Tools for Teachers | Spintra",
   description:
-    "A free random name picker, team generator, trivia, and more for the classroom. Nobody signs up, not you and not your students, and it works on Chromebooks and any browser.",
+    "Free classroom games and tools for teachers: random name picker, team generator, and trivia with zero student signups on any browser.",
   alternates: { canonical: "/for-teachers" },
   openGraph: {
+    ...SITE_OPEN_GRAPH,
     title: "Free Classroom Tools for Teachers | Spintra",
     description:
-      "Name pickers, team makers, and review games for the classroom. Free, and your students don't need accounts.",
+      "Free classroom games and tools for teachers: random name picker, team generator, and trivia with zero student signups on any browser.",
     url: "/for-teachers",
-    type: "website",
   },
 };
 

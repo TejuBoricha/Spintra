@@ -1,10 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SITE_OPEN_GRAPH } from "@/lib/site-metadata";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | Spintra",
-  description: "What data Spintra collects, how it's used, how long it's kept, and your choices.",
+  description:
+    "Read Spintra's privacy policy. Learn what minimal data we collect, how it is protected, how long it is stored, and your privacy choices.",
   alternates: { canonical: "/legal/privacy" },
+  openGraph: {
+    ...SITE_OPEN_GRAPH,
+    title: "Privacy Policy | Spintra",
+    description:
+      "Read Spintra's privacy policy. Learn what minimal data we collect, how it is protected, how long it is stored, and your privacy choices.",
+    url: "/legal/privacy",
+  },
 };
 
 // Every statement here should match what the code does. If you change what

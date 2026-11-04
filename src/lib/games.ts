@@ -55,7 +55,7 @@ export const GAMES: GameDefinition[] = [
     color: "from-cyan-500 to-blue-500",
     desc: "Spin to pick something",
     featureDescription:
-      "Add your own entries and colors, then spin. In a room, everyone watches the same wheel land.",
+      "Customize slices with your own names, options, and colors, then spin the wheel. In a room, everyone watches the wheel land together in real time.",
     tagline: "Everyone watches together",
     href: "/tools/lucky-wheel",
     classroomSafe: true,
@@ -67,7 +67,7 @@ export const GAMES: GameDefinition[] = [
     color: "from-amber-500 to-orange-500",
     desc: "Draw a random name",
     featureDescription:
-      "Pick a random name from a list. Turn on elimination to draw several in order, or import names from a CSV.",
+      "Pick a random name from your list with custom animations. Turn on elimination mode to draw several winners, or paste names directly from a CSV.",
     tagline: "Elimination mode included",
     href: "/tools/name-draw",
     classroomSafe: true,
@@ -79,7 +79,7 @@ export const GAMES: GameDefinition[] = [
     color: "from-emerald-500 to-teal-500",
     desc: "Run a bracket",
     featureDescription:
-      "Single or double elimination, round robin, or Swiss. Enter results as you go and the bracket updates for everyone.",
+      "Generate single elimination, double elimination, round robin, or Swiss brackets. Update match scores live and the bracket updates for everyone.",
     tagline: "Four bracket formats",
     href: "/tools/tournament",
     classroomSafe: true,
@@ -90,7 +90,8 @@ export const GAMES: GameDefinition[] = [
     icon: Coins,
     color: "from-yellow-500 to-amber-500",
     desc: "Heads or tails",
-    featureDescription: "Flip a coin when you need a quick yes or no. Everyone in the room sees the same result.",
+    featureDescription:
+      "Flip a 3D virtual coin with realistic physics for quick decisions. Play solo or in a room where everyone watches the flip land simultaneously.",
     tagline: "One tap",
     href: "/tools/coin-flip",
     classroomSafe: true,
@@ -101,7 +102,8 @@ export const GAMES: GameDefinition[] = [
     icon: Dice1,
     color: "from-red-500 to-rose-500",
     desc: "Roll any dice",
-    featureDescription: "Roll any mix of dice for board games and tabletop sessions. The total is added up for you.",
+    featureDescription:
+      "Roll any combination of 3D polyhedral dice for board games and tabletop RPGs. View live totals, roll histories, and synchronized room rolls.",
     tagline: "Any dice, any count",
     href: "/tools/dice",
     classroomSafe: true,
@@ -112,7 +114,8 @@ export const GAMES: GameDefinition[] = [
     icon: Hash,
     color: "from-blue-500 to-indigo-500",
     desc: "Number guessing game",
-    featureDescription: "A secret number is picked and everyone guesses, with a higher or lower hint after each try.",
+    featureDescription:
+      "A secret number is chosen and players guess the answer with higher or lower hints after each try. Compete solo or with friends in real time.",
     tagline: "Higher or lower",
     href: "/tools/guess-number",
     classroomSafe: true,
@@ -123,7 +126,8 @@ export const GAMES: GameDefinition[] = [
     icon: Sword,
     color: "from-orange-500 to-red-500",
     desc: "Rock, paper, or scissors",
-    featureDescription: "Play against the computer, or against friends. In a room, everyone's pick is revealed at the same moment.",
+    featureDescription:
+      "Play classic Rock Paper Scissors against the computer or live friends. In a room, all player choices remain hidden and reveal at the exact same moment.",
     tagline: "Picks revealed together",
     href: "/tools/rps",
     classroomSafe: true,
@@ -134,7 +138,8 @@ export const GAMES: GameDefinition[] = [
     icon: MessageCircleQuestion,
     color: "from-pink-500 to-rose-500",
     desc: "Truths and dares for groups",
-    featureDescription: "Draw a truth or a dare from a ready-made deck. Good for parties and sleepovers.",
+    featureDescription:
+      "Pick from hundreds of clean, fun, and spicy truth or dare prompts, or add your own custom cards. Great for parties, icebreakers, and game nights.",
     tagline: "For parties",
     href: "/tools/truth-or-dare",
     classroomSafe: false,
@@ -145,7 +150,8 @@ export const GAMES: GameDefinition[] = [
     icon: Split,
     color: "from-indigo-500 to-purple-500",
     desc: "Tough choices",
-    featureDescription: "Everyone votes on an either-or question, then you see how the room split.",
+    featureDescription:
+      "Vote on hilarious dilemmas and tough choices, then watch how the room votes split in real time. Perfect for parties, classrooms, and stream games.",
     tagline: "Either-or votes",
     href: "/tools/would-you-rather",
     classroomSafe: false,
@@ -156,7 +162,8 @@ export const GAMES: GameDefinition[] = [
     icon: HeartHandshake,
     color: "from-violet-500 to-purple-500",
     desc: "Group confessions",
-    featureDescription: "Read a prompt and find out who has done it. The deck is ready to go.",
+    featureDescription:
+      "Read exciting prompts and discover who among your friends has done it. Built-in themed decks and custom prompt support for unforgettable game nights.",
     tagline: "Good icebreaker",
     href: "/tools/never-have-i-ever",
     classroomSafe: false,
@@ -167,7 +174,8 @@ export const GAMES: GameDefinition[] = [
     icon: Lightbulb,
     color: "from-yellow-400 to-orange-500",
     desc: "Quiz your group",
-    featureDescription: "Answer multiple-choice trivia questions together and see who gets the most right.",
+    featureDescription:
+      "Answer fast-paced multiple-choice trivia questions across multiple categories. Track live scoreboards and find out who has the highest knowledge score.",
     tagline: "Multiple choice",
     href: "/tools/trivia",
     classroomSafe: true,
@@ -178,7 +186,8 @@ export const GAMES: GameDefinition[] = [
     icon: Grid3x3,
     color: "from-teal-500 to-cyan-600",
     desc: "Classic number bingo",
-    featureDescription: "Call numbers, mark your card, and shout bingo the moment you get a line.",
+    featureDescription:
+      "Generate custom bingo cards, call random numbers or terms, and track cards live. Includes auto-check verification and cards that survive page reloads.",
     tagline: "Cards survive a reload",
     href: "/tools/bingo",
     classroomSafe: true,
@@ -189,7 +198,8 @@ export const GAMES: GameDefinition[] = [
     icon: Shuffle,
     color: "from-lime-500 to-green-600",
     desc: "Unscramble the word",
-    featureDescription: "Unscramble the word before anyone else does. Ask for a hint if you get stuck.",
+    featureDescription:
+      "Race against the clock to unscramble jumbled words. Take advantage of smart letter hints, score multipliers, and compete solo or with your friends.",
     tagline: "Hints available",
     href: "/tools/word-scramble",
     classroomSafe: true,
@@ -200,7 +210,8 @@ export const GAMES: GameDefinition[] = [
     icon: PartyPopper,
     color: "from-fuchsia-500 to-pink-500",
     desc: "Every game in one room",
-    featureDescription: "Every game is available in one room, so you can switch between them without making a new room.",
+    featureDescription:
+      "Access every Spintra party game and decision tool in one shared multiplayer room. Switch between games seamlessly without creating new room codes.",
     tagline: "For game nights",
     href: "/create?type=party",
     createOnly: true,
@@ -211,7 +222,8 @@ export const GAMES: GameDefinition[] = [
     icon: GraduationCap,
     color: "from-sky-500 to-cyan-500",
     desc: "Classroom-safe games only",
-    featureDescription: "A room that only shows the classroom-safe games. The party games stay hidden.",
+    featureDescription:
+      "Launch classroom-safe decision wheels, name pickers, and quizzes. Safe student mode automatically filters out all party and social confession decks.",
     tagline: "For teachers",
     href: "/create?type=classroom",
     createOnly: true,

@@ -9,18 +9,19 @@ import {
 } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
 import { buildFaqSchema, FaqAccordion } from "@/components/faq-accordion";
+import { SITE_OPEN_GRAPH } from "@/lib/site-metadata";
 
 export const metadata: Metadata = {
   title: "Free Online Monopoly-Style Game | Spintra City",
   description:
-    "Play a free Monopoly-style board game online with 2 to 8 friends. Buy cities, build on them, and trade until one of you owns the board. It runs in your browser and nobody needs an account.",
+    "Play a free Monopoly-style board game online with 2 to 8 players. Buy cities, trade properties, and build your empire directly in the browser.",
   alternates: { canonical: "/spintra-city" },
   openGraph: {
+    ...SITE_OPEN_GRAPH,
     title: "Free Online Monopoly-Style Game | Spintra City",
     description:
-      "A free Monopoly-style board game for 2 to 8 players. Open a room, send your friends the code, and play in the browser.",
+      "Play a free Monopoly-style board game online with 2 to 8 players. Buy cities, trade properties, and build your empire directly in the browser.",
     url: "/spintra-city",
-    type: "website",
   },
 };
 

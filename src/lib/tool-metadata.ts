@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { GAMES } from "@/lib/games";
+import { GAMES } from "./games";
+import { SITE_OPEN_GRAPH } from "./site-metadata";
 
 /**
  * The <title> of each tool page. It leads with what people type into a search
@@ -39,10 +40,10 @@ export function toolMetadata(href: string): Metadata {
     description: game.featureDescription,
     alternates: { canonical: href },
     openGraph: {
+      ...SITE_OPEN_GRAPH,
       title,
-      description: game.desc,
+      description: game.featureDescription,
       url: href,
-      type: "website",
     },
   };
 }

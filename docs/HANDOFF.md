@@ -12,13 +12,14 @@ This board is the one place that says what is **done, in progress and pending**.
 
 ### 1. Git and deploy state
 
-- `main` is at `34ecbe8` (merge of PR #104: repository showcase transformation, 4 Nov 2026), after PR #103 (migrations 0115 & 0116, home footer landmark fix, and cursor performance), PR #102, and PR #100.
-- **Branch `perf/ci-acceleration-and-sharding`**:
-  - CI pipeline enterprise acceleration reducing total CI runtime to ~6–7 minutes (~50% pipeline speedup):
-  - 4-way parallel matrix sharding on `validate-shard` (`shard: [1/4, 2/4, 3/4, 4/4]`) running 8 concurrent Playwright workers across 4 runner VMs (~2.5–3m test duration).
-  - 2-way parallel matrix sharding on `db-integration-shard` (`shard: [1/2, 2/2]`) with restored `.next/cache` build caching (~4.5m test duration).
-  - Preserves exact required branch protection status contexts via synthetic gateway aggregators (`validate` and `db-integration`).
-  - Disabled unneeded local Supabase services (`studio`, `local_smtp`, `storage`, `edge_runtime`, `analytics`) in `supabase/config.toml`, saving ~1.5 GB of Docker pulls and ~60s of container startup time.
+- `main` is at `3d30620` (merge of PR #105: CI pipeline enterprise acceleration & matrix sharding, 4 Nov 2026), after PR #104 (repository showcase transformation).
+- **Branch `fix/seo-ahrefs-audit-fixes` (current)**:
+  - Resolved all remaining warnings and notices flagged by Ahrefs Site Audit:
+  - Calibrated meta descriptions across all 14 tools and key routes (`/create`, `/for-teachers`, `/spintra-city`, `/legal/privacy`, `/legal/terms`, `/settings`) to strictly adhere to 120–155 chars (clearing 13 "too short" and 2 "too long" warnings).
+  - Enriched Open Graph tags (`siteName`, `images`, `locale`, `type`) across all tool pages and routes, resolving 5 "Open Graph tags incomplete" warnings.
+  - Enhanced footer internal linking in `SiteFooter` by adding `Spintra City` to footer nav links, eliminating single incoming link warnings.
+  - Added automated Playwright test in `tests/seo-foundations.spec.ts` asserting description length (110–160 chars) and Open Graph completeness across all sitemap routes. All 9 tests pass.
+  - `npm run verify:static` clean (0 errors, 0 warnings, 0 docs drift).
 - **PR #104** (merged 4 Nov 2026 as `34ecbe8`, all checks green on exact head `ad0cbf4`):
   - Full GitHub repository presentation transformation into an artistic, visual masterpiece.
   - Bespoke vector brand artwork: `assets/branding/hero-banner.svg`, `assets/branding/architecture-diagram.svg`, `assets/branding/divider.svg`.

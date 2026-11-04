@@ -1,10 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SITE_OPEN_GRAPH } from "@/lib/site-metadata";
 
 export const metadata: Metadata = {
   title: "Terms of Service | Spintra",
-  description: "The terms that govern your use of Spintra's rooms, games, and chat features.",
+  description:
+    "Review the Terms of Service for Spintra. Learn about the rules, acceptable use, and terms governing our multiplayer rooms, games, and tools.",
   alternates: { canonical: "/legal/terms" },
+  openGraph: {
+    ...SITE_OPEN_GRAPH,
+    title: "Terms of Service | Spintra",
+    description:
+      "Review the Terms of Service for Spintra. Learn about the rules, acceptable use, and terms governing our multiplayer rooms, games, and tools.",
+    url: "/legal/terms",
+  },
 };
 
 export default function TermsOfServicePage() {
