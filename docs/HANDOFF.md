@@ -4,7 +4,7 @@ Portable session-continuity note for any AI assistant to resume work immediately
 
 ---
 
-## State board: read this first (updated 11 Oct 2026 by a local session; see section 3; first written 30 Sep)
+## State board: read this first (updated 4 Nov 2026 by a local session; see section 3; first written 30 Sep)
 
 This board is the one place that says what is **done, in progress and pending**. The long paragraph under "Last Completed Task" and the dated sections below it are history with detail; the old "Current Blockers" and "Next Steps" sections at the bottom are superseded by this board. If anything elsewhere disagrees with this board, this board was written last.
 
@@ -12,14 +12,13 @@ This board is the one place that says what is **done, in progress and pending**.
 
 ### 1. Git and deploy state
 
-- `main` is at `3d30620` (merge of PR #105: CI pipeline enterprise acceleration & matrix sharding, 4 Nov 2026), after PR #104 (repository showcase transformation).
-- **Branch `fix/seo-ahrefs-audit-fixes` (current)**:
-  - Resolved all remaining warnings and notices flagged by Ahrefs Site Audit:
-  - Calibrated meta descriptions across all 14 tools and key routes (`/create`, `/for-teachers`, `/spintra-city`, `/legal/privacy`, `/legal/terms`, `/settings`) to strictly adhere to 120–155 chars (clearing 13 "too short" and 2 "too long" warnings).
-  - Enriched Open Graph tags (`siteName`, `images`, `locale`, `type`) across all tool pages and routes, resolving 5 "Open Graph tags incomplete" warnings.
-  - Enhanced footer internal linking in `SiteFooter` by adding `Spintra City` to footer nav links, eliminating single incoming link warnings.
-  - Added automated Playwright test in `tests/seo-foundations.spec.ts` asserting description length (110–160 chars) and Open Graph completeness across all sitemap routes. All 9 tests pass.
-  - `npm run verify:static` clean (0 errors, 0 warnings, 0 docs drift).
+- `main` is at `dfde04a` (merge of PR #107: og:image dimensions and per-page structured-data identity, 4 Nov 2026), after PR #106 (SEO: meta descriptions, Open Graph, internal link equity, 4 Nov 2026) and PR #105 (CI pipeline enterprise acceleration & matrix sharding, 4 Nov 2026).
+- **PR #107** (merged 4 Nov 2026 as `dfde04a`, 10/10 checks green, two `/code-review high` rounds — the first found a defect and it was fixed, the second found nothing):
+  - Found by a direct SEO audit of the live site (Ahrefs MCP connector was blocked on the connected account's plan, so checked spintra.io directly across all 22 sitemap URLs).
+  - `og:image` now declares its real 1200x630 dimensions (`src/lib/site-metadata.ts`), so social crawlers don't need to fetch it to size link previews.
+  - The sitewide `WebApplication` JSON-LD (`src/app/layout.tsx`) no longer hardcodes `url: "https://spintra.io"` on every page; `/spintra-city` got its own distinct entity instead (`src/app/spintra-city/page.tsx`). Both entities carry an `@id` so a consumer resolving by `@type` can't land on the wrong one.
+  - New Playwright test in `tests/seo-foundations.spec.ts` pins both: the sitewide entity has no page-specific url, and Spintra City's own entity has its own name/url.
+  - Also found, not fixed (out of scope — DNS, not code): `www.spintra.io` has no DNS record at all (confirmed NXDOMAIN).
 - **PR #104** (merged 4 Nov 2026 as `34ecbe8`, all checks green on exact head `ad0cbf4`):
   - Full GitHub repository presentation transformation into an artistic, visual masterpiece.
   - Bespoke vector brand artwork: `assets/branding/hero-banner.svg`, `assets/branding/architecture-diagram.svg`, `assets/branding/divider.svg`.
