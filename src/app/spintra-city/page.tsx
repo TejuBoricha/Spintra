@@ -9,9 +9,7 @@ import {
 } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
 import { buildFaqSchema, FaqAccordion } from "@/components/faq-accordion";
-import { SITE_OPEN_GRAPH, jsonLdScript } from "@/lib/site-metadata";
-
-const BASE_URL = "https://spintra.io";
+import { SITE_OPEN_GRAPH, jsonLdScript, BASE_URL } from "@/lib/site-metadata";
 
 export const metadata: Metadata = {
   title: "Free Online Monopoly-Style Game | Spintra City",
@@ -93,9 +91,12 @@ function StartMatchButton() {
 // src/app/layout.tsx: that one deliberately carries no `url` (it's on every
 // page), so without this, Spintra City — a named, separately marketed game —
 // has no structured-data identity of its own and can't earn its own rich result.
+// `@id` set on both so a consumer that resolves by `@type` (this page renders
+// the sitewide one too) doesn't land on the wrong one.
 const gameSchema = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
+  "@id": `${BASE_URL}/spintra-city#webapp`,
   name: "Spintra City",
   url: `${BASE_URL}/spintra-city`,
   description:

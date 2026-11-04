@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 
+/** The production origin. Shared so every file that builds an absolute URL (sitemaps,
+ * JSON-LD, canonicals) agrees on it rather than redefining the same string literal. */
+export const BASE_URL = "https://spintra.io";
+
 /**
  * JSON for an inline `<script type="application/ld+json">`. A "<" inside a string
  * (a closing script tag in a description, say) would end the script early, so every

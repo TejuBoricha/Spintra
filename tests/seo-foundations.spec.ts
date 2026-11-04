@@ -124,6 +124,25 @@ test('the home page says who Spintra is: a WebSite and an Organization with its 
   expect(nodes.find((n) => n['@type'] === 'WebApplication')?.name).toBe('Spintra');
 });
 
+test('the sitewide WebApplication entity names no page-specific address, and Spintra City has its own distinct entity', async ({ request }) => {
+  // The sitewide entity (src/app/layout.tsx) renders on every page, so it must not claim
+  // a single page's address. Checked on a non-home page: if it leaked a hardcoded url,
+  // it would point at the home page from here too.
+  const dice = ldNodes(await html(request, '/tools/dice'));
+  const sitewide = dice.find((n) => n['@id'] === 'https://spintra.io/#webapp');
+  expect(sitewide, 'the sitewide entity').toBeTruthy();
+  expect(sitewide?.url).toBeUndefined();
+
+  // Spintra City is a distinct, separately marketed product and gets its own entity
+  // rather than inheriting the generic one. Resolved by @id, not by @type: the page also
+  // renders the sitewide entity above, so a lookup by @type alone would be ambiguous.
+  const city = ldNodes(await html(request, '/spintra-city'));
+  const cityApp = city.find((n) => n['@id'] === 'https://spintra.io/spintra-city#webapp');
+  expect(cityApp, 'Spintra City has its own entity').toBeTruthy();
+  expect(cityApp?.name).toBe('Spintra City');
+  expect(cityApp?.url).toBe(`${SITE}/spintra-city`);
+});
+
 test('category pages /tools and /explore emit ItemList schema for AI discoverability', async ({ request }) => {
   const toolsNodes = ldNodes(await html(request, '/tools'));
   const toolsItemList = toolsNodes.find((n) => n['@type'] === 'ItemList');

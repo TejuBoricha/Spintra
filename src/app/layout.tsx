@@ -71,6 +71,7 @@ export const metadata: Metadata = {
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
+  "@id": "https://spintra.io/#webapp",
   name: "Spintra",
   description:
     "Spin a wheel, draw names, split into teams, or run a bracket. Open a room and everyone sees the same result on their own screen. Free, in your browser.",
