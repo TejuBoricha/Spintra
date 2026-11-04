@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 
+/** The production origin. Shared so every file that builds an absolute URL (sitemaps,
+ * JSON-LD, canonicals) agrees on it rather than redefining the same string literal. */
+export const BASE_URL = "https://spintra.io";
+
 /**
  * JSON for an inline `<script type="application/ld+json">`. A "<" inside a string
  * (a closing script tag in a description, say) would end the script early, so every
@@ -20,7 +24,7 @@ export const SITE_OPEN_GRAPH: NonNullable<Metadata["openGraph"]> = {
   title: "Spintra | Free wheel spinner, team maker, and party games",
   description: "Can't decide? Spin for it. Free games and group tools you play together in one room.",
   siteName: "Spintra",
-  images: [{ url: "/og-image.png" }],
+  images: [{ url: "/og-image.png", width: 1200, height: 630 }],
   locale: "en_US",
   type: "website",
 };

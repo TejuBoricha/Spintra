@@ -3817,3 +3817,17 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
    - All 3 tool SEO titles tests passed (19.3s).
 5. `Integrity Validation`:
    - `npm run verify:static` passed with 0 errors, 0 warnings, and 0 documentation drift.
+
+---
+
+## [2026-11-04] — og:image Dimensions and Per-Page Structured-Data Identity (PR #107)
+
+**AI:** Claude Sonnet 5
+**Task:** Direct SEO audit of spintra.io (Ahrefs MCP connector was blocked on the connected account's plan, so checked the live site directly) across all 22 sitemap URLs; fix the two real defects found.
+**Change:**
+- `src/lib/site-metadata.ts`: added `width: 1200, height: 630` to the shared `og:image`, inherited by every page, so social crawlers no longer need to fetch the image to size link previews.
+- `src/app/layout.tsx`: removed the hardcoded `url: "https://spintra.io"` from the sitewide `WebApplication` JSON-LD — it was on every page, so e.g. `/spintra-city` always reported itself as the home page.
+- `src/app/spintra-city/page.tsx`: added a page-specific `WebApplication` entity (own name/url/description) since Spintra City is a distinct, separately marketed product that previously had no structured-data identity of its own; also switched its FAQ schema to the project's `jsonLdScript` escaping helper, matching every other page's JSON-LD injection.
+**Evidence:** `npm run verify:static` passed (0 errors, 0 warnings, 0 drift). Confirmed via audit: all 22 pages have unique, correctly calibrated titles/descriptions (119–151 chars), correct canonicals and page-specific `og:url`, one `<h1>` each, full internal-link coverage, correct 404/redirect handling.
+**Not verified:** Full Playwright suite and `next build` — missing local Supabase env and an unrelated Turbopack worktree root-resolution issue; both run in CI on the PR instead.
+**Out of scope:** `www.spintra.io` has no DNS record at all (confirmed NXDOMAIN) — infra/DNS fix, not code.

@@ -62,11 +62,17 @@ export const metadata: Metadata = {
 // 'unsafe-inline' (see next.config.ts's comment — required unconditionally
 // by Next.js's own hydration bootstrap, not something this addition
 // introduces).
+//
+// No `url`: the root layout wraps every route, so a fixed address here
+// would have every page (e.g. /spintra-city) claim it IS the home page,
+// contradicting that page's own canonical and og:url. A page that wants
+// this entity tied to its own address adds a page-specific block instead
+// (see src/app/spintra-city/page.tsx).
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
+  "@id": "https://spintra.io/#webapp",
   name: "Spintra",
-  url: "https://spintra.io",
   description:
     "Spin a wheel, draw names, split into teams, or run a bracket. Open a room and everyone sees the same result on their own screen. Free, in your browser.",
   applicationCategory: "GameApplication",

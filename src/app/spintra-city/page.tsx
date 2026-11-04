@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
 import { buildFaqSchema, FaqAccordion } from "@/components/faq-accordion";
-import { SITE_OPEN_GRAPH } from "@/lib/site-metadata";
+import { SITE_OPEN_GRAPH, jsonLdScript, BASE_URL } from "@/lib/site-metadata";
 
 export const metadata: Metadata = {
   title: "Free Online Monopoly-Style Game | Spintra City",
@@ -87,6 +87,25 @@ function StartMatchButton() {
   );
 }
 
+// Its own entity, distinct from the generic sitewide WebApplication in
+// src/app/layout.tsx: that one deliberately carries no `url` (it's on every
+// page), so without this, Spintra City — a named, separately marketed game —
+// has no structured-data identity of its own and can't earn its own rich result.
+// `@id` set on both so a consumer that resolves by `@type` (this page renders
+// the sitewide one too) doesn't land on the wrong one.
+const gameSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "@id": `${BASE_URL}/spintra-city#webapp`,
+  name: "Spintra City",
+  url: `${BASE_URL}/spintra-city`,
+  description:
+    "Play a free Monopoly-style board game online with 2 to 8 players. Buy cities, trade properties, and build your empire directly in the browser.",
+  applicationCategory: "GameApplication",
+  operatingSystem: "Any (web browser)",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+};
+
 export default function SpintraCityPage() {
   const faqSchema = buildFaqSchema(FAQS);
 
@@ -94,7 +113,11 @@ export default function SpintraCityPage() {
     <div className="min-h-screen pt-28 pb-16 px-4">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(gameSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(faqSchema) }}
       />
       <div className="max-w-6xl mx-auto space-y-20">
         {/* Hero */}
