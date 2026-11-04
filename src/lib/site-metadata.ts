@@ -20,7 +20,7 @@ export const SITE_OPEN_GRAPH: NonNullable<Metadata["openGraph"]> = {
   title: "Spintra | Free wheel spinner, team maker, and party games",
   description: "Can't decide? Spin for it. Free games and group tools you play together in one room.",
   siteName: "Spintra",
-  images: [{ url: "/og-image.png" }],
+  images: [{ url: "/og-image.png", width: 1200, height: 630 }],
   locale: "en_US",
   type: "website",
 };
