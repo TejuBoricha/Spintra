@@ -6,7 +6,7 @@ import { Swords, Trophy, Crown, RotateCcw, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChipGroup } from "@/components/ui/chip-group";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import type { TournamentType } from "@/lib/types";
 import { Emoji } from "@/components/emoji";
@@ -190,6 +190,29 @@ export function TournamentActivity() {
   const [tournamentType, setTournamentType] = useState<TournamentType>("single-elimination");
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [editingMatch, setEditingMatch] = useState<MatchRef | null>(null);
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+
+  const requestReset = useCallback(() => {
+    if (!tournament) return;
+    const hasProgress =
+      tournament.rounds.some((r) =>
+        r.some((m) => m.winner !== null || m.score1 !== null || m.score2 !== null)
+      ) ||
+      (tournament.losersBracket?.some((r) =>
+        r.some((m) => m.winner !== null || m.score1 !== null || m.score2 !== null)
+      ) ?? false) ||
+      (tournament.grandFinal
+        ? tournament.grandFinal.winner !== null ||
+          tournament.grandFinal.score1 !== null ||
+          tournament.grandFinal.score2 !== null
+        : false);
+
+    if (hasProgress) {
+      setConfirmResetOpen(true);
+    } else {
+      sendActivityEvent({ kind: "activity_reset" });
+    }
+  }, [tournament, sendActivityEvent]);
   const standings = useMemo(
     () =>
       tournament && (tournament.type === "round-robin" || tournament.type === "swiss")
@@ -564,7 +587,7 @@ export function TournamentActivity() {
           {isHost && (
             <Button
               variant="outline"
-              onClick={() => sendActivityEvent({ kind: "activity_reset" })}
+              onClick={requestReset}
               className="w-full"
             >
               <RotateCcw className="w-4 h-4 mr-2" /> Start a New Bracket
@@ -589,6 +612,30 @@ export function TournamentActivity() {
           onClose={() => setEditingMatch(null)}
         />
       )}
+
+      {/* Reset Confirmation Modal (Audit G-12) */}
+      <Dialog open={confirmResetOpen} onOpenChange={setConfirmResetOpen}>
+        <DialogContent className="p-6 sm:max-w-md">
+          <DialogTitle className="text-lg font-bold">Start a New Bracket?</DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground mt-2">
+            This will clear the active tournament bracket and erase all recorded match results and scores for all players in this room. Are you sure you want to start over?
+          </DialogDescription>
+          <div className="flex flex-wrap gap-3 justify-end mt-6">
+            <Button variant="outline" onClick={() => setConfirmResetOpen(false)}>
+              Keep Bracket
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setConfirmResetOpen(false);
+                sendActivityEvent({ kind: "activity_reset" });
+              }}
+            >
+              Reset Bracket
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

@@ -3908,3 +3908,29 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 6. `Integrity & Quality Gates`:
    - `npm run verify:static` passed: 0 typecheck errors, 0 lint warnings, 0 docs drift.
    - `npm run audit` passed: 0 unallowlisted vulnerabilities.
+
+---
+
+## [2026-11-11] — Game Integrity: RPS Pick Privacy & Tournament Reset Confirmation Guards (Branch `feat/game-integrity-rps-and-tournament-guards`)
+
+**AI:** Antigravity (Google DeepMind)
+**Task:** Resolve critical game integrity vulnerabilities and destructive UX flaws identified in security & usability audits G-5 and G-12:
+1. `Audit G-5 (Rock Paper Scissors Pick Privacy)`:
+   - File: `src/app/room/[code]/activities/rps-activity.tsx`
+   - Fixed host cheating vulnerability where the host client checked `r.username === currentUser.username || isHost` and rendered real player choices (`Rock`, `Paper`, `Scissors`) before the round resolved.
+   - Updated condition to `!!roundResult || r.username === currentUser.username`: both hosts and guests now see only their own locked-in pick and a `shushing_face` "Chosen" indicator for opponents.
+   - Once all choices are locked in and `roundResult` is computed, all player choices are revealed simultaneously.
+2. `Audit G-12 (Tournament Reset Confirmation Guard)`:
+   - Files: `src/app/tools/tournament/page.tsx` and `src/app/room/[code]/activities/tournament-activity.tsx`
+   - Eliminated accidental data loss caused by single-click unconfirmed reset buttons ("Start over" and "Start a New Bracket").
+   - Added `requestReset()` callback checking whether any match in the tournament (main bracket, losers bracket, or grand final) has a winner or recorded score (`hasProgress`).
+   - If progress exists, an accessible `Dialog` confirmation modal appears with "Keep Bracket" and "Reset Bracket" actions.
+   - If no matches have been scored yet, the tournament resets cleanly without unnecessary friction.
+3. `Automated Playwright Tests`:
+   - Added `tests/game-integrity-rps-and-tournament.spec.ts`:
+     - Test 1: Unscored tournament resets immediately on "Start over" without modal dialog.
+     - Test 2: Scored tournament displays confirmation dialog upon clicking "Start over", allows cancellation with "Keep Bracket", and wipes tournament state only when "Reset Bracket" is clicked.
+   - 2/2 tests passed in 24.0s.
+4. `Quality & Verification Gates`:
+   - `npm run verify:static` passed: 0 type errors, 0 lint warnings, 0 docs drift.
+   - `npm run audit` passed: 0 unallowlisted vulnerabilities.
