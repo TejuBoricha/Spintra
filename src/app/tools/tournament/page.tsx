@@ -37,6 +37,7 @@ import {
   generateBracketForType,
   recordMatchResult,
   calculateStandings,
+  hasRecordedResults,
   isByePlayer,
   isSharedFirst,
   matchActionLabel,
@@ -260,10 +261,7 @@ export default function TournamentPage() {
 
   const requestReset = useCallback(() => {
     if (!tournament) return;
-    const hasProgress = tournament.rounds.some((r) =>
-      r.some((m) => m.winner !== null || m.score1 !== null || m.score2 !== null)
-    );
-    if (hasProgress) {
+    if (hasRecordedResults(tournament)) {
       setConfirmResetOpen(true);
     } else {
       setTournament(null);

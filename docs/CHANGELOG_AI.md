@@ -3934,3 +3934,8 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 4. `Quality & Verification Gates`:
    - `npm run verify:static` passed: 0 type errors, 0 lint warnings, 0 docs drift.
    - `npm run audit` passed: 0 unallowlisted vulnerabilities.
+5. `Review fix before merge (Claude Fable 5.2)`:
+   - The guard counted byes as progress: the engine completes a bye itself at generation (a winner and a 1-0 score), so an unplayed bracket with a bye (3, 5, 6 or 7 players) asked to confirm erasing results nobody had entered.
+   - The check now lives in one place, `hasRecordedResults()` in `src/lib/tournament-engine.ts`, used by both the tool page and the room. It skips byes and covers the losers bracket and grand final (the tool page looked at the winners bracket only).
+   - New test: an unplayed 3-player bracket resets without a prompt. It fails with the bye filter removed. 3/3 in the spec and 6/6 in `tests/qa-x37-tournament-byes.spec.ts` pass in demo mode; `npm run verify:static` passes. `npm run audit` was not re-run.
+   - Known limit, not changed here: RPS picks are hidden on screen only. Each `rps_choice` event still carries the pick to every client.

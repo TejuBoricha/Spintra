@@ -9,10 +9,11 @@ skipInDbIntegration(test);
 // for confirmation with a Dialog so users don't accidentally lose progress.
 // If no matches have been played yet, it resets immediately without prompt.
 
-async function generateTournament(page: Page) {
+async function generateTournament(page: Page, players = 4) {
   await page.addInitScript(() => localStorage.setItem('spintra-cookie-consent', 'denied'));
   await page.goto('/tools/tournament');
-  await page.getByPlaceholder(/participant names/i).fill('Player 1\nPlayer 2\nPlayer 3\nPlayer 4');
+  const names = Array.from({ length: players }, (_, i) => `Player ${i + 1}`).join('\n');
+  await page.getByPlaceholder(/participant names/i).fill(names);
   await page.getByRole('button', { name: /Generate Bracket/ }).click();
   await expect(page.locator('[data-match-ready="true"]').first()).toBeVisible();
 }
@@ -29,6 +30,19 @@ test.describe('Tournament Reset Confirmation Guard (Audit G-12)', () => {
     // Verify back to setup state (participant textarea visible)
     await expect(page.getByPlaceholder(/participant names/i)).toBeVisible();
     // Verify no confirmation dialog appeared
+    await expect(page.getByRole('dialog', { name: 'Start a New Tournament?' })).toHaveCount(0);
+  });
+
+  test('a bye is not a recorded result: an unplayed 3-player bracket resets without a prompt', async ({ page }) => {
+    // The engine completes a bye itself when the bracket is generated (a winner and a 1-0
+    // score), so a guard that counts any winner as progress would ask to confirm erasing
+    // results nobody has entered.
+    await generateTournament(page, 3);
+    await expect(page.locator('[data-match-bye="true"]').first()).toBeAttached();
+
+    await page.getByRole('button', { name: 'Start over' }).click();
+
+    await expect(page.getByPlaceholder(/participant names/i)).toBeVisible();
     await expect(page.getByRole('dialog', { name: 'Start a New Tournament?' })).toHaveCount(0);
   });
 

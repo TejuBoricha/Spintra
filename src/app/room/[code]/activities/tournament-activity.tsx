@@ -21,6 +21,7 @@ import {
   type MatchRef,
   generateBracketForType,
   recordMatchResult,
+  hasRecordedResults,
   isByePlayer,
   isSharedFirst,
   matchActionLabel,
@@ -194,20 +195,7 @@ export function TournamentActivity() {
 
   const requestReset = useCallback(() => {
     if (!tournament) return;
-    const hasProgress =
-      tournament.rounds.some((r) =>
-        r.some((m) => m.winner !== null || m.score1 !== null || m.score2 !== null)
-      ) ||
-      (tournament.losersBracket?.some((r) =>
-        r.some((m) => m.winner !== null || m.score1 !== null || m.score2 !== null)
-      ) ?? false) ||
-      (tournament.grandFinal
-        ? tournament.grandFinal.winner !== null ||
-          tournament.grandFinal.score1 !== null ||
-          tournament.grandFinal.score2 !== null
-        : false);
-
-    if (hasProgress) {
+    if (hasRecordedResults(tournament)) {
       setConfirmResetOpen(true);
     } else {
       sendActivityEvent({ kind: "activity_reset" });

@@ -37,6 +37,19 @@ export const isByePlayer = (name: string | null | undefined): boolean => name ==
 /** What to show for a slot: "BYE" for the placeholder (audit T-14), the name otherwise. */
 export const playerLabel = (name: string | null | undefined): string | null => (name === BYE_PLAYER ? "BYE" : name ?? null);
 
+/**
+ * True once a match someone actually played has a score or a winner. Byes are left out:
+ * the engine completes them itself when the bracket is generated, so they are not results
+ * anyone would lose by starting over.
+ */
+export const hasRecordedResults = (t: Pick<Tournament, "rounds" | "losersBracket" | "grandFinal">): boolean =>
+  [...t.rounds.flat(), ...(t.losersBracket?.flat() ?? []), ...(t.grandFinal ? [t.grandFinal] : [])].some(
+    (m) =>
+      !isByePlayer(m.player1) &&
+      !isByePlayer(m.player2) &&
+      (m.winner !== null || m.score1 !== null || m.score2 !== null)
+  );
+
 /** True when the finished tournament's first place is shared (`winner` then names everyone). */
 export const isSharedFirst = (t: Pick<Tournament, "winners">): boolean => (t.winners?.length ?? 0) > 1;
 
