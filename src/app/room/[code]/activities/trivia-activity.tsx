@@ -17,7 +17,7 @@ import {
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { TRIVIA_QUESTIONS, type TriviaQuestion } from "@/lib/trivia-questions";
+import { TRIVIA_QUESTIONS, TRIVIA_CATEGORIES, type TriviaQuestion } from "@/lib/trivia-questions";
 
 import { playSwipe, playPop, playSuccess, playFailure } from "@/lib/audio";
 
@@ -244,14 +244,11 @@ export function TriviaActivity() {
                 <SelectContent alignItemWithTrigger={false} sideOffset={6} className="w-(--anchor-width) min-w-[220px] max-w-[calc(100vw-2rem)]">
                   <SelectGroup>
                     <SelectItem value="All">All Categories</SelectItem>
-                    <SelectItem value="General Knowledge">General Knowledge</SelectItem>
-                    <SelectItem value="Science & Nature">Science & Nature</SelectItem>
-                    <SelectItem value="Geography">Geography</SelectItem>
-                    <SelectItem value="History">History</SelectItem>
-                    <SelectItem value="Pop Culture">Pop Culture</SelectItem>
-                    <SelectItem value="Sports">Sports</SelectItem>
-                    <SelectItem value="Technology">Technology</SelectItem>
-                    <SelectItem value="Arts & Literature">Arts & Literature</SelectItem>
+                    {TRIVIA_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
                   </SelectGroup>
                 </SelectContent>
               </Select>

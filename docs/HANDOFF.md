@@ -12,8 +12,15 @@ This board is the one place that says what is **done, in progress and pending**.
 
 ### 1. Git and deploy state
 
-- `main` is at `cef6e38` (merge of PR #108: docs sync after PR #107, 4 Nov 2026), after PR #107 (SEO og:image and JSON-LD identity, 4 Nov 2026), PR #106 (SEO: meta descriptions, Open Graph, internal link equity, 4 Nov 2026) and PR #105 (CI pipeline enterprise acceleration & matrix sharding, 4 Nov 2026).
-- **Branch `perf/ci-pipeline-modernization` (11 Nov 2026):**
+- `main` is at `b930a43` (merge of Dependabot PR #109: next 16.4.4, lucide-react 1.67, tailwindcss 4.3.4, 11 Nov 2026), after PR #110 (`70be7de`: CI pipeline modernization & reliability overhaul, 11 Nov 2026), PR #108 (docs sync after PR #107, 4 Nov 2026), PR #107 (SEO og:image and JSON-LD identity, 4 Nov 2026).
+- **Branch `feat/trivia-bingo-content-expansion` (11 Nov 2026):**
+  - Doubled trivia question pool from 150 to 321 verified educational questions across 10 categories (added `Gaming & Internet Culture` and `Food & Culinary Arts`, +15 questions to all 8 existing categories).
+  - Added rich educational explanations to the Missed Questions Review section at game completion in `/tools/trivia`.
+  - Dynamically synchronized in-room `TriviaActivity` category dropdown via `TRIVIA_CATEGORIES`.
+  - Expanded all existing Bingo word pools (`science`: 60, `party`: 54, `icebreaker`: 54, `movies`: 54 items) and added 5 new rich themes (`gaming`: 52, `food`: 52, `travel`: 52, `music`: 52, `workplace`: 52 items), delivering over $6.4 \times 10^{14}$ card permutations to prevent card collisions.
+  - Added interactive visual pattern preview grid in `/tools/bingo` settings.
+  - Playwright E2E suite `tests/trivia-and-bingo-expansion.spec.ts` (5/5 tests passing).
+- **PR #110** (merged 11 Nov 2026 as `70be7de`, 10/10 checks green):
   - Modernized CI pipeline in `.github/workflows/ci.yml` resolving PR #109 timeout failures.
   - Added standalone `quality-gate` job running in ~40 seconds for fast-fail static analysis (audit, typecheck, lint, docs:check).
   - Scoped `db-integration-shard` to the 44 database/multiplayer test files (123 tests total vs 877 previously), eliminating redundant visual/DOM test execution against Supabase Docker.

@@ -3867,3 +3867,44 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
    - `npm run verify:static` passed with 0 errors, 0 warnings, and 0 documentation drift.
    - `npm run audit` passed with 0 unallowlisted vulnerabilities.
    - Playwright test pattern verified: exactly 123 tests selected in 44 files.
+
+
+---
+
+## [2026-11-11] — Trivia & Bingo Content Expansion and Gameplay Polish (Branch `feat/trivia-bingo-content-expansion`)
+
+**AI:** Antigravity (Google DeepMind)
+**Task:** Expand question banks and themes for Trivia and Bingo to support growing user engagement, add educational review features, introduce pattern visualization, and verify with automated E2E tests:
+1. `Trivia Question Bank Expansion (321 Questions Across 10 Categories)`:
+   - Doubled the trivia question pool from 150 to 321 verified, educational multiple-choice questions in `src/lib/trivia-questions.ts`.
+   - Added two high-engagement categories: `Gaming & Internet Culture` (25 questions) and `Food & Culinary Arts` (25 questions).
+   - Expanded all existing categories (`General Knowledge`, `Science & Nature`, `Geography`, `History`, `Pop Culture`, `Sports`, `Technology`, `Arts & Literature`) with 15+ new questions each.
+   - Updated `TriviaCategory` union type and `TRIVIA_CATEGORIES` array in `src/lib/trivia-questions.ts`.
+   - Synchronized `TriviaActivity` (`src/app/room/[code]/activities/trivia-activity.tsx`) to dynamically populate category selectors via `TRIVIA_CATEGORIES.map(...)` as a single source of truth.
+2. `Trivia Educational Review & Gameplay Polish`:
+   - Enhanced `/tools/trivia` (`src/app/tools/trivia/page.tsx`):
+     - Added rich educational explanations (`💡 Fact: {explanation}`) to the Missed Questions Review section at game completion.
+     - Updated header copy to celebrate "300+ questions and 10 categories".
+     - Preserved keyboard shortcuts (1-4 for answers, Space/Enter for next question) and streak counter.
+3. `Bingo Themes & Content Expansion (10 Themes, 52-60 Items Each)`:
+   - Expanded word pools of all existing themes (`science`: 60 items; `party`: 54 items; `icebreaker`: 54 items; `movies`: 54 items).
+   - Added 5 new rich themes in `src/lib/bingo-themes.ts` (bringing total to 10 themes):
+     - `gaming`: "Gaming & Esports" (52 items)
+     - `food`: "Foodie & Cuisine" (52 items)
+     - `travel`: "Wanderlust & Travel" (52 items)
+     - `music`: "Music & Concerts" (52 items)
+     - `workplace`: "Office & Remote Work" (52 items)
+   - Every word theme now holds 52–60 items, ensuring 5x5 cards drawn for players have over $6.4 \times 10^{14}$ possible card permutations, eliminating card collisions during classroom and party events.
+4. `Bingo Visual Pattern Preview`:
+   - Enhanced `BingoPattern` interface in `src/lib/bingo-themes.ts` with `gridPreview: boolean[][]` 5x5 matrix metadata for all 5 patterns (`line`, `corners`, `x`, `plus`, `blackout`).
+   - Added an interactive visual pattern preview grid in the `/tools/bingo` settings drawer (`src/app/tools/bingo/page.tsx`) so players instantly see which squares they need to complete.
+5. `Automated Playwright Verification`:
+   - Expanded `tests/trivia-and-bingo-expansion.spec.ts` with 5 tests:
+     - Verified category dropdown includes new categories (`Gaming & Internet Culture`, `Food & Culinary Arts`).
+     - Verified missed questions review section displays educational facts and explanations.
+     - Verified all 10 bingo themes are available and selectable.
+     - Verified interactive 5x5 card rendering, pattern preview grid, and Master Board matrix.
+   - 5/5 tests passed (36.3s).
+6. `Integrity & Quality Gates`:
+   - `npm run verify:static` passed: 0 typecheck errors, 0 lint warnings, 0 docs drift.
+   - `npm run audit` passed: 0 unallowlisted vulnerabilities.

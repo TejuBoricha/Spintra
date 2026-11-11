@@ -313,6 +313,28 @@ export default function BingoPage() {
                         </SelectGroup>
                       </SelectContent>
                     </Select>
+
+                    {/* Visual Pattern Preview */}
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-(--surface-sunken) border border-(--border-hairline) mt-2">
+                      <div className="grid grid-cols-5 gap-0.5 shrink-0 p-1 bg-(--surface-panel) rounded-md border border-(--border-hairline)" aria-hidden="true">
+                        {currentPattern.gridPreview.map((row, rIdx) =>
+                          row.map((active, cIdx) => (
+                            <div
+                              key={`${rIdx}-${cIdx}`}
+                              className={`w-2 h-2 rounded-[1px] transition-colors ${
+                                active || (rIdx === 2 && cIdx === 2)
+                                  ? "bg-teal-500"
+                                  : "bg-muted/40"
+                              }`}
+                            />
+                          ))
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground leading-tight">
+                        <span className="font-semibold text-foreground block">{currentPattern.name}</span>
+                        <span>{currentPattern.description}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 

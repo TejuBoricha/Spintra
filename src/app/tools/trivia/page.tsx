@@ -73,7 +73,7 @@ export default function TriviaPage() {
   const [maxStreak, setMaxStreak] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [missedQuestions, setMissedQuestions] = useState<
-    Array<{ question: string; correctAnswer: string; yourAnswer: string }>
+    Array<{ question: string; correctAnswer: string; yourAnswer: string; explanation?: string }>
   >([]);
 
   // Timer state
@@ -116,6 +116,7 @@ export default function TriviaPage() {
         question: currentQuestion.text,
         correctAnswer: currentQuestion.options[currentQuestion.correctIndex],
         yourAnswer: "Time expired",
+        explanation: currentQuestion.explanation,
       },
     ]);
   }, [currentQuestion, soundEnabled]);
@@ -169,6 +170,7 @@ export default function TriviaPage() {
           question: currentQuestion.text,
           correctAnswer: currentQuestion.options[currentQuestion.correctIndex],
           yourAnswer: currentQuestion.options[i],
+          explanation: currentQuestion.explanation,
         },
       ]);
     }
@@ -225,7 +227,7 @@ export default function TriviaPage() {
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">Trivia</h1>
 
           <div className="flex items-center justify-center gap-3 mb-6">
-            <p className="text-muted-foreground">Test your knowledge across 200+ topics and categories.</p>
+            <p className="text-muted-foreground">Test your knowledge across 300+ questions and 10 categories.</p>
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
               title={soundEnabled ? "Sound On" : "Sound Off"}
@@ -651,6 +653,11 @@ export default function TriviaPage() {
                       </p>
                       {item.yourAnswer && item.yourAnswer !== "Time expired" && (
                         <p className="text-rose-500 opacity-80">✗ You picked: {item.yourAnswer}</p>
+                      )}
+                      {item.explanation && (
+                        <p className="text-muted-foreground mt-1 bg-(--surface-sunken) p-2 rounded-lg border border-(--border-hairline) leading-relaxed">
+                          💡 <strong>Fact:</strong> {item.explanation}
+                        </p>
                       )}
                     </div>
                   ))}
