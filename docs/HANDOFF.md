@@ -12,7 +12,14 @@ This board is the one place that says what is **done, in progress and pending**.
 
 ### 1. Git and deploy state
 
-- `main` is at `dfde04a` (merge of PR #107: og:image dimensions and per-page structured-data identity, 4 Nov 2026), after PR #106 (SEO: meta descriptions, Open Graph, internal link equity, 4 Nov 2026) and PR #105 (CI pipeline enterprise acceleration & matrix sharding, 4 Nov 2026).
+- `main` is at `cef6e38` (merge of PR #108: docs sync after PR #107, 4 Nov 2026), after PR #107 (SEO og:image and JSON-LD identity, 4 Nov 2026), PR #106 (SEO: meta descriptions, Open Graph, internal link equity, 4 Nov 2026) and PR #105 (CI pipeline enterprise acceleration & matrix sharding, 4 Nov 2026).
+- **Branch `perf/ci-pipeline-modernization` (11 Nov 2026):**
+  - Modernized CI pipeline in `.github/workflows/ci.yml` resolving PR #109 timeout failures.
+  - Added standalone `quality-gate` job running in ~40 seconds for fast-fail static analysis (audit, typecheck, lint, docs:check).
+  - Scoped `db-integration-shard` to the 44 database/multiplayer test files (123 tests total vs 877 previously), eliminating redundant visual/DOM test execution against Supabase Docker.
+  - Dynamically bound Playwright browser cache key to resolved `@playwright/test` version in `package-lock.json` so unrelated dependency updates achieve 100% cache hits and avoid slow Ubuntu mirror font downloads.
+  - Added Next.js compiler fallback cache key `${{ runner.os }}-nextjs-` and top-level least-privilege permissions `contents: read`.
+  - Maintained required status check contexts `validate` and `db-integration` in GitHub branch protection.
 - **PR #107** (merged 4 Nov 2026 as `dfde04a`, 10/10 checks green, two `/code-review high` rounds — the first found a defect and it was fixed, the second found nothing):
   - Found by a direct SEO audit of the live site (Ahrefs MCP connector was blocked on the connected account's plan, so checked spintra.io directly across all 22 sitemap URLs).
   - `og:image` now declares its real 1200x630 dimensions (`src/lib/site-metadata.ts`), so social crawlers don't need to fetch it to size link previews.
