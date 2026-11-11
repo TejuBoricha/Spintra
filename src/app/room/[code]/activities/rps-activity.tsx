@@ -223,7 +223,10 @@ export function RpsActivity() {
               Locked In
             </span>
             <span className="ml-auto flex items-center gap-2">
-              {r.username === currentUser.username || isHost ? (
+              {/* Audit G-5: Choices are kept secret until the round resolves so that
+                  the host has no unfair advantage seeing players' picks before choosing.
+                  Once roundResult is computed (all players locked in), everyone's choice is revealed. */}
+              {!!roundResult || r.username === currentUser.username ? (
                 <>
                   <Emoji name={RPS_EMOJI[r.choice as keyof typeof RPS_EMOJI]} size={20} animated={false} />
                   <span className="text-xs font-semibold">{r.choice}</span>

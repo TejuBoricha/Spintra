@@ -37,6 +37,7 @@ import {
   generateBracketForType,
   recordMatchResult,
   calculateStandings,
+  hasRecordedResults,
   isByePlayer,
   isSharedFirst,
   matchActionLabel,
@@ -256,6 +257,16 @@ export default function TournamentPage() {
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [editingMatch, setEditingMatch] = useState<MatchRef | null>(null);
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+
+  const requestReset = useCallback(() => {
+    if (!tournament) return;
+    if (hasRecordedResults(tournament)) {
+      setConfirmResetOpen(true);
+    } else {
+      setTournament(null);
+    }
+  }, [tournament]);
 
   const participants = useMemo(
     () =>
@@ -793,7 +804,7 @@ export default function TournamentPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setTournament(null)}
+                      onClick={requestReset}
                       aria-label="Start over"
                       title="Start over"
                     >
@@ -873,6 +884,30 @@ export default function TournamentPage() {
           onClose={() => setEditingMatch(null)}
         />
       )}
+
+      {/* Reset Confirmation Modal (Audit G-12) */}
+      <Dialog open={confirmResetOpen} onOpenChange={setConfirmResetOpen}>
+        <DialogContent className="p-6 sm:max-w-md">
+          <DialogTitle className="text-lg font-bold">Start a New Tournament?</DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground mt-2">
+            This will clear the current bracket and erase all recorded match results and scores. Are you sure you want to start over?
+          </DialogDescription>
+          <div className="flex flex-wrap gap-3 justify-end mt-6">
+            <Button variant="outline" onClick={() => setConfirmResetOpen(false)}>
+              Keep Bracket
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setConfirmResetOpen(false);
+                setTournament(null);
+              }}
+            >
+              Reset Bracket
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
