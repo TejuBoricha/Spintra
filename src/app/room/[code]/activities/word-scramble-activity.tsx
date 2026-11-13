@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity } from "../context/room-activity-context";
 import { WORD_SCRAMBLE_WORDS, scramble } from "@/lib/utils";
+import { isAnagramAlternate } from "@/lib/word-scramble-anagrams";
 import { toast } from "sonner";
 
 const WORDS = WORD_SCRAMBLE_WORDS;
@@ -92,7 +93,9 @@ export function WordScrambleActivity() {
     if (!scrambleWord || scrambleWinner || !scrambleWord.hash) return;
     const cleanGuess = guess.trim().toUpperCase();
     const guessHash = await hashWord(cleanGuess);
-    if (guessHash === scrambleWord.hash) {
+    // The hash is of the one word the host drew; another real word made from the same
+    // letters (SOFTER for FOREST) is just as right (audit G-11).
+    if (guessHash === scrambleWord.hash || isAnagramAlternate(scrambleWord.scrambled, cleanGuess)) {
       sendActivityEvent({ kind: "scramble_correct", username: currentUser.username, answer: cleanGuess });
     } else {
       playFailure(soundEnabled);
@@ -123,7 +126,7 @@ export function WordScrambleActivity() {
       {scrambleWord ? (
         <>
           {/* Visual letter blocks aligned with standalone tool design */}
-          <div className="flex justify-center gap-3 flex-wrap py-2">
+          <div data-testid="scramble-letters" className="flex justify-center gap-3 flex-wrap py-2">
             {scrambleWord.scrambled.split("").map((letter, i) => (
               <motion.div
                 key={i}

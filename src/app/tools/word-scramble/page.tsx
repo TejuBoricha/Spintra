@@ -13,6 +13,7 @@ import { getGameByType } from "@/lib/games";
 import { toast } from "sonner";
 import { WORD_SCRAMBLE_WORDS, scramble, shuffleArray } from "@/lib/utils";
 import { isImeKey } from "@/lib/keyboard";
+import { isAnagramAlternate } from "@/lib/word-scramble-anagrams";
 
 const GameIcon = getGameByType("word-scramble")!.icon;
 
@@ -31,6 +32,8 @@ export default function WordScramblePage() {
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [solved, setSolved] = useState(false);
+  // What was typed when the word was solved: the drawn word, or another word with the same letters.
+  const [answer, setAnswer] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   useEffect(() => {
@@ -53,7 +56,11 @@ export default function WordScramblePage() {
 
   const submitGuess = () => {
     if (solved) return;
-    if (guess.trim().toUpperCase() === word) {
+    const typed = guess.trim().toUpperCase();
+    // The word drawn, or another real word made from the same letters (audit G-11:
+    // SOFTER for FOREST was answered "Not quite").
+    if (typed === word || (scrambled !== null && isAnagramAlternate(scrambled, typed))) {
+      setAnswer(typed);
       setSolved(true);
       setScore((s) => s + Math.max(10 - revealed * 2, 2));
       setStreak((s) => s + 1);
@@ -112,7 +119,7 @@ export default function WordScramblePage() {
             exit={{ opacity: 0, y: -10 }}
             className="border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-8 mb-6"
           >
-            <div className="flex justify-center gap-2 mb-6 flex-wrap">
+            <div data-testid="scramble-letters" className="flex justify-center gap-2 mb-6 flex-wrap">
               {scrambled
                 ? scrambled.split("").map((letter, i) => (
                     <div
@@ -134,7 +141,7 @@ export default function WordScramblePage() {
             {solved ? (
               <div className="mb-4 reveal reveal-scale">
                 <p className="flex items-center justify-center gap-2 text-xl font-bold text-emerald-700 dark:text-emerald-400">
-                  <Emoji name="party_popper" size={28} pop /> {word}!
+                  <Emoji name="party_popper" size={28} pop /> {answer ?? word}!
                 </p>
               </div>
             ) : (
