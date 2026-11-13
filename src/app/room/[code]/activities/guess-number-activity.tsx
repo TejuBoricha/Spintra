@@ -23,6 +23,8 @@ export function GuessNumberActivity() {
   // A round is started for the host once, when the room has no secret yet. If
   // that fails the host still has the button; this only stops a retry loop.
   const autoStartedRef = useRef(false);
+  // Set once the finished round's secret has been replaced (see rotateSecret).
+  const rotatedAfterWinRef = useRef(false);
   // submitGuess is a real network round-trip (awaits check_guess_number),
   // unlike the other activities' synchronous local event-bus dispatch —
   // with no guard, a fast double-click/double-Enter fired multiple
@@ -95,6 +97,44 @@ export function GuessNumberActivity() {
       setResetting(false);
     }
   }, [roomCode, sendActivityEvent]);
+
+  // Once a round is won its number is known to everyone, but the server keeps it for
+  // as long as the room does: leave the game and come back (or Reset it and pick it
+  // again) and the host would recover that same number for the "new" game. So when
+  // the log shows a finished round the host's client quietly saves a fresh secret.
+  // It only ever runs for a finished round, so a refresh can never change a live
+  // one, and repeating it is harmless. The host's panel shows the number that was
+  // guessed while the round is over, not this one. Nothing is announced: guessers
+  // are already locked out until "Start next round".
+  const rotateSecret = useCallback(async () => {
+    if (resettingRef.current) return;
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) return; // demo mode keeps the secret in the host's own state only
+    resettingRef.current = true;
+    setResetting(true);
+    try {
+      const secret = Math.floor(Math.random() * 100) + 1;
+      const { error } = await supabase.rpc("set_guess_number_secret", {
+        p_room_code: roomCode,
+        p_secret: secret,
+      });
+      if (error) console.error("Failed to replace the finished round's secret:", error.message);
+      else setGuessSecretNumber(secret);
+    } finally {
+      resettingRef.current = false;
+      setResetting(false);
+    }
+  }, [roomCode]);
+
+  useEffect(() => {
+    if (!roundOver) {
+      rotatedAfterWinRef.current = false;
+      return;
+    }
+    if (!isHost || rotatedAfterWinRef.current) return;
+    rotatedAfterWinRef.current = true;
+    void rotateSecret();
+  }, [roundOver, isHost, rotateSecret]);
 
   // The host's client recovers the secret after a refresh, and starts the first
   // round when the room has none (audit G-10): until a secret exists the server
@@ -188,7 +228,7 @@ export function GuessNumberActivity() {
             </p>
           )}
           <div className="flex gap-4 items-center">
-            <span data-testid="guess-secret" className="text-4xl font-black text-cyan-400">{guessSecretNumber !== null ? guessSecretNumber : "??"}</span>
+            <span data-testid="guess-secret" className="text-4xl font-black text-cyan-400">{winner ? winner.guess : guessSecretNumber !== null ? guessSecretNumber : "??"}</span>
             <Button
               size="sm"
               variant="outline"

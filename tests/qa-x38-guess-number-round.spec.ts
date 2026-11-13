@@ -33,6 +33,10 @@ async function startedSecret(host: Page, code: string): Promise<number> {
   return n;
 }
 
+// When the server last saved the room's secret (every save moves it, even to the same number).
+const secretSavedAt = (code: string) =>
+  sql(`select extract(epoch from updated_at) from guess_number_secrets where room_code='${code}'`);
+
 async function guess(page: Page, n: number) {
   const input = page.locator('#guess-input');
   await input.fill(String(n));
@@ -61,6 +65,8 @@ test('the first round starts by itself, and the first correct guess ends it for 
     const n = await startedSecret(page, code);
     const wrong = n === 50 ? 51 : 50;
 
+    const savedBefore = secretSavedAt(code);
+
     // A wrong guess is checked against it (this is the call that used to be refused).
     await expect(ann.locator('#guess-input')).toBeVisible({ timeout: 30000 });
     await guess(ann, wrong);
@@ -78,6 +84,12 @@ test('the first round starts by itself, and the first correct guess ends it for 
     await expect(bo.locator('#guess-input')).toBeDisabled();
     await expect(bo.getByRole('button', { name: /^guess$/i })).toBeDisabled();
     await expect(page.getByText('Correct!')).toHaveCount(1);
+
+    // The finished round's number is known to everyone now, so the host's client replaces it on
+    // the server at once (it would otherwise be handed back if the host left the game and came
+    // back). The host's panel keeps showing the number that was guessed, not the new one.
+    await expect.poll(() => secretSavedAt(code), { timeout: 15000 }).not.toBe(savedBefore);
+    await expect(page.getByTestId('guess-secret')).toHaveText(String(n));
     await expect(page.getByRole('button', { name: /start next round/i })).toBeVisible();
 
     // The result survives a refresh: the round is replayed from the shared log, still over.
