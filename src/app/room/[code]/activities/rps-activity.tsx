@@ -6,6 +6,7 @@ import { Swords, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Emoji } from "@/components/emoji";
 import { useRoomActivity, useRoomParticipants } from "../context/room-activity-context";
+import { canSeePick, rpsLabels } from "@/lib/rps-round";
 
 const RPS_EMOJI = { Rock: "raised_fist", Paper: "raised_hand", Scissors: "victory_hand" } as const;
 
@@ -82,9 +83,14 @@ export function RpsActivity() {
     () => (allChosen ? resolveRound(Object.values(decidingChoices).map((r) => r.choice)) : null),
     [allChosen, decidingChoices]
   );
+  // Players who share a display name are told apart by a short id, in the list and
+  // in the result line alike (audit G-6).
+  const labels = useMemo(() => rpsLabels(rpsChoices), [rpsChoices]);
   const winners =
     roundResult?.outcome === "decided"
-      ? Object.values(decidingChoices).filter((r) => r.choice === roundResult.winningChoice).map((r) => r.username)
+      ? Object.entries(decidingChoices)
+          .filter(([, r]) => r.choice === roundResult.winningChoice)
+          .map(([userId]) => labels[userId])
       : [];
 
   // Scoreboard/XP (ADR-008/009): once this round resolves, the calling
@@ -213,20 +219,23 @@ export function RpsActivity() {
       )}
 
       <div className="w-full space-y-2 max-h-56 overflow-y-auto pr-1">
-        {Object.values(rpsChoices).map((r, i) => (
+        {Object.entries(rpsChoices).map(([userId, r]) => (
           <div
-            key={i}
+            key={userId}
+            data-testid="rps-pick-row"
             className="flex items-center gap-3 px-4 py-3 bg-muted/30 border border-border rounded-xl shadow-sm"
           >
-            <span className="font-semibold text-sm text-muted-foreground">{r.username}</span>
+            <span className="font-semibold text-sm text-muted-foreground">{labels[userId]}</span>
             <span className="text-[10px] text-(--brand-primary-strong)/80 bg-primary/10 px-2 py-0.5 rounded-full border border-primary/10">
               Locked In
             </span>
             <span className="ml-auto flex items-center gap-2">
               {/* Audit G-5: Choices are kept secret until the round resolves so that
                   the host has no unfair advantage seeing players' picks before choosing.
-                  Once roundResult is computed (all players locked in), everyone's choice is revealed. */}
-              {!!roundResult || r.username === currentUser.username ? (
+                  Once roundResult is computed (all players locked in), everyone's choice is revealed.
+                  Audit G-6: "your own" is decided by user id, not by name, since two players can
+                  share a display name. */}
+              {canSeePick(userId, currentUser.id, !!roundResult) ? (
                 <>
                   <Emoji name={RPS_EMOJI[r.choice as keyof typeof RPS_EMOJI]} size={20} animated={false} />
                   <span className="text-xs font-semibold">{r.choice}</span>
