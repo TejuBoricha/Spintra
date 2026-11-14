@@ -32,7 +32,7 @@ const { Contents, Section } = createLegalSections([
 // is collected, sent, or kept, change this page in the same pull request.
 export default function PrivacyPolicyPage() {
   return (
-    <div className="min-h-screen pb-16 px-4">
+    <div className="page-top pb-16 px-4">
       <div className="max-w-[32rem] mx-auto">
         <h1 className="text-4xl sm:text-5xl font-bold mb-2">
           Privacy <span className="gradient-text">Policy</span>

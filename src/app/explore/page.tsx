@@ -349,7 +349,7 @@ export default function ExplorePage() {
   }), [recentActivities, search, activeCategory]);
 
   return (
-    <div className="min-h-screen pb-16 px-4">
+    <div className="page-top pb-16 px-4">
       <div className="max-w-6xl mx-auto space-y-12">
         {/* Header */}
         <div

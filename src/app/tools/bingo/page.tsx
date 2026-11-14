@@ -28,6 +28,7 @@ import { Emoji } from "@/components/emoji";
 import { fireConfetti, CelebrationBanner } from "@/components/celebration";
 import { getGameByType } from "@/lib/games";
 import { playPop, playSuccess } from "@/lib/audio";
+import { ToolHeader } from "@/components/tools/tool-header";
 import {
   BINGO_THEMES,
   BINGO_PATTERNS,
@@ -180,56 +181,51 @@ export default function BingoPage() {
       : null;
 
   return (
-    <div className="min-h-screen pb-16 px-4">
+    <div className="page-top pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
         {/* Header Section */}
-        <div className="reveal reveal-up">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-4">
-            <GameIcon className="w-4 h-4 text-teal-400" />
-            <span className="text-sm text-muted-foreground">{currentTheme.name}</span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-bold mb-2">Bingo</h1>
-
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <p className="text-muted-foreground">
-              Mark your card as items are called. Goal:{" "}
-              <strong className="text-foreground">{currentPattern.name}</strong>.
-            </p>
-            <button
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              title={soundEnabled ? "Sound On" : "Sound Off"}
-              aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-              className="p-1.5 rounded-lg border border-(--border-hairline) bg-(--surface-sunken) hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-            >
-              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-            </button>
-            <button
-              onClick={() => setSpeechEnabled(!speechEnabled)}
-              title={speechEnabled ? "Voice Caller On" : "Voice Caller Off"}
-              aria-label={speechEnabled ? "Disable voice announcer" : "Enable voice announcer"}
-              className={`p-1.5 rounded-lg border border-(--border-hairline) transition-colors ${
-                speechEnabled
-                  ? "bg-teal-500/20 text-teal-600 dark:text-teal-400 border-teal-500/40"
-                  : "bg-(--surface-sunken) hover:bg-muted text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Megaphone className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setShowConfig(!showConfig)}
-              title="Customize Game"
-              aria-label="Toggle game settings and themes"
-              aria-expanded={showConfig}
-              className={`p-1.5 rounded-lg border border-(--border-hairline) transition-colors ${
-                showConfig
-                  ? "bg-teal-500/20 text-teal-600 dark:text-teal-400 border-teal-500/40"
-                  : "bg-(--surface-sunken) hover:bg-muted text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+        <ToolHeader
+          icon={GameIcon}
+          iconClassName="text-teal-400"
+          chip={currentTheme.name}
+          title="Bingo"
+          subtitle={<>Mark your card as items are called. Goal:{" "}
+              <strong className="text-foreground">{currentPattern.name}</strong>.</>}
+        >
+          <button
+                        onClick={() => setSoundEnabled(!soundEnabled)}
+                        title={soundEnabled ? "Sound On" : "Sound Off"}
+                        aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
+                        className="p-1.5 rounded-lg border border-(--border-hairline) bg-(--surface-sunken) hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      >
+                        {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                      </button>
+                      <button
+                        onClick={() => setSpeechEnabled(!speechEnabled)}
+                        title={speechEnabled ? "Voice Caller On" : "Voice Caller Off"}
+                        aria-label={speechEnabled ? "Disable voice announcer" : "Enable voice announcer"}
+                        className={`p-1.5 rounded-lg border border-(--border-hairline) transition-colors ${
+                          speechEnabled
+                            ? "bg-teal-500/20 text-teal-600 dark:text-teal-400 border-teal-500/40"
+                            : "bg-(--surface-sunken) hover:bg-muted text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <Megaphone className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setShowConfig(!showConfig)}
+                        title="Customize Game"
+                        aria-label="Toggle game settings and themes"
+                        aria-expanded={showConfig}
+                        className={`p-1.5 rounded-lg border border-(--border-hairline) transition-colors ${
+                          showConfig
+                            ? "bg-teal-500/20 text-teal-600 dark:text-teal-400 border-teal-500/40"
+                            : "bg-(--surface-sunken) hover:bg-muted text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <SlidersHorizontal className="w-4 h-4" />
+                      </button>
+        </ToolHeader>
 
         {/* Expandable Settings Drawer */}
         <AnimatePresence>

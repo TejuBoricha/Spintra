@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Emoji } from "@/components/emoji";
 import { playCoinFlip, playTick } from "@/lib/audio";
+import { ToolHeader } from "@/components/tools/tool-header";
 import { getGameByType } from "@/lib/games";
 
 const GameIcon = getGameByType("coin-flip")!.icon;
@@ -53,16 +54,15 @@ export default function CoinFlipPage() {
   };
 
   return (
-    <div className="min-h-screen pb-16 px-4">
+    <div className="page-top pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
-        <div className="reveal reveal-up">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
-            <GameIcon className="w-4 h-4 text-yellow-400" />
-            <span className="text-sm text-muted-foreground">50/50 chance</span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-bold mb-2">Coin Flip</h1>
-          <p className="text-muted-foreground mb-12">Heads or tails, 50/50.</p>
-        </div>
+        <ToolHeader
+          icon={GameIcon}
+          iconClassName="text-yellow-400"
+          chip="50/50 chance"
+          title="Coin Flip"
+          subtitle="Heads or tails, 50/50."
+        />
 
         {/* Coin Display */}
         <motion.div

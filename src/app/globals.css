@@ -417,6 +417,13 @@
   }
 }
 
+/* Where a page's content starts below the navbar's clearance (the layout's pt-[6rem]): one value for every page, instead of the
+   0, 2 and 7 rem each page picked (UX audit U-21: the title started 16 to 233 px under the navbar). Not for the home hero (a
+   full-screen scene) or a room (an app screen). */
+@utility page-top {
+  padding-top: 2rem;
+}
+
 @layer base {
   * {
     border-color: var(--border);

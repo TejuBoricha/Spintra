@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ThumbsUp, Volume2, VolumeX } from "lucide-react";
+import { ToolHeader } from "@/components/tools/tool-header";
 import { getGameByType } from "@/lib/games";
 
 const GameIcon = getGameByType("would-you-rather")!.icon;
@@ -64,32 +65,30 @@ export default function WouldYouRatherPage() {
   };
 
   return (
-    <div className="min-h-screen pb-16 px-4">
+    <div className="page-top pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
-        <div className="reveal reveal-up">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
-            <GameIcon className="w-4 h-4 text-(--brand-primary-strong)" />
-            <span className="text-sm text-muted-foreground">Pick a side</span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-bold mb-2">Would You Rather</h1>
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <p className="text-muted-foreground">Two options. You have to pick one.</p>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              title={soundEnabled ? "Sound On" : "Sound Off"}
-              aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            >
-              {soundEnabled ? (
-                <Volume2 className="w-4 h-4" />
-              ) : (
-                <VolumeX className="w-4 h-4" />
-              )}
-            </Button>
-          </div>
-        </div>
+        <ToolHeader
+          icon={GameIcon}
+          iconClassName="text-(--brand-primary-strong)"
+          chip="Pick a side"
+          title="Would You Rather"
+          subtitle="Two options. You have to pick one."
+        >
+          <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => setSoundEnabled(!soundEnabled)}
+                        title={soundEnabled ? "Sound On" : "Sound Off"}
+                        aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      >
+                        {soundEnabled ? (
+                          <Volume2 className="w-4 h-4" />
+                        ) : (
+                          <VolumeX className="w-4 h-4" />
+                        )}
+                      </Button>
+        </ToolHeader>
 
         {/* Question Card */}
         {/* initial={false}: the first card is in the server HTML and visible; later ones still animate in and out. */}
