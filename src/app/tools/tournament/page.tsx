@@ -716,7 +716,7 @@ export default function TournamentPage() {
                   <div>
                     <p className="text-sm font-semibold">Play with Friends</p>
                     <p className="text-xs text-muted-foreground">
-                      Create a multiplayer room
+                      Create a room
                     </p>
                   </div>
                 </div>

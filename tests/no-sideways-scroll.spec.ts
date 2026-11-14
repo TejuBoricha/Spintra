@@ -254,7 +254,7 @@ const STATES: { name: string; path: string; init?: () => void; drive: (page: Pag
     },
   },
   {
-    name: 'Team Maker: the teams, one with an ordinary 18-character name, and the Create Room button',
+    name: 'Team Maker: the teams, one with an ordinary 18-character name, and the Create a room button',
     path: '/tools/team-maker',
     drive: async (page) => {
       await page.locator('textarea').first().fill('Alexander Hamilton\nJordan\nTaylor\nMorgan');

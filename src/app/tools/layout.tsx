@@ -31,7 +31,7 @@ export default function ToolsLayout({ children }: { children: React.ReactNode })
         <Info className="mr-2 inline-block h-4 w-4 align-[-0.2em] text-amber-700 dark:text-amber-500" />
         Want to play with friends?{" "}
         <Link href="/create" className="underline font-bold text-amber-800 dark:text-amber-500 transition-colors">
-          Create a Multiplayer Room
+          Create a room
         </Link>{" "}
         to invite them!
       </p>

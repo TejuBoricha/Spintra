@@ -165,7 +165,11 @@ export function Navbar() {
       // hamburger (already correct at every width) covers the range where
       // the desktop row doesn't actually fit, instead of redesigning the
       // pill row's spacing to squeeze into 768px.
-      className="fixed top-4 inset-x-4 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 z-50 lg:min-w-[600px] lg:max-w-4xl w-[calc(100%-2rem)] transition-all duration-500 reveal reveal-down"
+      // The row is about 890px wide with the sentence-case labels of U-23 ("Join a room",
+      // "Create a room"); max-w-4xl (896px, less its padding) cut the theme toggle's edge, so the
+      // panel may be 58rem (928px) and the three plain pills have px-4. No wider: at 1280px the panel
+      // would reach under the skip link (left-4, about 150px wide), whose focus ring needs the page behind it.
+      className="fixed top-4 inset-x-4 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 z-50 lg:min-w-[600px] lg:max-w-[58rem] w-[calc(100%-2rem)] transition-all duration-500 reveal reveal-down"
     >
       <div
         className={cn(
@@ -207,38 +211,38 @@ export function Navbar() {
               href="/explore"
               variant="ghost"
               size="sm"
-              className="rounded-full px-5 font-bold tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
+              className="rounded-full px-4 font-bold uppercase tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
             >
               <Globe className="w-3.5 h-3.5 mr-2 text-blue-400" />
-              LIVE ROOMS
+              Explore
             </ButtonLink>
             <ButtonLink
               href="/tools"
               variant="ghost"
               size="sm"
-              className="rounded-full px-5 font-bold tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
+              className="rounded-full px-4 font-bold uppercase tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
             >
               <Wrench className="w-3.5 h-3.5 mr-2 text-orange-400" />
-              TOOLS
+              Tools
             </ButtonLink>
             <div className="w-px h-5 bg-(--border-glass) mx-1" />
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsJoinOpen(true)}
-              className="rounded-full px-5 font-bold tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
+              className="rounded-full px-4 font-bold uppercase tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
             >
-              JOIN
+              Join a room
             </Button>
             <ButtonLink
               href="/create"
               onClick={() => fireConfetti()}
               variant="brand"
               size="sm"
-              className="rounded-full px-6 font-bold tracking-widest text-xs shadow-lg shadow-primary/25 relative overflow-hidden group border border-white/20 h-9"
+              className="rounded-full px-6 font-bold uppercase tracking-widest text-xs shadow-lg shadow-primary/25 relative overflow-hidden group border border-white/20 h-9"
             >
               <span className="relative z-10 flex items-center gap-2">
-                HOST
+                Create a room
                 <Sparkles className="w-3.5 h-3.5 group-hover:animate-spin-slow" />
               </span>
               <span aria-hidden="true" className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-shimmer" />
@@ -301,9 +305,9 @@ export function Navbar() {
                     setIsJoinOpen(true);
                   }}
                   variant="brand"
-                  className="w-full rounded-full h-12 font-bold tracking-widest text-sm"
+                  className="w-full rounded-full h-12 font-bold uppercase tracking-widest text-sm"
                 >
-                  JOIN ROOM
+                  Join a room
                 </Button>
 
                 <ButtonLink
@@ -313,20 +317,20 @@ export function Navbar() {
                     fireConfetti();
                   }}
                   variant="brand"
-                  className="w-full rounded-full h-12 font-bold tracking-widest text-sm shadow-lg shadow-primary/25"
+                  className="w-full rounded-full h-12 font-bold uppercase tracking-widest text-sm shadow-lg shadow-primary/25"
                 >
                   <Sparkles className="w-4 h-4 mr-2" />
-                  HOST GAME
+                  Create a room
                 </ButtonLink>
 
                 <div className="grid grid-cols-2 gap-2 mt-2">
                   <ButtonLink href="/explore" onClick={() => setMobileOpen(false)} variant="ghost" className="w-full rounded-2xl h-12 bg-(--surface-sunken)/50">
                     <Globe className="w-4 h-4 mr-2 text-blue-400" />
-                    Live Rooms
+                    Explore
                   </ButtonLink>
                   <ButtonLink href="/tools" onClick={() => setMobileOpen(false)} variant="ghost" className="w-full rounded-2xl h-12 bg-(--surface-sunken)/50">
                     <Wrench className="w-4 h-4 mr-2 text-orange-400" />
-                    Quick Tools
+                    Tools
                   </ButtonLink>
                 </div>
 
@@ -386,7 +390,7 @@ export function Navbar() {
                   <Gamepad2 className="w-8 h-8 text-(--brand-primary-strong) drop-shadow-sm" />
                 </div>
                 <DialogTitle className="text-3xl font-display font-black tracking-widest text-foreground uppercase leading-tight">
-                  Join Room
+                  Join a room
                 </DialogTitle>
                 <DialogDescription className="text-sm font-mono text-muted-foreground uppercase tracking-widest mt-3 text-center">
                   Enter the 6-character code
@@ -424,12 +428,13 @@ export function Navbar() {
               <Button
                 disabled={joinCode.length !== 6 || joining}
                 onClick={handleJoinRoomSubmit}
-                className="relative z-10 w-full h-14 rounded-xl bg-(--brand-primary-strong) text-white hover:bg-primary/90 font-display font-black tracking-widest text-lg overflow-hidden transition-all hover:scale-[1.02] active:scale-95 disabled:hover:scale-100 group/btn border-0 shadow-[0_0_20px_rgba(125,187,37,0.3)] hover:shadow-[0_0_30px_rgba(125,187,37,0.5)]"
+                className="relative z-10 w-full h-14 rounded-xl bg-(--brand-primary-strong) text-white hover:bg-primary/90 font-display font-black uppercase tracking-widest text-lg overflow-hidden transition-all hover:scale-[1.02] active:scale-95 disabled:hover:scale-100 group/btn border-0 shadow-[0_0_20px_rgba(125,187,37,0.3)] hover:shadow-[0_0_30px_rgba(125,187,37,0.5)]"
               >
                 <span className="relative z-10 flex items-center justify-center gap-2">
-                  {joining ? "CONNECTING..." : "ENTER GAME"}
+                  {joining ? "Connecting..." : "Join"}
                   {!joining && (
                     <motion.span
+                      aria-hidden="true"
                       animate={{ x: [0, 4, 0] }}
                       transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
                     >

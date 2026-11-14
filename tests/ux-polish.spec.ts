@@ -82,7 +82,7 @@ test.describe('U-10: one sentence is one element', () => {
   test('the banner on every tool page', async ({ page }) => {
     await open(page, '/tools/dice');
     const banner = await sentence(page, 'Want to play with friends?');
-    expect(banner?.text).toBe('Want to play with friends? Create a Multiplayer Room to invite them!');
+    expect(banner?.text).toBe('Want to play with friends? Create a room to invite them!');
     expect(banner?.display, 'a block of text, not a flex row whose children wrap on their own').toBe('block');
     expect(banner?.links).toBe(1);
   });

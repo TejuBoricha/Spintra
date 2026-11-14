@@ -7,7 +7,7 @@ export function RouteErrorFallback({
   reset,
   title = "Something went wrong",
   description = "This page hit an unexpected error. You can try again, or browse the tools.",
-  escape = { href: "/tools", label: "Browse tools" },
+  escape = { href: "/tools", label: "Tools" },
 }: {
   reset: () => void;
   title?: string;

@@ -13,7 +13,7 @@ export default function CreateError({ error, reset }: { error: Error & { digest?
       reset={reset}
       title="Couldn't load room creation"
       description="Something broke on this page. Try again in a moment."
-      escape={{ href: "/explore", label: "Back to Explore" }}
+      escape={{ href: "/explore", label: "Explore" }}
     />
   );
 }

@@ -381,7 +381,7 @@ export default function CreateRoomClient() {
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    Create Room
+                    Create a room
                   </>
                 )}
               </Button>
@@ -410,7 +410,7 @@ export default function CreateRoomClient() {
                   variant="brand"
                   className="w-full"
                 >
-                  Join Room
+                  Enter your room
                 </Button>
               </div>
             )}

@@ -7,14 +7,14 @@ skipInDbIntegration(test);
 // UX audit (7 Oct 2026), finding U-29: the Join dialog, the way into every multiplayer session, was rough in the details. The code
 // boxes got labels (U-05), its arrow stopped bouncing under reduced motion (U-25) and its disabled button lost the olive (U-17, which
 // ux-polish.spec.ts covers on the home page's button); what this adds is the close button, a 12px glyph in a 32px target even under a
-// finger, and the hint line above the boxes (small capitals with wide tracking), plus the disabled "ENTER GAME" button in the dialog.
+// finger, and the hint line above the boxes (small capitals with wide tracking), plus the disabled "Join" button in the dialog.
 
 async function openJoin(page: Page) {
   await page.addInitScript(() => localStorage.setItem('spintra-cookie-consent', 'denied'));
   await page.goto('/');
   await page.waitForLoadState('load');
   await hideConfigBanner(page);
-  await page.getByRole('button', { name: 'JOIN', exact: true }).click();
+  await page.getByRole('button', { name: 'Join a room', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.waitForTimeout(400); // its entrance
 }
@@ -51,10 +51,10 @@ test.describe('the hint and the disabled button', () => {
     expect(style.height / style.line, 'lines of text').toBeLessThan(1.5);
   });
 
-  test('the disabled ENTER GAME button is a neutral block, not olive', async ({ page }) => {
+  test('the disabled Join button is a neutral block, not olive', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await openJoin(page);
-    const button = page.getByRole('button', { name: /ENTER GAME/ });
+    const button = page.getByRole('button', { name: 'Join', exact: true });
     await expect(button).toBeDisabled();
     const style = await button.evaluate((el) => {
       const cs = getComputedStyle(el);

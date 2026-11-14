@@ -467,7 +467,7 @@ export default function ExplorePage() {
               </div>
               <ButtonLink href="/create" variant="brand" wrap>
                 <Plus className="w-4 h-4" />
-                Create Public Room
+                Create a room
               </ButtonLink>
             </div>
           ) : (

@@ -40,7 +40,7 @@ export function SiteFooter() {
         <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-x-6 md:justify-end">
           <Link href="/tools" className={FOOTER_LINK}>Tools</Link>
           <Link href="/explore" className={FOOTER_LINK}>Explore</Link>
-          <Link href="/create" className={FOOTER_LINK}>Create Room</Link>
+          <Link href="/create" className={FOOTER_LINK}>Create a room</Link>
           <Link href="/for-teachers" className={FOOTER_LINK}>For Teachers</Link>
           <Link href="/spintra-city" className={FOOTER_LINK}>Spintra City</Link>
           <Link href="/legal/terms" className={FOOTER_LINK}>Terms</Link>

@@ -66,14 +66,17 @@ test.describe('one control, one Tab stop', () => {
     });
   }
 
-  test('the navbar and the home page call-to-action buttons are links, once each', async ({ page }) => {
+  test('the navbar and the home page call-to-action buttons are links', async ({ page }) => {
     await page.goto('/');
-    for (const name of ['LIVE ROOMS', 'TOOLS', 'HOST']) {
-      await expect(page.getByRole('link', { name, exact: true }), `${name} is a link`).toHaveCount(1);
+    // The navbar and the hero share one name per action (U-23), so a name may be a link twice but never a button.
+    const nav = page.getByRole('navigation').first();
+    for (const name of ['Explore', 'Tools', 'Create a room']) {
+      await expect(nav.getByRole('link', { name, exact: true }), `${name} is one link in the navbar`).toHaveCount(1);
       await expect(page.getByRole('button', { name, exact: true }), `${name} is not also a button`).toHaveCount(0);
     }
-    await expect(page.getByRole('link', { name: 'Create Room' }).first()).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Explore Games' })).toBeVisible();
+    // The hero's two buttons are links with the same names.
+    await expect(page.getByRole('main').getByRole('link', { name: 'Create a room', exact: true }).first()).toBeVisible();
+    await expect(page.getByRole('main').getByRole('link', { name: 'Explore', exact: true }).first()).toBeVisible();
   });
 
   test('the home page has no repeated Tab stops (it had 44 stops, 8 of them repeats)', async ({ page }) => {
@@ -116,7 +119,7 @@ for (const theme of ['dark', 'light'] as const) {
       await page.goto('/');
       await page.waitForLoadState('load');
       await hideConfigBanner(page);
-      await page.getByRole('button', { name: 'JOIN', exact: true }).click();
+      await page.getByRole('button', { name: 'Join a room', exact: true }).click();
       for (const n of [1, 2, 3]) {
         const box = page.getByLabel(`Room code, character ${n} of 6`);
         if (n > 1) await page.keyboard.press('Tab');

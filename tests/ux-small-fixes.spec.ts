@@ -99,8 +99,8 @@ test.describe('U-25: framer-motion respects the reduced-motion setting', () => {
     await page.addInitScript(() => localStorage.setItem('spintra-cookie-consent', 'denied'));
     await page.goto('/');
     await hideConfigBanner(page);
-    await page.getByRole('button', { name: 'JOIN', exact: true }).click();
-    const arrow = page.getByRole('button', { name: /enter game/i }).locator('span', { hasText: '→' }).last();
+    await page.getByRole('button', { name: 'Join a room', exact: true }).click();
+    const arrow = page.getByRole('button', { name: 'Join', exact: true }).locator('span', { hasText: '→' }).last();
     await expect(arrow).toBeVisible();
     const read = () => arrow.evaluate((el) => getComputedStyle(el).transform);
     const seen = new Set<string>();
