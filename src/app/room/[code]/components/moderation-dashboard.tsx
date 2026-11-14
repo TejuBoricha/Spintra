@@ -254,7 +254,7 @@ export function ModerationDashboard({
         >
           <Shield className="w-4 h-4 text-rose-400" />
           {unreviewedCount > 0 && (
-            <Badge className="absolute -top-1 -right-1 h-4 min-w-4 px-1 justify-center bg-rose-500 text-white text-[10px] border-0">
+            <Badge className="absolute -top-1 -right-1 h-4 min-w-4 px-1 justify-center bg-rose-600 text-white text-[10px] border-0">
               {unreviewedCount}
             </Badge>
           )}
@@ -273,7 +273,7 @@ export function ModerationDashboard({
             <TabsList variant="line" className="h-auto justify-start bg-transparent p-0 gap-4 border-b border-(--border-hairline)">
               <TabsTrigger value="reports" className="px-0 pb-2 text-sm font-semibold">
                 Reports
-                {unreviewedCount > 0 && <span className="ml-1 text-rose-400">({unreviewedCount})</span>}
+                {unreviewedCount > 0 && <span className="ml-1 text-rose-700 dark:text-rose-400">({unreviewedCount})</span>}
               </TabsTrigger>
               <TabsTrigger value="bans" className="px-0 pb-2 text-sm font-semibold">
                 Banned

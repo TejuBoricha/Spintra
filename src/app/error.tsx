@@ -9,10 +9,6 @@ export default function HomeError({ error, reset }: { error: Error & { digest?: 
   }, [error]);
 
   return (
-    <RouteErrorFallback
-      reset={reset}
-      title="Something went wrong"
-      description="This page hit an unexpected error. You can try again, or head back to Explore."
-    />
+    <RouteErrorFallback reset={reset} />
   );
 }
