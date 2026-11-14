@@ -51,29 +51,39 @@ const GameIcon = getGameByType("tournament")!.icon;
 // ──── Templates ────
 const TEMPLATES: Record<
   string,
-  { names: string[]; type: TournamentType; seeds: string[] }
+  { label: string; unit: "players" | "teams"; names: string[]; type: TournamentType; seeds: string[] }
 > = {
   "8-player-single": {
+    label: "Single elimination",
+    unit: "players",
     names: ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel"],
     type: "single-elimination",
     seeds: ["Alpha", "Bravo"],
   },
   "16-player-single": {
+    label: "Single elimination",
+    unit: "players",
     names: Array.from({ length: 16 }, (_, i) => `Player ${i + 1}`),
     type: "single-elimination",
     seeds: ["Player 1", "Player 2", "Player 3", "Player 4"],
   },
   "4-team-rr": {
+    label: "Round robin",
+    unit: "teams",
     names: ["Team Alpha", "Team Bravo", "Team Charlie", "Team Delta"],
     type: "round-robin",
     seeds: [],
   },
   "8-player-double": {
+    label: "Double elimination",
+    unit: "players",
     names: ["Ace", "Blaze", "Cipher", "Drift", "Ember", "Frost", "Ghost", "Hawk"],
     type: "double-elimination",
     seeds: ["Ace", "Blaze"],
   },
   "8-player-swiss": {
+    label: "Swiss",
+    unit: "players",
     names: Array.from({ length: 8 }, (_, i) => `Player ${i + 1}`),
     type: "swiss",
     seeds: [],
@@ -362,7 +372,7 @@ export default function TournamentPage() {
     setSeedInput(t.seeds.join("\n"));
     setTournamentType(t.type);
     setTournament(null);
-    toast.success(`${key.replace(/-/g, " ")} template loaded!`);
+    toast.success(`${t.label} template loaded!`);
   }, []);
 
   const shareBracket = useCallback(async () => {
@@ -619,9 +629,9 @@ export default function TournamentPage() {
                   setTournament(null);
                 }}
                 options={[
-                  { value: "single-elimination", label: "Single Elim" },
-                  { value: "double-elimination", label: "Double Elim" },
-                  { value: "round-robin", label: "Round Robin" },
+                  { value: "single-elimination", label: "Single elimination" },
+                  { value: "double-elimination", label: "Double elimination" },
+                  { value: "round-robin", label: "Round robin" },
                   { value: "swiss", label: "Swiss" },
                 ]}
               />
@@ -639,7 +649,7 @@ export default function TournamentPage() {
               </div>
 
               <Textarea
-                placeholder="Enter participant names, one per line...&#10;Alpha&#10;Bravo&#10;Charlie&#10;Delta"
+                placeholder="Enter participant names, one per line"
                 className="min-h-[120px] resize-y font-mono"
                 value={textInput}
                 onChange={(e) => {
@@ -647,15 +657,18 @@ export default function TournamentPage() {
                   setTournament(null);
                 }}
               />
+              <p className="text-xs text-muted-foreground -mt-1">
+                One name per line, for example Alpha, Bravo, Charlie, Delta.
+              </p>
 
               {/* Seeds Input */}
               <div>
                 <p className="text-xs text-muted-foreground mb-1.5">
-                  Seeds (one per line, top seed first)
+                  Seeds (one per line, top seed first), for example Alpha, then Bravo
                 </p>
                 <Textarea
                   aria-label="Seeds, one per line, top seed first"
-                  placeholder="Alpha&#10;Bravo"
+                  placeholder="One name per line"
                   className="min-h-[72px] resize-y font-mono"
                   value={seedInput}
                   onChange={(e) => {
@@ -695,11 +708,11 @@ export default function TournamentPage() {
                     className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-xl border border-(--border-hairline) bg-(--surface-sunken) hover:bg-muted hover:border-emerald-500/30 transition-colors text-sm"
                   >
                     <LayoutTemplate className="w-4 h-4 text-emerald-400/60 shrink-0" />
-                    <span className="flex-1 capitalize">
-                      {key.replace(/-/g, " ")}
+                    <span className="flex-1">
+                      {t.label}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {t.names.length}p
+                      {t.names.length} {t.unit}
                     </span>
                   </button>
                 ))}

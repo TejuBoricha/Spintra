@@ -260,7 +260,7 @@ export default function DicePage() {
                     value={count}
                     onChange={(e) => setCount(Number(e.target.value))}
                     disabled={rolling}
-                    className="min-w-0 flex-1 accent-primary h-1 bg-muted rounded-lg cursor-pointer"
+                    className="min-w-0 flex-1 accent-primary h-6 bg-transparent cursor-pointer"
                   />
                   <Button
                     variant="outline"
@@ -303,7 +303,7 @@ export default function DicePage() {
                   <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
                     Rolls Distribution
                   </div>
-                  <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                  <div role="region" aria-label="Rolls distribution" tabIndex={0} className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
                     {Array.from({ length: selectedDice }, (_, i) => i + 1).map((val) => {
                       const frequency = stats.dist[val] || 0;
                       const pct = stats.totalCount ? (frequency / stats.totalCount) * 100 : 0;
@@ -456,7 +456,7 @@ export default function DicePage() {
                     Clear
                   </Button>
                 </div>
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                <div role="region" aria-label="Roll history" tabIndex={0} className="space-y-2 max-h-48 overflow-y-auto pr-1">
                   {history.slice(0, 10).map((h, i) => (
                     <div
                       key={i}

@@ -95,6 +95,23 @@ test.describe('dialogs and the room', () => {
     await expect(page.getByLabel('Draw Count')).toBeVisible();
   });
 
+  // U-40: the Dice page's two lists (the distribution and the history) scroll once there are rolls, and a list that scrolls must be
+  // a Tab stop (axe: scrollable-region-focusable); its slider was a 4px-tall native input, the whole of its hit area.
+  test('Dice after a run of rolls: the lists that scroll are reachable by keyboard, and the slider is 24px tall', async ({ page }) => {
+    await openPage(page, 'dark', '/tools/dice');
+    const roll = page.getByRole('button', { name: /^Roll/ });
+    for (let i = 0; i < 12; i++) {
+      await expect(roll).toBeEnabled();
+      await roll.click();
+    }
+    await expect(roll).toBeEnabled();
+    await expect(page.getByRole('region', { name: 'Roll history' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Rolls distribution' })).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+    const box = await page.getByRole('slider', { name: 'Number of dice' }).boundingBox();
+    expect(box!.height, 'the slider is a 24px target (WCAG 2.5.8)').toBeGreaterThanOrEqual(24);
+  });
+
   test('Team Maker: each team has a Hide / Show button with a name that says whether it is open', async ({ page }) => {
     await openPage(page, 'dark', '/tools/team-maker');
     await page.getByPlaceholder(/enter names/i).fill('Alex\nJordan\nTaylor\nMorgan\nCasey\nRiley');

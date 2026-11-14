@@ -238,7 +238,7 @@ const STATES: { name: string; path: string; init?: () => void; drive: (page: Pag
     name: 'Tournament: the Update Score dialog',
     path: '/tools/tournament',
     drive: async (page) => {
-      await press(page.locator('button:has-text("8 player single")').first());
+      await press(page.getByRole('button', { name: /Single elimination.*8 players/ }));
       await press(page.getByRole('button', { name: /Generate Bracket/ }));
       await press(page.locator('[data-match-ready="true"]').first());
       await expect(page.getByRole('heading', { name: 'Update Score' })).toBeVisible();
