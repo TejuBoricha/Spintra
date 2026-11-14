@@ -221,7 +221,7 @@ export default function TeamMakerPage() {
                 Player Names
               </Label>
               <Textarea
-                placeholder={"Enter names, one per line or comma-separated...\n\nAlex\nJordan\nTaylor\nMorgan\nCasey\nRiley\nQuinn\nSkyler"}
+                placeholder="Enter names, one per line or comma-separated"
                 value={namesInput}
                 onChange={(e) => setNamesInput(e.target.value)}
                 className="min-h-[160px] resize-y"
@@ -229,7 +229,7 @@ export default function TeamMakerPage() {
               <p className="text-xs text-muted-foreground mt-2">
                 {parsedNames.length > 0
                   ? `${parsedNames.length} name${parsedNames.length !== 1 ? "s" : ""} entered`
-                  : "Enter player names above"}
+                  : "Enter player names above, for example Alex, Jordan, Taylor"}
               </p>
             </div>
 

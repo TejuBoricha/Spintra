@@ -165,11 +165,11 @@ export function Navbar() {
       // hamburger (already correct at every width) covers the range where
       // the desktop row doesn't actually fit, instead of redesigning the
       // pill row's spacing to squeeze into 768px.
-      // The row is about 890px wide with the sentence-case labels of U-23 ("Join a room",
-      // "Create a room"); max-w-4xl (896px, less its padding) cut the theme toggle's edge, so the
-      // panel may be 58rem (928px) and the three plain pills have px-4. No wider: at 1280px the panel
-      // would reach under the skip link (left-4, about 150px wide), whose focus ring needs the page behind it.
-      className="fixed top-4 inset-x-4 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 z-50 lg:min-w-[600px] lg:max-w-[58rem] w-[calc(100%-2rem)] transition-all duration-500 reveal reveal-down"
+      // The row has to fit this panel (896px): the labels are sentence case at 14px (U-31); in 12px capitals
+      // with wide tracking, "Join a room" and "Create a room" made it about 890px and cut the theme toggle.
+      // Do not widen the panel: at 1280px it would reach under the skip link (left-4, about 150px wide),
+      // whose focus ring needs the page behind it.
+      className="fixed top-4 inset-x-4 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 z-50 lg:min-w-[600px] lg:max-w-4xl w-[calc(100%-2rem)] transition-all duration-500 reveal reveal-down"
     >
       <div
         className={cn(
@@ -188,7 +188,7 @@ export function Navbar() {
               whileTap={{ scale: 0.95 }}
               tabIndex={-1}
               transition={{ type: "spring", stiffness: 400, damping: 10 }}
-              className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-(--brand-primary-strong) shadow-[0_0_15px_-3px_var(--color-brand-primary-strong)] relative"
+              className="w-11 h-11 lg:w-10 lg:h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-(--brand-primary-strong) shadow-[0_0_15px_-3px_var(--color-brand-primary-strong)] relative"
             >
               <Image
                 src="/icons/logo.png"
@@ -211,7 +211,7 @@ export function Navbar() {
               href="/explore"
               variant="ghost"
               size="sm"
-              className="rounded-full px-4 font-bold uppercase tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
+              className="rounded-full px-5 font-semibold text-sm hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
             >
               <Globe className="w-3.5 h-3.5 mr-2 text-blue-400" />
               Explore
@@ -220,7 +220,7 @@ export function Navbar() {
               href="/tools"
               variant="ghost"
               size="sm"
-              className="rounded-full px-4 font-bold uppercase tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
+              className="rounded-full px-5 font-semibold text-sm hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
             >
               <Wrench className="w-3.5 h-3.5 mr-2 text-orange-400" />
               Tools
@@ -230,7 +230,7 @@ export function Navbar() {
               variant="ghost"
               size="sm"
               onClick={() => setIsJoinOpen(true)}
-              className="rounded-full px-4 font-bold uppercase tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
+              className="rounded-full px-5 font-semibold text-sm hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
             >
               Join a room
             </Button>
@@ -239,7 +239,7 @@ export function Navbar() {
               onClick={() => fireConfetti()}
               variant="brand"
               size="sm"
-              className="rounded-full px-6 font-bold uppercase tracking-widest text-xs shadow-lg shadow-primary/25 relative overflow-hidden group border border-white/20 h-9"
+              className="rounded-full px-6 font-semibold text-sm shadow-lg shadow-primary/25 relative overflow-hidden group border border-white/20 h-9"
             >
               <span className="relative z-10 flex items-center gap-2">
                 Create a room
@@ -259,7 +259,7 @@ export function Navbar() {
               href="/settings"
               variant="ghost"
               size="icon"
-              className="hidden sm:inline-flex rounded-full text-muted-foreground hover:text-foreground hover:bg-(--surface-sunken) transition-colors h-10 w-10"
+              className="hidden sm:inline-flex rounded-full text-muted-foreground hover:text-foreground hover:bg-(--surface-sunken) transition-colors h-11 w-11 lg:h-10 lg:w-10"
               aria-label="Settings"
             >
               <Settings className="w-5 h-5" />
@@ -271,7 +271,7 @@ export function Navbar() {
                 size="icon"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-                className="rounded-full text-muted-foreground hover:text-foreground hover:bg-(--surface-sunken) transition-colors h-10 w-10"
+                className="rounded-full text-muted-foreground hover:text-foreground hover:bg-(--surface-sunken) transition-colors h-11 w-11 lg:h-10 lg:w-10"
               >
                 {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </Button>
@@ -280,7 +280,7 @@ export function Navbar() {
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden rounded-full text-foreground hover:bg-(--surface-sunken) h-10 w-10"
+              className="lg:hidden rounded-full text-foreground hover:bg-(--surface-sunken) h-11 w-11"
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
             >
@@ -299,17 +299,6 @@ export function Navbar() {
               className="lg:hidden border-t border-(--border-hairline) bg-transparent"
             >
               <div className="px-4 py-4 flex flex-col gap-2">
-                <Button
-                  onClick={() => {
-                    setMobileOpen(false);
-                    setIsJoinOpen(true);
-                  }}
-                  variant="brand"
-                  className="w-full rounded-full h-12 font-bold uppercase tracking-widest text-sm"
-                >
-                  Join a room
-                </Button>
-
                 <ButtonLink
                   href="/create"
                   onClick={() => {
@@ -317,11 +306,22 @@ export function Navbar() {
                     fireConfetti();
                   }}
                   variant="brand"
-                  className="w-full rounded-full h-12 font-bold uppercase tracking-widest text-sm shadow-lg shadow-primary/25"
+                  className="w-full rounded-full h-12 font-semibold text-base shadow-lg shadow-primary/25"
                 >
                   <Sparkles className="w-4 h-4 mr-2" />
                   Create a room
                 </ButtonLink>
+
+                <Button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    setIsJoinOpen(true);
+                  }}
+                  variant="outline"
+                  className="w-full rounded-full h-12 font-semibold text-base"
+                >
+                  Join a room
+                </Button>
 
                 <div className="grid grid-cols-2 gap-2 mt-2">
                   <ButtonLink href="/explore" onClick={() => setMobileOpen(false)} variant="ghost" className="w-full rounded-2xl h-12 bg-(--surface-sunken)/50">

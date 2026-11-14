@@ -423,7 +423,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
 
   if (!authReady || checkingAccess) {
     return (
-      <div role="status" aria-live="polite" className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
+      <div role="status" aria-live="polite" className="min-h-svh bg-background flex flex-col items-center justify-center gap-4">
         <div className="relative w-16 h-16">
           <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
           <div className="absolute inset-0 rounded-full border-4 border-t-primary animate-spin" />
@@ -884,12 +884,12 @@ function RoomUIInner({
 
   return (
     // The site layout gives <main> a 6rem top padding for the fixed nav, so a
-    // min-h-screen room was always 6rem taller than the screen and its sidebar's
+    // min-h-svh room was always 6rem taller than the screen and its sidebar's
     // chat input sat below the fold (audit R-13). A City match is laid out to fit
     // the screen (board, panel and chat together), so it takes screen minus nav.
     <div
       className={`${
-        roomType === "city" ? "min-h-[calc(100dvh-6rem)]" : "min-h-screen"
+        roomType === "city" ? "min-h-[calc(100dvh-6rem)]" : "min-h-svh"
       } flex flex-col md:flex-row w-full`}
     >
       {/* Screen-reader-only announcements for participant join/leave and
