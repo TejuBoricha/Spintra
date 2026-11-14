@@ -553,7 +553,7 @@ export default function ExplorePage() {
                       <h3 className="font-bold text-foreground text-sm group-hover:text-(--brand-primary-strong) transition-colors">
                         {t.label}
                       </h3>
-                      <p className="text-xs text-muted-foreground mt-1">{t.tagline}</p>
+                      <p className="text-xs text-muted-foreground mt-1 text-balance">{t.tagline}</p>
                     </div>
                   </Link>
                 );
