@@ -3939,16 +3939,16 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
    - The check now lives in one place, `hasRecordedResults()` in `src/lib/tournament-engine.ts`, used by both the tool page and the room. It skips byes and covers the losers bracket and grand final (the tool page looked at the winners bracket only).
    - New test: an unplayed 3-player bracket resets without a prompt. It fails with the bye filter removed. 3/3 in the spec and 6/6 in `tests/qa-x37-tournament-byes.spec.ts` pass in demo mode; `npm run verify:static` passes. `npm run audit` was not re-run.
    - Known limit, not changed here: RPS picks are hidden on screen only. Each `rps_choice` event still carries the pick to every client.
-## [2026-10-22] — UX audit U-04 (wave 1b), part 2: text contrast in a party room (PR #95)
+## [2026-11-14] — UX audit U-04 (wave 1b), part 2: text contrast in a party room (PR #115)
 
 **AI:** Claude Code (cloud session)
 **Task:** part 1 (PR #93) fixed the tool pages and added the pixel-contrast helper; a room's activities share the patterns and had never been scanned.
 **Measured first:** `scan-room` (scratchpad harness) creates a demo-mode party room as its host (no Supabase: the `BroadcastChannel` fallback) and scans the lobby, the picker dialog and the first screen of each of the 14 activities, dark and light, 390 and 1280 px (64 frames): **28 failing text items** on `main`, of which the lobby has one (the status badge "Live (this device only)" at 3.4 : 1 in the light theme).
-**Change (20 files under `src/app/room`):** the `text-X-200`, `-300` and `-400` colours made for the dark page get a darker one for the light theme (`text-X-700 dark:text-X-400`; `-800` for amber and yellow; `-900` for the `-200` ones; hover colours paired the same way); white text on mid-tone gradients becomes the dark ink the primary buttons use (Flip Coin, Tournament, Trivia, Word Scramble, the tiles) or the gradient ends are darkened where white stays (Truth, Dare, Guess Number, Bingo, Name Draw, Would You Rather, Never Have I Ever: 600 and 700 ends); the Bingo "Called" ball is `cyan-700` to `blue-700` with a readable label; the wheel's ▼ pointer is red instead of the page's text colour (it sat on a dark rim in the light theme: 1.0 : 1); the dice placeholder dims its fill, not its "?" (the whole tile at 40% opacity read 1.2 : 1); the realtime status badge in `use-room-subscription.ts`; the moderation count badge is `rose-600`. The City files are untouched on purpose.
+**Change (20 files under `src/app/room`):** the `text-X-200`, `-300` and `-400` colours made for the dark page get a darker one for the light theme (`text-X-700 dark:text-X-400`; `-800` for amber and yellow; `-900` for the `-200` ones; hover colours paired the same way); white text on mid-tone gradients becomes the dark ink the primary buttons use (Flip Coin, Tournament, Trivia, Word Scramble, the tiles) or the gradient ends are darkened where white stays (Truth, Dare, Guess Number, Bingo, Name Draw, Would You Rather, Never Have I Ever: 600 and 700 ends); the Bingo "Called" ball is `cyan-700` to `blue-700` with a readable label; the wheel's ▼ pointer is red instead of the page's text colour (it sat on a dark rim in the light theme: 1.0 : 1) and sits 4 px higher, clear of the rim and its chasing lights (its box overlapped them, and the scan read 2.4 : 1 on some frames after the Chromium update of November); the dice placeholder dims its fill, not its "?" (the whole tile at 40% opacity read 1.2 : 1); the realtime status badge in `use-room-subscription.ts`; the moderation count badge is `rose-600`. The City files are untouched on purpose.
 **Tests:** `tests/pixel-contrast-room.spec.ts`: one case per theme and width (4) that creates a party room and checks the lobby, the picker and each activity's first screen, and reports the failing items per state. **All 4 fail on `main` and pass here.**
 **Not verified:** the later screens of an activity (a question, a winner, a bracket), a second player's view, Spintra City, hover and focus states, a real room with Supabase (the host's view in demo mode is the same components).
 
-## [2026-10-22] — UX audit U-26 (wave 2): no heading or paragraph ends on a word of its own (PR #95)
+## [2026-11-14] — UX audit U-26 (wave 2): no heading or paragraph ends on a word of its own (PR #115)
 
 **AI:** Claude Code (cloud session)
 **Task:** U-26 of the audit: headings and paragraphs whose last line is one word ("Pick a game and / play."). The site had no wrapping rule.
@@ -3957,7 +3957,7 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 **Tests:** `tests/text-wrap.spec.ts`: the computed `text-wrap` of an `h1`, `h2` and `p` on a legal page, and the orphan count on every page at 390 and 1280 px. **All three fail on the old build, pass on the new.** Like the pixel-contrast specs it runs in `validate` and not in `db-integration` (no database involved; that job is near its limit).
 **Not verified:** 320 and 768 px wide, the states a person reaches by acting (a truth, a result), Firefox (`pretty` is Chromium's and Safari's; Firefox ignores it and wraps as before) and Safari. The audit counted 117 over four widths; this counts 76 over two.
 
-## [2026-10-22] — UX audit U-18 (wave 2): one ErrorState for the 404, a missing room and a route error (PR #95)
+## [2026-11-14] — UX audit U-18 (wave 2): one ErrorState for the 404, a missing room and a route error (PR #115)
 
 **AI:** Claude Code (cloud session)
 **Task:** U-18 of the audit: three pages that all mean "you cannot be here" looked and behaved three ways.
@@ -3966,7 +3966,7 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 **Tests:** `tests/error-state.spec.ts`: the 404's status (404), title, `noindex`, one `h1` in the display font with focus left at the top of the document, "Browse tools" to /tools and "Go home" to /; fails on `main`'s build at the title, passes here.
 **Not verified in CI:** the room cards and the route error: a room lookup that fails, and a thrown render, cannot be produced in the demo-mode site, and `db-integration` has no spec that visits a missing room. I looked at both in screenshots (dark and light, 1280 and 390 px) with a temporary trigger that is not in the change.
 
-## [2026-10-22] — UX audit U-16 (wave 2): home page polish, aligned cards, one count, no wheel cue on touch (PR #95)
+## [2026-11-14] — UX audit U-16 (wave 2): home page polish, aligned cards, one count, no wheel cue on touch (PR #115)
 
 **AI:** Claude Code (cloud session)
 **Task:** U-16 of the audit: the small things on the page everyone sees.
@@ -3975,7 +3975,7 @@ Point 5's fix (a second hardcoded literal, manually kept in sync) is exactly the
 **Tests:** `tests/home-polish.spec.ts`: both counts and the card count against the catalogue, the footer and card bottoms of every row at 1280 and 768 px, the cue with and without a touch screen. **Fails on `main`'s build, passes here.**
 **Not done:** the 17th card sits alone with one other in a last row of 3 columns (the audit listed it as evidence, not in its fix); "play" alone on a line at 390 px is U-26 (its own PR).
 
-## [2026-10-22] — UX audit U-22 (wave 2): Terms and Privacy at a readable width, with a contents list and section anchors (PR #95)
+## [2026-11-14] — UX audit U-22 (wave 2): Terms and Privacy at a readable width, with a contents list and section anchors (PR #115)
 
 **AI:** Claude Code (cloud session)
 **Task:** U-22 of the audit: the two long pages ran 91 to 107 characters per line (60 to 75 is comfortable) and had numbered sections with nothing to jump to them.
