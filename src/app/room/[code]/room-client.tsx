@@ -475,7 +475,6 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
         emoji={errorDetails.emoji}
         title={errorDetails.title}
         description={errorDetails.desc}
-        pageTitle={`${errorDetails.title} | Spintra`}
         takeFocus
       >
         {retry ? (

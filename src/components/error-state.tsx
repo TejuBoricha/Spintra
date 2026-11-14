@@ -11,22 +11,17 @@ import { Emoji, type EmojiName } from "@/components/emoji";
  * `takeFocus` is for a state that replaces a page already on screen (a room's access check, a route that threw): the
  * heading takes focus so a screen reader announces what happened and a keyboard user is already at the way out. The
  * 404 is a document of its own, where focus belongs at the top, as on every other page (the skip link comes first).
- *
- * `pageTitle` is for a state that is not a page of its own (a room that is gone is still the room's address): it
- * replaces the tab title while the state shows.
  */
 export function ErrorState({
   emoji,
   title,
   description,
-  pageTitle,
   takeFocus = false,
   children,
 }: {
   emoji: EmojiName;
   title: string;
   description: string;
-  pageTitle?: string;
   takeFocus?: boolean;
   children: ReactNode;
 }) {
@@ -34,16 +29,6 @@ export function ErrorState({
   useEffect(() => {
     if (takeFocus) heading.current?.focus(); // scrolls the heading into view if the page it replaced was scrolled down
   }, [takeFocus]);
-  useEffect(() => {
-    if (!pageTitle) return;
-    const before = document.title;
-    document.title = pageTitle;
-    return () => {
-      // Only put it back if nothing else set it since: when the visitor follows a link out of here, the page they reach has
-      // already written its own title by the time this cleanup runs.
-      if (document.title === pageTitle) document.title = before;
-    };
-  }, [pageTitle]);
 
   return (
     <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center bg-background p-4">

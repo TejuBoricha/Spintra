@@ -67,12 +67,16 @@ for (const path of ['/legal/terms', '/legal/privacy']) {
         expect((await links.nth(i).innerText()).trim(), 'the link says what the heading says').toBe((await heading.innerText()).trim());
       }
 
-      const last = headings.nth(count - 1);
-      await links.nth(count - 1).click();
-      await expect(page).toHaveURL(new RegExp(`#${await last.evaluate((el) => el.parentElement!.id)}$`));
-      await expect(last).toBeInViewport();
-      const top = (await last.boundingBox())!.y;
-      expect(top, 'the heading is not under the fixed navbar (80px tall)').toBeGreaterThanOrEqual(80);
+      // A section in the middle: the last one cannot scroll to the top of the window (the page ends first), so it would pass
+      // whatever the scroll offset was.
+      const target = headings.nth(Math.floor(count / 2));
+      await links.nth(Math.floor(count / 2)).click();
+      await expect(page).toHaveURL(new RegExp(`#${await target.evaluate((el) => el.parentElement!.id)}$`));
+      await expect(target).toBeInViewport();
+      await page.waitForTimeout(300); // the browser's own scroll to an anchor, finished
+      const top = (await target.boundingBox())!.y;
+      expect(top, 'the heading starts below the fixed navbar (80px tall) and near the top of the window').toBeGreaterThanOrEqual(80);
+      expect(top, 'the heading is scrolled to, not just somewhere in view').toBeLessThanOrEqual(140);
     });
   });
 }

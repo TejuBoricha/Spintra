@@ -34,13 +34,15 @@ for (const width of [390, 1280]) {
         await page.waitForLoadState('load');
         await hideConfigBanner(page);
         await page.waitForTimeout(400); // hydration, so client-rendered text exists
+        await page.evaluate(() => document.querySelectorAll('details').forEach((d) => (d.open = true))); // the FAQ answers are text too
         const { found, seen } = await page.evaluate(() => {
           const out: string[] = [];
           let seen = 0;
           for (const el of document.querySelectorAll('p, h1, h2, h3, li')) {
             const text = (el.textContent || '').trim();
-            // A leaf of the text: not one that holds another block, and long enough to wrap in the first place.
-            if (text.length < 25 || el.querySelector('p, h1, h2, h3, li, div')) continue;
+            // A leaf of the text: not one that holds another block, and long enough to wrap in the first place ("Pick something to play", the
+            // audit's own example, is 22 characters).
+            if (text.length < 12 || el.querySelector('p, h1, h2, h3, li, div')) continue;
             const style = getComputedStyle(el);
             const box = el.getBoundingClientRect();
             if (style.display === 'none' || style.visibility === 'hidden' || box.width < 1 || box.height < 1) continue;
