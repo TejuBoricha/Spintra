@@ -109,7 +109,7 @@ export default function ForTeachersPage() {
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <ButtonLink href="/create?type=classroom" variant="brand" size="lg" wrap className="rounded-full font-bold">
-              Start a Classroom Room
+              Create a classroom
               <ArrowRight className="w-4 h-4" />
             </ButtonLink>
             <ButtonLink href="#tools" variant="outline" size="lg" className="rounded-full font-bold">
@@ -233,7 +233,7 @@ export default function ForTeachersPage() {
             Open a room, put the code on the board, and your students can join.
           </p>
           <ButtonLink href="/create?type=classroom" variant="brand" size="lg" wrap className="rounded-full font-bold">
-            Start a Classroom Room
+            Create a classroom
             <ArrowRight className="w-4 h-4" />
           </ButtonLink>
         </div>

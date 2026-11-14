@@ -12,7 +12,7 @@ test('comprehensive smoke test of all tools and room activities', async ({ page 
   await page.goto('/');
   await expect(page.locator('h1').first()).toContainText("Can't decide?");
   // A link that looks like a button (ButtonLink), not a button inside a link: it navigates.
-  await expect(page.getByRole('link', { name: 'Create Room' }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Create a room' }).first()).toBeVisible();
 
   // 2. Go to /explore and check room feed
   await page.goto('/explore');

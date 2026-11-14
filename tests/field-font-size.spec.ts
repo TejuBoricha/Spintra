@@ -53,7 +53,7 @@ test.describe('every text field is at least 16px on a phone (so iOS does not zoo
     await page.waitForTimeout(400);
     await page.getByRole('button', { name: 'Open menu' }).click(); // on a phone the navbar's JOIN is in the menu
     await page.getByRole('button', { name: /^join/i }).first().click();
-    await expect(page.getByRole('dialog', { name: 'Join Room' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Join a room' })).toBeVisible();
     expect(await smallFields(page)).toEqual([]);
   });
 

@@ -220,11 +220,11 @@ export default function HomePage() {
           >
             <ButtonLink href="/create" variant="brand" size="lg" className="group text-lg">
               <Sparkles className="w-5 h-5 group-hover:animate-spin" />
-              Create Room
+              Create a room
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </ButtonLink>
             <ButtonLink href="/explore" variant="secondary" size="lg" className="text-lg">
-              Explore Games
+              Explore
             </ButtonLink>
           </div>
 
@@ -516,7 +516,7 @@ export default function HomePage() {
             >
               <Link href="/explore" className={FOOTER_LINK}>Explore</Link>
               <Link href="/tools" className={FOOTER_LINK}>Tools</Link>
-              <Link href="/create" className={FOOTER_LINK}>Create Room</Link>
+              <Link href="/create" className={FOOTER_LINK}>Create a room</Link>
               <Link href="/for-teachers" className={FOOTER_LINK}>For Teachers</Link>
               <Link href="/spintra-city" className={FOOTER_LINK}>Spintra City</Link>
             </nav>

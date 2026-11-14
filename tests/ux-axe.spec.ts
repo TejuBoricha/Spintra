@@ -67,8 +67,8 @@ test.describe('dialogs and the room', () => {
 
   test('the Join dialog has a name, labelled code boxes and no violations', async ({ page }) => {
     await openPage(page, 'dark', '/');
-    await page.getByRole('button', { name: 'JOIN', exact: true }).click();
-    await expect(page.getByRole('dialog', { name: 'Join Room' })).toBeVisible();
+    await page.getByRole('button', { name: 'Join a room', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Join a room' })).toBeVisible();
     await expect(page.getByLabel('Room code, character 1 of 6')).toBeVisible();
     await expect(page.getByLabel('Room code, character 6 of 6')).toBeVisible();
     expect(await violations(page)).toEqual([]);

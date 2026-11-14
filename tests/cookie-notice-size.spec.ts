@@ -5,7 +5,7 @@ import { skipInDbIntegration } from './helpers/ci-skip';
 skipInDbIntegration();
 
 // UX audit (7 Oct 2026), finding U-09: on a first visit the cookie notice sat over a quarter to two fifths of a phone screen (five
-// lines of text), half-covering the hero's "Explore Games" button. The notice is required, but the first screen is the product's
+// lines of text), half-covering the hero's "Explore" button. The notice is required, but the first screen is the product's
 // pitch. It is two short sentences now, with the same facts, the Privacy Policy link, and Accept and Decline at equal weight (the
 // part that must not change: a bigger Accept is the nudge the UK Children's Code singles out).
 

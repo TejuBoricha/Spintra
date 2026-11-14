@@ -520,7 +520,7 @@ export default function TeamMakerPage() {
                 </p>
                 <ButtonLink href="/create?type=team-maker" wrap className="gap-2 bg-(image:--gradient-brand) text-primary-foreground border-2 border-(--border-strong) hover:brightness-95">
                   <Users className="w-4 h-4" />
-                  Create Room
+                  Create a room
                   <ArrowRight className="w-4 h-4" />
                 </ButtonLink>
               </div>
