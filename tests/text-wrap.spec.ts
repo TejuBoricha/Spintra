@@ -47,7 +47,7 @@ for (const width of [390, 1280]) {
             const box = el.getBoundingClientRect();
             if (style.display === 'none' || style.visibility === 'hidden' || box.width < 1 || box.height < 1) continue;
             // Every word's last line box (a word that wraps mid-way has two), found by range.
-            const words: { top: number }[] = [];
+            const words: { top: number; left: number; right: number }[] = [];
             const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
             for (let node = walker.nextNode(); node; node = walker.nextNode()) {
               const re = /\S+/g;
@@ -56,14 +56,28 @@ for (const width of [390, 1280]) {
                 range.setStart(node, m.index);
                 range.setEnd(node, m.index + m[0].length);
                 const rects = range.getClientRects();
-                if (rects.length) words.push({ top: Math.round(rects[rects.length - 1].top) });
+                if (rects.length) {
+                  const r = rects[rects.length - 1];
+                  words.push({ top: Math.round(r.top), left: r.left, right: r.right });
+                }
               }
             }
             seen++;
             if (words.length < 3 || new Set(words.map((w) => w.top)).size < 2) continue;
             const last = words[words.length - 1].top;
             // Words within 3px of the last one share its line (an icon or a smaller inline element shifts a baseline).
-            if (words.filter((w) => Math.abs(w.top - last) <= 3).length === 1) out.push(text.slice(-50));
+            const onLast = words.filter((w) => Math.abs(w.top - last) <= 3);
+            if (onLast.length !== 1) continue;
+            // A word of its own is an orphan when it is short beside the rest ("play" under "Pick something to"), not when it is the
+            // balanced half of a short heading ("Rock Paper" over "Scissors": nearly as wide as the line above it).
+            const widths = new Map<number, [number, number]>();
+            for (const w of words) {
+              const key = [...widths.keys()].find((k) => Math.abs(k - w.top) <= 3) ?? w.top;
+              const [lo, hi] = widths.get(key) ?? [w.left, w.right];
+              widths.set(key, [Math.min(lo, w.left), Math.max(hi, w.right)]);
+            }
+            const widest = Math.max(...[...widths.values()].map(([lo, hi]) => hi - lo));
+            if (onLast[0].right - onLast[0].left < widest * 0.35) out.push(text.slice(-50));
           }
           return { found: out, seen };
         });
