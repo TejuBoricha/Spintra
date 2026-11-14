@@ -13,7 +13,7 @@ export default function RoomRedirectError({ error, reset }: { error: Error & { d
       reset={reset}
       title="Couldn't load that"
       description="Something broke loading this page. Try again in a moment."
-      escape={{ href: "/explore", label: "Back to Explore" }}
+      escape={{ href: "/explore", label: "Explore" }}
     />
   );
 }

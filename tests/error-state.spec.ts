@@ -23,7 +23,7 @@ test('the 404 has its own title, a heading in the display font, and two ways for
   await page.waitForTimeout(500); // the heading's effect, if it took focus, has run by now
   expect(await page.evaluate(() => document.activeElement === document.body), 'focus stays at the top of the document, as on every page load').toBe(true);
 
-  const tools = page.getByRole('link', { name: 'Browse tools', exact: true });
+  const tools = page.getByRole('main').getByRole('link', { name: 'Tools', exact: true }); // the card's, not the navbar's
   const home = page.getByRole('link', { name: 'Go home', exact: true });
   await expect(tools).toHaveAttribute('href', '/tools');
   await expect(home).toHaveAttribute('href', '/');
@@ -46,9 +46,9 @@ test('a banned visitor gets the same card with the heading focused and two ways 
   await expect(heading, 'the card replaced a page, so the heading takes focus').toBeFocused();
   expect(await heading.evaluate((el) => getComputedStyle(el).fontFamily), 'the display font').toMatch(/archivo/i);
 
-  const explore = page.getByRole('link', { name: 'Back to Explore', exact: true });
+  const explore = page.getByRole('main').getByRole('link', { name: 'Explore', exact: true }); // the card's, not the navbar's
   await expect(explore).toHaveAttribute('href', '/explore');
-  await expect(page.getByRole('link', { name: 'Browse tools', exact: true })).toHaveAttribute('href', '/tools');
+  await expect(page.getByRole('main').getByRole('link', { name: 'Tools', exact: true })).toHaveAttribute('href', '/tools');
 
   await explore.click();
   await expect(page).toHaveURL(/\/explore$/);

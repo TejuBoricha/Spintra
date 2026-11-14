@@ -33,7 +33,7 @@ export default function Page() {
               button lives in the root layout (see app/layout.tsx) since
               next/script's beforeInteractive strategy must be placed there. */}
           <div className="absolute top-48 left-4 w-3 h-3 overflow-hidden opacity-0 z-50" aria-hidden="true">
-            <button data-testid="create-room-button" tabIndex={-1} className="w-full h-full">Create a room</button>
+            <button data-testid="create-room-button" tabIndex={-1} className="w-full h-full">Create Room</button>
           </div>
 
           {/* Client interactive UI mounts here - wrapped in Suspense for CSR hooks */}

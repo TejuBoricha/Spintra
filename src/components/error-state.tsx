@@ -31,7 +31,7 @@ export function ErrorState({
   }, [takeFocus, title]); // a card that changes state (busy, then locked) takes focus again
 
   return (
-    <div data-error-state className="flex min-h-[calc(100dvh-4rem)] items-center justify-center bg-background p-4">
+    <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-6 rounded-2xl border border-(--border-hairline) bg-(--surface-panel) p-8 text-center shadow-3">
         {/* decorative: without this the glyph is announced as an image before the heading */}
         <div className="flex justify-center" aria-hidden="true">

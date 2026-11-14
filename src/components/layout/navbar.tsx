@@ -165,7 +165,11 @@ export function Navbar() {
       // hamburger (already correct at every width) covers the range where
       // the desktop row doesn't actually fit, instead of redesigning the
       // pill row's spacing to squeeze into 768px.
-      className="fixed top-4 inset-x-4 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 z-50 lg:min-w-[600px] lg:max-w-4xl w-[calc(100%-2rem)] transition-all duration-500 reveal reveal-down"
+      // The row is about 890px wide with the sentence-case labels of U-23 ("Join a room",
+      // "Create a room"); max-w-4xl (896px, less its padding) cut the theme toggle's edge, so the
+      // panel may be 58rem (928px) and the three plain pills have px-4. No wider: at 1280px the panel
+      // would reach under the skip link (left-4, about 150px wide), whose focus ring needs the page behind it.
+      className="fixed top-4 inset-x-4 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 z-50 lg:min-w-[600px] lg:max-w-[58rem] w-[calc(100%-2rem)] transition-all duration-500 reveal reveal-down"
     >
       <div
         className={cn(
@@ -207,7 +211,7 @@ export function Navbar() {
               href="/explore"
               variant="ghost"
               size="sm"
-              className="rounded-full px-5 font-bold uppercase tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
+              className="rounded-full px-4 font-bold uppercase tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
             >
               <Globe className="w-3.5 h-3.5 mr-2 text-blue-400" />
               Explore
@@ -216,7 +220,7 @@ export function Navbar() {
               href="/tools"
               variant="ghost"
               size="sm"
-              className="rounded-full px-5 font-bold uppercase tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
+              className="rounded-full px-4 font-bold uppercase tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
             >
               <Wrench className="w-3.5 h-3.5 mr-2 text-orange-400" />
               Tools
@@ -226,7 +230,7 @@ export function Navbar() {
               variant="ghost"
               size="sm"
               onClick={() => setIsJoinOpen(true)}
-              className="rounded-full px-5 font-bold uppercase tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
+              className="rounded-full px-4 font-bold uppercase tracking-widest text-xs hover:bg-primary/10 hover:text-(--brand-primary-strong) transition-colors text-muted-foreground h-9"
             >
               Join a room
             </Button>

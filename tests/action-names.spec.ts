@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { SITE_PAGES } from './site-routes';
+import { SITE_PAGES, NOT_FOUND_PATH } from './site-routes';
 import { hideConfigBanner } from './helpers/config-banner';
 import { skipInDbIntegration } from './helpers/ci-skip';
 
@@ -20,16 +20,15 @@ const NAMES: Record<string, string[]> = {
   '/tools': ['Tools'],
 };
 
-// What the first four were called before: none may come back as a link or button, in any case.
-const RETIRED = /^(host|host game|create room|create a multiplayer room|live rooms|quick tools|explore games|join room|enter game)$/i;
+// What these were called before: none may come back as a link or button, in any case.
+const RETIRED = /^(host|host game|create room|create a multiplayer room|live rooms|quick tools|explore games|browse tools|back to explore|join room|enter game)$/i;
 
 async function visibleActions(page: Page) {
   return page.evaluate(() => {
     const out: { tag: string; href: string; name: string }[] = [];
     for (const el of Array.from(document.querySelectorAll('a[href], button'))) {
-      // The error cards are next steps in a sentence of their own ("Browse tools" after a missing page): left to U-18.
       // Anything hidden from assistive technology (the Create page's test hook) is not a name a visitor meets.
-      if (el.closest('[data-error-state], [aria-hidden="true"]')) continue;
+      if (el.closest('[aria-hidden="true"]')) continue;
       const r = el.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) continue;
       const name = (el.getAttribute('aria-label') || el.textContent || '').replace(/\s+/g, ' ').trim();
@@ -42,7 +41,7 @@ async function visibleActions(page: Page) {
 for (const [width, height] of [[1280, 800], [390, 844]] as const) {
   test.describe(`${width}px wide`, () => {
     test.use({ viewport: { width, height } });
-    for (const path of SITE_PAGES) {
+    for (const path of [...SITE_PAGES, NOT_FOUND_PATH]) {
       test(`${path}: one name for each action`, async ({ page }) => {
         await page.addInitScript(() => localStorage.setItem('spintra-cookie-consent', 'denied'));
         await page.goto(path);
@@ -102,3 +101,31 @@ test('the code dialog is "Join a room" and its button "Join"', async ({ page }) 
   // The arrow after the word is decoration, hidden from assistive technology.
   await expect(page.getByRole('dialog').getByRole('button', { name: 'Join', exact: true })).toBeVisible();
 });
+
+// The longer sentence-case labels made the navbar's row about 890px wide, which the 896px panel (overflow hidden) cut at its right
+// edge: the theme toggle lost its edge at every desktop width. Every control in the bar must sit inside the panel.
+for (const width of [1024, 1100, 1280, 1440]) {
+  test(`the navbar's controls sit inside the panel at ${width}px`, async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('spintra-cookie-consent', 'denied'));
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/');
+    await page.waitForLoadState('load');
+    await hideConfigBanner(page);
+    await page.waitForTimeout(600); // the bar's entrance
+    const outside = await page.evaluate(() => {
+      const nav = document.querySelector('nav')!;
+      const panel = nav.firstElementChild!.getBoundingClientRect();
+      const out: string[] = [];
+      for (const el of Array.from(nav.querySelectorAll('a[href], button'))) {
+        const r = el.getBoundingClientRect();
+        if (r.width < 1 || r.height < 1) continue;
+        // 1px of leeway for the panel's own border
+        if (r.left < panel.left - 1 || r.right > panel.right + 1) {
+          out.push(`${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 24)} [${Math.round(r.left)}-${Math.round(r.right)}] outside [${Math.round(panel.left)}-${Math.round(panel.right)}]`);
+        }
+      }
+      return out;
+    });
+    expect(outside).toEqual([]);
+  });
+}

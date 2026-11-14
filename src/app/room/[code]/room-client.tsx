@@ -483,11 +483,11 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
           </Button>
         ) : (
           <ButtonLink href="/explore" className="h-11 w-full">
-            Back to Explore
+            Explore
           </ButtonLink>
         )}
         <ButtonLink href={retry ? "/explore" : "/tools"} variant="outline" className="h-11 w-full">
-          {retry ? "Back to Explore" : "Browse tools"}
+          {retry ? "Explore" : "Tools"}
         </ButtonLink>
       </ErrorState>
     );

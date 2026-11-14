@@ -17,7 +17,7 @@ export default function NotFoundPage() {
       description="The page you're looking for doesn't exist or has moved. Check the address, or start from one of these."
     >
       <ButtonLink href="/tools" className="h-11 w-full">
-        Browse tools
+        Tools
       </ButtonLink>
       <ButtonLink href="/" variant="outline" className="h-11 w-full">
         Go home

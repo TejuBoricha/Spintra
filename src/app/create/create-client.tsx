@@ -410,7 +410,7 @@ export default function CreateRoomClient() {
                   variant="brand"
                   className="w-full"
                 >
-                  Join a room
+                  Enter your room
                 </Button>
               </div>
             )}
