@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ThumbsUp, Volume2, VolumeX } from "lucide-react";
+import { ArrowRight, ThumbsUp } from "lucide-react";
 import { ToolHeader } from "@/components/tools/tool-header";
 import { getGameByType } from "@/lib/games";
 
@@ -73,22 +73,8 @@ export default function WouldYouRatherPage() {
           chip="Pick a side"
           title="Would You Rather"
           subtitle="Two options. You have to pick one."
-        >
-          <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => setSoundEnabled(!soundEnabled)}
-                        title={soundEnabled ? "Sound On" : "Sound Off"}
-                        aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                      >
-                        {soundEnabled ? (
-                          <Volume2 className="w-4 h-4" />
-                        ) : (
-                          <VolumeX className="w-4 h-4" />
-                        )}
-                      </Button>
-        </ToolHeader>
+          sound={{ enabled: soundEnabled, onToggle: () => setSoundEnabled(!soundEnabled) }}
+        />
 
         {/* Question Card */}
         {/* initial={false}: the first card is in the server HTML and visible; later ones still animate in and out. */}

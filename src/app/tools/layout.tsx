@@ -25,9 +25,9 @@ export const metadata: Metadata = {
 
 export default function ToolsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col">
+    <div>
       {/* One sentence in one element, so it reflows as a sentence on a phone (it was four flex children that wrapped on their own) */}
-      <p className="w-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-b border-amber-500/20 px-4 py-2.5 text-center text-xs sm:text-sm text-amber-900 dark:text-amber-300 shrink-0">
+      <p className="w-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-b border-amber-500/20 px-4 py-2.5 text-center text-xs sm:text-sm text-amber-900 dark:text-amber-300">
         <Info className="mr-2 inline-block h-4 w-4 align-[-0.2em] text-amber-700 dark:text-amber-500" />
         Want to play with friends?{" "}
         <Link href="/create" className="underline font-bold text-amber-800 dark:text-amber-500 transition-colors">
@@ -35,7 +35,7 @@ export default function ToolsLayout({ children }: { children: React.ReactNode })
         </Link>{" "}
         to invite them!
       </p>
-      <div className="flex-1 w-full">
+      <div>
         {children}
       </div>
     </div>

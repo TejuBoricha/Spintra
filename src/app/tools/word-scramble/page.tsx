@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Volume2, VolumeX, Lightbulb, SkipForward } from "lucide-react";
+import { Lightbulb, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -86,16 +86,8 @@ export default function WordScramblePage() {
           chip="Unscramble the word"
           title="Word Scramble"
           subtitle="Work out the word from its jumbled letters."
-        >
-          <button
-                        onClick={() => setSoundEnabled(!soundEnabled)}
-                        title={soundEnabled ? "Sound On" : "Sound Off"}
-                        aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-                        className="p-1.5 rounded-lg border border-(--border-hairline) bg-(--surface-sunken) hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                      >
-                        {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-                      </button>
-        </ToolHeader>
+          sound={{ enabled: soundEnabled, onToggle: () => setSoundEnabled(!soundEnabled) }}
+        />
 
         <div className="flex items-center justify-center gap-3 mb-6">
           <Badge variant="secondary">Score: {score}</Badge>

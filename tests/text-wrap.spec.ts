@@ -28,8 +28,9 @@ for (const width of [390, 1280]) {
       test.setTimeout(120_000);
       await page.addInitScript(() => {
         localStorage.setItem('spintra-cookie-consent', 'denied');
-        // Trivia, Would You Rather and the rest pick a question at random on load: the same one every time, or a long question
-        // that happens to wrap badly makes the scan fail on one run in ten (it did).
+        // Trivia, Would You Rather and the rest pick a question at random on load, and a long one that happens to wrap badly failed
+        // the scan on one run in ten (it did). A fixed sequence picks the same question every time unless something else draws from
+        // Math.random first (animation libraries, ids); if the flake returns in another form, that is where to look.
         let seed = 20261114;
         Math.random = () => {
           seed = (seed + 0x6d2b79f5) | 0;

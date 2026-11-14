@@ -2,18 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Volume2,
-  VolumeX,
-  RotateCcw,
-  SlidersHorizontal,
-  Printer,
-  Sparkles,
-  Trophy,
-  Grid3X3,
-  Check,
-  Megaphone,
-} from "lucide-react";
+import { RotateCcw, SlidersHorizontal, Printer, Sparkles, Trophy, Grid3X3, Check, Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -189,42 +178,39 @@ export default function BingoPage() {
           iconClassName="text-teal-400"
           chip={currentTheme.name}
           title="Bingo"
-          subtitle={<>Mark your card as items are called. Goal:{" "}
-              <strong className="text-foreground">{currentPattern.name}</strong>.</>}
+          subtitle={
+            <>
+              Mark your card as items are called. Goal:{" "}
+              <strong className="text-foreground">{currentPattern.name}</strong>.
+            </>
+          }
+          sound={{ enabled: soundEnabled, onToggle: () => setSoundEnabled(!soundEnabled) }}
         >
           <button
-                        onClick={() => setSoundEnabled(!soundEnabled)}
-                        title={soundEnabled ? "Sound On" : "Sound Off"}
-                        aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-                        className="p-1.5 rounded-lg border border-(--border-hairline) bg-(--surface-sunken) hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                      >
-                        {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-                      </button>
-                      <button
-                        onClick={() => setSpeechEnabled(!speechEnabled)}
-                        title={speechEnabled ? "Voice Caller On" : "Voice Caller Off"}
-                        aria-label={speechEnabled ? "Disable voice announcer" : "Enable voice announcer"}
-                        className={`p-1.5 rounded-lg border border-(--border-hairline) transition-colors ${
-                          speechEnabled
-                            ? "bg-teal-500/20 text-teal-600 dark:text-teal-400 border-teal-500/40"
-                            : "bg-(--surface-sunken) hover:bg-muted text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        <Megaphone className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setShowConfig(!showConfig)}
-                        title="Customize Game"
-                        aria-label="Toggle game settings and themes"
-                        aria-expanded={showConfig}
-                        className={`p-1.5 rounded-lg border border-(--border-hairline) transition-colors ${
-                          showConfig
-                            ? "bg-teal-500/20 text-teal-600 dark:text-teal-400 border-teal-500/40"
-                            : "bg-(--surface-sunken) hover:bg-muted text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        <SlidersHorizontal className="w-4 h-4" />
-                      </button>
+            onClick={() => setSpeechEnabled(!speechEnabled)}
+            title={speechEnabled ? "Voice Caller On" : "Voice Caller Off"}
+            aria-label={speechEnabled ? "Disable voice announcer" : "Enable voice announcer"}
+            className={`p-1.5 rounded-lg border border-(--border-hairline) transition-colors ${
+              speechEnabled
+                ? "bg-teal-500/20 text-teal-600 dark:text-teal-400 border-teal-500/40"
+                : "bg-(--surface-sunken) hover:bg-muted text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Megaphone className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setShowConfig(!showConfig)}
+            title="Customize Game"
+            aria-label="Toggle game settings and themes"
+            aria-expanded={showConfig}
+            className={`p-1.5 rounded-lg border border-(--border-hairline) transition-colors ${
+              showConfig
+                ? "bg-teal-500/20 text-teal-600 dark:text-teal-400 border-teal-500/40"
+                : "bg-(--surface-sunken) hover:bg-muted text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+          </button>
         </ToolHeader>
 
         {/* Expandable Settings Drawer */}

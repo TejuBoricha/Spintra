@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { LucideIcon } from "lucide-react";
+import { Volume2, VolumeX, type LucideIcon } from "lucide-react";
 
 /**
  * The header every tool page opens with (UX audit U-13): a chip, the title in the display font with its last word in the
@@ -7,7 +7,8 @@ import type { LucideIcon } from "lucide-react";
  * capitals on a third, at three sizes, with the first element 8 or 44 px under the banner. One word of a title is the
  * accent; a one-word title is all accent.
  *
- * `children` sit on the subtitle's row (the sound toggle of the games that make noise).
+ * `sound` is the mute toggle of the games that make noise, one button with one label for all of them; `children` (the other
+ * toggles: a voice caller, a settings drawer) follow it on the subtitle's row, which wraps on a narrow screen.
  */
 export function ToolHeader({
   icon: Icon,
@@ -15,6 +16,7 @@ export function ToolHeader({
   chip,
   title,
   subtitle,
+  sound,
   children,
 }: {
   icon: LucideIcon;
@@ -22,6 +24,7 @@ export function ToolHeader({
   chip: ReactNode;
   title: string;
   subtitle: ReactNode;
+  sound?: { enabled: boolean; onToggle: () => void };
   children?: ReactNode;
 }) {
   const words = title.split(" ");
@@ -37,8 +40,19 @@ export function ToolHeader({
         {lead && <>{lead} </>}
         <span className="gradient-text">{accent}</span>
       </h1>
-      <div className={children ? "flex items-center justify-center gap-3" : undefined}>
-        <p className="mx-auto max-w-xl text-base text-muted-foreground sm:text-lg">{subtitle}</p>
+      <div className={sound || children ? "flex flex-wrap items-center justify-center gap-3" : undefined}>
+        <p className="mx-auto min-w-0 max-w-xl text-base text-muted-foreground sm:text-lg">{subtitle}</p>
+        {sound && (
+          <button
+            type="button"
+            onClick={sound.onToggle}
+            title={sound.enabled ? "Sound On" : "Sound Off"}
+            aria-label={sound.enabled ? "Mute sound effects" : "Unmute sound effects"}
+            className="rounded-lg border border-(--border-hairline) bg-(--surface-sunken) p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            {sound.enabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+          </button>
+        )}
         {children}
       </div>
     </div>
