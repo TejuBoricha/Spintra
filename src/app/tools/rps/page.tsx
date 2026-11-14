@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Swords, Volume2, VolumeX } from "lucide-react";
+import { Swords } from "lucide-react";
 import { Emoji, type EmojiName } from "@/components/emoji";
 import { fireConfetti } from "@/components/celebration";
 import { playPop, playSuccess, playFailure } from "@/lib/audio";
+import { ToolHeader } from "@/components/tools/tool-header";
 import { getGameByType } from "@/lib/games";
 
 const GameIcon = getGameByType("rps")!.icon;
@@ -59,44 +60,29 @@ export default function RPSPage() {
   const outcomeText = { win: "You Win!", lose: "AI Wins!", draw: "Draw!" };
 
   return (
-    <div className="min-h-screen pb-16 px-4">
+    <div className="page-top pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
-        <div className="reveal reveal-up">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
-            <GameIcon className="w-4 h-4 text-orange-400" />
-            <span className="text-sm text-muted-foreground">You against the computer</span>
+        <ToolHeader
+          icon={GameIcon}
+          iconClassName="text-orange-400"
+          chip="You against the computer"
+          title="Rock Paper Scissors"
+          subtitle="Play a round against the computer."
+          sound={{ enabled: soundEnabled, onToggle: () => setSoundEnabled(!soundEnabled) }}
+        />
+        {/* Score */}
+        <div className="flex justify-center gap-4 mb-8">
+          <div className="px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-800 dark:text-emerald-400">
+            <div className="text-xl font-bold">{score.wins}</div>
+            <div className="text-xs">Wins</div>
           </div>
-          <h1 className="text-4xl sm:text-5xl font-bold mb-2">Rock Paper Scissors</h1>
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <p className="text-muted-foreground">Play a round against the computer.</p>
-            <button
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              title={soundEnabled ? "Sound On" : "Sound Off"}
-              aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-              className="p-1.5 rounded-lg border border-(--border-hairline) bg-(--surface-sunken) hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-            >
-              {soundEnabled ? (
-                <Volume2 className="w-4 h-4" />
-              ) : (
-                <VolumeX className="w-4 h-4" />
-              )}
-            </button>
+          <div className="px-4 py-2 rounded-lg bg-amber-500/10 text-amber-800 dark:text-amber-400">
+            <div className="text-xl font-bold">{score.draws}</div>
+            <div className="text-xs">Draws</div>
           </div>
-
-          {/* Score */}
-          <div className="flex justify-center gap-4 mb-8">
-            <div className="px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-800 dark:text-emerald-400">
-              <div className="text-xl font-bold">{score.wins}</div>
-              <div className="text-xs">Wins</div>
-            </div>
-            <div className="px-4 py-2 rounded-lg bg-amber-500/10 text-amber-800 dark:text-amber-400">
-              <div className="text-xl font-bold">{score.draws}</div>
-              <div className="text-xs">Draws</div>
-            </div>
-            <div className="px-4 py-2 rounded-lg bg-red-500/10 text-red-700 dark:text-red-400">
-              <div className="text-xl font-bold">{score.losses}</div>
-              <div className="text-xs">Losses</div>
-            </div>
+          <div className="px-4 py-2 rounded-lg bg-red-500/10 text-red-700 dark:text-red-400">
+            <div className="text-xl font-bold">{score.losses}</div>
+            <div className="text-xs">Losses</div>
           </div>
         </div>
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowUp, ArrowDown, RotateCcw, Target, Volume2, VolumeX } from "lucide-react";
 import { getGameByType } from "@/lib/games";
+import { ToolHeader } from "@/components/tools/tool-header";
 import { pluralize } from "@/lib/utils";
 
 const GameIcon = getGameByType("guess-number")!.icon;
@@ -70,16 +71,15 @@ export default function GuessNumberPage() {
   };
 
   return (
-    <div className="min-h-screen pb-16 px-4">
+    <div className="page-top pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
-        <div className="reveal reveal-up">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
-            <GameIcon className="w-4 h-4 text-(--brand-primary-strong)" />
-            <span className="text-sm text-muted-foreground">Pick a mode to start</span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-bold mb-2">Guess The Number</h1>
-          <p className="text-muted-foreground mb-8">Find the secret number in as few guesses as you can.</p>
-        </div>
+        <ToolHeader
+          icon={GameIcon}
+          iconClassName="text-(--brand-primary-strong)"
+          chip="Pick a mode to start"
+          title="Guess The Number"
+          subtitle="Find the secret number in as few guesses as you can."
+        />
 
         {/* Mode Selection */}
         <div className="flex flex-wrap justify-center gap-2 mb-8">

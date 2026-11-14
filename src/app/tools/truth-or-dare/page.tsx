@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Emoji, type EmojiName } from "@/components/emoji";
 import { playSwipe } from "@/lib/audio";
 import { getGameByType } from "@/lib/games";
+import { ToolHeader } from "@/components/tools/tool-header";
 import { TRUTH_OR_DARE_CATEGORIES } from "@/lib/utils";
 
 const GameIcon = getGameByType("truth-or-dare")!.icon;
@@ -43,16 +44,15 @@ export default function TruthOrDarePage() {
   };
 
   return (
-    <div className="min-h-screen pb-16 px-4">
+    <div className="page-top pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
-        <div className="reveal reveal-up">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
-            <GameIcon className="w-4 h-4 text-pink-400" />
-            <span className="text-sm text-muted-foreground">For parties</span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-bold mb-2">Truth or Dare</h1>
-          <p className="text-muted-foreground mb-8">Pick truth or dare, and draw a prompt.</p>
-        </div>
+        <ToolHeader
+          icon={GameIcon}
+          iconClassName="text-pink-400"
+          chip="For parties"
+          title="Truth or Dare"
+          subtitle="Pick truth or dare, and draw a prompt."
+        />
 
         {/* Category Selection */}
         <div className="flex flex-wrap justify-center gap-2 mb-8">

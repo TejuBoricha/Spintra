@@ -33,7 +33,7 @@ const { Contents, Section } = createLegalSections([
 
 export default function TermsOfServicePage() {
   return (
-    <div className="min-h-screen pb-16 px-4">
+    <div className="page-top pb-16 px-4">
       <div className="max-w-[32rem] mx-auto">
         <h1 className="text-4xl sm:text-5xl font-bold mb-2">
           Terms of <span className="gradient-text">Service</span>

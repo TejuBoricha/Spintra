@@ -30,6 +30,7 @@ import { fireConfetti, CelebrationBanner } from "@/components/celebration";
 import { PlayerSlot } from "@/components/tournament-player-slot";
 import { getGameByType } from "@/lib/games";
 import { pluralize } from "@/lib/utils";
+import { ToolHeader } from "@/components/tools/tool-header";
 import {
   type BracketMatch,
   type Tournament,
@@ -572,28 +573,19 @@ export default function TournamentPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background relative overflow-clip">
+    <div className="page-top bg-background relative overflow-clip">
       {/* Background accent (clipped with overflow-clip so the page is not a scroll container) */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-emerald-500/10 via-teal-500/5 to-transparent blur-3xl pointer-events-none" />
 
-      <div className="max-w-6xl mx-auto px-4 py-8 sm:py-12 relative z-10">
+      <div className="max-w-6xl mx-auto px-4 pb-8 sm:pb-12 relative z-10">
         {/* Page Header */}
-        <div
-          className="text-center mb-10 reveal reveal-down"
-        >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm mb-4">
-            <GameIcon className="w-4 h-4 text-emerald-400" />
-            <span className="text-muted-foreground">Bracket Generator</span>
-          </div>
-          <h1 className="font-display text-4xl sm:text-5xl font-black mb-3 hyphens-auto [overflow-wrap:anywhere]">
-            Tournament{" "}
-            <span className="gradient-text">Generator</span>
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-lg mx-auto">
-            Make a bracket in any of four formats: single elimination, double
-            elimination, round robin, or Swiss.
-          </p>
-        </div>
+        <ToolHeader
+          icon={GameIcon}
+          iconClassName="text-emerald-400"
+          chip="Bracket Generator"
+          title="Tournament Generator"
+          subtitle="Make a bracket in any of four formats: single elimination, double elimination, round robin, or Swiss."
+        />
 
         <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-5 gap-6">
           {/* Left Panel: Setup */}

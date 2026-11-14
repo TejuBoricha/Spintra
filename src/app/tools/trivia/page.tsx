@@ -2,19 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Volume2,
-  VolumeX,
-  RotateCcw,
-  Sparkles,
-  Flame,
-  Clock,
-  Check,
-  X,
-  ArrowRight,
-  Filter,
-  SlidersHorizontal,
-} from "lucide-react";
+import { RotateCcw, Sparkles, Flame, Clock, Check, X, ArrowRight, Filter, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -30,6 +18,7 @@ import { fireConfetti, CelebrationBanner } from "@/components/celebration";
 import { playPop, playSuccess, playFailure } from "@/lib/audio";
 import { getGameByType } from "@/lib/games";
 import { shuffleArray } from "@/lib/utils";
+import { ToolHeader } from "@/components/tools/tool-header";
 import {
   TRIVIA_QUESTIONS,
   TRIVIA_CATEGORIES,
@@ -216,41 +205,31 @@ export default function TriviaPage() {
   const progressPercent = total > 0 ? Math.round(((index + 1) / total) * 100) : 0;
 
   return (
-    <div className="min-h-screen pb-16 px-4">
+    <div className="page-top pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
         {/* Header Section */}
-        <div className="reveal reveal-up">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-4">
-            <GameIcon className="w-4 h-4 text-yellow-400" />
-            <span className="text-sm text-muted-foreground">Multiple choice trivia</span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-bold mb-2">Trivia</h1>
-
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <p className="text-muted-foreground">Test your knowledge across 300+ questions and 10 categories.</p>
-            <button
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              title={soundEnabled ? "Sound On" : "Sound Off"}
-              aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-              className="p-1.5 rounded-lg border border-(--border-hairline) bg-(--surface-sunken) hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-            >
-              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-            </button>
-            <button
-              onClick={() => setShowConfig(!showConfig)}
-              title="Customize Game"
-              aria-label="Toggle game settings and category filters"
-              aria-expanded={showConfig}
-              className={`p-1.5 rounded-lg border border-(--border-hairline) transition-colors ${
-                showConfig
-                  ? "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/40"
-                  : "bg-(--surface-sunken) hover:bg-muted text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+        <ToolHeader
+          icon={GameIcon}
+          iconClassName="text-yellow-400"
+          chip="Multiple choice trivia"
+          title="Trivia"
+          subtitle="Test your knowledge across 300+ questions and 10 categories."
+          sound={{ enabled: soundEnabled, onToggle: () => setSoundEnabled(!soundEnabled) }}
+        >
+          <button
+            onClick={() => setShowConfig(!showConfig)}
+            title="Customize Game"
+            aria-label="Toggle game settings and category filters"
+            aria-expanded={showConfig}
+            className={`p-1.5 rounded-lg border border-(--border-hairline) transition-colors ${
+              showConfig
+                ? "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/40"
+                : "bg-(--surface-sunken) hover:bg-muted text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+          </button>
+        </ToolHeader>
 
         {/* Expandable Configuration Drawer */}
         <AnimatePresence>

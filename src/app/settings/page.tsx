@@ -100,7 +100,7 @@ export default function SettingsPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen pt-28 pb-20 px-4">
+    <div className="page-top pb-20 px-4">
       <div className="max-w-2xl mx-auto space-y-8">
         <h1 className="font-display text-4xl sm:text-5xl font-black tracking-tight text-foreground">
           Settings

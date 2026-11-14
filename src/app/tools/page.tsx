@@ -28,7 +28,7 @@ export default function ToolsPage() {
   };
 
   return (
-    <div className="min-h-screen pt-28 pb-16 px-4">
+    <div className="page-top pb-16 px-4">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdScript(itemListSchema) }}

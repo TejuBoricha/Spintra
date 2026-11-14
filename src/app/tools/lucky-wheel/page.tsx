@@ -31,6 +31,7 @@ import { Emoji, type EmojiName } from "@/components/emoji";
 import { fireConfetti, CelebrationBanner } from "@/components/celebration";
 import { playTick } from "@/lib/audio";
 import { getGameByType } from "@/lib/games";
+import { ToolHeader } from "@/components/tools/tool-header";
 import { isImeKey } from "@/lib/keyboard";
 
 const GameIcon = getGameByType("lucky-wheel")!.icon;
@@ -574,7 +575,7 @@ export default function LuckyWheelPage() {
   }, []);
 
   return (
-    <div className="relative min-h-screen" ref={containerRef}>
+    <div className="page-top relative" ref={containerRef}>
       {/* Background */}
       <div className="fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-background" />
@@ -582,22 +583,14 @@ export default function LuckyWheelPage() {
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px]" />
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12">
         {/* ── Header ── */}
-        <div
-          className="text-center mb-10 reveal reveal-up"
-        >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm text-muted-foreground mb-6">
-            <GameIcon className="w-4 h-4" />
-            Wheel Tool
-          </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4">
-            <span className="gradient-text">Lucky Wheel</span>
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Add your options, set the odds if you want, and spin.
-          </p>
-        </div>
+        <ToolHeader
+          icon={GameIcon}
+          chip="Wheel Tool"
+          title="Lucky Wheel"
+          subtitle="Add your options, set the odds if you want, and spin."
+        />
 
         {/* ── Main layout: Wheel | Sidebar ── */}
         <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-3 gap-8 mb-10">

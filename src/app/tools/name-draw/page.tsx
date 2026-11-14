@@ -28,6 +28,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { pluralize, shuffleArray } from "@/lib/utils";
 import { getGameByType } from "@/lib/games";
+import { ToolHeader } from "@/components/tools/tool-header";
 import { Emoji } from "@/components/emoji";
 
 const GameIcon = getGameByType("name-draw")!.icon;
@@ -283,27 +284,19 @@ export default function NameDrawPage() {
   const drawnButShuffled = [...drawnNames].reverse();
 
   return (
-    <div className="min-h-screen bg-background relative overflow-clip">
+    <div className="page-top bg-background relative overflow-clip">
       {/* Aurora background accent (clipped with overflow-clip so the page is not a scroll container) */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-amber-500/10 via-orange-500/5 to-transparent blur-3xl pointer-events-none" />
 
-      <div className="max-w-5xl mx-auto px-4 py-8 sm:py-12 relative z-10">
+      <div className="max-w-5xl mx-auto px-4 pb-8 sm:pb-12 relative z-10">
         {/* Page Header */}
-        <div
-          className="text-center mb-10 reveal reveal-down"
-        >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm mb-4">
-            <GameIcon className="w-4 h-4 text-amber-400" />
-            <span className="text-muted-foreground">Random Picker</span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-bold mb-3">
-            Name <span className="gradient-text">Draw</span>
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-lg mx-auto">
-            Add names and draw a winner at random. Good for giveaways
-            and raffles.
-          </p>
-        </div>
+        <ToolHeader
+          icon={GameIcon}
+          iconClassName="text-amber-400"
+          chip="Random Picker"
+          title="Name Draw"
+          subtitle="Add names and draw a winner at random. Good for giveaways and raffles."
+        />
 
         <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-5 gap-6">
           {/* Left Panel: Input */}

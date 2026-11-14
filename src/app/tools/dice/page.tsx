@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { playDiceRoll, playTick } from "@/lib/audio";
 import { getGameByType } from "@/lib/games";
+import { ToolHeader } from "@/components/tools/tool-header";
 import { fireConfetti } from "@/components/celebration";
 
 // WebGL D6 die — loaded client-side only (Three.js requires browser APIs)
@@ -184,28 +185,20 @@ export default function DicePage() {
   const currentDice = diceTypes.find((d) => d.sides === selectedDice) || diceTypes[1];
 
   return (
-    <div className="min-h-screen bg-background relative overflow-clip pb-16 px-4">
+    <div className="page-top bg-background relative overflow-clip pb-16 px-4">
       {/* Immersive background glow effects. The page clips them (overflow-clip, not overflow-hidden): a hidden
           page-sized box is still a scroll container, and focusing or clicking a control scrolled it sideways. */}
       <div className="absolute top-[-10%] left-[-20%] w-[60%] h-[50%] rounded-full dark:bg-(--violet-800)/10 bg-primary/5 blur-[150px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-20%] w-[60%] h-[50%] rounded-full dark:bg-cyan-900/10 bg-cyan-500/5 blur-[150px] pointer-events-none" />
 
       <div className="max-w-5xl mx-auto relative z-10">
-        {/* Header */}
-        <div
-          className="text-center mb-10 reveal reveal-down"
-        >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-xs text-muted-foreground mb-4">
-            <GameIcon className="w-3.5 h-3.5 text-(--brand-primary-strong)" />
-            <span>Interactive Rolling Arena</span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-black mb-3 tracking-tight text-foreground">
-            DICE <span className="gradient-text">ROLLER</span>
-          </h1>
-          <p className="text-muted-foreground text-sm max-w-md mx-auto">
-            Pick your dice, from D4 to D100, choose how many, and roll.
-          </p>
-        </div>
+        <ToolHeader
+          icon={GameIcon}
+          iconClassName="text-(--brand-primary-strong)"
+          chip="Interactive Rolling Arena"
+          title="Dice Roller"
+          subtitle="Pick your dice, from D4 to D100, choose how many, and roll."
+        />
 
         {/* minmax(0, 1fr) below lg, not the implicit auto column, which grows to its widest content (see Team Maker). */}
         <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-3 gap-8">

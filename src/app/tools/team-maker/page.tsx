@@ -28,6 +28,7 @@ import { getGameByType } from "@/lib/games";
 import { Emoji, type EmojiName } from "@/components/emoji";
 import { playPop, playSuccess } from "@/lib/audio";
 import { toast } from "sonner";
+import { ToolHeader } from "@/components/tools/tool-header";
 import { isImeKey } from "@/lib/keyboard";
 
 const GameIcon = getGameByType("team-maker")!.icon;
@@ -189,7 +190,7 @@ export default function TeamMakerPage() {
 
   // ── Render ──
   return (
-    <div className="relative min-h-screen" ref={containerRef}>
+    <div className="page-top relative" ref={containerRef}>
       {/* Background */}
       <div className="fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-background" />
@@ -199,20 +200,12 @@ export default function TeamMakerPage() {
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12">
         {/* ── Header ── */}
-        <div
-          className="text-center mb-12 reveal reveal-up"
-        >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) text-sm text-muted-foreground mb-6">
-            <GameIcon className="w-4 h-4" />
-            Team Tool
-          </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4">
-            <span className="gradient-text">Team Maker</span>
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Add names, pick how many teams, and shuffle. Copy the result when you&apos;re happy with it.
-          </p>
-        </div>
+        <ToolHeader
+          icon={GameIcon}
+          chip="Team Tool"
+          title="Team Maker"
+          subtitle="Add names, pick how many teams, and shuffle. Copy the result when you're happy with it."
+        />
 
         {/* ── Main grid: Input + Controls | Templates ── */}
         {/* The single column below lg is minmax(0, 1fr), not the implicit auto: an auto column grows to its widest

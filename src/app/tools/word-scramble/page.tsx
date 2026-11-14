@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Volume2, VolumeX, Lightbulb, SkipForward } from "lucide-react";
+import { Lightbulb, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import { playPop, playSuccess } from "@/lib/audio";
 import { getGameByType } from "@/lib/games";
 import { toast } from "sonner";
 import { WORD_SCRAMBLE_WORDS, scramble, shuffleArray } from "@/lib/utils";
+import { ToolHeader } from "@/components/tools/tool-header";
 import { isImeKey } from "@/lib/keyboard";
 
 const GameIcon = getGameByType("word-scramble")!.icon;
@@ -77,26 +78,16 @@ export default function WordScramblePage() {
   };
 
   return (
-    <div className="min-h-screen pb-16 px-4">
+    <div className="page-top pb-16 px-4">
       <div className="max-w-2xl mx-auto text-center">
-        <div className="reveal reveal-up">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-(--border-hairline) bg-(--surface-glass) backdrop-blur-(--blur-glass-soft) mb-6">
-            <GameIcon className="w-4 h-4 text-lime-400" />
-            <span className="text-sm text-muted-foreground">Unscramble the word</span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-bold mb-2">Word Scramble</h1>
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <p className="text-muted-foreground">Work out the word from its jumbled letters.</p>
-            <button
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              title={soundEnabled ? "Sound On" : "Sound Off"}
-              aria-label={soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
-              className="p-1.5 rounded-lg border border-(--border-hairline) bg-(--surface-sunken) hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-            >
-              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
+        <ToolHeader
+          icon={GameIcon}
+          iconClassName="text-lime-400"
+          chip="Unscramble the word"
+          title="Word Scramble"
+          subtitle="Work out the word from its jumbled letters."
+          sound={{ enabled: soundEnabled, onToggle: () => setSoundEnabled(!soundEnabled) }}
+        />
 
         <div className="flex items-center justify-center gap-3 mb-6">
           <Badge variant="secondary">Score: {score}</Badge>

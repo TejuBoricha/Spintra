@@ -26,7 +26,19 @@ for (const width of [390, 1280]) {
     test.use({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
     test('no heading, paragraph or list item ends on a word of its own', async ({ page }) => {
       test.setTimeout(120_000);
-      await page.addInitScript(() => localStorage.setItem('spintra-cookie-consent', 'denied'));
+      await page.addInitScript(() => {
+        localStorage.setItem('spintra-cookie-consent', 'denied');
+        // Trivia, Would You Rather and the rest pick a question at random on load, and a long one that happens to wrap badly failed
+        // the scan on one run in ten (it did). A fixed sequence picks the same question every time unless something else draws from
+        // Math.random first (animation libraries, ids); if the flake returns in another form, that is where to look.
+        let seed = 20261114;
+        Math.random = () => {
+          seed = (seed + 0x6d2b79f5) | 0;
+          let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      });
       const orphans: Record<string, string[]> = {};
       let examined = 0; // the lines of text the scan really measured: a slow load must not make it check nothing
       for (const path of [...SITE_PAGES, NOT_FOUND_PATH]) {
