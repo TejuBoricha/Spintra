@@ -3,7 +3,7 @@ import { hideConfigBanner } from './helpers/config-banner';
 
 // UX audit (7 Oct 2026), finding U-22: Terms and Privacy ran 91 to 107 characters per line (60 to 75 is comfortable) and listed
 // their numbered sections nowhere, so a person who came for one answer ("what do you store?"), or a school pointing a parent at
-// one part, had to scroll. The column is `max-w-prose` now and a contents list links every section by an anchor.
+// one part, had to scroll. The column is 32rem now and a contents list links every section by an anchor.
 
 for (const path of ['/legal/terms', '/legal/privacy']) {
   test.describe(path, () => {

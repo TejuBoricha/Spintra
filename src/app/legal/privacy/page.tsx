@@ -48,7 +48,7 @@ export default function PrivacyPolicyPage() {
             is used, who it is shared with, and how long it is kept.
           </p>
 
-          <Section n={1}>
+          <Section title="Information We Collect">
             <ul className="list-disc pl-6 space-y-2">
               <li>
                 <strong>An anonymous ID:</strong> a random identifier created for your browser
@@ -95,7 +95,7 @@ export default function PrivacyPolicyPage() {
             </p>
           </Section>
 
-          <Section n={2}>
+          <Section title="How We Use This Information">
             <p>
               To run the Service: creating and syncing rooms, delivering chat and game moves in
               real time, keeping scores, enforcing room limits, locks, and bans, and preventing
@@ -104,7 +104,7 @@ export default function PrivacyPolicyPage() {
             </p>
           </Section>
 
-          <Section n={3}>
+          <Section title="Who We Share Data With">
             <p>
               Providers that run parts of the Service for us: <strong>Supabase</strong>{" "}
               (database, anonymous sign-in, real-time messaging), <strong>Vercel</strong>{" "}
@@ -124,7 +124,7 @@ export default function PrivacyPolicyPage() {
             </p>
           </Section>
 
-          <Section n={4}>
+          <Section title="How Long We Keep It">
             <ul className="list-disc pl-6 space-y-2">
               <li>
                 <strong>Rooms and everything in them</strong> (who joined, chat, game moves,
@@ -153,7 +153,7 @@ export default function PrivacyPolicyPage() {
             </ul>
           </Section>
 
-          <Section n={5}>
+          <Section title="Your Choices and Rights">
             <p>
               You can turn analytics on or off at any time in{" "}
               <Link href="/settings" className="underline hover:text-foreground">Settings</Link>,
@@ -166,7 +166,7 @@ export default function PrivacyPolicyPage() {
             </p>
           </Section>
 
-          <Section n={6}>
+          <Section title="Children and Schools">
             <p>
               Spintra is for general audiences and is also used in classrooms. We don&apos;t ask
               anyone, including children, for a name, an email, or an account, and we never
@@ -201,14 +201,14 @@ export default function PrivacyPolicyPage() {
             </ul>
           </Section>
 
-          <Section n={7}>
+          <Section title="Changes to This Policy">
             <p>
               We may update this Privacy Policy from time to time. Material changes will be
               reflected by updating the effective date above.
             </p>
           </Section>
 
-          <Section n={8}>
+          <Section title="Contact">
             <p>
               Questions about this Policy can be sent to <strong className="[overflow-wrap:anywhere]">tejasboricha225@gmail.com</strong>.
             </p>

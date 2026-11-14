@@ -425,12 +425,12 @@
      word on a line of its own on 20 of the 24 pages at a phone's width). `balance` evens out the lines of a heading;
      `pretty` keeps the last line of a paragraph from being one word. A browser without them ignores the rule, and a
      utility class (text-balance, text-nowrap, text-wrap) still wins. */
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
+  h1:not([class*="line-clamp"]),
+  h2:not([class*="line-clamp"]),
+  h3:not([class*="line-clamp"]),
+  h4:not([class*="line-clamp"]),
+  h5:not([class*="line-clamp"]),
+  h6:not([class*="line-clamp"]) {
     text-wrap: balance;
   }
   p,

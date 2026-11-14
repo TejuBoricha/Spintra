@@ -34,6 +34,7 @@ for (const width of [390, 1280]) {
         await page.waitForLoadState('load');
         await hideConfigBanner(page);
         await page.waitForTimeout(400); // hydration, so client-rendered text exists
+        await page.evaluate(() => document.fonts.ready); // a web font arriving late moves every line break
         await page.evaluate(() => document.querySelectorAll('details').forEach((d) => (d.open = true))); // the FAQ answers are text too
         const { found, seen } = await page.evaluate(() => {
           const out: string[] = [];

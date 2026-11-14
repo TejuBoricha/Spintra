@@ -11,8 +11,9 @@ const slug = (title: string) =>
 /**
  * The numbered sections of a legal page and the contents list that links to them, built from one list of titles so the
  * two cannot drift (UX audit U-22: Terms and Privacy ran 91 to 107 characters a line, with no way to a section: a person
- * comes for one answer, and a school needs to point at one part). `<Section n={3}>` renders the third title as its
- * heading and gives the section the anchor `#acceptable-use`; `<Contents />` lists them all.
+ * comes for one answer, and a school needs to point at one part). `<Section title="Acceptable Use">` renders the title with
+ * its place in the list as the number (it throws for a title that is not in the list) and gives the section the anchor
+ * `#acceptable-use`; `<Contents />` lists them all.
  */
 export function createLegalSections(titles: readonly string[]) {
   function Contents() {
@@ -32,8 +33,9 @@ export function createLegalSections(titles: readonly string[]) {
     );
   }
 
-  function Section({ n, children }: { n: number; children: ReactNode }) {
-    const title = titles[n - 1];
+  function Section({ title, children }: { title: string; children: ReactNode }) {
+    const n = titles.indexOf(title) + 1;
+    if (n === 0) throw new Error(`"${title}" is not in this page's list of sections`);
     return (
       <section id={slug(title)}>
         <h2 className="text-2xl font-semibold mb-3">

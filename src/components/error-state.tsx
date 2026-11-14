@@ -28,7 +28,7 @@ export function ErrorState({
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     if (takeFocus) heading.current?.focus(); // scrolls the heading into view if the page it replaced was scrolled down
-  }, [takeFocus]);
+  }, [takeFocus, title]); // a card that changes state (busy, then locked) takes focus again
 
   return (
     <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center bg-background p-4">

@@ -51,7 +51,7 @@ export default function TermsOfServicePage() {
             not agree, do not use the Service.
           </p>
 
-          <Section n={1}>
+          <Section title="What Spintra Is">
             <p>
               Spintra lets people create shareable rooms to play real-time games, run
               tournaments, chat, and make group decisions together. Most rooms do not require
@@ -60,7 +60,7 @@ export default function TermsOfServicePage() {
             </p>
           </Section>
 
-          <Section n={2}>
+          <Section title="Age and Schools">
             <p>
               You must be at least 13 years old, or the age of digital consent where you live if
               that is higher (in some countries, including India, it is 18), to use Spintra on
@@ -72,7 +72,7 @@ export default function TermsOfServicePage() {
             </p>
           </Section>
 
-          <Section n={3}>
+          <Section title="Acceptable Use">
             <p>You agree not to use the Service to:</p>
             <ul className="list-disc pl-6 space-y-1 mt-2">
               <li>Harass, threaten, defame, or abuse other participants;</li>
@@ -85,7 +85,7 @@ export default function TermsOfServicePage() {
             </ul>
           </Section>
 
-          <Section n={4}>
+          <Section title="User-Generated Content">
             <p>
               Chat messages, room names, and profile fields (display name, avatar) you submit
               are your own content and your responsibility. We do not pre-screen content, but
@@ -95,7 +95,7 @@ export default function TermsOfServicePage() {
             </p>
           </Section>
 
-          <Section n={5}>
+          <Section title="No Verified Identity">
             <p>
               The Service does not verify who you are. Anonymous sessions provide a
               lightweight way to prevent casual abuse but are not a secure identity system.
@@ -104,7 +104,7 @@ export default function TermsOfServicePage() {
             </p>
           </Section>
 
-          <Section n={6}>
+          <Section title="Termination">
             <p>
               We may suspend or terminate your access to the Service, or close any room, at
               any time, with or without notice, if we believe these Terms have been
@@ -112,7 +112,7 @@ export default function TermsOfServicePage() {
             </p>
           </Section>
 
-          <Section n={7}>
+          <Section title="Disclaimer of Warranties">
             <p>
               The Service is provided &quot;as is&quot; and &quot;as available&quot;, without warranties
               of any kind, express or implied, including fitness for a particular purpose,
@@ -120,7 +120,7 @@ export default function TermsOfServicePage() {
             </p>
           </Section>
 
-          <Section n={8}>
+          <Section title="Limitation of Liability">
             <p>
               To the maximum extent permitted by law, Spintra and its operators are not
               liable for any indirect, incidental, or consequential damages arising from your
@@ -128,21 +128,21 @@ export default function TermsOfServicePage() {
             </p>
           </Section>
 
-          <Section n={9}>
+          <Section title="Changes to These Terms">
             <p>
               We may update these Terms from time to time. Continued use of the Service after
               a change takes effect constitutes acceptance of the revised Terms.
             </p>
           </Section>
 
-          <Section n={10}>
+          <Section title="Governing Law">
             <p>
               These Terms are governed by the laws of <strong>India</strong>,
               without regard to its conflict-of-law principles.
             </p>
           </Section>
 
-          <Section n={11}>
+          <Section title="Contact">
             <p>
               Questions about these Terms can be sent to{" "}
               <strong className="[overflow-wrap:anywhere]">tejasboricha225@gmail.com</strong>.

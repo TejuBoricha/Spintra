@@ -164,7 +164,7 @@ export const RoomHeader = memo(function RoomHeader({
               className={`mt-3 rounded-xl border px-3 py-2 text-sm transition-all ${
                 realtimeError
                   ? "border-red-500/20 bg-red-500/10 text-red-900 dark:text-red-200"
-                  : "border-emerald-500/20 bg-emerald-500/10 text-emerald-100"
+                  : "border-emerald-500/20 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100"
               }`}
             >
               {realtimeError || notification}

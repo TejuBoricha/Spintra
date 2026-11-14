@@ -8,7 +8,7 @@ import { contrastProblems } from './helpers/pixel-contrast';
 // amber, yellow, teal, cyan and lime gradients, pale text colours made for the dark page, a wheel pointer in the page's own text
 // colour over a dark rim (invisible in the light theme), and a placeholder die dimmed to 40% opacity.
 //
-// Not covered: what each activity shows after the host acts (a question, a winner, a bracket), a second player's view, and
+// Not covered: what each activity shows after the host acts (a question, a winner, a bracket; Truth or Dare's drawn prompt is), a second player's view, and
 // Spintra City, whose board is dark in both themes.
 
 const ACTIVITIES = [
@@ -62,6 +62,14 @@ for (const [theme, width, height] of [['dark', 1280, 800], ['light', 1280, 800],
         await expect(page.getByRole('dialog')).toHaveCount(0);
         await page.waitForTimeout(1000); // the activity's first render and its entrance
         await check(name);
+        if (name === 'Truth or Dare') {
+          // the prompt is the screen's main content, and it only exists after the host draws one
+          for (const kind of ['Truth', 'Dare']) {
+            await page.getByRole('button', { name: new RegExp(`Draw ${kind}`) }).click();
+            await page.waitForTimeout(1200); // the card's spring-in
+            await check(`Truth or Dare: a ${kind.toLowerCase()}`);
+          }
+        }
         await switchGame.click();
       }
       expect(problems).toEqual({});
