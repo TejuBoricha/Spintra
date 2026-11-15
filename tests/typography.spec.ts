@@ -25,15 +25,17 @@ for (const [width, height] of [[1280, 800], [390, 844]] as const) {
         await page.goto(path);
         await page.waitForLoadState('load');
         await hideConfigBanner(page);
+        await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
         await page.evaluate(() => document.fonts.ready);
-        await page.waitForTimeout(400); // hydration: client-rendered text
 
         const read = await page.evaluate(() => {
           const first = (el: Element) => getComputedStyle(el).fontFamily.split(',')[0].replace(/["']/g, '').trim();
           const share: Record<string, number> = {};
           let chars = 0;
           const strangers: string[] = [];
-          for (const el of Array.from(document.body.querySelectorAll('*'))) {
+          // The app's own content: the navbar, the page and the footer (not scripts, the SVG inside icons, or a third party's overlay).
+          for (const el of Array.from(document.querySelectorAll('#main-content *, nav *, footer *'))) {
+            if (el.closest('script, style, noscript, svg, option')) continue;
             const own = Array.from(el.childNodes).filter((n) => n.nodeType === 3).map((n) => (n.textContent ?? '').trim()).join('');
             if (!own || el.getBoundingClientRect().width < 1) continue;
             const family = first(el);
@@ -77,5 +79,5 @@ test('the monospace face is the designed one where a page asks for it (the Join 
   const family = await box.evaluate((el) => getComputedStyle(el).fontFamily.split(',')[0].replace(/["']/g, '').trim());
   expect(family).toMatch(MONO);
   await page.evaluate(() => document.fonts.ready);
-  expect(await page.evaluate(() => Array.from(document.fonts).some((f) => f.status === 'loaded' && /jetbrains/i.test(f.family))), 'fetched on demand (it is not preloaded)').toBe(true);
+  expect(await page.evaluate(() => Array.from(document.fonts).some((f) => f.status === 'loaded' && /jetbrains/i.test(f.family))), 'downloaded').toBe(true);
 });

@@ -32,8 +32,6 @@ const jetbrainsMono = localFont({
   variable: "--font-jetbrains-mono",
   weight: "400 700",
   display: "swap",
-  // Used by a few room codes and counters, not by the first paint of any page: fetched when a page asks for it.
-  preload: false,
 });
 
 

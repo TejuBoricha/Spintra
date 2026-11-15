@@ -429,8 +429,9 @@
     border-color: var(--border);
   }
   /* The designed fonts (UX audit U-14): Plus Jakarta Sans for text, Archivo for headings. The variables are set on
-     <html> by the root layout (next/font), so they exist where this rule is. Any utility (font-mono, font-display,
-     font-body) still wins. */
+     <html> by the root layout (next/font), so they exist where this rule is. A utility on the element itself
+     (font-mono, font-body) still wins, but a heading takes the display face even inside a wrapper that sets another
+     family: put the utility on the heading. */
   html {
     @apply font-body;
   }
