@@ -46,7 +46,9 @@ export function ActivityPickerDialog({
             </DialogDescription>
           )}
         </DialogHeader>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {/* Three columns on a phone as well: fourteen 144px tiles in two columns ran to three screens (UX audit U-33).
+            Below 380px a third column leaves a tile about 64px of text ("Tournament" is wider), so it is two there. */}
+        <div className="grid grid-cols-2 min-[380px]:grid-cols-3 gap-2 sm:gap-3">
           {availableGames.map((g) => {
             const Icon = g.icon;
             return (
@@ -54,10 +56,10 @@ export function ActivityPickerDialog({
                 key={g.type}
                 onClick={() => onSelect(g.type)}
                 aria-label={`Select ${g.label}`}
-                className={`flex flex-col items-center justify-center gap-2 p-4 min-h-36 text-center rounded-xl border transition-all text-sm font-medium hover:border-primary/50 hover:bg-primary/10 ${
+                className={`flex flex-col items-center justify-center gap-1.5 p-2 min-h-24 sm:gap-2 sm:p-4 sm:min-h-36 text-center leading-tight rounded-xl border transition-all text-sm font-medium hover:border-primary/50 hover:bg-primary/10 ${
                   activeActivityType === g.type
                     ? "border-primary bg-primary/20 text-(--brand-primary-strong)"
-                    : "border-(--border-hairline) bg-(--surface-panel) text-muted-foreground"
+                    : "border-(--border-hairline) bg-(--surface-panel) text-foreground"
                 }`}
               >
                 <div
