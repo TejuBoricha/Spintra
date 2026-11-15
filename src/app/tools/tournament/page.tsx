@@ -372,7 +372,7 @@ export default function TournamentPage() {
     setSeedInput(t.seeds.join("\n"));
     setTournamentType(t.type);
     setTournament(null);
-    toast.success(`${t.label} template loaded!`);
+    toast.success(`${t.label}, ${t.names.length} ${t.unit}: template loaded!`);
   }, []);
 
   const shareBracket = useCallback(async () => {
@@ -650,6 +650,8 @@ export default function TournamentPage() {
 
               <Textarea
                 placeholder="Enter participant names, one per line"
+                aria-label="Participant names, one per line"
+                aria-describedby="participants-help"
                 className="min-h-[120px] resize-y font-mono"
                 value={textInput}
                 onChange={(e) => {
@@ -657,18 +659,18 @@ export default function TournamentPage() {
                   setTournament(null);
                 }}
               />
-              <p className="text-xs text-muted-foreground -mt-1">
+              <p id="participants-help" className="text-xs text-muted-foreground -mt-1">
                 One name per line, for example Alpha, Bravo, Charlie, Delta.
               </p>
 
               {/* Seeds Input */}
               <div>
                 <p className="text-xs text-muted-foreground mb-1.5">
-                  Seeds (one per line, top seed first), for example Alpha, then Bravo
+                  Seeds (one per line, top seed first)
                 </p>
                 <Textarea
                   aria-label="Seeds, one per line, top seed first"
-                  placeholder="One name per line"
+                  placeholder="Top seed first, one per line"
                   className="min-h-[72px] resize-y font-mono"
                   value={seedInput}
                   onChange={(e) => {

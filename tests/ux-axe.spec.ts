@@ -100,6 +100,9 @@ test.describe('dialogs and the room', () => {
   test('Dice after a run of rolls: the lists that scroll are reachable by keyboard, and the slider is 24px tall', async ({ page }) => {
     await openPage(page, 'dark', '/tools/dice');
     const roll = page.getByRole('button', { name: /^Roll/ });
+    await roll.click();
+    await expect(roll).toBeEnabled();
+    await expect(page.getByRole('region', { name: 'Roll history' }), 'one roll fits: the list is not a Tab stop').toHaveCount(0);
     for (let i = 0; i < 12; i++) {
       await expect(roll).toBeEnabled();
       await roll.click();

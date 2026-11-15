@@ -316,11 +316,13 @@ export default function NameDrawPage() {
 
               <Textarea
                 placeholder="Paste names, one per line"
+                aria-label="Names, one per line"
+                aria-describedby="names-help"
                 className="min-h-[160px] resize-y font-mono"
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">
+              <p id="names-help" className="text-xs text-muted-foreground">
                 One name per line, for example Alice, Bob, Charlie.
               </p>
 

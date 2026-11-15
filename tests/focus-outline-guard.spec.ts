@@ -41,7 +41,7 @@ const DRAWS_RING = /^(?:[^\s:]+:)*(?:focus-visible|focus|has-focus-visible):ring
 const DRAWS_FILL = /^(?:[^\s:]+:)*(?:focus|focus-visible|data-highlighted):bg-\S+$/;
 const DRAWS_OUTLINE = /^(?:[^\s:]+:)*focus-visible:outline-(?!none$|hidden$)\S+$/;
 // <main id="main-content" tabIndex={-1}>, the skip link's target: file and exact class list, nothing broader.
-const PROGRAMMATIC_TARGETS = [{ file: 'app/layout.tsx', classes: 'min-h-screen pt-[6rem] outline-none' }];
+const PROGRAMMATIC_TARGETS = [{ file: 'app/layout.tsx', classes: 'min-h-svh pt-[6rem] outline-none' }];
 
 test('outline-none always comes with a focus ring of its own, and a focus ring always with outline-none', () => {
   const missingRing: string[] = [];

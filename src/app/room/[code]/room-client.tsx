@@ -884,9 +884,10 @@ function RoomUIInner({
 
   return (
     // The site layout gives <main> a 6rem top padding for the fixed nav, so a
-    // min-h-svh room was always 6rem taller than the screen and its sidebar's
-    // chat input sat below the fold (audit R-13). A City match is laid out to fit
-    // the screen (board, panel and chat together), so it takes screen minus nav.
+    // room that is only min-h-svh is 6rem taller than the screen and its sidebar's
+    // chat input sits below the fold (audit R-13, still open for the other room
+    // types). A City match is laid out to fit the screen (board, panel and chat
+    // together), so it takes screen minus nav.
     <div
       className={`${
         roomType === "city" ? "min-h-[calc(100dvh-6rem)]" : "min-h-svh"

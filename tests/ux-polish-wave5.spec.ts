@@ -98,7 +98,7 @@ test('U-36: the Tournament tool spells out its formats and templates', async ({ 
     expect(text, 'it says what and how many').toMatch(/\b\d+ (players|teams)\b/);
   }
   await templates.first().click();
-  await expect(page.getByText('Single elimination template loaded!')).toBeVisible();
+  await expect(page.getByText('Single elimination, 8 players: template loaded!')).toBeVisible();
 });
 
 test.describe('U-39: the name boxes show a short placeholder, with the examples in the text beside them', () => {
@@ -120,12 +120,17 @@ test.describe('U-39: the name boxes show a short placeholder, with the examples 
 });
 
 test('U-34: no full-height box is 100vh (min-h-screen); the small viewport is used', () => {
+  // The crash page (global-error) is a standalone document written without the site's stylesheet, so it keeps a plain CSS rule.
+  const EXCEPTIONS = new Set(['src/app/global-error-styles.ts']);
   const found: string[] = [];
   const walk = (dir: string) => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, e.name);
       if (e.isDirectory()) walk(full);
-      else if (/\.(tsx|ts|css)$/.test(e.name) && /\bmin-h-screen\b|\bh-screen\b/.test(fs.readFileSync(full, 'utf8'))) found.push(path.relative(path.join(__dirname, '..'), full));
+      else if (/\.(tsx|ts|css)$/.test(e.name) && /\b(?:min-)?h-screen\b|\b(?:min-)?h-\[100vh\]|\b100vh\b/.test(fs.readFileSync(full, 'utf8'))) {
+        const relative = path.relative(path.join(__dirname, '..'), full);
+        if (!EXCEPTIONS.has(relative)) found.push(relative);
+      }
     }
   };
   walk(path.join(__dirname, '..', 'src'));
