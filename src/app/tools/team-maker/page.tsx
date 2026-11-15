@@ -217,19 +217,21 @@ export default function TeamMakerPage() {
             className="lg:col-span-2 border border-(--border-hairline) bg-(--surface-panel) rounded-2xl p-6 space-y-5 reveal reveal-left reveal-delay-1"
           >
             <div>
-              <Label className="text-sm font-medium mb-2 block">
+              <Label htmlFor="player-names" className="text-sm font-medium mb-2 block">
                 Player Names
               </Label>
               <Textarea
-                placeholder={"Enter names, one per line or comma-separated...\n\nAlex\nJordan\nTaylor\nMorgan\nCasey\nRiley\nQuinn\nSkyler"}
+                placeholder="Enter names, one per line or comma-separated"
+                id="player-names"
+                aria-describedby="players-help"
                 value={namesInput}
                 onChange={(e) => setNamesInput(e.target.value)}
                 className="min-h-[160px] resize-y"
               />
-              <p className="text-xs text-muted-foreground mt-2">
+              <p id="players-help" className="text-xs text-muted-foreground mt-2">
                 {parsedNames.length > 0
                   ? `${parsedNames.length} name${parsedNames.length !== 1 ? "s" : ""} entered`
-                  : "Enter player names above"}
+                  : "Enter player names above, for example Alex, Jordan, Taylor"}
               </p>
             </div>
 

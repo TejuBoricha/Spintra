@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function HomeLoading() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-svh flex flex-col">
       <div className="flex-1 flex flex-col items-center justify-center gap-8 px-4">
         <Skeleton className="h-16 w-64" />
         <Skeleton className="h-6 w-96 max-w-full" />

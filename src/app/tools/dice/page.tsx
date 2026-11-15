@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import {
@@ -124,6 +124,29 @@ const PolyhedralSvg = ({ sides, className }: { sides: number; className?: string
   }
 };
 
+
+/**
+ * A box that scrolls must be reachable by keyboard (axe: scrollable-region-focusable), but a box that does not scroll
+ * must not be a Tab stop or a landmark: it is a named region with tabIndex 0 only while its content overflows.
+ */
+function ScrollRegion({ label, className, children }: { label: string; className: string; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [scrolls, setScrolls] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setScrolls(el.scrollHeight > el.clientHeight + 1);
+    measure(); // after every render: the content only changes when this component renders
+    const observer = new ResizeObserver(measure); // and when the window (so the box) is resized
+    observer.observe(el);
+    return () => observer.disconnect();
+  });
+  return (
+    <div ref={ref} className={className} {...(scrolls ? { role: "region", "aria-label": label, tabIndex: 0 } : {})}>
+      {children}
+    </div>
+  );
+}
 
 export default function DicePage() {
   const [selectedDice, setSelectedDice] = useState(6);
@@ -260,7 +283,7 @@ export default function DicePage() {
                     value={count}
                     onChange={(e) => setCount(Number(e.target.value))}
                     disabled={rolling}
-                    className="min-w-0 flex-1 accent-primary h-1 bg-muted rounded-lg cursor-pointer"
+                    className="min-w-0 flex-1 accent-primary h-6 bg-transparent cursor-pointer"
                   />
                   <Button
                     variant="outline"
@@ -303,7 +326,7 @@ export default function DicePage() {
                   <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
                     Rolls Distribution
                   </div>
-                  <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                  <ScrollRegion label="Rolls distribution" className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
                     {Array.from({ length: selectedDice }, (_, i) => i + 1).map((val) => {
                       const frequency = stats.dist[val] || 0;
                       const pct = stats.totalCount ? (frequency / stats.totalCount) * 100 : 0;
@@ -324,7 +347,7 @@ export default function DicePage() {
                         </div>
                       );
                     })}
-                  </div>
+                  </ScrollRegion>
                 </div>
               </div>
             )}
@@ -456,7 +479,7 @@ export default function DicePage() {
                     Clear
                   </Button>
                 </div>
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                <ScrollRegion label="Roll history" className="space-y-2 max-h-48 overflow-y-auto pr-1">
                   {history.slice(0, 10).map((h, i) => (
                     <div
                       key={i}
@@ -480,7 +503,7 @@ export default function DicePage() {
                       </span>
                     </div>
                   ))}
-                </div>
+                </ScrollRegion>
               </div>
             )}
           </div>

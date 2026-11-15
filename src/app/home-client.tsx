@@ -171,7 +171,7 @@ export default function HomePage() {
       <AuroraBackground />
 
       {/* Hero Section */}
-      <section ref={heroSectionRef} className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      <section ref={heroSectionRef} className="relative min-h-svh flex items-center justify-center overflow-hidden">
         {/* 3D Scene Background — only mounted while visible and motion isn't reduced */}
         <div className="absolute inset-0 z-0">
           {!prefersReducedMotion && isHeroVisible ? (

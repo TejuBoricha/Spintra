@@ -315,11 +315,16 @@ export default function NameDrawPage() {
               </div>
 
               <Textarea
-                placeholder="Paste names, one per line...&#10;Alice&#10;Bob&#10;Charlie"
+                placeholder="Paste names, one per line"
+                aria-label="Names, one per line"
+                aria-describedby="names-help"
                 className="min-h-[160px] resize-y font-mono"
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
               />
+              <p id="names-help" className="text-xs text-muted-foreground">
+                One name per line, for example Alice, Bob, Charlie.
+              </p>
 
               {/* Quick Actions Row */}
               <div className="flex items-center gap-2 flex-wrap">

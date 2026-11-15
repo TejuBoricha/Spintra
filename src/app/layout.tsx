@@ -103,7 +103,7 @@ export default function RootLayout({
         <Providers>
           <Navbar />
           {/* tabIndex -1: the skip link's target takes focus when it is used; not a Tab stop, so no ring is drawn */}
-          <main id="main-content" tabIndex={-1} className="min-h-screen pt-[6rem] outline-none">{children}</main>
+          <main id="main-content" tabIndex={-1} className="min-h-svh pt-[6rem] outline-none">{children}</main>
           <SiteFooter />
           <Toaster position="bottom-center" />
         </Providers>

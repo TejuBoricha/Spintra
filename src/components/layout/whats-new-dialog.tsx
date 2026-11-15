@@ -168,7 +168,7 @@ export function WhatsNewTrigger({
         size="icon"
         onClick={() => whatsNew.show()}
         aria-label="What's launching next, and recent updates"
-        className="relative rounded-full text-muted-foreground hover:text-foreground hover:bg-(--surface-sunken) transition-colors h-10 w-10"
+        className="relative rounded-full text-muted-foreground hover:text-foreground hover:bg-(--surface-sunken) transition-colors h-11 w-11 lg:h-10 lg:w-10"
       >
         <Lightbulb className="w-5 h-5" />
         {showBadge && (
