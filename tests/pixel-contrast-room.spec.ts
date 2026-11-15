@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { hideConfigBanner } from './helpers/config-banner';
+import { createDemoPartyRoom } from './helpers/demo-room';
 import { contrastProblems } from './helpers/pixel-contrast';
 
 // UX audit (7 Oct 2026), finding U-04, continued from pixel-contrast.spec.ts and pixel-contrast-states.spec.ts: a party room as
@@ -37,13 +37,8 @@ for (const [theme, width, height] of [['dark', 1280, 800], ['light', 1280, 800],
         localStorage.setItem('spintra-theme', t);
         localStorage.setItem('spintra-cookie-consent', 'denied');
       }, [theme]);
-      await page.goto('/create?type=party');
-      await hideConfigBanner(page);
-      await page.waitForSelector('[data-testid="create-room-button-client"]', { timeout: 30000 });
-      await page.click('[data-testid="create-room-button-client"]');
-      await page.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 45000 });
-      await hideConfigBanner(page);
-      await page.waitForTimeout(1500); // the room has joined and its lobby has rendered
+      await createDemoPartyRoom(page);
+      await page.waitForTimeout(1500); // the lobby has finished rendering: the scan samples pixels
 
       const problems: Record<string, string[]> = {};
       const check = async (state: string) => {
