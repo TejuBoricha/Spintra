@@ -40,6 +40,8 @@
   --lime-700: #5f7010;
   /* Darker end of the light theme's heading gradient (7.7:1 on the cream page). */
   --lime-800: #435209;
+  /* The light theme's heading gradient ends here (about 9:1 on the cream page). */
+  --lime-900: #2f3a06;
 
   /* Base ramp — coral (secondary / energetic accent) */
   --coral-400: #f54452;
@@ -252,8 +254,11 @@
 }
 
 .light {
-  /* Dark olive, 4.9:1 to 7.7:1 on the cream page (lime-700 to #435209), instead of lime-400 at 1.07:1. */
-  --gradient-brand-text: linear-gradient(135deg, var(--lime-700), var(--lime-800));
+  /* Dark olive, about 7.7:1 to 9:1 on the cream page (lime-800 to lime-900), instead of lime-400 at 1.07:1. The hero
+     fades from a violet tint, and its content is centred, so a line more or less of text above the heading moves
+     "Spin" onto a darker part of the fade: from lime-700 (4.9:1 on cream) it measured 2.9:1 there against the 3:1
+     large text needs, so the gradient starts at lime-800, which keeps at least 4.5:1 on the darkest part of it. */
+  --gradient-brand-text: linear-gradient(135deg, var(--lime-800), var(--lime-900));
   --surface-app: var(--cream-100);
   --surface-panel: #ffffff;
   --surface-panel-soft: var(--cream-50);
