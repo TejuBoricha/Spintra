@@ -256,6 +256,10 @@ export function RoomSidebar({
             {/* Messages */}
             <div ref={chatScrollContainerRef} className="contents">
               <ScrollArea className="flex-1 px-4 py-4 overflow-y-auto">
+                {/* An empty chat said nothing (a black void: UX audit U-20). Outside the live region: it is not an event. */}
+                {visibleMessages.length === 0 && (
+                  <p className="py-8 text-center text-sm text-muted-foreground">No messages yet. Say hello!</p>
+                )}
                 <div className="space-y-4" role="log" aria-live="polite" aria-relevant="additions">
                   {hasMoreMessages && (
                     <div className="flex justify-center pb-2">

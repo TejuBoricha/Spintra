@@ -884,13 +884,15 @@ function RoomUIInner({
 
   return (
     // The site layout gives <main> a 6rem top padding for the fixed nav, so a
-    // room that is only min-h-svh is 6rem taller than the screen and its sidebar's
-    // chat input sits below the fold (audit R-13, still open for the other room
-    // types). A City match is laid out to fit the screen (board, panel and chat
-    // together), so it takes screen minus nav.
+    // room that is only min-h-svh was 6rem taller than the screen at every size
+    // and its sidebar's chat input sat below the fold (audit R-13, U-20). A room
+    // is an app, not a document: it is the screen minus the nav, and its panels
+    // scroll inside it. A City match is laid out to fit the screen (board, panel
+    // and chat together) in the same space; the other rooms are that tall from
+    // `md` (a phone's column may still grow past it with a tall activity).
     <div
-      className={`${
-        roomType === "city" ? "min-h-[calc(100dvh-6rem)]" : "min-h-svh"
+      className={`min-h-[calc(100dvh-6rem)] ${
+        roomType === "city" ? "" : "md:h-[calc(100dvh-6rem)] md:overflow-hidden"
       } flex flex-col md:flex-row w-full`}
     >
       {/* Screen-reader-only announcements for participant join/leave and
