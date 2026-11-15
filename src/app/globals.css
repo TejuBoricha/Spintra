@@ -428,6 +428,20 @@
   * {
     border-color: var(--border);
   }
+  /* The designed fonts (UX audit U-14): Plus Jakarta Sans for text, Archivo for headings. The variables are set on
+     <html> by the root layout (next/font), so they exist where this rule is. Any utility (font-mono, font-display,
+     font-body) still wins. */
+  html {
+    @apply font-body;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-display;
+  }
   /* No heading or paragraph ends on a single word of its own (UX audit U-26: "Pick a game and / play." left a lone
      word on a line of its own on 20 of the 24 pages at a phone's width). `balance` evens out the lines of a heading;
      `pretty` keeps the last line of a paragraph from being one word. A browser without them ignores the rule, and a
@@ -465,7 +479,6 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-body);
 }
 
 /* Gradient text */

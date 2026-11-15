@@ -32,6 +32,8 @@ const jetbrainsMono = localFont({
   variable: "--font-jetbrains-mono",
   weight: "400 700",
   display: "swap",
+  // Used by a few room codes and counters, not by the first paint of any page: fetched when a page asks for it.
+  preload: false,
 });
 
 
@@ -86,8 +88,11 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${archivo.variable} ${plusJakartaSans.variable} ${jetbrainsMono.variable} antialiased`} suppressHydrationWarning>
+    // The three font variables are on <html>, not <body>: the stylesheet's base font rule is on <html>, and a
+    // variable defined on <body> does not exist there, so `font-family: var(--font-plus-jakarta-sans)` was
+    // invalid and every page fell back to the visitor's system font (UX audit U-14).
+    <html lang="en" className={`${archivo.variable} ${plusJakartaSans.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+      <body className="antialiased" suppressHydrationWarning>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
