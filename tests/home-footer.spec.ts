@@ -12,6 +12,8 @@ async function footerLinkHeights(page: Page): Promise<Record<string, number>> {
   await page.goto('/');
   const links = page.locator('footer nav a');
   await expect(links.first()).toBeVisible();
+  // All of them laid out: a node that hydration replaced between the check above and the read has no box (a height of 0 once, under load).
+  await expect.poll(() => links.evaluateAll((els) => els.length > 0 && els.every((a) => a.getBoundingClientRect().height > 0))).toBe(true);
   return links.evaluateAll((els) =>
     Object.fromEntries(els.map((a) => [(a.textContent ?? '').trim(), Math.round(a.getBoundingClientRect().height)])),
   );

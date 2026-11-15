@@ -40,6 +40,8 @@
   --lime-700: #5f7010;
   /* Darker end of the light theme's heading gradient (7.7:1 on the cream page). */
   --lime-800: #435209;
+  /* The light theme's heading gradient ends here (about 9:1 on the cream page). */
+  --lime-900: #2f3a06;
 
   /* Base ramp — coral (secondary / energetic accent) */
   --coral-400: #f54452;
@@ -252,8 +254,11 @@
 }
 
 .light {
-  /* Dark olive, 4.9:1 to 7.7:1 on the cream page (lime-700 to #435209), instead of lime-400 at 1.07:1. */
-  --gradient-brand-text: linear-gradient(135deg, var(--lime-700), var(--lime-800));
+  /* Dark olive, about 7.7:1 to 9:1 on the cream page (lime-800 to lime-900), instead of lime-400 at 1.07:1. The hero
+     fades from a violet tint, and its content is centred, so a line more or less of text above the heading moves
+     "Spin" onto a darker part of the fade: from lime-700 (4.9:1 on cream) it measured 2.9:1 there against the 3:1
+     large text needs, so the gradient starts at lime-800, which keeps at least 4.5:1 on the darkest part of it. */
+  --gradient-brand-text: linear-gradient(135deg, var(--lime-800), var(--lime-900));
   --surface-app: var(--cream-100);
   --surface-panel: #ffffff;
   --surface-panel-soft: var(--cream-50);
@@ -428,6 +433,21 @@
   * {
     border-color: var(--border);
   }
+  /* The designed fonts (UX audit U-14): Plus Jakarta Sans for text, Archivo for headings. The variables are set on
+     <html> by the root layout (next/font), so they exist where this rule is. A utility on the element itself
+     (font-mono, font-body) still wins, but a heading takes the display face even inside a wrapper that sets another
+     family: put the utility on the heading. */
+  html {
+    @apply font-body;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-display;
+  }
   /* No heading or paragraph ends on a single word of its own (UX audit U-26: "Pick a game and / play." left a lone
      word on a line of its own on 20 of the 24 pages at a phone's width). `balance` evens out the lines of a heading;
      `pretty` keeps the last line of a paragraph from being one word. A browser without them ignores the rule, and a
@@ -465,7 +485,6 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-body);
 }
 
 /* Gradient text */
