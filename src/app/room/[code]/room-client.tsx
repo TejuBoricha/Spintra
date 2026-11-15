@@ -423,7 +423,7 @@ export default function RoomClient({ code: roomCode }: { code: string }) {
 
   if (!authReady || checkingAccess) {
     return (
-      <div role="status" aria-live="polite" className="min-h-svh bg-background flex flex-col items-center justify-center gap-4">
+      <div role="status" aria-live="polite" className="min-h-[calc(100dvh-var(--nav-clearance))] bg-background flex flex-col items-center justify-center gap-4">
         <div className="relative w-16 h-16">
           <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
           <div className="absolute inset-0 rounded-full border-4 border-t-primary animate-spin" />
@@ -747,6 +747,7 @@ function RoomUIInner({
 
   const {
     hasMoreMessages,
+    historyLoaded,
     loadingOlderMessages,
     newMessage,
     setNewMessage,
@@ -857,6 +858,7 @@ function RoomUIInner({
       messages={messages}
       currentUser={localUser}
       hasMoreMessages={hasMoreMessages}
+      chatHistoryLoaded={historyLoaded}
       loadingOlderMessages={loadingOlderMessages}
       loadOlderMessages={loadOlderMessages}
       newMessage={newMessage}
@@ -883,16 +885,19 @@ function RoomUIInner({
   );
 
   return (
-    // The site layout gives <main> a 6rem top padding for the fixed nav, so a
-    // room that is only min-h-svh was 6rem taller than the screen at every size
-    // and its sidebar's chat input sat below the fold (audit R-13, U-20). A room
-    // is an app, not a document: it is the screen minus the nav, and its panels
-    // scroll inside it. A City match is laid out to fit the screen (board, panel
-    // and chat together) in the same space; the other rooms are that tall from
-    // `md` (a phone's column may still grow past it with a tall activity).
+    // The site layout gives <main> a top padding for the fixed nav (--nav-clearance),
+    // so a room that is only min-h-svh was that much taller than the screen at
+    // every size and its sidebar's chat input sat below the fold (audit R-13, U-20).
+    // A room is an app, not a document: it is the screen minus the nav, and its
+    // panels scroll inside it. A City match is laid out to fit the screen (board,
+    // panel and chat together) in the same space; the other rooms are that tall
+    // from `md` when the screen is at least 560px high (a landscape phone is wide
+    // enough for `md` and too short for a fixed box: it keeps the page's own scroll).
     <div
-      className={`min-h-[calc(100dvh-6rem)] ${
-        roomType === "city" ? "" : "md:h-[calc(100dvh-6rem)] md:overflow-hidden"
+      className={`min-h-[calc(100dvh-var(--nav-clearance))] ${
+        roomType === "city"
+          ? ""
+          : "md:[@media(min-height:560px)]:h-[calc(100dvh-var(--nav-clearance))] md:[@media(min-height:560px)]:overflow-hidden"
       } flex flex-col md:flex-row w-full`}
     >
       {/* Screen-reader-only announcements for participant join/leave and

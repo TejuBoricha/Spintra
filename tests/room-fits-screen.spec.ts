@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { skipInDbIntegration } from './helpers/ci-skip';
 import { createDemoPartyRoom } from './helpers/demo-room';
+import { hideConfigBanner } from './helpers/config-banner';
 
 skipInDbIntegration(test);
 
@@ -16,7 +17,7 @@ for (const [width, height] of [[1280, 800], [1366, 768], [1920, 1080], [1024, 76
     await page.waitForTimeout(600); // the lobby's entrance
     const read = await page.evaluate(() => {
       const de = document.documentElement;
-      const input = document.querySelector<HTMLElement>('input[placeholder*="essage" i], textarea[placeholder*="essage" i], input[aria-label*="essage" i]');
+      const input = document.querySelector<HTMLElement>('input[aria-label="Type a message"]');
       const box = input?.getBoundingClientRect();
       return { document: de.scrollHeight, window: window.innerHeight, scrollable: de.scrollHeight > window.innerHeight, inputTop: box?.top ?? null, inputBottom: box?.bottom ?? null, hasInput: !!input };
     });
@@ -46,7 +47,7 @@ test('a tall activity scrolls inside the room, and the chat stays on the screen'
   await page.waitForTimeout(600);
   const read = await page.evaluate(() => {
     const de = document.documentElement;
-    const input = document.querySelector<HTMLElement>('input[placeholder*="essage" i], textarea[placeholder*="essage" i], input[aria-label*="essage" i]');
+    const input = document.querySelector<HTMLElement>('input[aria-label="Type a message"]');
     const box = input?.getBoundingClientRect();
     return { pageScrolls: de.scrollHeight > window.innerHeight, inputBottom: box?.bottom ?? null, window: window.innerHeight };
   });
@@ -64,4 +65,36 @@ test('an empty chat says so, and the line goes away with the first message', asy
   await input.press('Enter');
   await expect(page.getByText('hello from the host')).toBeVisible();
   await expect(empty).toHaveCount(0);
+});
+
+test('a classroom room is the window too', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.addInitScript(() => localStorage.setItem('spintra-cookie-consent', 'denied'));
+  await page.goto('/create?type=classroom');
+  await hideConfigBanner(page);
+  await page.waitForSelector('[data-testid="create-room-button-client"]', { timeout: 30000 });
+  await page.click('[data-testid="create-room-button-client"]');
+  await page.waitForURL(/\/room\/[A-Z0-9]+/, { timeout: 45000 });
+  await hideConfigBanner(page);
+  await expect(page.locator('input[aria-label="Type a message"]')).toBeVisible({ timeout: 30000 });
+  const read = await page.evaluate(() => {
+    const box = document.querySelector<HTMLElement>('input[aria-label="Type a message"]')!.getBoundingClientRect();
+    return { document: document.documentElement.scrollHeight, window: window.innerHeight, inputBottom: box.bottom };
+  });
+  expect(read.document).toBeLessThanOrEqual(read.window);
+  expect(read.inputBottom).toBeLessThanOrEqual(read.window);
+});
+
+test('a landscape phone (wide enough for md, too short for a fixed box) keeps the page scroll, and the chat is reachable', async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await createDemoPartyRoom(page);
+  const input = page.locator('input[aria-label="Type a message"]');
+  await expect(input).toBeAttached();
+  const overflow = await page.evaluate(() => {
+    const shell = document.querySelector('main > div');
+    return shell ? getComputedStyle(shell).overflow : null;
+  });
+  expect(overflow, 'the room is not a clipped fixed box on a short screen').not.toBe('hidden');
+  await input.scrollIntoViewIfNeeded();
+  await expect(input).toBeInViewport();
 });

@@ -12,6 +12,9 @@
    consumer picks up the new palette without prop changes.
    ───────────────────────────────────────────────────────── */
 :root {
+  /* The fixed navbar's clearance: <main>'s top padding (layout.tsx) and everything sized to "the screen under the navbar" (a room)
+     use this one value, so changing the navbar cannot leave a 96px overflow or a gap. */
+  --nav-clearance: 6rem;
   /* Base ramp — ink (neutrals, near-black surfaces) */
   --ink-950: #010105;
   --ink-900: #050506;
@@ -422,7 +425,7 @@
   }
 }
 
-/* Where a page's content starts below the navbar's clearance (the layout's pt-[6rem]): one value for every page, instead of the
+/* Where a page's content starts below the navbar's clearance (the layout's pt-(--nav-clearance)): one value for every page, instead of the
    0, 2 and 7 rem each page picked (UX audit U-21: the title started 16 to 233 px under the navbar). Not for the home hero (a
    full-screen scene) or a room (an app screen). */
 @utility page-top {
@@ -478,7 +481,7 @@
      to the top edge, behind the navbar (WCAG 2.4.11, focus not obscured). Anchor links get the same offset,
      so they no longer need a scroll-margin of their own. */
   html {
-    scroll-padding-top: 6rem;
+    scroll-padding-top: var(--nav-clearance);
   }
 }
 

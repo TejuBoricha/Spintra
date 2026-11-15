@@ -48,6 +48,8 @@ interface RoomSidebarProps {
   messages: ChatMessage[];
   currentUser: User;
   hasMoreMessages: boolean;
+  /** The chat history has been read (or there is none to read): only then is an empty list an empty chat. */
+  chatHistoryLoaded: boolean;
   loadingOlderMessages: boolean;
   loadOlderMessages: () => Promise<void>;
   newMessage: string;
@@ -142,6 +144,7 @@ export function RoomSidebar({
   messages,
   currentUser,
   hasMoreMessages,
+  chatHistoryLoaded,
   loadingOlderMessages,
   loadOlderMessages,
   newMessage,
@@ -256,9 +259,13 @@ export function RoomSidebar({
             {/* Messages */}
             <div ref={chatScrollContainerRef} className="contents">
               <ScrollArea className="flex-1 px-4 py-4 overflow-y-auto">
-                {/* An empty chat said nothing (a black void: UX audit U-20). Outside the live region: it is not an event. */}
-                {visibleMessages.length === 0 && (
-                  <p className="py-8 text-center text-sm text-muted-foreground">No messages yet. Say hello!</p>
+                {/* An empty chat said nothing (a black void: UX audit U-20). Outside the live region: it is not an event.
+                    `messages`, not `visibleMessages`: a chat of blocked people's messages is not empty; and no invitation to
+                    say hello where the input is replaced by the reason the viewer cannot post. */}
+                {chatHistoryLoaded && messages.length === 0 && (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    {chatReadOnlyReason ? "No messages yet." : "No messages yet. Say hello!"}
+                  </p>
                 )}
                 <div className="space-y-4" role="log" aria-live="polite" aria-relevant="additions">
                   {hasMoreMessages && (
