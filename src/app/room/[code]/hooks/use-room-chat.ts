@@ -31,6 +31,9 @@ export function useRoomChat({
   setHasUnreadMessages,
 }: UseRoomChatProps) {
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  // True once the history has been read (or there is none to read: a room on this device only). The empty-chat line waits for it, so a
+  // room with history never says "No messages yet" while it loads, and a failed load never claims the chat is empty.
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [showEmojis, setShowEmojis] = useState(false);
@@ -48,7 +51,10 @@ export function useRoomChat({
 
     const loadMessages = async () => {
       const supabase = getSupabaseBrowserClient();
-      if (!supabase) return;
+      if (!supabase) {
+        if (isMounted) setHistoryLoaded(true);
+        return;
+      }
 
       try {
         const { data, error } = await supabase
@@ -79,6 +85,7 @@ export function useRoomChat({
           formattedMessages.reverse();
           setMessages(formattedMessages);
           setHasMoreMessages(data.length === 100);
+          setHistoryLoaded(true);
         }
       } catch (cause) {
         console.error("Message load failed:", cause);
@@ -264,6 +271,7 @@ export function useRoomChat({
     messages,
     setMessages,
     hasMoreMessages,
+    historyLoaded,
     loadingOlderMessages,
     newMessage,
     setNewMessage,
